@@ -19,7 +19,7 @@ static Camera2D cam;
 // Posições em cache (calculadas uma única vez)
 static Vector2 moddingPos;
 static const Vector2 versionPos = { 12.0f, 694.0f }; // 720 - 18 - 8
-static const char* const versionText = "FNF C Engine v0.6.4.2";
+static const char* const versionText = "FNF C Engine v026";
 static const char* const moddingText = "MODDING";
 
 static void Button_SetPosition(int i) {
