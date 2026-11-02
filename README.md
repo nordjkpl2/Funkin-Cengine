@@ -1,4 +1,4 @@
-# 🌟 Friday Night Funkin´ — Cengine
+# 👒 Friday Night Funkin´ — Cengine
 
 performance
 
