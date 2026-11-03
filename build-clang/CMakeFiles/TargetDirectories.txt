@@ -1,0 +1,3 @@
+D:/dev/funkin c/build-clang/CMakeFiles/FNF_C_ENGINE.dir
+D:/dev/funkin c/build-clang/CMakeFiles/edit_cache.dir
+D:/dev/funkin c/build-clang/CMakeFiles/rebuild_cache.dir

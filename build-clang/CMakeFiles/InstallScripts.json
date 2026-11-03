@@ -1,0 +1,7 @@
+{
+	"InstallScripts" : 
+	[
+		"D:/dev/funkin c/build-clang/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

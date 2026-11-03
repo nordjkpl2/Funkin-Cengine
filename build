@@ -14,6 +14,8 @@ build (fnf c engine (c) 2026 nordjkpl and as name Mawh/na Corporation)
 gcc main.c $(find src -name "*.c") $(find lib -name "*.c") -o FNF_C_ENGINE.exe -I./headers -I./src -I./lib -L./lib -lraylibdll -lopengl32 -lgdi32 -lwinmm -mwindows -std=c23 -Os -flto -finline-small-functions -ffunction-sections -fmerge-all-constants -funroll-loops -fdata-sections -Wl,--gc-sections -Wl,-O2 -s -DNDEBUG -fomit-frame-pointer -fno-math-errno -fno-common -fipa-pta
     Sem Fito
 gcc main.c $(find src -name "*.c") $(find lib -name "*.c") -o FNF_C_ENGINE.exe -I./headers -I./src -I./lib -L./lib -lraylibdll -lopengl32 -lgdi32 -lwinmm -mwindows -std=c23 -Os -finline-small-functions -fmerge-all-constants -ffunction-sections -funroll-loops -fdata-sections -Wl,--gc-sections -Wl,-O2 -s -DNDEBUG -fomit-frame-pointer -fno-math-errno -fno-common -fipa-pta
+
+clang -std=c23 -Os -flto=thin -fuse-ld=lld -ffunction-sections -fdata-sections -fmerge-all-constants -funroll-loops -fomit-frame-pointer -fno-math-errno -fno-common -DNDEBUG -mwindows -s main.c $(find src -name "*.c") $(find lib -name "*.c" ! -path "./lib/raylib55/*") -o FNF_C_ENGINE.exe -I./headers -I./src -I./lib -L./lib -lraylib_clang -lopengl32 -lgdi32 -lwinmm -luser32 -lshell32 -Wl,--gc-sections
     Sem w64devkit
 gcc main.c src/*.c lib/*.c -o FNF_C_ENGINE.exe -I./headers -I./src -I./lib -L./lib -lraylibdll -lopengl32 -lgdi32 -lwinmm -mwindows -std=c23 -Os -finline-small-functions -fmerge-all-constants -ffunction-sections -funroll-loops -fdata-sections -Wl,--gc-sections -Wl,-O2 -s -DNDEBUG -fomit-frame-pointer -fno-math-errno -fno-common -fipa-pta
 // mwindows remove cmd de raylib
