@@ -5,7 +5,6 @@
  * RayGame.c - Estado global, áudio, janela e loop principal.
  */
 
-#include "std.h"
 #include "Game.h"
 #include "GameData.h"
 #include "Log.h"
@@ -17,9 +16,9 @@
 #define RAYGAME_CANVAS_HEIGHT 720
 #define RAYGAME_DEFAULT_FPS   60
 
-/* ================================================================
+/* ===
    1. ESTADO GLOBAL
-   ================================================================ */
+    */
 
 RayGame game;
 

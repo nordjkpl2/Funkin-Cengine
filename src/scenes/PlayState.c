@@ -1,5 +1,6 @@
 /* // * Friday Night Funkin´ c engine (c) 2026 nordjkpl */
 #include "scenes/AllScenes.h"
+#include "raylib.h"
 #include "scenes/Character.h"
 #include "scenes/Note.h"
 #include "scenes/Song.h"
@@ -712,7 +713,7 @@ static void StepHit(void) {
 
     float time = GetMusicTimePlayed(inst);
     if (hasVoices && time - lastVoiceSync > 0.5f &&
-        fabsf(time - GetMusicTimePlayed(voices)) > 0.02f) {
+        fabs(time - GetMusicTimePlayed(voices)) > 0.02f) {
         SeekMusicStream(voices, time);
         lastVoiceSync = time;
     }
@@ -727,7 +728,7 @@ static void StepHit(void) {
 }
 
 static void HitNote(Note* note) {
-    float diff = fabsf(note->time - songBeat.time);
+    float diff = fabs(note->time - songBeat.time);
 
     if (diff > 0.1503f) {
         score += 50;
@@ -965,7 +966,7 @@ static void PauseMenu_Update([[maybe_unused]] RayScene* scene) {
     Color color = WHITE;
     for (int i = 0; i < 3; i++) {
         const int fontSize = 85;
-        Vector2 pos = {150 + fabsf(i - optionOffset) * -30, 720 / 2 + (i - optionOffset) * (15 + fontSize)};
+        Vector2 pos = {150 + fabs(i - optionOffset) * -30, 720 / 2 + (i - optionOffset) * (15 + fontSize)};
         color.a = currentOption == i ? 255 : 150;
         DrawTextEx(mainFont, options[i], pos, fontSize, 5, color);
     }

@@ -14,7 +14,7 @@ char    game_options_showScore;
 char    game_options_bopIcons;
 char    game_options_vsync;
 char    game_options_fillScreen; // preenche a tela (corta) em vez de barras pretas
-char    game_options_botplay; // joga sozinho (fun)
+char    game_options_botplay;
 char    game_options_ghost; // 0=On(free) 1=50/50(lane-lock) 2=Off(strict)
 char    game_options_scroll; // 0=Normal 1=Downscroll 2=Middlescroll
 char    game_options_hitSound; // som ao acertar nota (session-only, default OFF)

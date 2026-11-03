@@ -2,19 +2,20 @@
 *.exe
 *.o
 *.obj
+*.clangd
 
 # IDE
 .vscode/
 *.code-workspace
 
-# Sistema
+# System
 Thumbs.db
 Desktop.ini
 
-# Outros
+# Oth
 build/
 dist/
 
-# Teste de Jogo
+# Test
 assets/mods
 assets/weeks
