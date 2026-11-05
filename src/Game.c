@@ -5,6 +5,7 @@
  * RayGame.c - Estado global, áudio, janela e loop principal.
  */
 
+#include "std.h"
 #include "Game.h"
 #include "GameData.h"
 #include "Log.h"
@@ -16,54 +17,35 @@
 #define RAYGAME_CANVAS_HEIGHT 720
 #define RAYGAME_DEFAULT_FPS   60
 
-/* ===
+/* ================================================================
    1. ESTADO GLOBAL
-    */
+   ================================================================ */
 
 RayGame game;
 
-static float dt = 0.0f;
-static float zoom = 1.0f;
-
-static int width = RAYGAME_CANVAS_WIDTH;
-static int height = RAYGAME_CANVAS_HEIGHT;
-static int targetFps = RAYGAME_DEFAULT_FPS;
-
-static bool vsyncEnabled = false;
-static bool viewportInitialized = false;
-static bool lastFillScreen = false;
-static bool audioReady = false;
-static bool gameDataReady = false;
-
-Music gameMusic = {0};
-
-static bool musicLoaded = false;
-static bool playingMusic = false;
-
-/* Volume global x volume configurado para a faixa atual. */
-static float musicVolume = 1.0f;
-static float musicBaseVolume = 1.0f;
-static float volOsdTimer = 0.0f;
-
-/* Texto do OSD atualizado somente quando o volume muda. */
-static char volumeText[24] = "VOLUME 100%";
+static float dt = 0.0f, zoom = 1.0f, musicVolume = 1.0f, musicBaseVolume = 1.0f, volOsdTimer = 0.0f;
+static int width = RAYGAME_CANVAS_WIDTH, height = RAYGAME_CANVAS_HEIGHT, targetFps = RAYGAME_DEFAULT_FPS;
 static int cachedVolumePercent = 100;
 
+static bool vsyncEnabled = false, viewportInitialized = false, lastFillScreen = false;
+static bool audioReady = false, gameDataReady = false, musicLoaded = false, playingMusic = false, stretchReady = false;
+
+Music gameMusic = {0};
 static RenderTexture2D stretchTarget = {0};
-static bool stretchReady = false;
+static char volumeText[24] = "VOLUME 100%";
 
 /* ================================================================
    2. UTILITÁRIOS INTERNOS
    ================================================================ */
 
-static float RayGame_Clamp01(float value)
+static inline float RayGame_Clamp01(float value)
 {
     if (value < 0.0f) return 0.0f;
     if (value > 1.0f) return 1.0f;
     return value;
 }
 
-static void RayGame_UpdateVolumeText(void)
+static inline void RayGame_UpdateVolumeText(void)
 {
     const int percent = (int)(musicVolume * 100.0f + 0.5f);
 
@@ -74,26 +56,19 @@ static void RayGame_UpdateVolumeText(void)
     (void)snprintf(volumeText, sizeof(volumeText), "VOLUME %d%%", percent);
 }
 
-/* Atualiza dimensões e escala somente quando necessário. */
 static void RayGame_UpdateViewport(bool force)
 {
     const bool fillScreen = (game_options_fillScreen != 0);
     const bool resized = IsWindowResized();
 
-    if (!force && viewportInitialized && !resized &&
-        fillScreen == lastFillScreen)
-    {
+    if (!force && viewportInitialized && !resized && fillScreen == lastFillScreen)
         return;
-    }
 
     const int screenWidth = GetScreenWidth();
     const int screenHeight = GetScreenHeight();
 
-    if (screenWidth > 0)
-        width = screenWidth;
-
-    if (screenHeight > 0)
-        height = screenHeight;
+    if (screenWidth > 0) width = screenWidth;
+    if (screenHeight > 0) height = screenHeight;
 
     if (fillScreen)
     {
@@ -110,7 +85,7 @@ static void RayGame_UpdateViewport(bool force)
     viewportInitialized = true;
 }
 
-static void RayGame_UpdateOverlay(float frameDelta)
+static inline void RayGame_UpdateOverlay(float frameDelta)
 {
     if (volOsdTimer > 0.0f)
     {
@@ -120,9 +95,10 @@ static void RayGame_UpdateOverlay(float frameDelta)
     }
 }
 
-static void RayGame_DrawOverlay(void)
+static inline void RayGame_DrawOverlay(void)
 {
-    DrawFPS(10, 3);
+    if (game_options_showFps)
+        DrawFPS(10, 3);
 
     if (volOsdTimer > 0.0f)
         DrawText(volumeText, 10, 26, 20, WHITE);
@@ -148,7 +124,6 @@ void RayGame_SetMusic(const char *path, float volume, char looping)
 
     gameMusic = LoadMusicStream(path);
 
-    /* LoadMusicStream pode falhar; não use um stream inválido. */
     if (gameMusic.stream.buffer == NULL)
     {
         gameMusic = (Music){0};
@@ -171,10 +146,8 @@ void RayGame_ToggleMusic(char on)
     if (!musicLoaded || !audioReady || enable == playingMusic)
         return;
 
-    if (enable)
-        ResumeMusicStream(gameMusic);
-    else
-        PauseMusicStream(gameMusic);
+    if (enable) ResumeMusicStream(gameMusic);
+    else PauseMusicStream(gameMusic);
 
     playingMusic = enable;
 }
@@ -227,16 +200,12 @@ int RayGame_CanvasHeight(void)
 
 void RayGame_SetFPS(int fps)
 {
-    /* 0 = sem limitador; valores positivos abaixo de 10 são normalizados. */
-    if (fps < 0)
-        fps = 10;
-    else if (fps > 0 && fps < 10)
-        fps = 10;
+    if (fps < 0) fps = 10;
+    else if (fps > 0 && fps < 10) fps = 10;
 
     targetFps = fps;
     game_options_fps = fps;
 
-    /* Com VSync, deixa o sincronismo da tela controlar a apresentação. */
     if (!vsyncEnabled)
         SetTargetFPS(targetFps);
 }
@@ -269,9 +238,7 @@ int RayGame_GetTargetFPS(void)
 
 void RayGame_Start(const char *gameTitle)
 {
-    SetConfigFlags(FLAG_WINDOW_ALWAYS_RUN |
-                   FLAG_WINDOW_RESIZABLE |
-                   FLAG_VSYNC_HINT);
+    SetConfigFlags(FLAG_WINDOW_ALWAYS_RUN | FLAG_WINDOW_RESIZABLE | FLAG_VSYNC_HINT);
 
     InitWindow(RAYGAME_CANVAS_WIDTH, RAYGAME_CANVAS_HEIGHT, gameTitle);
 
@@ -282,23 +249,17 @@ void RayGame_Start(const char *gameTitle)
     }
 
     SetExitKey(KEY_NULL);
-
     InitAudioDevice();
     audioReady = IsAudioDeviceReady();
 
     GameData_Start();
     gameDataReady = true;
 
-    /* Aplica as opções carregadas do GameData. */
     RayGame_SetVsync(game_options_vsync);
     if (!vsyncEnabled)
         RayGame_SetFPS(game_options_fps);
 
-    stretchTarget = LoadRenderTexture(
-        RAYGAME_CANVAS_WIDTH,
-        RAYGAME_CANVAS_HEIGHT
-    );
-
+    stretchTarget = LoadRenderTexture(RAYGAME_CANVAS_WIDTH, RAYGAME_CANVAS_HEIGHT);
     stretchReady = (stretchTarget.id != 0);
 
     if (stretchReady)
@@ -321,19 +282,12 @@ void RayGame_GameLoop(void)
 
     while (!WindowShouldClose())
     {
-        /*
-         * Não limite dt a 1/FPS: isso descarta tempo real em frames lentos.
-         * SetTargetFPS já controla a apresentação; dt deve medir o tempo
-         * efetivamente decorrido entre frames.
-         */
         dt = GetFrameTime();
-        if (dt < 0.0f)
-            dt = 0.0f;
+        if (dt < 0.0f) dt = 0.0f;
 
         RayGame_UpdateViewport(false);
         RayGame_UpdateOverlay(dt);
 
-        /* Input global. */
         if (IsKeyPressed(KEY_F11))
         {
             ToggleBorderlessWindowed();
@@ -346,14 +300,12 @@ void RayGame_GameLoop(void)
         if (IsKeyPressed(KEY_MINUS) || IsKeyPressed(KEY_KP_SUBTRACT))
             RayGame_BumpMusicVolume(-0.1f);
 
-        /* Atualiza a cena atual. Ela pode trocar durante o callback. */
         if (game.scene != NULL && game.scene->functions.updateFunc != NULL)
             game.scene->functions.updateFunc(game.scene);
 
         if (playingMusic && musicLoaded)
             UpdateMusicStream(gameMusic);
 
-        /* A cena pode ter sido removida durante updateFunc. */
         if (game.scene == NULL)
         {
             BeginDrawing();
@@ -365,7 +317,6 @@ void RayGame_GameLoop(void)
 
         if (game_options_fillScreen && stretchReady)
         {
-            /* Renderiza primeiro no canvas lógico 1280x720. */
             BeginTextureMode(stretchTarget);
             ClearBackground(BLACK);
 
@@ -374,24 +325,13 @@ void RayGame_GameLoop(void)
 
             EndTextureMode();
 
-            /* Escala o canvas para a janela. */
             BeginDrawing();
             ClearBackground(BLACK);
 
             DrawTexturePro(
                 stretchTarget.texture,
-                (Rectangle){
-                    0.0f,
-                    0.0f,
-                    (float)RAYGAME_CANVAS_WIDTH,
-                    -(float)RAYGAME_CANVAS_HEIGHT
-                },
-                (Rectangle){
-                    0.0f,
-                    0.0f,
-                    (float)width,
-                    (float)height
-                },
+                (Rectangle){ 0.0f, 0.0f, (float)RAYGAME_CANVAS_WIDTH, -(float)RAYGAME_CANVAS_HEIGHT },
+                (Rectangle){ 0.0f, 0.0f, (float)width, (float)height },
                 (Vector2){0.0f, 0.0f},
                 0.0f,
                 WHITE
@@ -408,11 +348,9 @@ void RayGame_GameLoop(void)
             if (game.scene->functions.drawFunc != NULL)
                 game.scene->functions.drawFunc(game.scene);
 
-            /* Barras de aspecto: também são necessárias quando a janela
-               é maior que o canvas, mas não tem proporção 16:9. */
             {
                 const int contentHeight = (int)(RAYGAME_CANVAS_HEIGHT * zoom);
-                const int contentWidth = (int)(RAYGAME_CANVAS_WIDTH * zoom);
+                const int contentWidth  = (int)(RAYGAME_CANVAS_WIDTH * zoom);
                 const int barH = (height - contentHeight) / 2;
                 const int barW = (width - contentWidth) / 2;
 

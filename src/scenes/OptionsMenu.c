@@ -1,6 +1,6 @@
 /* // * Friday Night Funkin´ c engine (c) 2026 nordjkpl */
 #include "scenes/AllScenes.h"
-/* // * Código dos Textos da aba de Opções, OUTD 18 of10 2026 */
+
 typedef struct {
     char* text;
     enum OptionValueType { 
@@ -12,13 +12,9 @@ typedef struct {
     } type;
 
     const char** options;
-    float value;
-    float min, max;
-    float step;
-    float altStep;
+    float value, min, max, step, altStep;
     char active;
 
-    // CACHE - performance absoluta
     char cachedText[96];
     bool dirty;
 } Option;
@@ -27,6 +23,7 @@ typedef enum {
     __OPTION_HEADER_WIN,
     OPTION_FPS,
     OPTION_UNCAPPED_FPS,
+    OPTION_SHOW_FPS,
     OPTION_VSYNC,
     __OPTION_HEADER_GAMEPLAY,
     OPTION_KEYBOARD_SCHEME,
@@ -42,7 +39,7 @@ typedef enum {
     OPTION_BOTPLAY
 } OPTION_ORDER;
 
-#define OPTION_COUNT 16
+#define OPTION_COUNT 17
 
 static const char* ghost_names[3] = {"On", "50/50", "Off"};
 static const char* scroll_names[3] = {"Normal", "Downscroll", "Middlescroll"};
@@ -51,6 +48,7 @@ static Option options[OPTION_COUNT] = {
     {.text = "[ Window Options ]", .type = OPTION_VALUE_HEADER},
     {.text = "Framerate", .type = OPTION_VALUE_INT, .min=60, .max=2000, .step=10, .altStep=100},
     {.text = "Uncapped FPS", .type = OPTION_VALUE_BOOL},
+    {.text = "Show FPS", .type = OPTION_VALUE_BOOL},
     {.text = "V-SYNC", .type = OPTION_VALUE_BOOL},
     {.text = "[ Gameplay Options ]", .type = OPTION_VALUE_HEADER},
     {.text = "Scheme", .type = OPTION_VALUE_LIST, .options=game_available_schemes, .step=1, .max=3, .min=0},
@@ -71,24 +69,23 @@ static int currentOption;
 static Camera2D cam;
 static RayGraphicObject bg;
 
-// --- CACHE: só formata quando suja ---
 static inline void Option_RebuildText(Option* o) {
     if (o->type == OPTION_VALUE_HEADER) return;
     if (!o->active) {
-        snprintf(o->cachedText, sizeof(o->cachedText), "%s", o->text);
+        (void)snprintf(o->cachedText, sizeof(o->cachedText), "%s", o->text);
         return;
     }
     switch(o->type) {
-        case OPTION_VALUE_INT:  snprintf(o->cachedText, sizeof(o->cachedText), "%s: < %d >", o->text, (int)o->value); break;
-        case OPTION_VALUE_FLOAT:snprintf(o->cachedText, sizeof(o->cachedText), "%s: < %.2f >", o->text, (double)o->value); break;
-        case OPTION_VALUE_BOOL: snprintf(o->cachedText, sizeof(o->cachedText), "%s: [ %s ]", o->text, o->value ? "ON" : "OFF"); break;
-        case OPTION_VALUE_LIST: snprintf(o->cachedText, sizeof(o->cachedText), "%s: << %s >>", o->text, o->options[(int)o->value]); break;
+        case OPTION_VALUE_INT:  (void)snprintf(o->cachedText, sizeof(o->cachedText), "%s: < %d >", o->text, (int)o->value); break;
+        case OPTION_VALUE_FLOAT:(void)snprintf(o->cachedText, sizeof(o->cachedText), "%s: < %.2f >", o->text, (double)o->value); break;
+        case OPTION_VALUE_BOOL: (void)snprintf(o->cachedText, sizeof(o->cachedText), "%s: [ %s ]", o->text, o->value ? "ON" : "OFF"); break;
+        case OPTION_VALUE_LIST: (void)snprintf(o->cachedText, sizeof(o->cachedText), "%s: << %s >>", o->text, o->options[(int)o->value]); break;
         default: break;
     }
     o->dirty = false;
 }
 
-static inline void ChangedNumValue() {
+static inline void ChangedNumValue(void) {
     Option* o = &options[currentOption];
     o->value = Clamp(o->value, o->min, o->max);
 
@@ -106,7 +103,7 @@ static inline void ChangedNumValue() {
     Option_RebuildText(o);
 }
 
-static inline void ChangedBoolValue() {
+static inline void ChangedBoolValue(void) {
     Option* o = &options[currentOption];
     switch(currentOption) {
         case OPTION_UNCAPPED_FPS: 
@@ -115,14 +112,18 @@ static inline void ChangedBoolValue() {
             options[OPTION_FPS].dirty = true;
             Option_RebuildText(&options[OPTION_FPS]);
             break;
-        case OPTION_SHOW_SCORE: game_options_showScore = o->value; break;
-        case OPTION_BOPPING_ICONS: game_options_bopIcons = o->value; break;
-        case OPTION_FILL_SCREEN: game_options_fillScreen = o->value; break;
-        case OPTION_BOTPLAY: game_options_botplay = o->value; break;
-        case OPTION_HITSOUND: game_options_hitSound = o->value; break;
+        case OPTION_SHOW_FPS:
+            game_options_showFps = (char)o->value;
+            break;
+        case OPTION_SHOW_SCORE: game_options_showScore = (char)o->value; break;
+        case OPTION_BOPPING_ICONS: game_options_bopIcons = (char)o->value; break;
+        case OPTION_FILL_SCREEN: game_options_fillScreen = (char)o->value; break;
+        case OPTION_BOTPLAY: game_options_botplay = (char)o->value; break;
+        case OPTION_HITSOUND: game_options_hitSound = (char)o->value; break;
         case OPTION_VSYNC:
-            RayGame_SetVsync(o->value); 
+            RayGame_SetVsync((char)o->value); 
             options[OPTION_UNCAPPED_FPS].active = !o->value;
+            options[OPTION_SHOW_FPS].active = 1;
             options[OPTION_FPS].active = !o->value && !options[OPTION_UNCAPPED_FPS].value;
             break;
     }
@@ -130,9 +131,8 @@ static inline void ChangedBoolValue() {
     Option_RebuildText(o);
 }
 
-// Navegação que já pula HEADER e inativo - elimina o goto
 static inline void OptionsMenu_Move(int dir) {
-    for(int i=0; i < OPTION_COUNT; i++) {
+    for(int i = 0; i < OPTION_COUNT; i++) {
         currentOption = (currentOption + dir + OPTION_COUNT) % OPTION_COUNT;
         if(options[currentOption].type != OPTION_VALUE_HEADER && options[currentOption].active) break;
     }
@@ -154,6 +154,7 @@ static void OptionsMenu_Create([[maybe_unused]] RayScene* scene) {
         options[OPTION_FPS].value = 120;
     }
     options[OPTION_UNCAPPED_FPS].value = RayGame_GetTargetFPS() == 0;
+    options[OPTION_SHOW_FPS].value = game_options_showFps;
     options[OPTION_SHOW_SCORE].value = game_options_showScore;
     options[OPTION_BOPPING_ICONS].value = game_options_bopIcons;
     options[OPTION_VSYNC].value = game_options_vsync;
@@ -166,9 +167,8 @@ static void OptionsMenu_Create([[maybe_unused]] RayScene* scene) {
     options[OPTION_FILL_SCREEN].value = game_options_fillScreen;
     options[OPTION_BOTPLAY].value = game_options_botplay;
 
-    for(int i=0; i<OPTION_COUNT; i++) Option_RebuildText(&options[i]);
+    for(int i = 0; i < OPTION_COUNT; i++) Option_RebuildText(&options[i]);
 
-    // garante começar em opção válida
     if(options[currentOption].type == OPTION_VALUE_HEADER || !options[currentOption].active)
         OptionsMenu_Move(1);
 }
@@ -180,7 +180,6 @@ static void OptionsMenu_Draw([[maybe_unused]] RayScene* scene) {
         return;
     }
 
-    // --- UPDATE ---
     offset = Lerp(offset, (float)currentOption, RayGame_DeltaTime() * 10.0f);
     
     if(IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S)) OptionsMenu_Move(1);
@@ -198,20 +197,14 @@ static void OptionsMenu_Draw([[maybe_unused]] RayScene* scene) {
         else if(IsKeyPressed(KEY_RIGHT) || IsKeyPressed(KEY_D)) { cur->value += speed; ChangedNumValue(); } 
     }
 
-    // --- DRAW ---
     Render_SetCamera(&cam);
     {
         Render_DrawGraphicObject(&bg);
         
-        // constantes fora do loop
-        const int fontSize = 70;
-        const int headerSize = 90;
-        const int fontPadding = 30;
-        const int headerPadding = 10;
-        const int shadow = 5;
+        const int fontSize = 70, headerSize = 90, fontPadding = 30, headerPadding = 10, shadow = 5;
         const float spacing = 5.0f;
 
-        float y = -offset * 100.0f; // 100 = size antigo
+        float y = -offset * 100.0f;
 
         for(int i = 0; i < OPTION_COUNT; i++) { 
             Option* o = &options[i];
@@ -220,7 +213,6 @@ static void OptionsMenu_Draw([[maybe_unused]] RayScene* scene) {
             
             float drawY = 720.0f / 2.0f + y;
             
-            // CULLING VERTICAL CORRETO (header e opções)
             if(drawY < -100.0f || drawY > 850.0f) {
                 y += h;
                 continue;
@@ -235,8 +227,7 @@ static void OptionsMenu_Draw([[maybe_unused]] RayScene* scene) {
             } else {
                 if(o->dirty) Option_RebuildText(o);
                 
-                Color clr = WHITE;
-                Color outline = BLACK;
+                Color clr = WHITE, outline = BLACK;
                 if(!o->active) clr = RED;
                 
                 clr.a = (currentOption == i) ? 255 : 150;
