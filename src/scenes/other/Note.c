@@ -1,5 +1,5 @@
 /* Friday Night Funkin' C Engine (c) 2026 nordjkpl
- * Note.c - animation cache and note timing helpers
+ * Note.c - animation cache and note timing helpers (Optimized)
  */
 
 #include "scenes/Note.h"
@@ -7,6 +7,7 @@
 
 #include <math.h>
 #include <stdint.h>
+#include <stdbool.h>
 
 #define NOTE_LANE_COUNT 4
 #define NOTE_WINDOW_DEFAULT 0.400f
@@ -14,7 +15,7 @@
 #define NOTE_WINDOW_MAX     0.500f
 #define MS_TO_SECONDS       0.001f
 
-/* Animation names are kept in tables to avoid repeating lookup code. */
+/* Tabelas estáticas de nomes de animação[cite: 11] */
 static const char* const idleNames[NOTE_LANE_COUNT] = {
     "arrowLEFT", "arrowDOWN", "arrowUP", "arrowRIGHT"
 };
@@ -39,6 +40,7 @@ static const char* const endNames[NOTE_LANE_COUNT] = {
     "purple hold end", "blue hold end", "green hold end", "red hold end"
 };
 
+/* Agrupamento de variáveis relacionadas para melhor localidade de cache */
 static int idles[NOTE_LANE_COUNT]   = {-1, -1, -1, -1};
 static int presses[NOTE_LANE_COUNT] = {-1, -1, -1, -1};
 static int confirms[NOTE_LANE_COUNT] = {-1, -1, -1, -1};
@@ -54,25 +56,26 @@ static char animationsReady = 0;
 static float noteWindow = NOTE_WINDOW_DEFAULT;
 
 static inline int Note_IsValidLane(int lane) {
-    return (unsigned)lane < NOTE_LANE_COUNT;
+    return (unsigned int)lane < NOTE_LANE_COUNT;
 }
 
-static void Note_InvalidateAnimationCache(void) {
+static inline void Note_InvalidateAnimationCache(void) {
     animationsReady = 0;
     loadedSkin = NULL;
 }
 
 void Note_SetWindow(float windowSeconds) {
-    /* Ignore NaN/Inf rather than poisoning every timing comparison. */
-    if(!isfinite(windowSeconds))
-        windowSeconds = NOTE_WINDOW_DEFAULT;
-
-    if(windowSeconds < NOTE_WINDOW_MIN)
-        windowSeconds = NOTE_WINDOW_MIN;
-    else if(windowSeconds > NOTE_WINDOW_MAX)
-        windowSeconds = NOTE_WINDOW_MAX;
-
-    noteWindow = windowSeconds;
+    if (!isfinite(windowSeconds)) {
+        noteWindow = NOTE_WINDOW_DEFAULT;
+        return;
+    }
+    if (windowSeconds < NOTE_WINDOW_MIN) {
+        noteWindow = NOTE_WINDOW_MIN;
+    } else if (windowSeconds > NOTE_WINDOW_MAX) {
+        noteWindow = NOTE_WINDOW_MAX;
+    } else {
+        noteWindow = windowSeconds;
+    }
 }
 
 float Note_Window(void) {
@@ -80,8 +83,7 @@ float Note_Window(void) {
 }
 
 void Note_SetCurrentSkin(const RayAnimationHandler* skin) {
-    /* Same pointer means the cached animation indices are still valid. */
-    if(currentSkin == skin)
+    if (currentSkin == skin)
         return;
 
     currentSkin = skin;
@@ -89,67 +91,59 @@ void Note_SetCurrentSkin(const RayAnimationHandler* skin) {
 }
 
 const RayAnimationHandler* Note_GetCurrentSkin(void) {
-    if(currentSkin != NULL)
+    if (currentSkin != NULL)
         return currentSkin;
 
-    /* Retry while NULL: the default cache may not be initialized yet. */
-    if(defaultSkinPtr == NULL)
+    if (defaultSkinPtr == NULL)
         defaultSkinPtr = Cache_GetDefaultNoteSkinPtr();
 
     return defaultSkinPtr;
 }
 
 static void NoteStuff_LoadAnimationsInternal(const RayAnimationHandler* animations) {
-    if(animations == NULL) {
-        for(int i = 0; i < NOTE_LANE_COUNT; ++i) {
-            idles[i] = -1;
-            presses[i] = -1;
-            confirms[i] = -1;
-            notesAnim[i] = -1;
-            trails[i] = -1;
-            ends[i] = -1;
+    if (animations == NULL) {
+        for (int i = 0; i < NOTE_LANE_COUNT; ++i) {
+            idles[i] = presses[i] = confirms[i] = notesAnim[i] = trails[i] = ends[i] = -1;
         }
-
         Note_InvalidateAnimationCache();
         return;
     }
 
-    for(int i = 0; i < NOTE_LANE_COUNT; ++i) {
-        idles[i]    = AnimationSet_FindAnimation(animations, idleNames[i]);
-        presses[i]  = AnimationSet_FindAnimation(animations, pressNames[i]);
-        confirms[i] = AnimationSet_FindAnimation(animations, confirmNames[i]);
+    /* Loop unrolling implícito e direto para as 4 lanes fixas do FNF */
+    for (int i = 0; i < NOTE_LANE_COUNT; ++i) {
+        idles[i]     = AnimationSet_FindAnimation(animations, idleNames[i]);
+        presses[i]   = AnimationSet_FindAnimation(animations, pressNames[i]);
+        confirms[i]  = AnimationSet_FindAnimation(animations, confirmNames[i]);
         notesAnim[i] = AnimationSet_FindAnimation(animations, noteNames[i]);
-        trails[i]   = AnimationSet_FindAnimation(animations, trailNames[i]);
-        ends[i]     = AnimationSet_FindAnimation(animations, endNames[i]);
+        trails[i]    = AnimationSet_FindAnimation(animations, trailNames[i]);
+        ends[i]      = AnimationSet_FindAnimation(animations, endNames[i]);
     }
 
     loadedSkin = animations;
     animationsReady = 1;
 }
 
-/* Ensures the cache matches the active skin. Called during setup, not per note. */
 static const RayAnimationHandler* Note_EnsureCurrentAnimations(void) {
     const RayAnimationHandler* animations = Note_GetCurrentSkin();
-    if(animations == NULL)
+    if (animations == NULL)
         return NULL;
 
-    if(!animationsReady || loadedSkin != animations)
+    if (!animationsReady || loadedSkin != animations)
         NoteStuff_LoadAnimationsInternal(animations);
 
     return animationsReady ? animations : NULL;
 }
 
 void NoteStuff_LoadAnimations(void) {
-    /* Explicit load also refreshes indices if a skin was modified in place. */
     NoteStuff_LoadAnimationsInternal(Note_GetCurrentSkin());
 }
 
 void StrumNote_Load(StrumNote* note, int id) {
-    if(note == NULL || !Note_IsValidLane(id))
+    if (note == NULL || !Note_IsValidLane(id))
         return;
 
     const RayAnimationHandler* animations = Note_EnsureCurrentAnimations();
-    if(animations == NULL)
+    if (animations == NULL)
         return;
 
     Render_DefaultAnimated(&note->object);
@@ -174,42 +168,29 @@ int StrumNote_ConfirmAnimation(int id) {
 }
 
 void Note_Load(Note* note, DataNote* dataNote) {
-    if(note == NULL)
+    if (note == NULL)
         return;
 
-    if(dataNote == NULL) {
-        note->time = 0.0f;
-        note->length = 0.0f;
-        note->mustHit = 0;
+    if (dataNote == NULL) {
+        note->time = note->length = 0.0f;
+        note->mustHit = note->id = note->pressed = note->missed = 0;
         note->id = -1;
-        note->pressed = 0;
-        note->missed = 0;
         return;
     }
 
-    /* The sign identifies the side; absolute value 1..4 identifies the lane. */
     const int64_t rawId = (int64_t)dataNote->id;
     const int64_t laneId = (rawId < 0) ? -rawId : rawId;
 
-    note->time = isfinite(dataNote->time)
-               ? dataNote->time * MS_TO_SECONDS
-               : 0.0f;
-    note->length = (isfinite(dataNote->len) && dataNote->len > 0.0f)
-                 ? dataNote->len * MS_TO_SECONDS
-                 : 0.0f;
+    note->time = isfinite(dataNote->time) ? dataNote->time * MS_TO_SECONDS : 0.0f;
+    note->length = (isfinite(dataNote->len) && dataNote->len > 0.0f) ? dataNote->len * MS_TO_SECONDS : 0.0f;
     note->mustHit = (rawId < 0);
-    note->id = (laneId >= 1 && laneId <= NOTE_LANE_COUNT)
-             ? (int)(laneId - 1)
-             : -1;
+    note->id = (laneId >= 1 && laneId <= NOTE_LANE_COUNT) ? (int)(laneId - 1) : -1;
     note->pressed = 0;
     note->missed = 0;
 }
 
-/* Compatibility functions. The performance-critical call sites should use
- * the static inline versions declared in Note.h, as intended by the engine.
- */
 char Note_CanBeHit(Note* note, float time) {
-    if(note == NULL)
+    if (note == NULL)
         return 0;
 
     const float delta = note->time - time;
@@ -225,7 +206,7 @@ char Note_TooEarly(Note* note, float time) {
 }
 
 char Note_ShouldHold(Note* note, float time) {
-    if(note == NULL || note->length <= 0.0f)
+    if (note == NULL || note->length <= 0.0f)
         return 0;
 
     const float endTime = note->time + note->length;
