@@ -1,7 +1,5 @@
 /* // * Friday Night Funkin´ c engine (c) 2026 nordjkpl */
-
 #include "scenes/AllScenes.h"
-
 /* // * Tela de Loading pra não ter que esperar carregar charts de teste, outd 18 of10 2026 */
 
 // --- cache estático pra não recalcular todo frame ---

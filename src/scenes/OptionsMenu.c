@@ -1,5 +1,4 @@
 /* // * Friday Night Funkin´ c engine (c) 2026 nordjkpl */
-
 #include "scenes/AllScenes.h"
 /* // * Código dos Textos da aba de Opções, OUTD 18 of10 2026 */
 typedef struct {

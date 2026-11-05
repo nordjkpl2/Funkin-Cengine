@@ -3,6 +3,7 @@
 *.o
 *.obj
 *.clangd
+compile_flags.txt
 
 # IDE
 .vscode/

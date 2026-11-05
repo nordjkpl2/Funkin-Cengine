@@ -1,6 +1,5 @@
-/* // * Friday Night Funkin´ c engine (c) 2026 nordjkpl */
+/* // * Friday Night Funkin´ c engine (c) 2026 nordjkpl outd day30 of10 2026 */
 #include "scenes/AllScenes.h"
-#include "raylib.h"
 #include "scenes/Character.h"
 #include "scenes/Note.h"
 #include "scenes/Song.h"
@@ -9,7 +8,6 @@
 #include <stdio.h>
 #include <math.h>
 
-//!OUTD day30/10/2026
 /* // * Gameplay Score Misses e Tempo */
 
 static float smooth(float a, float b, float c) {
@@ -365,7 +363,7 @@ static void PlayState_Create([[maybe_unused]] RayScene* scene) {
     };
 
     camHUD = (Camera2D) {
-        .target = (Vector2) {1280 / 2, 720 / 2},
+        .target = (Vector2) {1280.0 / 2, 720.0 / 2},
         .rotation = 0,
         .zoom = 1
     };
@@ -413,8 +411,8 @@ static void PlayState_Create([[maybe_unused]] RayScene* scene) {
         introStep = 60.0f / songBeat.bpm;
         songBeat.time = introTime + -5 * introStep;
 
-        camGame.target.x = dad.object.position.x + 1280 / 2;
-        camGame.target.y = dad.object.position.y + 720 / 2;
+        camGame.target.x = dad.object.position.x + 1280.0 / 2;
+        camGame.target.y = dad.object.position.y + 720.0 / 2;
 
         UpdateSection();
 
@@ -431,7 +429,7 @@ static void PlayState_Create([[maybe_unused]] RayScene* scene) {
         healthbarPadding = 4;
         healthbar.width = 600;
         healthbar.height = 17;
-        healthbar.x = 1200 / 2 - healthbar.width / 2;
+        healthbar.x = 1200.0 / 2 - healthbar.width / 2;
         healthbar.y = 600;
 
         dadColor = (Color) {204, 85, 180, 255};
@@ -966,7 +964,7 @@ static void PauseMenu_Update([[maybe_unused]] RayScene* scene) {
     Color color = WHITE;
     for (int i = 0; i < 3; i++) {
         const int fontSize = 85;
-        Vector2 pos = {150 + fabs(i - optionOffset) * -30, 720 / 2 + (i - optionOffset) * (15 + fontSize)};
+        Vector2 pos = {150.0 + fabs(i - optionOffset) * -30, 720.0 / 2 + (i - optionOffset) * (15 + fontSize)};
         color.a = currentOption == i ? 255 : 150;
         DrawTextEx(mainFont, options[i], pos, fontSize, 5, color);
     }
@@ -1002,8 +1000,8 @@ static void PlayState_Update([[maybe_unused]] RayScene* scene) {
                 if (introHit > 0) {
                     AnimatedObject_SetAnimation(&introText, AnimationSet_FindAnimation(&uiAssets, textAnimations[introHit - 1]));
                     Vector2 sizes = AnimatedObject_Sizes(&introText);
-                    introText.position.x = 1280 / 2 - sizes.x / 2;
-                    introText.position.y = 720 / 2 - sizes.y / 2;
+                    introText.position.x = 1280.0 / 2 - sizes.x / 2;
+                    introText.position.y = 720.0 / 2 - sizes.y / 2;
                 }
 
                 SetSoundVolume(introSounds[introHit], 0.7f);

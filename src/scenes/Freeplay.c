@@ -1,6 +1,6 @@
 /*
  * Friday Night Funkin' C Engine
- * FreeplayState.c - optimized Freeplay menu
+ * Freeplay.c - optimized Freeplay menu
  * (c) 2026 nordjkpl
  */
 
