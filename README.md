@@ -1,12 +1,7 @@
-<<<<<<< Updated upstream
 <div align="center">
-=======
-# 🌟 Friday Night Funkin´ — C engine
->>>>>>> Stashed changes
 
 # 👒 Friday Night Funkin´ — Cengine
 
-<<<<<<< Updated upstream
 > Performance focus, All Friday Night Funkin' assets belong to their respective owners.
 
 <details>
@@ -46,11 +41,3 @@ Read Files
 It’s being developed by me, and I’m writing the code from scratch, so it might not be released all that quickly
 
 </details>
-=======
-```text
-# Libs
-Raylib v5.5 / Raymath v2.0 / 2020 yyjson / 2014 yxml / OpenGl 3.30
-```
-
-> All Friday Night Funkin' assets belong to their respective owners.
->>>>>>> Stashed changes
