@@ -42,6 +42,7 @@ typedef struct {
 typedef struct {
     float defaultZoom;
     uint8_t isPixelStage;
+    uint8_t hideGirlfriend;   /* hide_girlfriend: igual gfVersion "nogf" */
     float boyfriend[2];
     float girlfriend[2];
     float opponent[2];

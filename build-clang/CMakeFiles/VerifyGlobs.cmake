@@ -111,6 +111,7 @@ set(OLD_GLOB
   "D:/dev/funkin c/src/scenes/other/BeatManager.c"
   "D:/dev/funkin c/src/scenes/other/Character.c"
   "D:/dev/funkin c/src/scenes/other/ModImport.c"
+  "D:/dev/funkin c/src/scenes/other/ModPath.c"
   "D:/dev/funkin c/src/scenes/other/Note.c"
   "D:/dev/funkin c/src/scenes/other/Song.c"
   "D:/dev/funkin c/src/scenes/other/SongList.c"

@@ -751,7 +751,8 @@ int AnimationSet_FindAnimation(const RayAnimationHandler *restrict animations,
     if (!animations || !animations->animations || !animationName)
         return -1;
 
-    for (int i = 0; i < animations->animationCount; ++i) {
+    /* Nome repetido: vale a ultima (na Psych, addAnim com o mesmo nome substitui). */
+    for (int i = animations->animationCount - 1; i >= 0; --i) {
         if (strcmp(animations->animations[i].name, animationName) == 0)
             return i;
     }

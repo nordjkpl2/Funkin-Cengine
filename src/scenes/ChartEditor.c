@@ -3,6 +3,7 @@
 #include"scenes/AllScenes.h"
 #include"scenes/Song.h"
 #include"scenes/SongList.h"
+#include "scenes/ModPath.h"
 #include"scenes/Stage.h"
 #include"scenes/Note.h"
 #include"yyjson.h"
@@ -885,22 +886,7 @@ static char StageOfDir(const char* dir, char out[SONG_NAME_MAX]) {
 
 // raiz do mod de um songDir (assets/mods/<mod>/...), "" = base
 static void EdModRoot(const char* songDir, char out[256]) {
-    out[0] = 0;
-    if(songDir == NULL)
-        return;
-    const char* pm = strstr(songDir, "assets/mods/");
-    if(pm == NULL)
-        return;
-    const char* after = pm + 12;
-    const char* slash = strchr(after, '/');
-    const char* songs = (slash != NULL) ? strstr(slash, "/songs/") : NULL;
-    size_t n = (size_t)((songs != NULL ? songs : slash) - songDir);
-    if(slash == NULL)
-        n = strlen(songDir);
-    if(n >= 256)
-        n = 255;
-    memcpy(out, songDir, n);
-    out[n] = 0;
+    (void)ModPath_Root(songDir, out, 256);
 }
 
 // so entra na lista quem tem png + animset + icone (sem fantasma).

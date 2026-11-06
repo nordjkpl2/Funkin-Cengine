@@ -12,6 +12,7 @@
  */
 
 #include "scenes/Character.h"
+#include "scenes/ModPath.h"
 #include "scenes/AnimationSets_XML.h"
 #include "Log.h"
 #include "yyjson.h"
@@ -124,26 +125,7 @@ void Character_SetSongDir(const char *songDir)
     if (!songDir || !songDir[0])
         return;
 
-    char normalized[CHAR_PATH_MAX];
-    Char_CopyString(normalized, sizeof(normalized), songDir);
-    for (char *p = normalized; *p; ++p) {
-        if (*p == '\\')
-            *p = '/';
-    }
-
-    const char *mods = strstr(normalized, "assets/mods/");
-    if (!mods)
-        return;
-
-    /* raiz = tudo antes de "/songs/"; sem isso, tira so o ultimo trecho */
-    const char *songs = strstr(mods + sizeof("assets/mods/") - 1u, "/songs/");
-    const char *end = songs ? songs : strrchr(normalized, '/');
-    size_t length = end ? (size_t)(end - normalized) : strlen(normalized);
-
-    if (length > 0 && length < sizeof(songCtx.root)) {
-        memcpy(songCtx.root, normalized, length);
-        songCtx.root[length] = '\0';
-    }
+    (void)ModPath_Root(songDir, songCtx.root, sizeof(songCtx.root));
 }
 
 /* ------------------------------------------------------------------------- */
@@ -695,7 +677,9 @@ static bool Char_LoadLegacyCustom(const CharCtx *ctx, Character *character,
         character->animations.idle = 0;
 
     character->object.animationSet = set;
-    character->object.scaleX = json.flipX ? -json.scale : json.scale;
+    /* Psych: o jogador inverte o flip_x do JSON (bf.json traz flip_x true e aparece sem espelhar). */
+    const bool mirrored = (role == CHAR_BF) ? !json.flipX : json.flipX;
+    character->object.scaleX = mirrored ? -json.scale : json.scale;
     character->object.scaleY = json.scale;
     character->object.color = WHITE;
     character->object.position = json.position;
@@ -895,13 +879,26 @@ void Girlfriend_Load(Girlfriend *restrict gf, const char *restrict name)
         return;
     }
 
-    /* animset + png; sem eles, cai na gf padrao */
+    /* animset + png (+ characters/<nome>.json); sem eles, cai na gf padrao */
     char setPath[CHAR_PATH_MAX];
+    char jsonPath[CHAR_PATH_MAX];
     char pngPath[CHAR_PATH_MAX];
 
-    bool found = Char_Find(ctx, setPath, "images/characters/%s.animset", characterName) &&
-                 Char_Find(ctx, pngPath, "images/characters/%s.png", characterName);
+    CharJson json;
+    Char_JsonInit(&json);
+
+    bool found = Char_Find(ctx, setPath, "images/characters/%s.animset", characterName);
+    if (found) {
+        if (Char_Find(ctx, jsonPath, "characters/%s.json", characterName))
+            Char_ReadJson(jsonPath, &json);
+
+        const char *textureName = json.imageBase[0] ? json.imageBase : characterName;
+        found = Char_Find(ctx, pngPath, "images/characters/%s.png", textureName) ||
+                (strcmp(textureName, characterName) != 0 &&
+                 Char_Find(ctx, pngPath, "images/characters/%s.png", characterName));
+    }
     if (!found && strcmp(characterName, "gf") != 0) {
+        Char_JsonInit(&json);
         found = Char_Find(ctx, setPath, "images/characters/gf.animset") &&
                 Char_Find(ctx, pngPath, "images/characters/gf.png");
     }
@@ -913,17 +910,30 @@ void Girlfriend_Load(Girlfriend *restrict gf, const char *restrict name)
         Log_Fatal("Girlfriend_Load: could not load girlfriend texture");
 
     RayAnimationHandler set = AnimationSet_LoadAnimations(setPath, texture);
-    for (int i = 0; i < set.animationCount && i < 2; ++i) {
-        set.animations[i].fps = 24.0f;
-        set.animations[i].frameTime = 1.0f / 24.0f;
-        set.animations[i].looped = false;
+
+    /* Danca: danceLeft/danceRight do JSON; senao idle nas duas; senao as 2 primeiras. */
+    int left = Char_BindRole(&set, &json, "danceLeft");
+    int right = Char_BindRole(&set, &json, "danceRight");
+    const int idle = Char_BindRole(&set, &json, "idle");
+    if (left < 0) left = idle;
+    if (right < 0) right = left;
+
+    if (left < 0) {
+        for (int i = 0; i < set.animationCount && i < 2; ++i) {
+            set.animations[i].fps = 24.0f;
+            set.animations[i].frameTime = 1.0f / 24.0f;
+            set.animations[i].looped = false;
+        }
+        left = 0;
+        right = set.animationCount > 1 ? 1 : 0;
     }
 
     gf->object.animationSet = set;
-    gf->anims[0] = 0;
-    gf->anims[1] = set.animationCount > 1 ? 1 : 0;
-    gf->object.scaleX = 1.0f;
-    gf->object.scaleY = 1.0f;
+    gf->anims[0] = left;
+    gf->anims[1] = right;
+    gf->object.scaleX = json.flipX ? -json.scale : json.scale;
+    gf->object.scaleY = json.scale;
     gf->object.color = WHITE;
+    gf->object.position = json.position;
     AnimatedObject_SetAnimation(&gf->object, gf->anims[0]);
 }

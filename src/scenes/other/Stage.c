@@ -244,6 +244,9 @@ char Stage_LoadJson(const char *path, StageMeta *out)
     value = yyjson_obj_get(root, "isPixelStage");
     out->isPixelStage = (yyjson_is_bool(value) && yyjson_get_bool(value)) ? 1 : 0;
 
+    value = yyjson_obj_get(root, "hide_girlfriend");
+    out->hideGirlfriend = (yyjson_is_bool(value) && yyjson_get_bool(value)) ? 1 : 0;
+
     Stage_JsonPair(root, "boyfriend", out->boyfriend);
     Stage_JsonPair(root, "girlfriend", out->girlfriend);
     Stage_JsonPair(root, "opponent", out->opponent);

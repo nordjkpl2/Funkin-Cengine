@@ -6,6 +6,7 @@
 
 #include "scenes/gameplay/PlayStateStage.h"
 #include "scenes/Stage.h"
+#include "scenes/ModPath.h"
 #include "Log.h"
 #include <stdlib.h>
 #include <string.h>
@@ -51,33 +52,9 @@ static void LoadDefaultStage(PlayStateStage* stage, Girlfriend* gf, Character* d
         stage->defaultCameraZoom = 0.9f;
 }
 
-// Raiz do mod: "assets/mods/<mod>" a partir do songDir.
+// Raiz do mod (assets/mods/<mod> ou assets/mods direto).
 static void ModRoot(const char* songDir, char out[256]) {
-    out[0] = '\0';
-
-    const char* marker = strstr(songDir, "assets/mods/");
-    if (marker == NULL) marker = strstr(songDir, "assets\\mods\\");
-    if (marker == NULL) return;
-
-    const char* sep = strpbrk(marker + 12, "/\\");
-    size_t length = sep != NULL ? (size_t)(sep - songDir) : strlen(songDir);
-
-    // Mod importado direto em assets/mods/ (songs, weeks, data... no topo).
-    {
-        const char* modName = marker + 12;
-        size_t nameLen = sep != NULL ? (size_t)(sep - modName) : strlen(modName);
-        if ((nameLen == 5 && strncmp(modName, "songs", 5) == 0) ||
-            (nameLen == 5 && strncmp(modName, "weeks", 5) == 0) ||
-            (nameLen == 4 && strncmp(modName, "data", 4) == 0) ||
-            (nameLen == 6 && strncmp(modName, "stages", 6) == 0) ||
-            (nameLen == 6 && strncmp(modName, "images", 6) == 0))
-            length = (size_t)(modName - songDir) - 1;
-    }
-
-    if (length >= 256) length = 255;
-
-    memcpy(out, songDir, length);
-    out[length] = '\0';
+    (void)ModPath_Root(songDir, out, 256);
 }
 
 // <mod>/images/<nome>.<ext>, depois assets/images/<nome>.<ext>.
@@ -222,6 +199,7 @@ static char LoadModStage(PlayStateStage* stage, const char* name, const char* so
     }
 
     stage->defaultCameraZoom = meta.defaultZoom;
+    stage->hideGirlfriend = (char)meta.hideGirlfriend;
 
     gf->object.scrollFactor = (Vector2) {0.95f, 0.95f};
     // Posicao final = posicao do stage + offset proprio do personagem (como na Psych).

@@ -499,6 +499,7 @@ static void PlayState_Create([[maybe_unused]] RayScene* scene) {
     LoadSounds();
 
     PlayStateStage_Load(&stage, song.stage, songDir, &gf, &dad, &bf);
+    if (stage.hideGirlfriend) gfHidden = 1;
 
     PlayStateAudio_Load(songDir);
     PlayStateNoteSpawn_Load(&song);

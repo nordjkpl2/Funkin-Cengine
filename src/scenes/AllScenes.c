@@ -11,6 +11,7 @@
 #include <stdbool.h>
 #include "Game.h"
 #include "scenes/Song.h"
+#include "scenes/ModPath.h"
 
 #define NOTE_SKIN_MAX 16
 #define NOTE_SKIN_NAME_MAX (SONG_NAME_MAX - 1)
@@ -96,24 +97,9 @@ static bool TrySkinPaths(const char* animationPath, const char* texturePath, Cac
     return true;
 }
 
-/* "assets/mods/<mod>/songs/<musica>" -> "assets/mods/<mod>". */
+/* "assets/mods/<mod>/songs/<musica>" ou "assets/mods/songs/<musica>" -> raiz do mod. */
 static bool ExtractModRoot(const char* songDir, char* out, size_t capacity) {
-    if (!songDir || !songDir[0]) return false;
-
-    static const char marker[] = "assets/mods/";
-    const char* modStart = strstr(songDir, marker);
-    if (!modStart) return false;
-
-    const char* slash = strchr(modStart + sizeof(marker) - 1, '/');
-    if (!slash) return false;
-
-    const char* songs = strstr(slash, "/songs/");
-    size_t length = (size_t)((songs ? songs : slash) - songDir);
-    if (length >= capacity) length = capacity - 1;
-
-    memcpy(out, songDir, length);
-    out[length] = 0;
-    return out[0] != 0;
+    return ModPath_Root(songDir, out, capacity);
 }
 
 /* Procura NOTE_<skin>_assets.(xml|animset) + .png: mod primeiro, depois assets base. */

@@ -198,7 +198,9 @@ void Render_DrawAnimatedObject(const RayAnimatedObject *restrict obj)
     const Frame *frame = &anim->frames[curFrame];
     const Vector2 offset = Render_GetScrollOffset(obj->scrollFactor);
 
-    const float scaleX = obj->scaleX;
+    /* scaleX < 0 = espelhado no lugar (a caixa nao muda de lado, como no flipX da Psych). */
+    const bool flipped = obj->scaleX < 0.0f;
+    const float scaleX = flipped ? -obj->scaleX : obj->scaleX;
     const float scaleY = obj->scaleY;
 
     const float frameW = (float)frame->w;
@@ -207,13 +209,13 @@ void Render_DrawAnimatedObject(const RayAnimatedObject *restrict obj)
     const Rectangle source = {
         (float)frame->x,
         (float)frame->y,
-        frameW,
+        flipped ? -frameW : frameW,
         frameH
     };
 
     const Rectangle destination = {
-        obj->position.x + offset.x + (-anim->animationOffset.x - frame->fx) * scaleX,
-        obj->position.y + offset.y + (-anim->animationOffset.y - frame->fy) * scaleY,
+        obj->position.x + offset.x - anim->animationOffset.x - frame->fx * scaleX,
+        obj->position.y + offset.y - anim->animationOffset.y - frame->fy * scaleY,
         frameW * scaleX,
         frameH * scaleY
     };
