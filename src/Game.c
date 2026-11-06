@@ -198,6 +198,20 @@ int RayGame_CanvasHeight(void)
     return gameOptions.fillScreen ? RAYGAME_CANVAS_HEIGHT : height;
 }
 
+Vector2 RayGame_MouseWorld(void)
+{
+    Vector2 mouse = GetMousePosition();
+    if (gameOptions.fillScreen) {
+        mouse.x = mouse.x * (float)RAYGAME_CANVAS_WIDTH / (float)GetScreenWidth();
+        mouse.y = mouse.y * (float)RAYGAME_CANVAS_HEIGHT / (float)GetScreenHeight();
+        return mouse;
+    }
+    const float factor = zoom > 0.0f ? zoom : 1.0f;
+    mouse.x = (mouse.x - (float)GetScreenWidth() * 0.5f) / factor + (float)RAYGAME_CANVAS_WIDTH * 0.5f;
+    mouse.y = (mouse.y - (float)GetScreenHeight() * 0.5f) / factor + (float)RAYGAME_CANVAS_HEIGHT * 0.5f;
+    return mouse;
+}
+
 void RayGame_SetFPS(int fps)
 {
     if (fps < 0) fps = 10;

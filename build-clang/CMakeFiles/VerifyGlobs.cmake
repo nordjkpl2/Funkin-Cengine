@@ -107,6 +107,7 @@ set(OLD_GLOB
   "D:/dev/funkin c/src/scenes/menu/MenuState.c"
   "D:/dev/funkin c/src/scenes/menu/ModdingMenu.c"
   "D:/dev/funkin c/src/scenes/menu/OptionsMenu.c"
+  "D:/dev/funkin c/src/scenes/menu/SearchBox.c"
   "D:/dev/funkin c/src/scenes/menu/StoryCover.c"
   "D:/dev/funkin c/src/scenes/menu/StoryMode.c"
   "D:/dev/funkin c/src/scenes/other/AnimationSets.c"

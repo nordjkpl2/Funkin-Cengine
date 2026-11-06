@@ -34,4 +34,6 @@ void RayGame_ResetMusic();
 float RayGame_MusicVolumeLevel(void);
 int RayGame_CanvasWidth(void);
 int RayGame_CanvasHeight(void);
+/* Mouse em coordenadas do mundo 1280x720 (respeita fillScreen e zoom). */
+Vector2 RayGame_MouseWorld(void);
 #endif

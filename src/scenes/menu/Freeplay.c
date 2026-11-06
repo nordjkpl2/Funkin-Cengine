@@ -7,6 +7,8 @@
 #include "scenes/AllScenes.h"
 #include "scenes/SongList.h"
 #include "scenes/menu/FreeplayIcon.h"
+#include "scenes/menu/SearchBox.h"
+#include <stdlib.h>
 
 #include <math.h>
 #include <stdio.h>
@@ -43,7 +45,11 @@ static const Color ROW_ARROW = {255, 220, 90, 255};
 
 static SongEntry* songs;
 static int songCount;
+/* Lista filtrada: shown[linha] = indice em songs. selectedSong e uma linha de shown. */
+static int* shown;
+static int shownCount;
 static int selectedSong;
+static SearchBox search;
 static float listOffset;
 
 static RayGraphicObject bg;
@@ -58,17 +64,40 @@ static char counterText[48];
 /* ------------------------------------------------------------------ */
 
 /* Carrega o icone e refaz o texto do painel da musica selecionada. */
-static void SelectSong(void) {
-    FreeplayIcon_Load(songs + selectedSong);
+static const SongEntry* CurrentSong(void) {
+    return songs + shown[selectedSong];
+}
 
-    const Vector2 size = MeasureTextEx(mainFont, songs[selectedSong].name, 34.0f, 2.0f);
+static void SelectSong(void) {
+    FreeplayIcon_Load(songs + shown[selectedSong]);
+
+    const Vector2 size = MeasureTextEx(mainFont, CurrentSong()->name, 34.0f, 2.0f);
     titleX = fmaxf(PANEL_X + (PANEL_W - size.x) * 0.5f, PANEL_X + 16.0f);
 
-    snprintf(counterText, sizeof(counterText), "TRACK %d / %d", selectedSong + 1, songCount);
+    snprintf(counterText, sizeof(counterText), "TRACK %d / %d", selectedSong + 1, shownCount);
+}
+
+/* Refaz a lista filtrada; mantem a musica atual se ainda aparecer. So roda ao aplicar a busca. */
+static void ApplyFilter(void) {
+    const int keep = shownCount > 0 ? shown[selectedSong] : -1;
+    int row = 0;
+
+    shownCount = 0;
+    for (int i = 0; i < songCount; ++i) {
+        if (!SearchBox_Match(&search, songs[i].name)) continue;
+        if (i == keep) row = shownCount;
+        shown[shownCount++] = i;
+    }
+
+    selectedSong = row;
+    listOffset = (float)row;
+
+    if (shownCount > 0) SelectSong();
+    else FreeplayIcon_Load(NULL);
 }
 
 static void PlaySelected(void) {
-    const char* dir = songs[selectedSong].dir;
+    const char* dir = CurrentSong()->dir;
 
     // O destino vale tanto para o PlayState direto quanto via LoadingState.
     PlayState_SetSongDir(dir);
@@ -90,6 +119,10 @@ static void Freeplay_Create([[maybe_unused]] RayScene* scene) {
     FreeplayIcon_Unload();
     SongList_Free(songs);
     songs = NULL;
+    free(shown);
+    shown = NULL;
+    shownCount = 0;
+    SearchBox_Init(&search, (Rectangle) {105.0f, 14.0f, 420.0f, 44.0f});
 
     Render_DefaultRGT(&bg);
     bg.objType = RGT_IMAGE;
@@ -106,32 +139,53 @@ static void Freeplay_Create([[maybe_unused]] RayScene* scene) {
     selectedSong = 0;
     listOffset = 0.0f;
 
-    if (songCount > 0) SelectSong();
+    if (songCount > 0) {
+        shown = malloc((size_t)songCount * sizeof(int));
+        if (shown == NULL) {
+            SongList_Free(songs);
+            songs = NULL;
+            songCount = 0;
+            return;
+        }
+        for (int i = 0; i < songCount; ++i) shown[i] = i;
+        shownCount = songCount;
+        SelectSong();
+    }
 }
 
 static void Freeplay_Update([[maybe_unused]] RayScene* scene) {
-    if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_BACKSPACE)) {
+    if (songCount <= 0) {
+        if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_BACKSPACE)) MenuState_SetScene();
+        return;
+    }
+
+    // Letras, Backspace, Esc e Enter pertencem ao campo enquanto ele estava focado.
+    const bool typing = SearchBox_Focused(&search);
+    if (SearchBox_Update(&search)) ApplyFilter();
+
+    if (!typing && (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_BACKSPACE))) {
         MenuState_SetScene();
         return;
     }
 
-    if (songCount <= 0) return;
+    if (shownCount > 0) {
+        const int previous = selectedSong;
+        const bool down = IsKeyPressed(KEY_DOWN) || (!typing && IsKeyPressed(KEY_S));
+        const bool up = IsKeyPressed(KEY_UP) || (!typing && IsKeyPressed(KEY_W));
 
-    const int previous = selectedSong;
+        if (down) {
+            if (++selectedSong >= shownCount) selectedSong = 0;
+        } else if (up) {
+            if (--selectedSong < 0) selectedSong = shownCount - 1;
+        }
 
-    if (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S)) {
-        if (++selectedSong >= songCount) selectedSong = 0;
-    }
-    else if (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W)) {
-        if (--selectedSong < 0) selectedSong = songCount - 1;
-    }
+        if (selectedSong != previous)
+            SelectSong();
 
-    if (selectedSong != previous)
-        SelectSong();
-
-    if (IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER)) {
-        PlaySelected();
-        return;
+        if (!typing && (IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER))) {
+            PlaySelected();
+            return;
+        }
     }
 
     // Rolagem independente de framerate.
@@ -189,7 +243,7 @@ static void DrawSelectedPanel(void) {
 
     DrawIconFrame();
 
-    const char* title = songs[selectedSong].name;
+    const char* title = CurrentSong()->name;
     DrawTextEx(mainFont, title, (Vector2) {titleX + 2.0f, 375.0f}, 34.0f, 2.0f, (Color) {0, 0, 0, 210});
     DrawTextEx(mainFont, title, (Vector2) {titleX, 373.0f}, 34.0f, 2.0f, WHITE);
 
@@ -206,7 +260,7 @@ static void DrawSongRow(int i) {
 
     const bool isSelected = i == selectedSong;
     const float x = 145.0f - fabsf((float)i - listOffset) * 24.0f;
-    const char* name = songs[i].name;
+    const char* name = songs[shown[i]].name;
 
     if (isSelected) {
         DrawRectangle(105, (int)(y - 8.0f), 675, 78, ROW_BG);
@@ -233,15 +287,26 @@ static void Freeplay_Draw([[maybe_unused]] RayScene* scene) {
         return;
     }
 
+    if (shownCount <= 0) {
+        DrawTextEx(mainFont, "NO MATCH", (Vector2) {150.0f, 330.0f}, 42.0f, 3.0f, WHITE);
+        DrawTextEx(mainFont, "Try another name and press ENTER", (Vector2) {150.0f, 390.0f}, 21.0f, 1.5f,
+                   (Color) {210, 210, 220, 255});
+        SearchBox_Draw(&search, mainFont);
+        Render_StopCamera();
+        return;
+    }
+
     // So as linhas perto da selecao; as demais nem sao percorridas.
     const int first = (int)fmaxf(0.0f, floorf(listOffset - LIST_VISIBLE_RADIUS));
-    const int last = (int)fminf((float)(songCount - 1), ceilf(listOffset + LIST_VISIBLE_RADIUS));
+    const int last = (int)fminf((float)(shownCount - 1), ceilf(listOffset + LIST_VISIBLE_RADIUS));
     for (int i = first; i <= last; ++i)
         DrawSongRow(i);
 
     DrawSelectedPanel();
 
-    DrawTextEx(mainFont, "UP / DOWN  SELECT TRACK", (Vector2) {105.0f, 660.0f}, 19.0f, 1.5f, (Color) {245, 220, 120, 255});
+    SearchBox_Draw(&search, mainFont);
+
+    DrawTextEx(mainFont, "UP / DOWN  SELECT TRACK     CLICK SEARCH TO FILTER", (Vector2) {105.0f, 660.0f}, 19.0f, 1.5f, (Color) {245, 220, 120, 255});
     DrawTextEx(mainFont, "ENTER / SPACE PLAY     ESC BACK", (Vector2) {800.0f, 675.0f}, 17.0f, 1.0f, (Color) {220, 215, 235, 230});
 
     Render_StopCamera();
@@ -255,6 +320,9 @@ static void Freeplay_Destroy([[maybe_unused]] RayScene* scene) {
     SongList_Free(songs);
     songs = NULL;
     songCount = 0;
+    free(shown);
+    shown = NULL;
+    shownCount = 0;
     selectedSong = 0;
     listOffset = 0.0f;
 }

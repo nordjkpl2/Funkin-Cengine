@@ -42,3 +42,12 @@
 [WARN] Girlfriend 'air' nao encontrada: usando gf padrao
 [WARN] DBG dad pos=(-1777,-257) scale=(1.20,1.20) size=(430,827)
 [WARN] DBG bf pos=(-3438,227) scale=1.40 size=(728,895)
+
+--- SESSION LOG START ---
+[WARN] Icone nao encontrado: 'exosphereinsanity' (usando padrao)
+
+--- SESSION LOG START ---
+[WARN] Girlfriend 'air' nao encontrada: usando gf padrao
+[WARN] Icone nao encontrado: 'none' (usando padrao)
+[WARN] Stage: imagem nao encontrada: background2
+[WARN] Stage: imagem nao encontrada: characters/corniexpunged
