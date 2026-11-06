@@ -41,3 +41,8 @@ Read Files
 It’s being developed by me, and I’m writing the code from scratch, so it might not be released all that quickly
 
 </details>
+
+<details>
+<summary><b>——Idea</b></summary>
+All Things your 2d (or semi 3d) game / mod needs
+</details>
