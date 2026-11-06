@@ -17,7 +17,7 @@
 typedef enum { CE_PICKER, CE_EDIT } CeMode;
 
 // abas estilo Psych (uma ativa por vez, resto colapsado)
-typedef enum { TAB_CHARTING, TAB_DATA, TAB_EVENTS, TAB_NOTE, TAB_SECTION, TAB_SONG, TAB_COUNT } ChartTab;
+typedef enum { TAB_CHARTING, TAB_DATA, TAB_EVENTS, TAB_SECTION, TAB_SONG, TAB_COUNT } ChartTab;
 
 const char* ChartTab_Name(int t);
 extern CeMode ceMode;

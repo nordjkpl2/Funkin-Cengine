@@ -306,12 +306,13 @@ static void Edit_DrawPanel_Section(float x, float y) {
     y += 44;
 }
 
-static void Edit_DrawPanel_Note(float x, float y) {
-    char buf[128];
-    SecFollowCursor();
-    DrawTextEx(mainFont, "NOTE", (Vector2){x, y}, 22, 1, GREEN);
-    y += 32;
+// Data: resumo do chart e do cursor (antes eram 2 abas com a contagem de notas repetida)
+static void Edit_DrawPanel_Data(float x, float y) {
+    char buf[160];
     char tbuf[32];
+    SecFollowCursor();
+    DrawTextEx(mainFont, "DATA", (Vector2){x, y}, 22, 1, GREEN);
+    y += 32;
     EdTimeFmt(tbuf, sizeof(tbuf), cursorMs);
     snprintf(buf, sizeof(buf), "cursor: %s", tbuf);
     DrawTextEx(mainFont, buf, (Vector2){x, y}, 20, 1, WHITE);
@@ -321,27 +322,9 @@ static void Edit_DrawPanel_Note(float x, float y) {
     y += 30;
     int total = 0;
     for(int i = 0; i < chart.nsec; i++) total += chart.secs[i].count;
-    snprintf(buf, sizeof(buf), "total: %d notes", total);
-    DrawTextEx(mainFont, buf, (Vector2){x, y}, 20, 1, WHITE);
-    y += 36;
-    DrawTextEx(mainFont, "click adds  right-click deletes", (Vector2){x, y}, 18, 1, YELLOW);
-    y += 24;
-    DrawTextEx(mainFont, "SHIFT/CTRL+wheel = long note", (Vector2){x, y}, 18, 1, YELLOW);
-}
-
-static void Edit_DrawPanel_Data(float x, float y) {
-    char buf[160];
-    DrawTextEx(mainFont, "DATA", (Vector2){x, y}, 22, 1, GREEN);
-    y += 32;
-    snprintf(buf, sizeof(buf), "parts: %d", chart.nsec);
+    snprintf(buf, sizeof(buf), "total: %d notes in %d parts", total, chart.nsec);
     DrawTextEx(mainFont, buf, (Vector2){x, y}, 20, 1, WHITE);
     y += 30;
-    int total = 0;
-    for(int i = 0; i < chart.nsec; i++) total += chart.secs[i].count;
-    snprintf(buf, sizeof(buf), "notes: %d", total);
-    DrawTextEx(mainFont, buf, (Vector2){x, y}, 20, 1, WHITE);
-    y += 30;
-    char tbuf[32];
     EdTimeFmt(tbuf, sizeof(tbuf), SongEndMs());
     snprintf(buf, sizeof(buf), "length: %s", tbuf);
     DrawTextEx(mainFont, buf, (Vector2){x, y}, 20, 1, WHITE);
@@ -351,6 +334,10 @@ static void Edit_DrawPanel_Data(float x, float y) {
     y += 28;
     snprintf(buf, sizeof(buf), "bpm %.1f  speed %.2f%s", (double)chart.bpm, (double)chart.speed, chart.dirty ? " *" : "");
     DrawTextEx(mainFont, buf, (Vector2){x, y}, 18, 1, YELLOW);
+    y += 36;
+    DrawTextEx(mainFont, "click adds  right-click deletes", (Vector2){x, y}, 18, 1, YELLOW);
+    y += 24;
+    DrawTextEx(mainFont, "SHIFT/CTRL+wheel = long note", (Vector2){x, y}, 18, 1, YELLOW);
 }
 
 static void Edit_DrawPanel_Charting(float x, float y) {
@@ -401,7 +388,6 @@ void Edit_DrawPanel(void) {
     }
     if(activeTab == TAB_SONG) Edit_DrawPanel_Song(x, y + 30);
     else if(activeTab == TAB_SECTION) Edit_DrawPanel_Section(x, y + 30);
-    else if(activeTab == TAB_NOTE) Edit_DrawPanel_Note(x, y + 30);
     else if(activeTab == TAB_DATA) Edit_DrawPanel_Data(x, y + 30);
     else if(activeTab == TAB_CHARTING) Edit_DrawPanel_Charting(x, y + 30);
     else Edit_DrawPanel_Events(x, y + 30);

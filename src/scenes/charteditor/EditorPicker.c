@@ -24,7 +24,6 @@ const char* ChartTab_Name(int t) {
         case TAB_CHARTING: return "Charting";
         case TAB_DATA: return "Data";
         case TAB_EVENTS: return "Events";
-        case TAB_NOTE: return "Note";
         case TAB_SECTION: return "Section";
         case TAB_SONG: return "Song";
         default: return "?";

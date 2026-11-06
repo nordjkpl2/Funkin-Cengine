@@ -85,3 +85,13 @@
 60	268	8157115034551970	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/charteditor/EditorCharactersAndLists.c.obj	f1721f0c8e7b0a58
 71	273	8157115034730815	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/charteditor/EditorPanels.c.obj	765f46be77223f91
 273	2729	8157115036618642	D:/dev/funkin c/FNF_C_ENGINE.exe	1f0cd892adc383f6
+20	53	8157118421549735	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+63	188	8157118421986013	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/charteditor/EditorPicker.c.obj	230077246c46d50e
+56	189	8157118421915997	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/charteditor/ChartEditor.c.obj	499229d7a6dea3b5
+60	193	8157118421946005	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/charteditor/EditorPanels.c.obj	765f46be77223f91
+193	2759	8157118423284331	D:/dev/funkin c/FNF_C_ENGINE.exe	1f0cd892adc383f6
+18	48	8157120433164603	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+59	160	8157120433572238	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/charteditor/EditorPicker.c.obj	230077246c46d50e
+52	163	8157120433499641	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/charteditor/ChartEditor.c.obj	499229d7a6dea3b5
+55	169	8157120433532250	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/charteditor/EditorPanels.c.obj	765f46be77223f91
+169	2695	8157120434673572	D:/dev/funkin c/FNF_C_ENGINE.exe	1f0cd892adc383f6
