@@ -81,3 +81,12 @@
 29	80	8156492651726020	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
 85	218	8156492652296178	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/menu/OptionsMenu.c.obj	7f49eb7aa1cbbf7c
 218	4271	8156492653617849	D:/dev/funkin c/FNF_C_ENGINE.exe	f238c2f25e592d5
+18	51	8156506917725179	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+59	164	8156506918175006	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/menu/MenuState.c.obj	2276787c78838bb6
+55	499	8156506918105024	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/ChartEditor.c.obj	e5ace1f6581241d
+499	4015	8156506922588450	D:/dev/funkin c/FNF_C_ENGINE.exe	f238c2f25e592d5
+20	54	8156511256762837	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+62	191	8156511257186480	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/menu/ModdingMenu.c.obj	8c68764746d843a4
+58	495	8156511257146793	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/ChartEditor.c.obj	e5ace1f6581241d
+18	52	8156511471575714	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+56	2754	8156511471953581	D:/dev/funkin c/FNF_C_ENGINE.exe	f238c2f25e592d5

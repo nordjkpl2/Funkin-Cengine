@@ -39,7 +39,8 @@ static int selectedItem; // mantido ao voltar pro menu, de proposito
 static Camera2D cam;
 
 static const Vector2 versionPos = {12.0f, 694.0f};
-static const char* const versionText = "v026";
+// # VERSION
+static const char* const versionText = "v0030";
 static const char* const moddingText = "Modding";
 static Vector2 moddingPos; // calculado uma vez no Create
 

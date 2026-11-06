@@ -50,7 +50,7 @@ typedef struct {
     char p1[32];
     char p2[32];
     char stage[32];
-    char gf[32]; // gfVersion Psych: "gf", "nogf"/"" (so preserva no save, sem UI)
+    char gf[32]; // gfVersion (Girlfriend): "gf", "none"/"nogf" = sem girlfriend
     char noteSkin[32]; // custom note skin (mod > global default)
     char dir[256]; // pasta da musica ("" = ainda nao salva)
     float bpm;
@@ -236,11 +236,6 @@ static char EdSec_RemoveAt(EdSec* s, int idx) {
     memmove(s->notes + idx, s->notes + idx + 1, sizeof(EdNote) * (size_t)(s->count - idx - 1));
     s->count--;
     return 1;
-}
-
-// devolve 1 se removeu
-static char EdSec_RemoveNear(EdSec* s, float time, int lane, float windowMs) {
-    return EdSec_RemoveAt(s, EdSec_FindNear(s, time, lane, windowMs));
 }
 
 // ---------- carregar ----------
@@ -804,10 +799,15 @@ static void NumBox_Draw(NumBox* nb, Rectangle r) {
     DrawTextEx(mainFont, txt, (Vector2) {r.x + 6, r.y + 6}, 20, 1, YELLOW);
 }
 
-// lista de cantores (artes que existem): pro seletor Bf/Opponent
+// lista de cantores (artes que existem): pro seletor Boyfriend/Opponent
 static char charNames[32][32];
 static int charCount = 0;
-static char charDrop = 0; // 0 = fechado, 1 = Bf, 2 = Opponent, 3 = Stage
+// lista de girlfriends (so precisa de png + animset, nao tem icone)
+static char gfNames[32][32];
+static int gfCount = 0;
+// qual lista suspensa esta aberta
+enum { DROP_NONE, DROP_BOYFRIEND, DROP_OPPONENT, DROP_GIRLFRIEND, DROP_STAGE, DROP_SKIN };
+static char activeDrop = DROP_NONE;
 static char dropJustOpened = 0;
 static float dropX = 0, dropY = 0, dropW = 0;
 
@@ -951,6 +951,28 @@ static char CharacterAssetForSong_Exists(const char* name, const char* songDir) 
     fclose(f);
     return 1;
 }
+// girlfriend vale se tem png + animset (global ou no mod da musica); "none"/"nogf" = sem girlfriend
+static char GirlfriendAsset_Exists(const char* name, const char* songDir) {
+    if(name == NULL || name[0] == 0)
+        return 0;
+    if(strcmp(name, "none") == 0 || strcmp(name, "nogf") == 0)
+        return 1;
+    if(strchr(name, '/') != NULL || strchr(name, '\\') != NULL || strstr(name, "..") != NULL)
+        return 0;
+    char modRoot[256];
+    EdModRoot(songDir, modRoot);
+    const char* roots[2] = {"assets", modRoot};
+    for(int i = 0; i < 2; i++) {
+        if(roots[i][0] == 0)
+            continue;
+        char png[300], animset[300];
+        snprintf(png, sizeof(png), "%s/images/characters/%s.png", roots[i], name);
+        snprintf(animset, sizeof(animset), "%s/images/characters/%s.animset", roots[i], name);
+        if(FileExists(png) && FileExists(animset))
+            return 1;
+    }
+    return 0;
+}
 // json: assets/stages/<nome>.json, assets/data/stages/<nome>.json.
 // "stage" builtin continua valido. Fantasmas sem arquivo caem aqui.
 static char StageJsonGlobal_Exists(const char* name) {
@@ -1055,11 +1077,12 @@ static void StageList_Scan(void) {
         stageCount = 1;
     }
 }
-static void CharList_ScanDir(const char* charDir, const char* iconDir) {
+/* Lista os personagens de uma pasta (png + animset). Com iconDir, exige tambem o icone. */
+static void NameList_ScanDir(char (*names)[32], int* count, const char* charDir, const char* iconDir) {
     if(!DirectoryExists(charDir))
         return;
     FilePathList list = LoadDirectoryFiles(charDir);
-    for(unsigned int i = 0; i < list.count && charCount < 32; i++) {
+    for(unsigned int i = 0; i < list.count && *count < 32; i++) {
         const char* p = list.paths[i];
         size_t L = strlen(p);
         if(L < 5 || strcmp(p + L - 4, ".png") != 0)
@@ -1074,37 +1097,37 @@ static void CharList_ScanDir(const char* charDir, const char* iconDir) {
         if(b[0] == '_' || strstr(b, "Title") != NULL)
             continue;
         char dup = 0;
-        for(int k = 0; k < charCount; k++) {
-            if(strncmp(charNames[k], b, nlen) == 0 && charNames[k][nlen] == 0) {
-                dup = 1;
-                break;
-            }
-        }
+        for(int k = 0; k < *count && !dup; k++)
+            dup = strncmp(names[k], b, nlen) == 0 && names[k][nlen] == 0;
         if(dup)
             continue;
-        // so vale se tem .animset + icone juntos (sem fantasma, ex: gf sem icone cai fora)
+        // sem fantasma: precisa do .animset (e do icone, quando pedido)
         char ap[300];
         snprintf(ap, sizeof(ap), "%s/%.*s.animset", charDir, (int)nlen, b);
-        FILE* f = fopen(ap, "rb");
-        if(f == NULL)
+        if(!FileExists(ap))
             continue;
-        fclose(f);
-        char ip[300];
-        snprintf(ip, sizeof(ip), "%s/%.*s.png", iconDir, (int)nlen, b);
-        f = fopen(ip, "rb");
-        if(f == NULL)
-            continue;
-        fclose(f);
-        memcpy(charNames[charCount], b, nlen);
-        charNames[charCount][nlen] = 0;
-        charCount++;
+        if(iconDir != NULL) {
+            char ip[300];
+            snprintf(ip, sizeof(ip), "%s/%.*s.png", iconDir, (int)nlen, b);
+            if(!FileExists(ip))
+                continue;
+        }
+        memcpy(names[*count], b, nlen);
+        names[*count][nlen] = 0;
+        (*count)++;
     }
     UnloadDirectoryFiles(list);
 }
 
+/* Refaz as listas de personagens (Boyfriend/Opponent) e de girlfriends (global + mod da musica). */
 static void CharList_Scan(void) {
     charCount = 0;
-    CharList_ScanDir("assets/images/characters", "assets/images/icons");
+    gfCount = 0;
+    strcpy(gfNames[gfCount++], "none"); // primeira opcao: sem girlfriend
+
+    NameList_ScanDir(charNames, &charCount, "assets/images/characters", "assets/images/icons");
+    NameList_ScanDir(gfNames, &gfCount, "assets/images/characters", NULL);
+
     // chars do mod da musica (importador gera .animset + icones no mod)
     char modRoot[256];
     EdModRoot(chart.dir, modRoot);
@@ -1112,14 +1135,14 @@ static void CharList_Scan(void) {
         char cd[300], id[300];
         snprintf(cd, sizeof(cd), "%s/images/characters", modRoot);
         snprintf(id, sizeof(id), "%s/images/icons", modRoot);
-        CharList_ScanDir(cd, id);
+        NameList_ScanDir(charNames, &charCount, cd, id);
+        NameList_ScanDir(gfNames, &gfCount, cd, NULL);
     }
 }
 
 // note skin list (scan assets/images/notes/ e mod/images/notes/)
 static char skinNames[32][32];
 static int skinCount = 0;
-static char skinDrop = 0;
 static TxtBox skinBox;
 
 static void NoteSkinList_ScanDir(const char* notesDir) {
@@ -1208,16 +1231,14 @@ static CeMode ceMode;
 static CeDlg ceDlg;
 static int activeTab = TAB_SECTION;
 static int menuOpen = 0; // 0=fechado 1=File 2=Edit 3=View
-static SongEntry* pickerSongs;
-static int pickerCount;
 static int pickerSel = 0; // 0 = open file, 1..N = songs
 static float pickerOffset = 0;
 static TxtBox openBox;
 static TxtBox saveAsBox;
 static TxtBox p1Box;
 static TxtBox p2Box;
+static TxtBox gfBox;
 static TxtBox stageBox;
-static TxtBox skinBox;
 static char pendingDir[256]; // entrar direto no editor (volta do teste)
 static char statusText[128];
 static float statusTimer = 0;
@@ -1248,34 +1269,57 @@ static void Editor_UnloadIcons(void) {
     }
 }
 
-static Texture2D Editor_TryIcon(const char* name, const char* fallback, char* ok) {
+// "healthicon" do characters/<nome>.json (mod da musica primeiro, depois global); "" = nao tem
+static void Editor_HealthIcon(const char* name, const char* modRoot, char out[32]) {
+    out[0] = 0;
     char p[300];
+    for(int pass = 0; pass < 2; pass++) {
+        if(pass == 0 && modRoot[0] == 0)
+            continue;
+        if(pass == 0)
+            snprintf(p, sizeof(p), "%s/characters/%s.json", modRoot, name);
+        else
+            snprintf(p, sizeof(p), "assets/characters/%s.json", name);
+        yyjson_doc* doc = yyjson_read_file(p, 0, NULL, NULL);
+        if(doc == NULL)
+            continue;
+        yyjson_val* v = yyjson_obj_get(yyjson_doc_get_root(doc), "healthicon");
+        if(yyjson_is_str(v) && strchr(yyjson_get_str(v), '/') == NULL && strchr(yyjson_get_str(v), '\\') == NULL
+            && strstr(yyjson_get_str(v), "..") == NULL)
+            snprintf(out, 32, "%s", yyjson_get_str(v));
+        yyjson_doc_free(doc);
+        return;
+    }
+}
+
+// acha icons/<nome>.png no mod da musica e depois no global
+static char Editor_FindIconFile(const char* name, const char* modRoot, char out[300]) {
+    if(name[0] == 0 || strchr(name, '/') != NULL || strchr(name, '\\') != NULL || strstr(name, "..") != NULL)
+        return 0;
+    if(modRoot[0] != 0) {
+        snprintf(out, 300, "%s/images/icons/%s.png", modRoot, name);
+        if(FileExists(out))
+            return 1;
+    }
+    snprintf(out, 300, "assets/images/icons/%s.png", name);
+    return FileExists(out);
+}
+
+// mesma ordem do jogo: healthicon do json, nome do personagem, fallback (bf/dad)
+static Texture2D Editor_TryIcon(const char* name, const char* fallback, char* ok) {
     const char* want = (name != NULL && name[0] != 0) ? name : fallback;
-    // mod da musica antes do global (importador guarda tudo no mod)
     char modRoot[256];
     EdModRoot(chart.dir, modRoot);
-    if(modRoot[0] != 0 && want != NULL) {
-        snprintf(p, sizeof(p), "%s/images/icons/%s.png", modRoot, want);
-        FILE* f = fopen(p, "rb");
-        if(f != NULL) {
-            fclose(f);
-            *ok = 1;
-            return Render_LoadTexture(p);
-        }
+    char health[32];
+    char p[300];
+    Editor_HealthIcon(want, modRoot, health);
+    if((health[0] != 0 && Editor_FindIconFile(health, modRoot, p)) || Editor_FindIconFile(want, modRoot, p)
+        || (fallback != NULL && Editor_FindIconFile(fallback, "", p))) {
+        *ok = 1;
+        return Render_LoadTexture(p);
     }
-    snprintf(p, sizeof(p), "assets/images/icons/%s.png", want);
-    FILE* f = fopen(p, "rb");
-    if(f == NULL && fallback != NULL) {
-        snprintf(p, sizeof(p), "assets/images/icons/%s.png", fallback);
-        f = fopen(p, "rb");
-    }
-    if(f == NULL) {
-        *ok = 0;
-        return (Texture2D) {0};
-    }
-    fclose(f);
-    *ok = 1;
-    return Render_LoadTexture(p);
+    *ok = 0;
+    return (Texture2D) {0};
 }
 
 static void Editor_LoadIcons(void) {
@@ -1444,12 +1488,13 @@ static void Editor_EnterDir(const char* dir) {
     snapDiv = 4;
     strncpy(p1Box.buf, chart.p1, sizeof(p1Box.buf) - 1);
     strncpy(p2Box.buf, chart.p2, sizeof(p2Box.buf) - 1);
+    strncpy(gfBox.buf, chart.gf, sizeof(gfBox.buf) - 1);
     strncpy(stageBox.buf, chart.stage, sizeof(stageBox.buf) - 1);
     strncpy(skinBox.buf, chart.noteSkin, sizeof(skinBox.buf) - 1);
     CharList_Scan();
     StageList_Scan();
     NoteSkinList_Scan();
-    charDrop = 0;
+    activeDrop = 0;
     menuOpen = 0;
     activeTab = TAB_SECTION;
     Editor_LoadIcons();
@@ -1540,6 +1585,13 @@ static void Editor_Save(void) {
     if(chart.p2[0] != 0 && !CharacterAssetForSong_Exists(chart.p2, chart.dir)) {
         strncpy(chart.p2, "dad", sizeof(chart.p2) - 1);
         strncpy(p2Box.buf, "dad", sizeof(p2Box.buf) - 1);
+    }
+    // girlfriend vazia ou inexistente volta para "gf"
+    strncpy(chart.gf, (gfBox.buf[0] != 0) ? gfBox.buf : "gf", sizeof(chart.gf) - 1);
+    chart.gf[sizeof(chart.gf) - 1] = 0;
+    if(!GirlfriendAsset_Exists(chart.gf, chart.dir)) {
+        strncpy(chart.gf, "gf", sizeof(chart.gf) - 1);
+        strncpy(gfBox.buf, "gf", sizeof(gfBox.buf) - 1);
     }
     if(!StageAsset_Exists(chart.stage) && !StageFileForSong_Exists(chart.stage, chart.dir)) {
         strncpy(chart.stage, "stage", sizeof(chart.stage) - 1);
@@ -1652,7 +1704,7 @@ static Vector2 MouseWorld(void) {
 
 // ---------- botoes e textos ----------
 static char Button(Rectangle r, const char* label, int fs) {
-    if(ceDlg != DLG_NONE || charDrop || menuOpen)
+    if(ceDlg != DLG_NONE || activeDrop || menuOpen)
         return 0;
     Vector2 m = MouseWorld();
     char hov = (m.x >= r.x && m.x <= r.x + r.width && m.y >= r.y && m.y <= r.y + r.height);
@@ -1685,7 +1737,7 @@ static char DropBtn(Rectangle r, char open) {
 
 // lista por cima (clica e preenche a caixinha)
 static void CharDrop_Draw(void) {
-    if(!charDrop || dropBox == NULL || dropNames == NULL)
+    if(!activeDrop || dropBox == NULL || dropNames == NULL)
         return;
     float bx = dropX, by = dropY, bw = dropW;
     TxtBox* box = dropBox;
@@ -1711,7 +1763,12 @@ static void CharDrop_Draw(void) {
             strncpy(box->buf, dropNames[i], sizeof(box->buf) - 1);
             box->buf[sizeof(box->buf) - 1] = 0;
             chart.dirty = 1;
-            charDrop = 0;
+            if(activeDrop == DROP_BOYFRIEND || activeDrop == DROP_OPPONENT) {
+                // icones do topo da grade seguem o personagem escolhido
+                strncpy(activeDrop == DROP_BOYFRIEND ? chart.p1 : chart.p2, box->buf, sizeof(chart.p1) - 1);
+                Editor_LoadIcons();
+            }
+            activeDrop = 0;
             return;
         }
     }
@@ -1720,8 +1777,7 @@ static void CharDrop_Draw(void) {
         dropJustOpened = 0;
     } else if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
         if(!(m.x >= r.x && m.x <= r.x + r.width && m.y >= r.y && m.y <= r.y + r.height)) {
-            charDrop = 0;
-            skinDrop = 0;
+            activeDrop = DROP_NONE;
         }
     }
 }
@@ -1783,10 +1839,11 @@ static void Picker_NewSong(void) {
     snapDiv = 4;
     strncpy(p1Box.buf, "bf", sizeof(p1Box.buf) - 1);
     strncpy(p2Box.buf, "dad", sizeof(p2Box.buf) - 1);
+    strncpy(gfBox.buf, "gf", sizeof(gfBox.buf) - 1);
     strncpy(stageBox.buf, "stage", sizeof(stageBox.buf) - 1);
     CharList_Scan();
     StageList_Scan();
-    charDrop = 0;
+    activeDrop = 0;
     menuOpen = 0;
     activeTab = TAB_SONG;
     Editor_LoadIcons();
@@ -2157,8 +2214,8 @@ static void Edit_UpdateKeys(void) {
         menuOpen = 0;
         return;
     }
-    if(charDrop && IsKeyPressed(KEY_ESCAPE)) {
-        charDrop = 0;
+    if(activeDrop && IsKeyPressed(KEY_ESCAPE)) {
+        activeDrop = 0;
         return;
     }
     if(focusNum != NULL) {
@@ -2575,7 +2632,7 @@ static void Edit_DrawGrid(void) {
     }
 
     // mouse (travado com janela/drop abertos)
-    if(ceDlg == DLG_NONE && !charDrop) {
+    if(ceDlg == DLG_NONE && !activeDrop) {
         Vector2 m = MouseWorld();
         // barra: clica e arrasta pra andar na musica
         {
@@ -2748,7 +2805,7 @@ static void Edit_DrawMenuBar(void) {
         DrawTextEx(mainFont, names[i], (Vector2){r.x + 12, 5}, 20, 1, open ? GREEN : WHITE);
         if(hov && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             menuOpen = open ? 0 : (i + 1);
-            charDrop = 0;
+            activeDrop = 0;
             focusBox = NULL;
             focusNum = NULL;
         }
@@ -2805,7 +2862,7 @@ static void Edit_DrawTabs(void) {
         DrawRectangleLinesEx(r, 1, active ? GREEN : GRAY);
         Vector2 s = MeasureTextEx(mainFont, ChartTab_Name(t), 18, 1);
         DrawTextEx(mainFont, ChartTab_Name(t), (Vector2){r.x + (r.width - s.x) / 2, r.y + 4}, 18, 1, active ? GREEN : WHITE);
-        if(hov && IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && ceDlg == DLG_NONE && !charDrop) {
+        if(hov && IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && ceDlg == DLG_NONE && !activeDrop) {
             activeTab = t;
             menuOpen = 0;
             focusBox = NULL;
@@ -2814,82 +2871,73 @@ static void Edit_DrawTabs(void) {
     }
 }
 
-static void Edit_DrawPanel_Song(float x, float y) {
-    char blocked = (ceDlg != DLG_NONE || charDrop || menuOpen);
-    DrawTextEx(mainFont, "SONG", (Vector2){x, y}, 22, 1, GREEN);
-    y += 30;
-    char titleBuf[96];
-    snprintf(titleBuf, sizeof(titleBuf), "%s%s", chart.name, chart.dirty ? "*" : "");
-    DrawTextEx(mainFont, titleBuf, (Vector2){x, y}, 26, 2, WHITE);
-    y += 36;
-    float w1 = MeasureTextEx(mainFont, p1Box.buf[0] ? p1Box.buf : "bf", 20, 1).x;
-    float w2 = MeasureTextEx(mainFont, p2Box.buf[0] ? p2Box.buf : "dad", 20, 1).x;
-    float w3 = MeasureTextEx(mainFont, stageBox.buf[0] ? stageBox.buf : "stage", 20, 1).x;
-    float bw = w1;
-    if(w2 > bw) bw = w2;
-    if(w3 > bw) bw = w3;
-    bw += 24;
-    if(bw < 140) bw = 140;
-    if(bw > 240) bw = 240;
-    DrawTextEx(mainFont, "Bf:", (Vector2){x, y + 4}, 22, 1, WHITE);
-    Rectangle r1 = {x + 120, y, bw, 32};
-    TxtBox_Update(&p1Box, r1, blocked);
-    TxtBox_Draw(&p1Box, r1, "bf");
-    Rectangle d1 = {x + 120 + bw + 6, y, 30, 32};
-    if(DropBtn(d1, charDrop == 1)) {
-        if(charDrop == 1) charDrop = 0;
-        else { charDrop = 1; dropBox = &p1Box; dropNames = charNames; dropCount = charCount; dropX = d1.x; dropY = d1.y + d1.height + 4; dropW = bw + 36; dropJustOpened = 1; }
-        focusBox = NULL; focusNum = NULL;
-    }
-    y += 38;
-    DrawTextEx(mainFont, "Opponent:", (Vector2){x, y + 4}, 22, 1, WHITE);
-    Rectangle r2 = {x + 120, y, bw, 32};
-    TxtBox_Update(&p2Box, r2, blocked);
-    TxtBox_Draw(&p2Box, r2, "dad");
-    Rectangle d2 = {x + 120 + bw + 6, y, 30, 32};
-    if(DropBtn(d2, charDrop == 2)) {
-        if(charDrop == 2) charDrop = 0;
-        else { charDrop = 2; dropBox = &p2Box; dropNames = charNames; dropCount = charCount; dropX = d2.x; dropY = d2.y + d2.height + 4; dropW = bw + 36; dropJustOpened = 1; }
-        focusBox = NULL; focusNum = NULL;
-    }
-    y += 38;
-    DrawTextEx(mainFont, "Stage:", (Vector2){x, y + 4}, 22, 1, WHITE);
-    Rectangle r3 = {x + 120, y, bw, 32};
-    TxtBox_Update(&stageBox, r3, blocked);
-    TxtBox_Draw(&stageBox, r3, "stage");
-    Rectangle d3 = {x + 120 + bw + 6, y, 30, 32};
-    if(DropBtn(d3, charDrop == 3)) {
-        if(charDrop == 3) charDrop = 0;
-        else { charDrop = 3; dropBox = &stageBox; dropNames = stageNames; dropCount = stageCount; dropX = d3.x; dropY = d3.y + d3.height + 4; dropW = bw + 36; dropJustOpened = 1; }
-        focusBox = NULL; focusNum = NULL;
-    }
-    y += 38;
-    // Note Skin dropdown (mesmo estilo de Bf/Opponent/Stage)
-    float w4 = MeasureTextEx(mainFont, skinBox.buf[0] ? skinBox.buf : "default", 20, 1).x;
-    if(w4 > bw) bw = w4; // usa mesma largura se skin for mais longa
-    DrawTextEx(mainFont, "Note Skin:", (Vector2){x, y + 4}, 22, 1, WHITE);
-    Rectangle r4 = {x + 120, y, bw, 32};
-    TxtBox_Update(&skinBox, r4, blocked);
-    TxtBox_Draw(&skinBox, r4, "default");
-    Rectangle d4 = {x + 120 + bw + 6, y, 30, 32};
-    if(DropBtn(d4, skinDrop)) {
-        if(skinDrop) skinDrop = 0;
-        else {
-            skinDrop = 1;
-            dropBox = &skinBox;
-            dropNames = skinNames;
-            dropCount = skinCount;
-            dropX = d4.x;
-            dropY = d4.y + d4.height + 4;
-            dropW = bw + 36;
+#define SONG_FIELD_X 132.0f // largura da coluna dos rotulos no painel Song
+
+/* Linha "Rotulo: [caixa] [v]" com lista suspensa. */
+static void DrawDropField(float x, float y, float boxW, const char* label, TxtBox* box, const char* hint,
+                          int dropId, char (*names)[32], int count, char blocked) {
+    DrawTextEx(mainFont, label, (Vector2){x, y + 4}, 22, 1, WHITE);
+
+    const Rectangle field = {x + SONG_FIELD_X, y, boxW, 32};
+    TxtBox_Update(box, field, blocked);
+    TxtBox_Draw(box, field, hint);
+
+    const Rectangle button = {field.x + boxW + 6, y, 30, 32};
+    if(DropBtn(button, activeDrop == dropId)) {
+        if(activeDrop == dropId) {
+            activeDrop = DROP_NONE;
+        } else {
+            activeDrop = dropId;
+            dropBox = box;
+            dropNames = names;
+            dropCount = count;
+            dropX = button.x;
+            dropY = button.y + button.height + 4;
+            dropW = boxW + 36;
             dropJustOpened = 1;
         }
-        focusBox = NULL; focusNum = NULL;
+        focusBox = NULL;
+        focusNum = NULL;
     }
+}
+
+/* Largura das caixas: a do texto mais longo, entre 140 e 240. */
+static float SongFieldWidth(void) {
+    const char* texts[5] = {
+        p1Box.buf[0] ? p1Box.buf : "bf",
+        p2Box.buf[0] ? p2Box.buf : "dad",
+        gfBox.buf[0] ? gfBox.buf : "gf",
+        stageBox.buf[0] ? stageBox.buf : "stage",
+        skinBox.buf[0] ? skinBox.buf : "default",
+    };
+    float width = 140;
+    for(int i = 0; i < 5; i++) {
+        const float w = MeasureTextEx(mainFont, texts[i], 20, 1).x + 24;
+        if(w > width) width = w;
+    }
+    return width > 240 ? 240 : width;
+}
+
+static void Edit_DrawPanel_Song(float x, float y) {
+    const char blocked = (ceDlg != DLG_NONE || activeDrop || menuOpen);
+    const float boxW = SongFieldWidth();
+
+    DrawTextEx(mainFont, "SONG", (Vector2){x, y}, 22, 1, GREEN);
+    y += 34;
+    DrawDropField(x, y, boxW, "Boyfriend:", &p1Box, "bf", DROP_BOYFRIEND, charNames, charCount, blocked);
+    y += 38;
+    DrawDropField(x, y, boxW, "Opponent:", &p2Box, "dad", DROP_OPPONENT, charNames, charCount, blocked);
+    y += 38;
+    DrawDropField(x, y, boxW, "Girlfriend:", &gfBox, "gf", DROP_GIRLFRIEND, gfNames, gfCount, blocked);
+    y += 38;
+    DrawDropField(x, y, boxW, "Stage:", &stageBox, "stage", DROP_STAGE, stageNames, stageCount, blocked);
+    y += 38;
+    DrawDropField(x, y, boxW, "Note Skin:", &skinBox, "default", DROP_SKIN, skinNames, skinCount, blocked);
     y += 42;
+
     DrawTextEx(mainFont, "bpm:", (Vector2){x, y + 4}, 22, 1, WHITE);
     {
-        Rectangle r = {x + 120, y, 80, 32};
+        Rectangle r = {x + SONG_FIELD_X, y, 80, 32};
         if(focusNum != &nbTopBpm) NumBox_Refresh(&nbTopBpm, chart.bpm, 0);
         NumBox_Update(&nbTopBpm, r, blocked);
         NumBox_Draw(&nbTopBpm, r);
@@ -2902,20 +2950,21 @@ static void Edit_DrawPanel_Song(float x, float y) {
         NumBox_Draw(&nbSpeed, r);
     }
     y += 44;
+
     if(Button((Rectangle){x, y, 190, 40}, "SALVAR", 22)) Editor_Save();
     if(Button((Rectangle){x + 200, y, 190, 40}, "SALVAR COMO", 20)) {
         saveAsBox.buf[0] = 0; importPath[0] = 0; ceDlg = DLG_SAVEAS; focusBox = &saveAsBox;
     }
 }
 static void Edit_DrawPanel_Section(float x, float y) {
-    char blocked = (ceDlg != DLG_NONE || charDrop || menuOpen);
+    char blocked = (ceDlg != DLG_NONE || activeDrop || menuOpen);
     char buf[96];
     SecFollowCursor();
     snprintf(buf, sizeof(buf), "SECTION %d/%d", secIdx + 1, chart.nsec);
     DrawTextEx(mainFont, buf, (Vector2){x, y}, 22, 1, GREEN);
     y += 32;
     DrawTextEx(mainFont, "turn (TAB):", (Vector2){x, y + 4}, 22, 1, WHITE);
-    if(Button((Rectangle){x + 150, y, 180, 32}, chart.secs[secIdx].mustHit ? "bf" : "opponent", 20)) {
+    if(Button((Rectangle){x + 150, y, 180, 32}, chart.secs[secIdx].mustHit ? "boyfriend" : "opponent", 20)) {
         Touch(); chart.secs[secIdx].mustHit = !chart.secs[secIdx].mustHit;
     }
     y += 42;
@@ -3142,6 +3191,7 @@ static void ChartEditor_Draw([[maybe_unused]] RayScene* scene) {
 
 static void ChartEditor_Destroy([[maybe_unused]] RayScene* scene) {
     UnloadTexture(bgEd.image);
+    SecTimes_Drop();
     SongList_Free(pickerSongs);
     pickerSongs = NULL;
     pickerCount = 0;

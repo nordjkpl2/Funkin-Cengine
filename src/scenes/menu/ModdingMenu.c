@@ -399,6 +399,56 @@ static void Modding_DrawStub(void)
     Render_StopCamera();
 }
 
+/* Nota musical (colcheia) feita de elipse + retangulo + triangulo; (x,y) = canto superior esquerdo. */
+static void Modding_DrawMusicNote(float x, float y, float size, Color c)
+{
+    const float headW = size * 0.30f;
+    const float headH = size * 0.22f;
+    const float stemW = size * 0.08f;
+    const float stemX = x + headW * 1.8f;
+    const float headY = y + size - headH;
+
+    DrawEllipse((int)(x + headW), (int)headY, headW, headH, c);
+    DrawRectangle((int)(stemX - stemW), (int)y, (int)stemW + 1, (int)(headY - y), c);
+    DrawTriangle((Vector2){stemX, y},
+                 (Vector2){stemX + size * 0.30f, y + size * 0.30f},
+                 (Vector2){stemX, y + size * 0.45f}, c);
+}
+
+/* Silhueta de pessoa (avatar sem foto): cabeca + ombros. */
+static void Modding_DrawPerson(float x, float y, float size, Color c)
+{
+    const float cx = x + size * 0.5f;
+    DrawCircle((int)cx, (int)(y + size * 0.28f), size * 0.22f, c);
+    DrawCircleSector((Vector2){cx, y + size * 1.02f}, size * 0.46f, 180.0f, 360.0f, 24, c);
+}
+
+/* Icone de download: seta pra baixo + bandeja. */
+static void Modding_DrawDownload(float x, float y, float size, Color c)
+{
+    const float cx = x + size * 0.5f;
+    const float stemW = size * 0.18f;
+    const float trayY = y + size * 0.86f;
+
+    DrawRectangle((int)(cx - stemW * 0.5f), (int)y, (int)stemW, (int)(size * 0.40f), c);
+    DrawTriangle((Vector2){cx - size * 0.30f, y + size * 0.38f},
+                 (Vector2){cx, y + size * 0.72f},
+                 (Vector2){cx + size * 0.30f, y + size * 0.38f}, c);
+    DrawRectangle((int)x, (int)trayY, (int)size, (int)(size * 0.14f), c);
+    DrawRectangle((int)x, (int)(trayY - size * 0.16f), (int)(size * 0.14f), (int)(size * 0.16f), c);
+    DrawRectangle((int)(x + size * 0.86f), (int)(trayY - size * 0.16f), (int)(size * 0.14f), (int)(size * 0.16f), c);
+}
+
+/* Icone de cada aba, na ordem de `tabs`. */
+static void Modding_DrawTabIcon(int tab, float x, float y, float size, Color c)
+{
+    switch (tab) {
+        case 0: Modding_DrawMusicNote(x, y, size, c); break;
+        case 1: Modding_DrawPerson(x, y, size, c);    break;
+        default: Modding_DrawDownload(x, y, size, c); break;
+    }
+}
+
 static void Modding_DrawList(void)
 {
     Modding_DrawBackground();
@@ -423,10 +473,13 @@ static void Modding_DrawList(void)
             textColor.a = 150;
         shadowColor.a = selectedItem ? 255 : 100;
 
+        const float iconX = position.x - shadow + MeasureTextEx(mainFont, tabs[i], fontSize, 5).x + 24.0f;
         DrawTextEx(mainFont, tabs[i], position, fontSize, 5, shadowColor);
+        Modding_DrawTabIcon(i, iconX + shadow, position.y + 6.0f, fontSize * 0.8f, shadowColor);
         position.x -= shadow;
         position.y -= shadow;
         DrawTextEx(mainFont, tabs[i], position, fontSize, 5, textColor);
+        Modding_DrawTabIcon(i, iconX, position.y + 6.0f, fontSize * 0.8f, textColor);
     }
 
     Render_StopCamera();
