@@ -1,9 +1,11 @@
 /*
  * Friday Night Funkin' C Engine (c) 2026 nordjkpl
- * ModPath.c - descobre a raiz do mod a partir da pasta da musica.
+ * ModPath.c - raiz do mod e busca de arquivos (mod primeiro, depois assets).
+ * Sem estado global e sem raylib: seguro para usar em outra thread.
  */
 
 #include "scenes/ModPath.h"
+#include <stdio.h>
 #include <string.h>
 
 #define MODS_PREFIX "assets/mods/"
@@ -51,4 +53,33 @@ bool ModPath_Root(const char* restrict songDir, char* restrict out, size_t capac
     memcpy(out, path, rootLength);
     out[rootLength] = '\0';
     return true;
+}
+
+static bool FileOpens(const char* path)
+{
+    FILE* file = fopen(path, "rb");
+    if (file == NULL) return false;
+    fclose(file);
+    return true;
+}
+
+bool ModPath_FindIn(const char* restrict root, const char* restrict relative,
+                    char* restrict out, size_t capacity)
+{
+    if (out == NULL || capacity == 0u) return false;
+    out[0] = '\0';
+    if (root == NULL || root[0] == '\0' || relative == NULL || relative[0] == '\0') return false;
+
+    const int written = snprintf(out, capacity, "%s/%s", root, relative);
+    if (written > 0 && (size_t)written < capacity && FileOpens(out)) return true;
+
+    out[0] = '\0';
+    return false;
+}
+
+bool ModPath_Find(const char* restrict modRoot, const char* restrict relative,
+                  char* restrict out, size_t capacity)
+{
+    return ModPath_FindIn(modRoot, relative, out, capacity)
+        || ModPath_FindIn("assets", relative, out, capacity);
 }

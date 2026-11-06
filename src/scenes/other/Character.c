@@ -103,14 +103,7 @@ static bool Char_Find(const CharCtx *ctx, char out[CHAR_PATH_MAX],
     if (length <= 0 || (size_t)length >= sizeof(relative))
         return false;
 
-    if (ctx->root[0]) {
-        length = snprintf(out, CHAR_PATH_MAX, "%s/%s", ctx->root, relative);
-        if (length > 0 && length < CHAR_PATH_MAX && FileExists(out))
-            return true;
-    }
-
-    length = snprintf(out, CHAR_PATH_MAX, "assets/%s", relative);
-    return length > 0 && length < CHAR_PATH_MAX && FileExists(out);
+    return ModPath_Find(ctx->root, relative, out, CHAR_PATH_MAX);
 }
 
 /* .animset + .png do MESMO lugar (mod ou assets/). Misturar um animset do mod
@@ -123,10 +116,12 @@ static bool Char_FindPair(const CharCtx *ctx, char setOut[CHAR_PATH_MAX], char p
         if (!root[0])
             continue;
 
-        int a = snprintf(setOut, CHAR_PATH_MAX, "%s/images/characters/%s.animset", root, setName);
-        int b = snprintf(pngOut, CHAR_PATH_MAX, "%s/images/characters/%s.png", root, pngName);
+        char setRel[CHAR_PATH_MAX], pngRel[CHAR_PATH_MAX];
+        int a = snprintf(setRel, sizeof(setRel), "images/characters/%s.animset", setName);
+        int b = snprintf(pngRel, sizeof(pngRel), "images/characters/%s.png", pngName);
         if (a > 0 && a < CHAR_PATH_MAX && b > 0 && b < CHAR_PATH_MAX &&
-            FileExists(setOut) && FileExists(pngOut))
+            ModPath_FindIn(root, setRel, setOut, CHAR_PATH_MAX) &&
+            ModPath_FindIn(root, pngRel, pngOut, CHAR_PATH_MAX))
             return true;
     }
     return false;

@@ -1,3 +1,14 @@
 
 --- SESSION LOG START ---
 [WARN] Icone nao encontrado: 'none' (usando padrao)
+
+--- SESSION LOG START ---
+[WARN] Personagem 'blue-crossworlds' nao encontrado: usando dad padrao
+[WARN] Personagem 'blue irl' nao encontrado: usando bf padrao
+[WARN] Stage 'real-life' nao encontrado: usando stage vazio
+[WARN] Personagem 'lse' nao encontrado: usando dad padrao
+[WARN] Stage 'studio' nao encontrado: usando stage vazio
+[WARN] Icone nao encontrado: 'bfsad' (usando padrao)
+
+--- SESSION LOG START ---
+[WARN] Icone nao encontrado: 'none' (usando padrao)

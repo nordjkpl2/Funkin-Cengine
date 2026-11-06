@@ -7,6 +7,7 @@
 
 #include "std.h"
 #include "scenes/Stage.h"
+#include "scenes/ModPath.h"
 
 #include <ctype.h>
 #include <errno.h>
@@ -35,64 +36,13 @@ static inline bool Stage_IsSafeName(const char *name)
     return true;
 }
 
-static void Stage_GetModRoot(const char *songDir, char out[STAGE_MOD_ROOT_MAX])
-{
-    out[0] = '\0';
-    if (songDir == NULL || songDir[0] == '\0')
-        return;
-
-    const char *marker = strstr(songDir, "assets/mods/");
-    if (marker == NULL)
-        marker = strstr(songDir, "assets\\mods\\");
-    if (marker == NULL)
-        return;
-
-    const char *modName = marker + 12;
-    const char *separator = strpbrk(modName, "/\\");
-
-    size_t length = separator != NULL ? (size_t)(separator - songDir) : strlen(songDir);
-
-    /* Mod importado direto em assets/mods/ (songs, weeks, data... no topo). */
-    {
-        size_t nameLen = separator != NULL ? (size_t)(separator - modName) : strlen(modName);
-        if ((nameLen == 5 && strncmp(modName, "songs", 5) == 0) ||
-            (nameLen == 5 && strncmp(modName, "weeks", 5) == 0) ||
-            (nameLen == 4 && strncmp(modName, "data", 4) == 0) ||
-            (nameLen == 6 && strncmp(modName, "stages", 6) == 0) ||
-            (nameLen == 6 && strncmp(modName, "images", 6) == 0))
-            length = (size_t)(modName - songDir) - 1;
-    }
-
-    if (length >= STAGE_MOD_ROOT_MAX)
-        length = STAGE_MOD_ROOT_MAX - 1;
-
-    memcpy(out, songDir, length);
-    out[length] = '\0';
-}
-
-static inline bool Stage_FileExists(const char *path)
-{
-    FILE *file = fopen(path, "rb");
-    if (file == NULL)
-        return false;
-    fclose(file);
-    return true;
-}
-
-static inline bool Stage_TryPath(const char *candidate, char out[STAGE_PATH_MAX])
-{
-    const int written = snprintf(out, STAGE_PATH_MAX, "%s", candidate);
-    return written > 0 && written < STAGE_PATH_MAX && Stage_FileExists(out);
-}
-
 /* Ordem de busca: mod/stages, mod/data/stages, assets/stages,
  * assets/data/stages, songDir. Serve para .lua e .json. */
 static char Stage_FindFile(const char *stageName, const char *songDir,
                            const char *ext, char out[STAGE_PATH_MAX])
 {
     char modRoot[STAGE_MOD_ROOT_MAX];
-    char candidate[STAGE_PATH_MAX];
-    int n;
+    char relative[STAGE_PATH_MAX];
 
     if (out == NULL)
         return 0;
@@ -102,33 +52,27 @@ static char Stage_FindFile(const char *stageName, const char *songDir,
     if (!Stage_IsSafeName(stageName) || strcmp(stageName, "stage") == 0)
         return 0;
 
-    Stage_GetModRoot(songDir, modRoot);
+    if (!ModPath_Root(songDir, modRoot, sizeof(modRoot)))
+        modRoot[0] = '\0';
 
-    if (modRoot[0] != '\0') {
-        n = snprintf(candidate, sizeof(candidate), "%s/stages/%s.%s", modRoot, stageName, ext);
-        if (n > 0 && n < (int)sizeof(candidate) && Stage_TryPath(candidate, out))
-            return 1;
-
-        n = snprintf(candidate, sizeof(candidate), "%s/data/stages/%s.%s", modRoot, stageName, ext);
-        if (n > 0 && n < (int)sizeof(candidate) && Stage_TryPath(candidate, out))
-            return 1;
-    }
-
-    n = snprintf(candidate, sizeof(candidate), "assets/stages/%s.%s", stageName, ext);
-    if (n > 0 && n < (int)sizeof(candidate) && Stage_TryPath(candidate, out))
+    snprintf(relative, sizeof(relative), "stages/%s.%s", stageName, ext);
+    if (ModPath_FindIn(modRoot, relative, out, STAGE_PATH_MAX))
         return 1;
 
-    n = snprintf(candidate, sizeof(candidate), "assets/data/stages/%s.%s", stageName, ext);
-    if (n > 0 && n < (int)sizeof(candidate) && Stage_TryPath(candidate, out))
+    snprintf(relative, sizeof(relative), "data/stages/%s.%s", stageName, ext);
+    if (ModPath_FindIn(modRoot, relative, out, STAGE_PATH_MAX))
         return 1;
 
-    if (songDir != NULL && songDir[0] != '\0') {
-        n = snprintf(candidate, sizeof(candidate), "%s/%s.%s", songDir, stageName, ext);
-        if (n > 0 && n < (int)sizeof(candidate) && Stage_TryPath(candidate, out))
-            return 1;
-    }
+    snprintf(relative, sizeof(relative), "stages/%s.%s", stageName, ext);
+    if (ModPath_FindIn("assets", relative, out, STAGE_PATH_MAX))
+        return 1;
 
-    return 0;
+    snprintf(relative, sizeof(relative), "data/stages/%s.%s", stageName, ext);
+    if (ModPath_FindIn("assets", relative, out, STAGE_PATH_MAX))
+        return 1;
+
+    snprintf(relative, sizeof(relative), "%s.%s", stageName, ext);
+    return ModPath_FindIn(songDir, relative, out, STAGE_PATH_MAX) ? 1 : 0;
 }
 
 char Stage_FindLua(const char *stageName, const char *songDir, char out[300])
