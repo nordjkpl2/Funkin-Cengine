@@ -52,3 +52,16 @@ All Things your 2d (or semi 3d) game / mod needs
 ⚙️ Backend, performance focus, and be all your need
 
 </details>
+
+<details>
+<summary><b>——Credits</b></summary>
+
+(c)2026 nordjkpl
+
+```text
+All Friday Night Funkin' assets belong to their respective owners
+```
+
+View License file for View Copyright
+
+</details>
