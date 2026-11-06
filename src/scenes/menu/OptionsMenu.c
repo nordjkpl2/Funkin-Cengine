@@ -25,6 +25,12 @@
 #define LOGO_GAP 5.0f
 #define LOGO_MARGIN 25.0f // distancia do fim do texto
 #define LOGO_TOP 13.0f    // distancia do topo da linha
+
+// Setinha de secao (aberta = para baixo, recolhida = para a direita).
+#define CHEVRON_X 22.0f
+#define CHEVRON_SIZE 9.0f
+#define CHEVRON_STROKE 5.0f
+#define HEADER_DIM_ALPHA 170
 #define LOGO_CIRCLE_RADIUS 32.0f // circulo ao lado de "Other Options"
 
 // Simbolos do PlayStation ao lado de "Gameplay Options": X, quadrado, triangulo, bolinha.
@@ -50,6 +56,9 @@ typedef struct {
 
     char cachedText[96]; // texto pronto: nao formata a cada frame
     bool dirty;
+
+    int header;     // indice do cabecalho da secao a que a opcao pertence
+    bool collapsed; // so nos cabecalhos: secao recolhida
 } Option;
 
 typedef enum {
@@ -100,7 +109,7 @@ static float scrollOffset; // posicao suavizada da lista (em linhas)
 static float windowLogoX;  // calculado uma vez no Create
 static float otherLogoX;
 static float gameplayLogoX;
-static int currentOption;
+static int currentOption = OPTION_FPS; // comeca na primeira opcao, nao no cabecalho
 static Camera2D cam;
 static RayGraphicObject bg;
 
@@ -189,15 +198,30 @@ static void ApplyBoolValue(void) {
 /* Navegacao                                                           */
 /* ------------------------------------------------------------------ */
 
-static char Option_IsSelectable(const Option* o) {
-    return o->type != OPTION_VALUE_HEADER && o->active;
+/* Cabecalhos sempre aparecem; opcoes somem quando a secao esta recolhida. */
+static bool Option_IsVisible(int i) {
+    return options[i].type == OPTION_VALUE_HEADER || !options[options[i].header].collapsed;
 }
 
-/* Anda para a proxima opcao selecionavel (pula cabecalhos e inativas). */
+/* Cabecalhos sao selecionaveis (para abrir/recolher); opcoes, so se visiveis e ativas. */
+static bool Option_IsSelectable(int i) {
+    if (options[i].type == OPTION_VALUE_HEADER) return true;
+    return Option_IsVisible(i) && options[i].active;
+}
+
+/* Posicao da opcao na tela, em linhas (ignora as recolhidas). */
+static int Option_VisualIndex(int index) {
+    int visual = 0;
+    for (int i = 0; i < index; i++)
+        if (Option_IsVisible(i)) visual++;
+    return visual;
+}
+
+/* Anda para a proxima linha selecionavel. */
 static void MoveSelection(int dir) {
     for (int i = 0; i < OPTION_COUNT; i++) {
         currentOption = (currentOption + dir + OPTION_COUNT) % OPTION_COUNT;
-        if (Option_IsSelectable(options + currentOption)) break;
+        if (Option_IsSelectable(currentOption)) break;
     }
 }
 
@@ -220,7 +244,12 @@ static void OptionsMenu_Create([[maybe_unused]] RayScene* scene) {
     const Vector2 gameplaySize = MeasureTextEx(mainFont, options[OPTION_HEADER_GAMEPLAY].text, HEADER_FONT_SIZE, TEXT_SPACING);
     gameplayLogoX = HEADER_X - TEXT_SHADOW + gameplaySize.x + LOGO_MARGIN;
 
+    // Cada opcao guarda o cabecalho da sua secao; todas as secoes comecam abertas.
+    int header = 0;
     for (int i = 0; i < OPTION_COUNT; i++) {
+        if (options[i].type == OPTION_VALUE_HEADER) header = i;
+        options[i].header = header;
+        options[i].collapsed = false;
         options[i].active = 1;
         options[i].dirty = true;
     }
@@ -249,7 +278,7 @@ static void OptionsMenu_Create([[maybe_unused]] RayScene* scene) {
     for (int i = 0; i < OPTION_COUNT; i++)
         Option_RebuildText(options + i);
 
-    if (!Option_IsSelectable(options + currentOption))
+    if (!Option_IsSelectable(currentOption))
         MoveSelection(1);
 }
 
@@ -260,7 +289,7 @@ static void OptionsMenu_Update([[maybe_unused]] RayScene* scene) {
         return;
     }
 
-    scrollOffset = Lerp(scrollOffset, (float)currentOption, RayGame_DeltaTime() * SCROLL_LERP_SPEED);
+    scrollOffset = Lerp(scrollOffset, (float)Option_VisualIndex(currentOption), RayGame_DeltaTime() * SCROLL_LERP_SPEED);
 
     if (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S)) MoveSelection(1);
     else if (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W)) MoveSelection(-1);
@@ -271,6 +300,9 @@ static void OptionsMenu_Update([[maybe_unused]] RayScene* scene) {
         if (cur->type == OPTION_VALUE_BOOL) {
             cur->value = !cur->value;
             ApplyBoolValue();
+        }
+        else if (cur->type == OPTION_VALUE_HEADER) {
+            cur->collapsed = !cur->collapsed;
         }
     }
     else if (cur->type != OPTION_VALUE_BOOL && cur->type != OPTION_VALUE_HEADER) {
@@ -294,11 +326,11 @@ static void DrawOptionText(const char* text, float x, float y, int fontSize, Col
 }
 
 /* Quatro quadrados (estilo logo do Windows), com a mesma sombra do texto. */
-static void DrawWindowLogo(float rowY) {
+static void DrawWindowLogo(float rowY, Color fill, Color shadow) {
     const float step = LOGO_SQUARE + LOGO_GAP;
 
     for (int pass = 0; pass < 2; pass++) {
-        const Color color = pass == 0 ? BLACK : YELLOW;
+        const Color color = pass == 0 ? shadow : fill;
         const float shift = pass == 0 ? TEXT_SHADOW : 0.0f;
 
         for (int i = 0; i < 4; i++) {
@@ -310,12 +342,12 @@ static void DrawWindowLogo(float rowY) {
 }
 
 /* Circulo com a mesma sombra do texto. */
-static void DrawOtherLogo(float rowY) {
+static void DrawOtherLogo(float rowY, Color fill, Color shadow) {
     const float centerY = rowY + LOGO_TOP + LOGO_SQUARE + LOGO_GAP * 0.5f; // alinhado ao meio do logo de quadrados
     const float centerX = otherLogoX + LOGO_CIRCLE_RADIUS;
 
-    DrawCircleV((Vector2) {centerX + TEXT_SHADOW, centerY + TEXT_SHADOW}, LOGO_CIRCLE_RADIUS, BLACK);
-    DrawCircleV((Vector2) {centerX, centerY}, LOGO_CIRCLE_RADIUS, YELLOW);
+    DrawCircleV((Vector2) {centerX + TEXT_SHADOW, centerY + TEXT_SHADOW}, LOGO_CIRCLE_RADIUS, shadow);
+    DrawCircleV((Vector2) {centerX, centerY}, LOGO_CIRCLE_RADIUS, fill);
 }
 
 /* Linha com pontas arredondadas. */
@@ -357,9 +389,39 @@ static void DrawPlayStationSymbols(float rowY, float shift, Color color) {
     DrawRing((Vector2) {cx, cy}, h + 2.0f - SYMBOL_STROKE * 0.5f, h + 2.0f + SYMBOL_STROKE * 0.5f, 0.0f, 360.0f, 36, color);
 }
 
-static void DrawGameplayLogo(float rowY) {
-    DrawPlayStationSymbols(rowY, TEXT_SHADOW, BLACK);
-    DrawPlayStationSymbols(rowY, 0.0f, YELLOW);
+static void DrawGameplayLogo(float rowY, Color fill, Color shadow) {
+    DrawPlayStationSymbols(rowY, TEXT_SHADOW, shadow);
+    DrawPlayStationSymbols(rowY, 0.0f, fill);
+}
+
+/* Setinha da secao: "v" aberta, ">" recolhida. */
+static void DrawChevron(float rowY, bool collapsed, Color fill, Color shadow) {
+    const float s = CHEVRON_SIZE;
+    const float cy = rowY + LOGO_TOP + LOGO_SQUARE + LOGO_GAP * 0.5f;
+
+    for (int pass = 0; pass < 2; pass++) {
+        const float shift = pass == 0 ? TEXT_SHADOW * 0.6f : 0.0f;
+        const Color color = pass == 0 ? shadow : fill;
+        const float cx = CHEVRON_X + shift;
+        const float y = cy + shift;
+
+        Vector2 a, b, c;
+        if (collapsed) {
+            a = (Vector2) {cx - s * 0.55f, y - s};
+            b = (Vector2) {cx + s * 0.55f, y};
+            c = (Vector2) {cx - s * 0.55f, y + s};
+        } else {
+            a = (Vector2) {cx - s, y - s * 0.55f};
+            b = (Vector2) {cx, y + s * 0.55f};
+            c = (Vector2) {cx + s, y - s * 0.55f};
+        }
+
+        DrawLineEx(a, b, CHEVRON_STROKE, color);
+        DrawLineEx(b, c, CHEVRON_STROKE, color);
+        DrawCircleV(a, CHEVRON_STROKE * 0.5f, color);
+        DrawCircleV(b, CHEVRON_STROKE * 0.5f, color);
+        DrawCircleV(c, CHEVRON_STROKE * 0.5f, color);
+    }
 }
 
 static void OptionsMenu_Draw([[maybe_unused]] RayScene* scene) {
@@ -369,6 +431,9 @@ static void OptionsMenu_Draw([[maybe_unused]] RayScene* scene) {
     float y = SCREEN_H / 2.0f - scrollOffset * ROW_HEIGHT;
 
     for (int i = 0; i < OPTION_COUNT; i++) {
+        if (!Option_IsVisible(i))
+            continue; // secao recolhida: nao ocupa espaco
+
         Option* o = options + i;
         const bool isHeader = o->type == OPTION_VALUE_HEADER;
         const float height = isHeader ? HEADER_HEIGHT : ROW_HEIGHT;
@@ -380,20 +445,27 @@ static void OptionsMenu_Draw([[maybe_unused]] RayScene* scene) {
         if (drawY < CULL_TOP)
             continue;
 
+        const bool selected = currentOption == i;
+
         if (isHeader) {
-            DrawOptionText(o->text, HEADER_X, drawY, HEADER_FONT_SIZE, YELLOW, BLACK);
+            Color fill = YELLOW, shadow = BLACK;
+            fill.a = selected ? 255 : HEADER_DIM_ALPHA;
+            shadow.a = selected ? 255 : 100;
+
+            DrawOptionText(o->text, HEADER_X, drawY, HEADER_FONT_SIZE, fill, shadow);
+            DrawChevron(drawY, o->collapsed, fill, shadow);
+
             if (i == OPTION_HEADER_WINDOW)
-                DrawWindowLogo(drawY);
+                DrawWindowLogo(drawY, fill, shadow);
             else if (i == OPTION_HEADER_GAMEPLAY)
-                DrawGameplayLogo(drawY);
+                DrawGameplayLogo(drawY, fill, shadow);
             else if (i == OPTION_HEADER_OTHER)
-                DrawOtherLogo(drawY);
+                DrawOtherLogo(drawY, fill, shadow);
             continue;
         }
 
         if (o->dirty) Option_RebuildText(o);
 
-        const bool selected = currentOption == i;
         Color fill = o->active ? WHITE : RED;
         Color shadow = BLACK;
         fill.a = selected ? 255 : 150;
