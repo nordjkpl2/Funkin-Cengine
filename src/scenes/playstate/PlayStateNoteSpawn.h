@@ -20,7 +20,6 @@ typedef struct {
     void (*botHold)(void);                      /* botplay segurando sustain */
     void (*playerHold)(void);                   /* jogador segurando sustain certo */
     void (*miss)(Note* note);                   /* nota perdida ou sustain solto */
-    float (*velocityX)(int lane, char mustHit); /* velocidade X (middlescroll) */
 } PlayStateNoteEvents;
 
 typedef struct {

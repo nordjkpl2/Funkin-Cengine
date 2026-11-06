@@ -23,3 +23,17 @@ STAGE: carregado back=2 front=2 animBack=0 anim=0 zoom=0.38
 --- SESSION LOG START ---
 STAGE: Load chamado (stage do chart='stage')
 STAGE: nome='stage' songDir='assets/songs/execution' lua=0 json=0
+
+--- SESSION LOG START ---
+STAGE: Load chamado (stage do chart='undaunted demise remake')
+STAGE: nome='undaunted demise remake' songDir='assets/mods/songs/undaunted-demise-naether' lua=1 json=1
+STAGE: modRoot='assets/mods' sprites=2 lua='assets/mods/stages/undaunted demise remake.lua'
+STAGE: carregado back=2 front=2 animBack=0 anim=0 zoom=0.30
+STAGE: Load chamado (stage do chart='spaci1')
+STAGE: nome='spaci1' songDir='assets/mods/songs/Astray' lua=1 json=1
+STAGE: modRoot='assets/mods' sprites=1 lua='assets/mods/stages/spaci1.lua'
+STAGE: carregado back=1 front=1 animBack=0 anim=0 zoom=0.40
+STAGE: Load chamado (stage do chart='ampers')
+STAGE: nome='ampers' songDir='assets/mods/songs/ampersand' lua=1 json=1
+STAGE: modRoot='assets/mods' sprites=1 lua='assets/mods/stages/ampers.lua'
+STAGE: carregado back=1 front=1 animBack=0 anim=0 zoom=0.40

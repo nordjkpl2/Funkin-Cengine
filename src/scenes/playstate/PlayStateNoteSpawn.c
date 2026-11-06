@@ -161,8 +161,12 @@ void PlayStateNoteSpawn_Draw(const PlayStateNoteView* view) {
             int trailAnim = Note_TrailAnimation(note->id);
             if (!trail.currentAnim.isValid || trail.currentAnim.animationIndex != trailAnim)
                 AnimatedObject_SetAnimation(&trail, trailAnim);
-            trail.position.x = targetStrumNote->object.position.x + trailOffset.x;
-            trail.position.y = renderNote.position.y + trailOffset.y;
+            // Middlescroll: sustain do oponente acompanha a escala menor do receptor.
+            const float k = (game_options_scroll == 2 && !note->mustHit) ? (0.4f / 0.7f) : 1.0f;
+            trail.scaleX = 0.7f * k;
+            end.scaleX = 0.7f * k;
+            trail.position.x = targetStrumNote->object.position.x + trailOffset.x * k;
+            trail.position.y = renderNote.position.y + trailOffset.y * k;
             trail.scaleY = fmaxf(0.01f, (scrollSpeed * note->length - endHeight) / 44.0f);
             trail.color = normalColor;
 
@@ -198,44 +202,8 @@ void PlayStateNoteSpawn_Draw(const PlayStateNoteView* view) {
                 }
 
                 // Clip geométrico
-                if (game_options_scroll == 2) {
-                    float receptorX = targetStrumNote->object.position.x + trailOffset.x;
-                    float trailRight = trail.position.x + trail.scaleX * 44.0f;
-                    float velX = events.velocityX(note->id, note->mustHit);
-
-                    if (velX > 0) {
-                        if (trailRight > receptorX) {
-                            trail.scaleX = fmaxf(0.0f, (trailRight - receptorX) / 44.0f);
-                            trail.position.x = receptorX - trail.scaleX * 44.0f;
-                        }
-                        if (trail.scaleX > 0.0f)
-                            Render_DrawAnimatedObject(&trail);
-                        if (trailRight >= receptorX)
-                            Render_DrawAnimatedObject(&end);
-                    } else {
-                        if (trail.position.x < receptorX) {
-                            trail.scaleX = fmaxf(0.0f, (receptorX - trail.position.x) / 44.0f);
-                        }
-                        float origScaleX = trail.scaleX;
-                        float origScaleY = trail.scaleY;
-                        trail.scaleX *= 0.4f;
-                        trail.scaleY *= 0.4f;
-                        if (trail.scaleY > 0.0f)
-                            Render_DrawAnimatedObject(&trail);
-                        trail.scaleX = origScaleX;
-                        trail.scaleY = origScaleY;
-                        if (trail.position.x <= receptorX) {
-                            float origEndScaleX = end.scaleX;
-                            float origEndScaleY = end.scaleY;
-                            end.scaleX = origEndScaleX * 0.4f;
-                            end.scaleY = origEndScaleY * 0.4f;
-                            Render_DrawAnimatedObject(&end);
-                            end.scaleX = origEndScaleX;
-                            end.scaleY = origEndScaleY;
-                        }
-                    }
-                } else if (game_options_scroll == 1) {
-                    float receptorY = targetStrumNote->object.position.y + trailOffset.y;
+                if (game_options_scroll == 1) {
+                    float receptorY = targetStrumNote->object.position.y + trailOffset.y * k;
                     float trailBottom = trail.position.y + trail.scaleY * 44.0f;
                     if (trailBottom > receptorY) {
                         trail.scaleY = fmaxf(0.0f, (receptorY - trail.position.y) / 44.0f);
@@ -245,7 +213,7 @@ void PlayStateNoteSpawn_Draw(const PlayStateNoteView* view) {
                     if (trailBottom >= receptorY)
                         Render_DrawAnimatedObject(&end);
                 } else {
-                    float receptorY = targetStrumNote->object.position.y + trailOffset.y;
+                    float receptorY = targetStrumNote->object.position.y + trailOffset.y * k;
                     float trailBottom = trail.position.y + trail.scaleY * 44.0f;
                     if (trail.position.y < receptorY) {
                         trail.scaleY = fmaxf(0.0f, (trailBottom - receptorY) / 44.0f);

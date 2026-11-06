@@ -171,8 +171,8 @@ static char LoadModStage(PlayStateStage* stage, const char* name, const char* so
                 if (idx < 0) idx = 0;
 
                 // Psych: scroll em relacao ao canto da tela; o engine usa o centro
-                // (por isso o -640/-360*(1-scroll) abaixo). Escala parte do centro: mede o tamanho em escala 1
-                // e recua a posicao pela metade do crescimento.
+                // (por isso o -640/-360*(1-scroll) abaixo). Escala parte do canto superior esquerdo
+                // (scaleObject do Psych usa updateHitbox).
                 Vector2 base = {0.0f, 0.0f};
                 if (o->animationSet.animationCount > 0) {
                     AnimatedObject_SetAnimation(o, idx);
@@ -182,8 +182,8 @@ static char LoadModStage(PlayStateStage* stage, const char* name, const char* so
                 o->scaleX = sp->scaleX;
                 o->scaleY = sp->scaleY;
                 o->position = (Vector2) {
-                    sp->x - base.x * (sp->scaleX - 1.0f) * 0.5f - 640.0f * (1.0f - sp->scrollX),
-                    sp->y - base.y * (sp->scaleY - 1.0f) * 0.5f - 360.0f * (1.0f - sp->scrollY)
+                    sp->x - 640.0f * (1.0f - sp->scrollX),
+                    sp->y - 360.0f * (1.0f - sp->scrollY)
                 };
                 if (sp->scrollX == 0.0f && sp->scrollY == 0.0f && pass == 0) {
                     float fit = CoverScreen(base.x, base.y, sp->scaleX, meta.defaultZoom, &o->position);
@@ -196,10 +196,10 @@ static char LoadModStage(PlayStateStage* stage, const char* name, const char* so
                 Render_DefaultRGT(g);
                 const float baseW = sp->isGraphic ? sp->graphicWidth : (float)tex.width;
                 const float baseH = sp->isGraphic ? sp->graphicHeight : (float)tex.height;
-                // Psych escala a partir do centro.
+                // Psych (scaleObject + updateHitbox): a escala parte do canto superior esquerdo.
                 g->position = (Vector2) {
-                    sp->x - baseW * (sp->scaleX - 1.0f) * 0.5f - 640.0f * (1.0f - sp->scrollX),
-                    sp->y - baseH * (sp->scaleY - 1.0f) * 0.5f - 360.0f * (1.0f - sp->scrollY)
+                    sp->x - 640.0f * (1.0f - sp->scrollX),
+                    sp->y - 360.0f * (1.0f - sp->scrollY)
                 };
                 g->scrollFactor = (Vector2) {sp->scrollX, sp->scrollY};
                 g->scaleX = sp->scaleX;

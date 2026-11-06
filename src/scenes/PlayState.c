@@ -91,6 +91,9 @@ static float optionOffset;
 static float pauseTimer;
 
 // ~ 1. StrumLines
+// Middlescroll: X do primeiro receptor do BF (calculado para centralizar na tela).
+static float bfMiddleX = 475.0f;
+
 static float Scroll_StrumY(char mustHit) {
     (void)mustHit;
     if (game_options_scroll == 2) return 20.0f;
@@ -109,17 +112,10 @@ static float Scroll_StrumX(int lane, char mustHit) {
     }
     if (mustHit) {
         int bfLane = (lane >= 4) ? (lane - 4) : lane;
-        return 475.0f + 110.0f * bfLane;
+        return bfMiddleX + 110.0f * bfLane;
     } else {
         return 50.0f + 55.0f * lane;
     }
-}
-
-static float Scroll_NoteVelocityX(int lane, char mustHit) {
-    if (game_options_scroll != 2) return 0.0f;
-    float startX = mustHit ? (475.0f + 110.0f * lane) : (50.0f + 55.0f * lane);
-    float targetX = 640.0f;
-    return (targetX - startX) * 0.003f * 60.0f;
 }
 
 static float Scroll_PlayerStrumY(void) { return Scroll_StrumY(1); }
@@ -225,11 +221,15 @@ static void PlayState_Create([[maybe_unused]] RayScene* scene) {
 
                 StrumNote *bfStrum = bfStrumline + i;
                 StrumNote_Load(bfStrum, i);
-                bfStrum->object.position.x = Scroll_StrumX(i + 4, 1);
                 bfStrum->object.position.y = Scroll_StrumY(1);
-                bfStrum->object.scaleX = 1.0f;
-                bfStrum->object.scaleY = 1.0f;
             }
+
+            // BF na escala normal (a mesma das notas), centralizado na tela.
+            RayAnimatedObject bfIdle = bfStrumline[0].object;
+            AnimatedObject_SetAnimation(&bfIdle, StrumNote_IdleAnimation(0));
+            bfMiddleX = 640.0f - (110.0f * 3 + AnimatedObject_Sizes(&bfIdle).x) * 0.5f;
+            for (int i = 0; i < 4; i++)
+                bfStrumline[i].object.position.x = Scroll_StrumX(i + 4, 1);
         } else {
             for (int i = 0; i < 4; i++) {
                 StrumNote *dadStrum = dadStrumline + i;
@@ -699,8 +699,7 @@ static void PlayState_SetupNoteEvents(void) {
         .botHold = Note_BotHold,
         .playerHold = Note_PlayerHold,
         .miss = PlayStatePlayerInput_MissNote,
-        .velocityX = Scroll_NoteVelocityX,
-    };
+        };
     PlayStateNoteSpawn_SetEvents(&noteEvents);
 
     static const PlayStatePlayerInputEvents inputEvents = {
