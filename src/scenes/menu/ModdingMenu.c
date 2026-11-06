@@ -2,7 +2,7 @@
  * Friday Night Funkin' C Engine
  * (c) 2026 nordjkpl
  *
- * ModdingState.c - Modding hub and mod importer UI.
+ * ModdingMenu.c - Modding hub and mod importer UI.
  * Input/state work is handled in Update; Draw only renders.
  */
 
@@ -23,9 +23,9 @@ typedef enum {
 } ModdingMode;
 
 static const char *const tabs[] = {
-    "CHART EDITOR",
-    "CHARACTER EDITOR",
-    "IMPORT MOD"
+    "Chart Editor",
+    "Character Editor",
+    "Import Mod"
 };
 
 enum { TAB_COUNT = (int)(sizeof(tabs) / sizeof(tabs[0])) };
@@ -222,7 +222,7 @@ static void Imp_UpdateInput(void)
 /* Update                                                                    */
 /* ------------------------------------------------------------------------- */
 
-static void ModdingState_Update([[maybe_unused]] RayScene *scene)
+static void ModdingMenu_Update([[maybe_unused]] RayScene *scene)
 {
     if (mode == MOD_IMPORT) {
         Imp_UpdateInput();
@@ -435,7 +435,7 @@ static void Modding_DrawList(void)
     Render_StopCamera();
 }
 
-static void ModdingState_Draw([[maybe_unused]] RayScene *scene)
+static void ModdingMenu_Draw([[maybe_unused]] RayScene *scene)
 {
     ClearBackground(BLACK);
 
@@ -459,7 +459,7 @@ static void ModdingState_Draw([[maybe_unused]] RayScene *scene)
 /* Scene lifecycle                                                           */
 /* ------------------------------------------------------------------------- */
 
-static void ModdingState_Create([[maybe_unused]] RayScene *scene)
+static void ModdingMenu_Create([[maybe_unused]] RayScene *scene)
 {
     Render_DefaultRGT(&bg);
     bg.objType = RGT_IMAGE;
@@ -485,7 +485,7 @@ static void ModdingState_Create([[maybe_unused]] RayScene *scene)
     impConfirmDel = 0;
 }
 
-static void ModdingState_Destroy([[maybe_unused]] RayScene *scene)
+static void ModdingMenu_Destroy([[maybe_unused]] RayScene *scene)
 {
     if (bg.image.id != 0)
         UnloadTexture(bg.image);
@@ -496,9 +496,9 @@ static void ModdingState_Destroy([[maybe_unused]] RayScene *scene)
 static RayScene moddingScene;
 Scene_MakeSceneCode(
     moddingScene,
-    ModdingState_SetScene,
-    ModdingState_Create,
-    ModdingState_Update,
-    ModdingState_Draw,
-    ModdingState_Destroy
+    ModdingMenu_SetScene,
+    ModdingMenu_Create,
+    ModdingMenu_Update,
+    ModdingMenu_Draw,
+    ModdingMenu_Destroy
 )

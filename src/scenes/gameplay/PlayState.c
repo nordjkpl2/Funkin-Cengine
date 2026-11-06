@@ -520,7 +520,7 @@ static void PlayState_Create([[maybe_unused]] RayScene* scene) {
 static void LeaveGameplay(char allowEditor) {
     if (returnToWeek) {
         WeekRun_Stop();
-        StoryState_SetScene();
+        StoryMode_SetScene();
     } else if (allowEditor && returnToEditor) {
         ChartEditor_SetSongDir(songDir);
         ChartEditor_SetScene();
@@ -541,7 +541,7 @@ static void FinishWeekSong(void) {
         PlayState_SetScene();
     } else {
         WeekRun_Finish();
-        StoryState_SetScene();
+        StoryMode_SetScene();
     }
 }
 

@@ -1,7 +1,7 @@
 /*
  * Friday Night Funkin' C Engine
  * (c) 2026 nordjkpl
- * TitleState.c - title screen
+ * EnterToPlay.c - title screen
  */
 
 #include "scenes/AllScenes.h"
@@ -31,14 +31,14 @@ static float enterElapsed;
 static bool pressedEnter;
 static bool beatToggle;
 
-static void TitleState_OnBeatHit(void)
+static void EnterToPlay_OnBeatHit(void)
 {
     beatToggle = !beatToggle;
     logoScale = 1.1f;
     AnimatedObject_SetAnimation(&gf, beatToggle ? 1 : 0);
 }
 
-static void TitleState_Create([[maybe_unused]] RayScene *scene)
+static void EnterToPlay_Create([[maybe_unused]] RayScene *scene)
 {
     pressedEnter = false;
     beatToggle = false;
@@ -95,7 +95,7 @@ static void TitleState_Create([[maybe_unused]] RayScene *scene)
  * State and input updates belong in the update callback, not Draw.
  * This keeps animation timing and movement independent from render count.
  */
-static void TitleState_Update([[maybe_unused]] RayScene *scene)
+static void EnterToPlay_Update([[maybe_unused]] RayScene *scene)
 {
     float dt = RayGame_DeltaTime();
 
@@ -103,7 +103,7 @@ static void TitleState_Update([[maybe_unused]] RayScene *scene)
     if (!(dt > 0.0f))
         dt = 0.0f;
 
-    BeatManager_Update(&beatHandle, NULL, TitleState_OnBeatHit);
+    BeatManager_Update(&beatHandle, NULL, EnterToPlay_OnBeatHit);
     AnimatedObject_UpdateFrame(&gf);
 
     /* Frame-rate-independent return of the logo to its base scale. */
@@ -151,7 +151,7 @@ static void TitleState_Update([[maybe_unused]] RayScene *scene)
     }
 }
 
-static void TitleState_Draw([[maybe_unused]] RayScene *scene)
+static void EnterToPlay_Draw([[maybe_unused]] RayScene *scene)
 {
     ClearBackground(BLACK);
 
@@ -190,7 +190,7 @@ static void TitleState_Draw([[maybe_unused]] RayScene *scene)
     }
 }
 
-static void TitleState_Destroy([[maybe_unused]] RayScene *scene)
+static void EnterToPlay_Destroy([[maybe_unused]] RayScene *scene)
 {
     AnimationSet_FreeAll(&gf.animationSet);
     UnloadTexture(fnf.image);
@@ -199,9 +199,9 @@ static void TitleState_Destroy([[maybe_unused]] RayScene *scene)
 static RayScene titleScene;
 Scene_MakeSceneCode(
     titleScene,
-    TitleState_SetScene,
-    TitleState_Create,
-    TitleState_Update,
-    TitleState_Draw,
-    TitleState_Destroy
+    EnterToPlay_SetScene,
+    EnterToPlay_Create,
+    EnterToPlay_Update,
+    EnterToPlay_Draw,
+    EnterToPlay_Destroy
 );

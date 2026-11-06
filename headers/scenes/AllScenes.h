@@ -18,14 +18,14 @@ void PlayState_SetCharsOverride(const char* p2);
 int PlayState_GetScore(void);
 void LoadingState_SetScene(void);
 void LoadingState_SetSongDir(const char* dir);
-void ModdingState_SetScene(void);
+void ModdingMenu_SetScene(void);
 void ChartEditor_SetScene(void);
 void ChartEditor_SetSongDir(const char* dir);
-void StoryState_SetScene(void);
+void StoryMode_SetScene(void);
 void OptionsMenu_SetScene(void);
 void Freeplay_SetScene(void); 
 void MenuState_SetScene(void); 
-void TitleState_SetScene(void);
+void EnterToPlay_SetScene(void);
 
 extern Vector2 VECTOR_ZERO;
 extern Font mainFont;  
