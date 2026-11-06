@@ -90,3 +90,21 @@
 76	302	8156865143162345	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/other/Character.c.obj	71db5ab4bc39f3fd
 52	529	8156865142915164	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/ChartEditor.c.obj	e5ace1f6581241d
 529	3174	8156865147611440	D:/dev/funkin c/FNF_C_ENGINE.exe	b75268f1664f442c
+17	46	8156870815066571	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+49	410	8156870815262894	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/ChartEditor.c.obj	e5ace1f6581241d
+410	2911	8156870818958915	D:/dev/funkin c/FNF_C_ENGINE.exe	b75268f1664f442c
+17	49	8156873801333848	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+55	170	8156873801758605	CMakeFiles/FNF_C_ENGINE.dir/src/GameData.c.obj	54f3277a481eefee
+52	203	8156873801731074	CMakeFiles/FNF_C_ENGINE.dir/src/Game.c.obj	46953d48f5e8acc6
+65	218	8156873801836344	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayStateAudio.c.obj	dc5e58cfdc8aeedc
+69	242	8156873801884135	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayStateStage.c.obj	895e295cba88cc62
+62	274	8156873801758605	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayState.c.obj	6cb6e51baac2993
+74	297	8156873801936278	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/other/AnimationSets.c.obj	7baeae598132c43b
+78	351	8156873801988665	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/other/Character.c.obj	71db5ab4bc39f3fd
+83	363	8156873802037845	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/other/Song.c.obj	6378a3e2b5743e5d
+59	2241	8156873801758605	CMakeFiles/FNF_C_ENGINE.dir/src/Log.c.obj	881c0d8d86c8c7c8
+2241	4731	8156873823626675	D:/dev/funkin c/FNF_C_ENGINE.exe	b75268f1664f442c
+17	48	8156879534340202	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+55	142	8156879534817649	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/menu/Freeplay.c.obj	e044274611580e83
+52	180	8156879534703657	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayState.c.obj	6cb6e51baac2993
+180	2617	8156879536077274	D:/dev/funkin c/FNF_C_ENGINE.exe	b75268f1664f442c

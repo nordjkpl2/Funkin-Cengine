@@ -123,6 +123,34 @@ void Log_ErrorF(const char* fmt, ...) {
     va_end(ap);
 }
 
+static char warnText[LOG_WARN_MAX][LOG_WARN_LEN];
+static int warnTotal = 0;
+
+void Log_WarnF(const char* fmt, ...) {
+    char text[LOG_WARN_LEN * 2];
+    va_list ap;
+    va_start(ap, fmt);
+    vsnprintf(text, sizeof(text), fmt, ap);
+    va_end(ap);
+
+    char line[LOG_WARN_LEN * 2 + 8];
+    snprintf(line, sizeof(line), "[WARN] %s", text);
+    Emit(STDERR_FILENO, line);
+
+    if (warnTotal < LOG_WARN_MAX) {
+        memcpy(warnText[warnTotal], text, LOG_WARN_LEN - 1);
+        warnText[warnTotal][LOG_WARN_LEN - 1] = '\0';
+    }
+    warnTotal++;
+}
+
+void Log_WarnClear(void) { warnTotal = 0; }
+int Log_WarnCount(void) { return warnTotal; }
+const char* Log_WarnAt(int index) {
+    if (index < 0 || index >= warnTotal || index >= LOG_WARN_MAX) return "";
+    return warnText[index];
+}
+
 void Log_FatalF(const char* fmt, ...) {
     va_list ap; 
     va_start(ap, fmt);

@@ -126,8 +126,14 @@ static char LoadModStage(PlayStateStage* stage, const char* name, const char* so
     // arquivos vira um "void" vazio, como na Psych (posicoes e zoom padrao).
     if (!hasLua && !hasJson && (name[0] == '\0' || strcmp(name, "stage") == 0)) return 0;
 
+    if (!hasLua && !hasJson)
+        Log_WarnF("Stage '%s' nao encontrado: usando stage vazio", name);
+    else if (!hasJson)
+        Log_WarnF("Stage '%s': sem .json (posicoes e zoom padrao)", name);
+
     StageMeta meta;
-    Stage_LoadJson(hasJson ? jsonPath : "", &meta);
+    if (!Stage_LoadJson(hasJson ? jsonPath : "", &meta) && hasJson)
+        Log_WarnF("Stage '%s': .json invalido", name);
 
     int count = 0;
     if (hasLua) {
@@ -158,7 +164,7 @@ static char LoadModStage(PlayStateStage* stage, const char* name, const char* so
 
             if (!sp->isGraphic) {
                 if (!FindImage(root, sp->image, "png", png)) {
-                    Log_ErrorF("STAGE: imagem nao encontrada: '%s' (root='%s')", sp->image, root);
+                    Log_WarnF("Stage: imagem nao encontrada: %s", sp->image);
                     continue;
                 }
                 tex = Render_LoadTexture(png);

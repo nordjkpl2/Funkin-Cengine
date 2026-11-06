@@ -242,7 +242,7 @@ static void Freeplay_Draw([[maybe_unused]] RayScene* scene) {
     DrawSelectedPanel();
 
     DrawTextEx(mainFont, "UP / DOWN  SELECT TRACK", (Vector2) {105.0f, 660.0f}, 19.0f, 1.5f, (Color) {245, 220, 120, 255});
-    DrawTextEx(mainFont, "ENTER PLAY     ESC BACK", (Vector2) {850.0f, 675.0f}, 17.0f, 1.0f, (Color) {220, 215, 235, 230});
+    DrawTextEx(mainFont, "ENTER / SPACE PLAY     ESC BACK", (Vector2) {800.0f, 675.0f}, 17.0f, 1.0f, (Color) {220, 215, 235, 230});
 
     Render_StopCamera();
 }

@@ -805,10 +805,11 @@ static void NumBox_Draw(NumBox* nb, Rectangle r) {
 }
 
 // lista de cantores (artes que existem): pro seletor Boyfriend/Opponent
-static char charNames[32][SONG_NAME_MAX];
+#define NAME_LIST_MAX 256   /* mods grandes tem centenas de personagens */
+static char charNames[NAME_LIST_MAX][SONG_NAME_MAX];
 static int charCount = 0;
 // lista de girlfriends (so precisa de png + animset, nao tem icone)
-static char gfNames[32][SONG_NAME_MAX];
+static char gfNames[NAME_LIST_MAX][SONG_NAME_MAX];
 static int gfCount = 0;
 // qual lista suspensa esta aberta
 enum { DROP_NONE, DROP_BOYFRIEND, DROP_OPPONENT, DROP_GIRLFRIEND, DROP_STAGE, DROP_SKIN };
@@ -1069,10 +1070,11 @@ static void StageList_Scan(void) {
 }
 /* Lista os personagens de uma pasta (png + animset). Com iconDir, exige tambem o icone. */
 static void NameList_ScanDir(char (*names)[SONG_NAME_MAX], int* count, const char* charDir, const char* iconDir) {
+    const int capacity = NAME_LIST_MAX;
     if(!DirectoryExists(charDir))
         return;
     FilePathList list = LoadDirectoryFiles(charDir);
-    for(unsigned int i = 0; i < list.count && *count < 32; i++) {
+    for(unsigned int i = 0; i < list.count && *count < capacity; i++) {
         const char* p = list.paths[i];
         size_t L = strlen(p);
         if(L < 5 || strcmp(p + L - 4, ".png") != 0)
@@ -1202,7 +1204,7 @@ static void NoteSkinList_Scan(void) {
 
 // ---------- estado da cena ----------
 typedef enum { CE_PICKER, CE_EDIT } CeMode;
-typedef enum { DLG_NONE, DLG_OPEN, DLG_SAVEAS } CeDlg;
+typedef enum { DLG_NONE, DLG_OPEN, DLG_SAVEAS, DLG_LEAVE } CeDlg;
 // abas estilo Psych (uma ativa por vez, resto colapsado)
 typedef enum { TAB_CHARTING, TAB_DATA, TAB_EVENTS, TAB_NOTE, TAB_SECTION, TAB_SONG, TAB_COUNT } ChartTab;
 static const char* ChartTab_Name(int t) {
@@ -1725,7 +1727,10 @@ static char DropBtn(Rectangle r, char open) {
     return hov && IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
 }
 
-// lista por cima (clica e preenche a caixinha)
+// lista por cima (clica e preenche a caixinha). Rola com a roda do mouse.
+#define DROP_ROWS_MAX 14
+static int dropScroll = 0;
+
 static void CharDrop_Draw(void) {
     if(!activeDrop || dropBox == NULL || dropNames == NULL)
         return;
@@ -1733,23 +1738,37 @@ static void CharDrop_Draw(void) {
     TxtBox* box = dropBox;
     int n = dropCount;
     float ih = 30;
-    float h = (n > 0 ? n : 1) * ih + 8;
+    int rows = n < DROP_ROWS_MAX ? n : DROP_ROWS_MAX;
+    float h = (rows > 0 ? rows : 1) * ih + 8;
     if(by + h > 700) by = 700 - h;
     Rectangle r = {bx - bw + 30, by, bw, h};
     if(r.x + r.width > 1270) r.x = 1270 - r.width;
     DrawRectangleRec(r, (Color) {15, 15, 15, 245});
     DrawRectangleLinesEx(r, 1, GREEN);
     Vector2 m = MouseWorld();
+    const char inside = (m.x >= r.x && m.x <= r.x + r.width && m.y >= r.y && m.y <= r.y + r.height);
+
+    // roda: rola a lista (so com o mouse em cima dela)
+    if(dropJustOpened) dropScroll = 0;
+    if(inside && n > rows) {
+        dropScroll -= (int)GetMouseWheelMove();
+        if(dropScroll > n - rows) dropScroll = n - rows;
+        if(dropScroll < 0) dropScroll = 0;
+    }
+
     if(n == 0) {
         DrawTextEx(mainFont, "(vazio)", (Vector2) {r.x + 8, r.y + 8}, 20, 1, YELLOW);
     }
-    for(int i = 0; i < n; i++) {
-        Rectangle ir = {r.x + 4, r.y + 4 + i * ih, r.width - 8, ih - 2};
+    // o clique que abriu a lista nao pode escolher o item que ficou embaixo do mouse
+    const char canPick = !dropJustOpened;
+    for(int row = 0; row < rows; row++) {
+        const int i = dropScroll + row;
+        Rectangle ir = {r.x + 4, r.y + 4 + row * ih, r.width - 14, ih - 2};
         char hov = (m.x >= ir.x && m.x <= ir.x + ir.width && m.y >= ir.y && m.y <= ir.y + ir.height);
         if(hov)
             DrawRectangleRec(ir, (Color) {50, 90, 50, 255});
         DrawTextEx(mainFont, dropNames[i], (Vector2) {ir.x + 6, ir.y + 4}, 20, 1, WHITE);
-        if(hov && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+        if(canPick && hov && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             strncpy(box->buf, dropNames[i], sizeof(box->buf) - 1);
             box->buf[sizeof(box->buf) - 1] = 0;
             chart.dirty = 1;
@@ -1762,11 +1781,18 @@ static void CharDrop_Draw(void) {
             return;
         }
     }
+    // barra de rolagem
+    if(n > rows) {
+        const float trackH = h - 8;
+        const float thumbH = trackH * rows / n;
+        const float thumbY = r.y + 4 + (trackH - thumbH) * dropScroll / (float)(n - rows);
+        DrawRectangle((int)(r.x + r.width - 8), (int)thumbY, 4, (int)thumbH, GREEN);
+    }
     // clicou fora: fecha (pula o frame que abriu)
     if(dropJustOpened) {
         dropJustOpened = 0;
     } else if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-        if(!(m.x >= r.x && m.x <= r.x + r.width && m.y >= r.y && m.y <= r.y + r.height)) {
+        if(!inside) {
             activeDrop = DROP_NONE;
         }
     }
@@ -1957,6 +1983,53 @@ static void Picker_Update(void) {
     pickerOffset = Lerp(pickerOffset, (float)pickerSel, RayGame_DeltaTime() * 10.0f);
 }
 
+// ---------- sair do chart (nunca salva sozinho) ----------
+static void StopPlay(void);
+
+// volta pra lista de musicas, soltando audio e icones
+static void Editor_LeaveToPicker(void) {
+    StopPlay();
+    if(edHasAudio) {
+        UnloadMusicStream(edInst);
+        edHasAudio = 0;
+    }
+    if(edHasVoices) {
+        UnloadMusicStream(edVoices);
+        edHasVoices = 0;
+    }
+    if(edHasSplit) {
+        UnloadMusicStream(edSplitO);
+        UnloadMusicStream(edSplitP);
+        edHasSplit = 0;
+    }
+    Editor_UnloadIcons();
+    ceDlg = DLG_NONE;
+    ceMode = CE_PICKER;
+    Picker_Refresh();
+}
+
+// com alteracoes pendentes pergunta antes (salvar / descartar / cancelar)
+static void Editor_RequestLeave(void) {
+    if(chart.dirty) {
+        ceDlg = DLG_LEAVE;
+        focusBox = NULL;
+        focusNum = NULL;
+    } else {
+        Editor_LeaveToPicker();
+    }
+}
+
+// botao do dialogo (o Button() normal fica bloqueado com dialogo aberto)
+static char DlgButton(Rectangle r, const char* label, Color edge) {
+    Vector2 m = MouseWorld();
+    char hov = (m.x >= r.x && m.x <= r.x + r.width && m.y >= r.y && m.y <= r.y + r.height);
+    DrawRectangleRec(r, hov ? (Color) {60, 60, 60, 255} : (Color) {30, 30, 30, 255});
+    DrawRectangleLinesEx(r, 2, hov ? WHITE : edge);
+    Vector2 sz = MeasureTextEx(mainFont, label, 24, 1);
+    DrawTextEx(mainFont, label, (Vector2) {r.x + (r.width - sz.x) / 2, r.y + (r.height - sz.y) / 2}, 24, 1, WHITE);
+    return hov && IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
+}
+
 // ---------- dialogs (por cima de tudo) ----------
 static void Dialogs_Update(void) {
     if(ceDlg == DLG_NONE)
@@ -1968,6 +2041,11 @@ static void Dialogs_Update(void) {
         return;
     }
     if(IsKeyPressed(KEY_ENTER)) {
+        if(ceDlg == DLG_LEAVE) {
+            Editor_Save();
+            Editor_LeaveToPicker();
+            return;
+        }
         if(ceDlg == DLG_OPEN) {
             if(openBox.buf[0] == 0) {
                 StatusMsg("COLE O CAMINHO PRIMEIRO");
@@ -2004,7 +2082,19 @@ static void Dialogs_Draw(void) {
         return;
     Render_SetCamera(&camEd);
     DrawRectangle(0, 0, 1280, 720, (Color) {0, 0, 0, 180});
-    if(ceDlg == DLG_OPEN) {
+    if(ceDlg == DLG_LEAVE) {
+        DrawTextEx(mainFont, "Salvar as alteracoes?", (Vector2) {340, 250}, 40, 3, WHITE);
+        DrawTextEx(mainFont, "enter salva, esc cancela", (Vector2) {340, 310}, 20, 1, YELLOW);
+        if(DlgButton((Rectangle) {340, 360, 170, 48}, "SALVAR", GREEN)) {
+            Editor_Save();
+            Editor_LeaveToPicker();
+        } else if(DlgButton((Rectangle) {530, 360, 170, 48}, "DESCARTAR", RED)) {
+            chart.dirty = 0;
+            Editor_LeaveToPicker();
+        } else if(DlgButton((Rectangle) {720, 360, 170, 48}, "CANCELAR", GRAY)) {
+            ceDlg = DLG_NONE;
+        }
+    } else if(ceDlg == DLG_OPEN) {
         DrawTextEx(mainFont, ".json path", (Vector2) {340, 250}, 40, 3, WHITE);
         Rectangle r = {340, 320, 600, 40};
         TxtBox_Update(&openBox, r, 0);
@@ -2352,25 +2442,7 @@ static void Edit_UpdateKeys(void) {
             focusBox = NULL;
             return;
         }
-        StopPlay();
-        if(chart.dirty)
-            Editor_Save();
-        if(edHasAudio) {
-            UnloadMusicStream(edInst);
-            edHasAudio = 0;
-        }
-        if(edHasVoices) {
-            UnloadMusicStream(edVoices);
-            edHasVoices = 0;
-        }
-        if(edHasSplit) {
-            UnloadMusicStream(edSplitO);
-            UnloadMusicStream(edSplitP);
-            edHasSplit = 0;
-        }
-        Editor_UnloadIcons();
-        ceMode = CE_PICKER;
-        Picker_Refresh();
+        Editor_RequestLeave();
         return;
     }
 }
@@ -2810,7 +2882,7 @@ static void Edit_DrawMenuBar(void) {
         else if(MenuItem((Rectangle){box.x + 4, box.y + 32, 222, 28}, "Save As...")) { menuOpen = 0; saveAsBox.buf[0] = 0; importPath[0] = 0; ceDlg = DLG_SAVEAS; focusBox = &saveAsBox; }
         else if(MenuItem((Rectangle){box.x + 4, box.y + 60, 222, 28}, "Save Compressed")) { menuOpen = 0; EdChart_SaveCompressed(&chart); StatusMsg("SALVO COMPRIMIDO"); }
         else if(MenuItem((Rectangle){box.x + 4, box.y + 88, 222, 28}, "Test Play  F5")) { menuOpen = 0; Edit_DoTestPlay(); }
-        else if(MenuItem((Rectangle){box.x + 4, box.y + 116, 222, 28}, "Back to list  ESC")) { menuOpen = 0; StopPlay(); if(chart.dirty) Editor_Save(); Editor_UnloadIcons(); ceMode = CE_PICKER; Picker_Refresh(); }
+        else if(MenuItem((Rectangle){box.x + 4, box.y + 116, 222, 28}, "Back to list  ESC")) { menuOpen = 0; Editor_RequestLeave(); }
         else if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             if(!(m.x >= box.x && m.x <= box.x + box.width && m.y >= 0 && m.y <= box.y + box.height)) menuOpen = 0;
         }
@@ -3070,11 +3142,7 @@ static void Edit_DrawPanel(void) {
     DrawTextEx(mainFont, titleBuf, (Vector2){x, 66}, 24, 2, WHITE);
     // OPEN ao lado da musica: volta p/ lista p/ abrir outra (mesmo que ESC)
     if(Button((Rectangle){x + 300, 62, 110, 32}, "OPEN", 20)) {
-        StopPlay();
-        if(chart.dirty) Editor_Save();
-        Editor_UnloadIcons();
-        ceMode = CE_PICKER;
-        Picker_Refresh();
+        Editor_RequestLeave();
         return;
     }
     if(activeTab == TAB_SONG) Edit_DrawPanel_Song(x, y + 30);

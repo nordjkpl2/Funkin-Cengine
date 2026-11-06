@@ -7,6 +7,7 @@
 #include <math.h>
 #include <stdio.h>
 #include "Game.h"
+#include "Log.h"
 
 static Music inst;
 static Music voices;
@@ -34,13 +35,13 @@ static Music LoadInstrumental(const char* songDir) {
     Music music = {0};
 
     if (!FindAudioPath(songDir, "Inst", path)) {
-        TraceLog(LOG_ERROR, "Instrumental not found (Inst.ogg/mp3/wav): %s", songDir);
+        Log_WarnF("Inst nao encontrada (ogg/mp3/wav): %s", songDir);
         return music;
     }
 
     music = LoadMusicStream(path);
     if (music.stream.buffer == NULL) {
-        TraceLog(LOG_ERROR, "Could not load instrumental: %s", path);
+        Log_WarnF("Nao carregou a Inst: %s", path);
         return (Music){0};
     }
 
@@ -58,7 +59,7 @@ static void LoadVoices(const char* songDir) {
 
     voices = LoadMusicStream(path);
     if (voices.stream.buffer == NULL) {
-        TraceLog(LOG_WARNING, "Could not load voices: %s", path);
+        Log_WarnF("Nao carregou as Voices: %s", path);
         voices = (Music){0};
         return;
     }

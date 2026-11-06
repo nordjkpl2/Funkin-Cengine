@@ -113,6 +113,25 @@ static bool Char_Find(const CharCtx *ctx, char out[CHAR_PATH_MAX],
     return length > 0 && length < CHAR_PATH_MAX && FileExists(out);
 }
 
+/* .animset + .png do MESMO lugar (mod ou assets/). Misturar um animset do mod
+   com o png de assets/ (ou o contrario) embaralha os frames. */
+static bool Char_FindPair(const CharCtx *ctx, char setOut[CHAR_PATH_MAX], char pngOut[CHAR_PATH_MAX],
+                          const char *setName, const char *pngName)
+{
+    for (int pass = 0; pass < 2; ++pass) {
+        const char *root = pass == 0 ? ctx->root : "assets";
+        if (!root[0])
+            continue;
+
+        int a = snprintf(setOut, CHAR_PATH_MAX, "%s/images/characters/%s.animset", root, setName);
+        int b = snprintf(pngOut, CHAR_PATH_MAX, "%s/images/characters/%s.png", root, pngName);
+        if (a > 0 && a < CHAR_PATH_MAX && b > 0 && b < CHAR_PATH_MAX &&
+            FileExists(setOut) && FileExists(pngOut))
+            return true;
+    }
+    return false;
+}
+
 /* Em pares {sprite, nome}: pula vazio e repetido. */
 static bool Char_SkipName(const char *const names[2], int i)
 {
@@ -227,6 +246,7 @@ static void Char_LoadIcon(const CharCtx *ctx, Character *character,
         found = Char_Find(ctx, path, "images/icons/%s.png", name);
 
     if (!found) {
+        Log_WarnF("Icone nao encontrado: '%s' (usando padrao)", iconName);
         Char_CopyString(path, sizeof(path),
             role == CHAR_DAD ? "assets/images/icons/dad.png"
                              : "assets/images/icons/bf.png");
@@ -642,18 +662,14 @@ static bool Char_LoadLegacyCustom(const CharCtx *ctx, Character *character,
     char jsonPath[CHAR_PATH_MAX];
     char pngPath[CHAR_PATH_MAX];
 
-    if (!Char_Find(ctx, setPath, "images/characters/%s.animset", name))
-        return false;
-
     CharJson json;
     Char_JsonInit(&json);
     if (Char_Find(ctx, jsonPath, "characters/%s.json", name))
         Char_ReadJson(jsonPath, &json);
 
     const char *textureName = json.imageBase[0] ? json.imageBase : name;
-    if (!Char_Find(ctx, pngPath, "images/characters/%s.png", textureName) &&
-        (!strcmp(textureName, name) ||
-         !Char_Find(ctx, pngPath, "images/characters/%s.png", name))) {
+    if (!Char_FindPair(ctx, setPath, pngPath, name, textureName) &&
+        (!strcmp(textureName, name) || !Char_FindPair(ctx, setPath, pngPath, name, name))) {
         return false;
     }
 
@@ -740,10 +756,8 @@ static bool Char_LoadBuiltin(const CharCtx *ctx, Character *character, CharRole 
     char setPath[CHAR_PATH_MAX];
     char pngPath[CHAR_PATH_MAX];
 
-    if (!Char_Find(ctx, setPath, "images/characters/%s.animset", def->name) ||
-        !Char_Find(ctx, pngPath, "images/characters/%s.png", def->name)) {
+    if (!Char_FindPair(ctx, setPath, pngPath, def->name, def->name))
         return false;
-    }
 
     Texture2D texture = Render_LoadTexture(pngPath);
     if (!texture.id)
@@ -810,6 +824,9 @@ void Character_Load(Character *restrict character,
     }
 
     /* Nome desconhecido: usa o padrao do lado (dad) ou o bf. */
+    if (!isDadName && !isBfName && !isGfName)
+        Log_WarnF("Personagem '%s' nao encontrado: usando %s padrao", characterName,
+                  role == CHAR_DAD ? "dad" : "bf");
     const CharRole builtin = (role == CHAR_DAD || isDadName) ? CHAR_DAD : CHAR_BF;
     if (Char_LoadBuiltin(ctx, character, builtin))
         return;
@@ -902,20 +919,17 @@ void Girlfriend_Load(Girlfriend *restrict gf, const char *restrict name)
     CharJson json;
     Char_JsonInit(&json);
 
-    bool found = Char_Find(ctx, setPath, "images/characters/%s.animset", characterName);
-    if (found) {
-        if (Char_Find(ctx, jsonPath, "characters/%s.json", characterName))
-            Char_ReadJson(jsonPath, &json);
+    if (Char_Find(ctx, jsonPath, "characters/%s.json", characterName))
+        Char_ReadJson(jsonPath, &json);
 
-        const char *textureName = json.imageBase[0] ? json.imageBase : characterName;
-        found = Char_Find(ctx, pngPath, "images/characters/%s.png", textureName) ||
-                (strcmp(textureName, characterName) != 0 &&
-                 Char_Find(ctx, pngPath, "images/characters/%s.png", characterName));
-    }
+    const char *textureName = json.imageBase[0] ? json.imageBase : characterName;
+    bool found = Char_FindPair(ctx, setPath, pngPath, characterName, textureName) ||
+                 (strcmp(textureName, characterName) != 0 &&
+                  Char_FindPair(ctx, setPath, pngPath, characterName, characterName));
     if (!found && strcmp(characterName, "gf") != 0) {
+        Log_WarnF("Girlfriend '%s' nao encontrada: usando gf padrao", characterName);
         Char_JsonInit(&json);
-        found = Char_Find(ctx, setPath, "images/characters/gf.animset") &&
-                Char_Find(ctx, pngPath, "images/characters/gf.png");
+        found = Char_FindPair(ctx, setPath, pngPath, "gf", "gf");
     }
     if (!found)
         Log_Fatal("Girlfriend_Load: could not locate girlfriend assets");

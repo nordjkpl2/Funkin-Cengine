@@ -45,6 +45,7 @@ static float smooth(float a, float b, float c) {
 static char songDir[256];
 static char returnToEditor, returnToWeek, diffSuf[16], overrideP2[SONG_NAME_MAX];
 static char restarted;
+static char warnScreen;   // tela de avisos aberta (antes da contagem)
 static float lastAppliedMusicVolume = -1.0f;
 
 // musica e batida
@@ -482,11 +483,13 @@ static void LoadUiAssets(void) {
 static void PlayState_Create([[maybe_unused]] RayScene* scene) {
     ResetState();
 
+    warnScreen = 0;
     if (restarted) {
         Restart();
         return;
     }
 
+    Log_WarnClear();
     PlayStateHealth_Init(gameOptions.scroll == 1);
     PlayStateText_Init(songDir);
 
@@ -518,6 +521,29 @@ static void PlayState_Create([[maybe_unused]] RayScene* scene) {
     ClearBackground(BLACK);
     for (int i = 0; i < 10; i++)
         PlayStateAudio_UpdateStreams();
+
+    warnScreen = Log_WarnCount() > 0;
+}
+
+// Avisos de carregamento (stage/personagem/audio nao encontrado...). ENTER continua.
+static void WarnScreen_Draw(void) {
+    DrawRectangle(0, 0, (int)SCREEN_W, (int)SCREEN_H, (Color) {0, 0, 0, 215});
+
+    char title[48];
+    snprintf(title, sizeof(title), "AVISOS (%d)", Log_WarnCount());
+    DrawTextEx(mainFont, title, (Vector2) {60, 50}, 44, 3, YELLOW);
+
+    const int shown = Log_WarnCount() < LOG_WARN_MAX ? Log_WarnCount() : LOG_WARN_MAX;
+    for (int i = 0; i < shown; i++)
+        DrawTextEx(mainFont, Log_WarnAt(i), (Vector2) {60, 130.0f + (float)i * 30.0f}, 20, 1, WHITE);
+
+    if (Log_WarnCount() > shown) {
+        char more[64];
+        snprintf(more, sizeof(more), "... e mais %d (veja assets/logs.txt)", Log_WarnCount() - shown);
+        DrawTextEx(mainFont, more, (Vector2) {60, 130.0f + (float)shown * 30.0f}, 20, 1, GRAY);
+    }
+
+    DrawTextEx(mainFont, "ENTER para continuar", (Vector2) {60, SCREEN_H - 70}, 24, 2, GREEN);
 }
 
 /* ------------------------------------------------------------------ */
@@ -663,6 +689,11 @@ static void PlayState_Update([[maybe_unused]] RayScene* scene) {
     const float dt = RayGame_DeltaTime();
 
     ApplyMusicVolume();
+
+    if (warnScreen) {
+        if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)) warnScreen = 0;
+        return;
+    }
 
     if (!IsWindowFocused()) {
         PlayStateAudio_Pause();
@@ -833,6 +864,8 @@ static void PlayState_Draw([[maybe_unused]] RayScene* scene) {
 
     if (isPaused)
         PauseMenu_Update();
+    if (warnScreen)
+        WarnScreen_Draw();
     Render_StopCamera();
 }
 
