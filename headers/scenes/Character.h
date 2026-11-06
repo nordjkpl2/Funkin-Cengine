@@ -18,6 +18,8 @@ typedef struct {
     RayAnimatedObject object;
     Vector2 cameraOffset;    /* foco da camera = object.position + cameraOffset */
     bool psychCamera;        /* cameraOffset guarda o camera_position cru do JSON (ver PlayStateStage) */
+    Vector2 psychBox;        /* frameWidth/Height do atlas * escala (width/height da Psych); 0 = desconhecido */
+    Vector2 psychShift;      /* ja somado a object.position: a Psych cresce a escala a partir do centro do frame */
     Texture2D icon;          /* icone da barra de vida */
     float idleTimer;
     bool idled;

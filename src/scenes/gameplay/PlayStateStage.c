@@ -102,9 +102,11 @@ static void FinalizeCamera(Character* c, char isDad, const float* stageOffset) {
         return;
     }
 
-    const Vector2 size = AnimatedObject_Sizes(&c->object);   // frame idle * escala
-    const float halfW = fabsf(size.x) * 0.5f;
-    const float halfH = fabsf(size.y) * 0.5f;
+    // Psych: width/height = frameWidth/Height do atlas * escala. Sem XML, cai no frame idle * escala.
+    // A posicao ja traz psychShift (escala cresce do centro); o ponto medio usa a posicao sem ele.
+    const Vector2 size = c->psychBox.x > 0.0f ? c->psychBox : AnimatedObject_Sizes(&c->object);
+    const float halfW = fabsf(size.x) * 0.5f - c->psychShift.x;
+    const float halfH = fabsf(size.y) * 0.5f - c->psychShift.y;
     const Vector2 raw = c->cameraOffset;
 
     if (isDad)

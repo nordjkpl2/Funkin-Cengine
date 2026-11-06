@@ -75,3 +75,18 @@
 54	525	8156923032886392	CMakeFiles/FNF_C_ENGINE.dir/src/core/Log.c.obj	d2919b669700530e
 68	568	8156923033043109	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/ChartEditor.c.obj	e5ace1f6581241d
 568	2954	8156923037989645	D:/dev/funkin c/FNF_C_ENGINE.exe	1ec35afc45ffeffc
+20	51	8156933861241153	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+55	178	8156933861553159	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayStateStage.c.obj	895e295cba88cc62
+179	2493	8156933862832442	D:/dev/funkin c/FNF_C_ENGINE.exe	1ec35afc45ffeffc
+19	53	8156941963828328	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+69	188	8156941964331273	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayStateHealth.c.obj	99b33ad82d8de672
+72	197	8156941964361431	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayStatePlayerInput.c.obj	3846446947f8b1af
+65	206	8156941964291892	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayStateCamera.c.obj	aba5c71d10eab6a4
+76	231	8156941964401368	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayStateStage.c.obj	895e295cba88cc62
+61	244	8156941964250464	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayState.c.obj	6cb6e51baac2993
+80	319	8156941964453152	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/other/Character.c.obj	71db5ab4bc39f3fd
+57	538	8156941964209700	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/ChartEditor.c.obj	e5ace1f6581241d
+538	3059	8156941969017296	D:/dev/funkin c/FNF_C_ENGINE.exe	1ec35afc45ffeffc
+16	47	8156950254331203	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+51	159	8156950254684644	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayStateStage.c.obj	895e295cba88cc62
+159	2692	8156950255766856	D:/dev/funkin c/FNF_C_ENGINE.exe	1ec35afc45ffeffc

@@ -18,6 +18,7 @@
 #include "yyjson.h"
 #include "yxml.h"
 
+#include <math.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -125,6 +126,58 @@ static bool Char_FindPair(const CharCtx *ctx, char setOut[CHAR_PATH_MAX], char p
             return true;
     }
     return false;
+}
+
+/* Psych: width/height = frameWidth/Height do atlas * escala, e a escala cresce a
+   partir do centro do frame (o playAnim troca o offset do updateHitbox). Le o
+   primeiro SubTexture do XML do atlas (mesmo nome do png). Sem XML: box = 0 e
+   shift = 0, e o chamador usa o tamanho do frame. */
+static float Char_TagNumber(const char *tag, const char *tagEnd, const char *key, float fallback)
+{
+    const size_t keyLength = strlen(key);
+    for (const char *p = tag; p + keyLength + 2u < tagEnd; ++p) {
+        const bool boundary = p == tag || p[-1] == ' ' || p[-1] == '\t' || p[-1] == '\n' || p[-1] == '\r';
+        if (boundary && !strncmp(p, key, keyLength) && p[keyLength] == '=' &&
+            (p[keyLength + 1u] == '"' || p[keyLength + 1u] == '\''))
+            return strtof(p + keyLength + 2u, NULL);
+    }
+    return fallback;
+}
+
+static void Char_PsychBox(const char *pngPath, float scale, Vector2 *box, Vector2 *shift)
+{
+    *box = (Vector2){ 0.0f, 0.0f };
+    *shift = (Vector2){ 0.0f, 0.0f };
+
+    char xmlPath[CHAR_PATH_MAX];
+    Char_CopyString(xmlPath, sizeof(xmlPath), pngPath);
+    char *extension = strrchr(xmlPath, '.');
+    if (!extension || strlen(extension) != 4u)
+        return;
+    memcpy(extension, ".xml", 5u);
+
+    FILE *file = fopen(xmlPath, "rb");
+    if (!file)
+        return;
+    char text[4096];
+    const size_t length = fread(text, 1, sizeof(text) - 1u, file);
+    fclose(file);
+    text[length] = '\0';
+
+    const char *tag = strstr(text, "<SubTexture");
+    const char *tagEnd = tag ? strchr(tag, '>') : NULL;
+    if (!tagEnd)
+        return;
+
+    const float width = Char_TagNumber(tag, tagEnd, "frameWidth", Char_TagNumber(tag, tagEnd, "width", 0.0f));
+    const float height = Char_TagNumber(tag, tagEnd, "frameHeight", Char_TagNumber(tag, tagEnd, "height", 0.0f));
+    if (width <= 0.0f || height <= 0.0f)
+        return;
+
+    const float grow = fabsf(scale);
+    *box = (Vector2){ width * grow, height * grow };
+    if (fabsf(grow - 1.0f) > 0.0001f)
+        *shift = (Vector2){ -0.5f * width * (grow - 1.0f), -0.5f * height * (grow - 1.0f) };
 }
 
 /* Em pares {sprite, nome}: pula vazio e repetido. */
@@ -693,7 +746,9 @@ static bool Char_LoadLegacyCustom(const CharCtx *ctx, Character *character,
     character->object.scaleX = mirrored ? -json.scale : json.scale;
     character->object.scaleY = json.scale;
     character->object.color = WHITE;
-    character->object.position = json.position;
+    Char_PsychBox(pngPath, json.scale, &character->psychBox, &character->psychShift);
+    character->object.position = (Vector2){ json.position.x + character->psychShift.x,
+                                            json.position.y + character->psychShift.y };
     character->singDuration = json.singDuration;
     character->hasHealthColor = json.hasHealthColor;
     character->healthColor = json.healthColor;
@@ -796,6 +851,8 @@ void Character_Load(Character *restrict character,
     Render_DefaultAnimated(&character->object);
     character->idled = false;
     character->psychCamera = false;
+    character->psychBox = (Vector2){ 0.0f, 0.0f };
+    character->psychShift = (Vector2){ 0.0f, 0.0f };
     character->idleTimer = 0.0f;
     character->singDuration = 4.0f;
     character->hasHealthColor = false;
@@ -958,6 +1015,8 @@ void Girlfriend_Load(Girlfriend *restrict gf, const char *restrict name)
     gf->object.scaleX = json.flipX ? -json.scale : json.scale;
     gf->object.scaleY = json.scale;
     gf->object.color = WHITE;
-    gf->object.position = json.position;
+    Vector2 gfBox, gfShift;
+    Char_PsychBox(pngPath, json.scale, &gfBox, &gfShift);
+    gf->object.position = (Vector2){ json.position.x + gfShift.x, json.position.y + gfShift.y };
     AnimatedObject_SetAnimation(&gf->object, gf->anims[0]);
 }

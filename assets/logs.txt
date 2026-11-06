@@ -12,3 +12,33 @@
 
 --- SESSION LOG START ---
 [WARN] Icone nao encontrado: 'none' (usando padrao)
+
+--- SESSION LOG START ---
+[WARN] DBG dad pos=(-2890,510) scale=(2.30,2.30) size=(3356,2951)
+[WARN] DBG bf pos=(750,1750) scale=1.00 size=(433,399)
+
+--- SESSION LOG START ---
+[WARN] DBG dad pos=(-2890,510) scale=(2.30,2.30) size=(3356,2951)
+[WARN] DBG bf pos=(750,1750) scale=1.00 size=(433,399)
+
+--- SESSION LOG START ---
+[WARN] DBG dad pos=(-4970,-894) scale=(2.30,2.30) size=(3356,2951)
+[WARN] DBG bf pos=(750,1750) scale=1.00 size=(433,399)
+[WARN] DBG dad pos=(-458,-148) scale=(2.30,2.30) size=(902,290)
+[WARN] DBG bf pos=(1520,700) scale=1.00 size=(433,399)
+[WARN] DBG dad pos=(-3488,-388) scale=(0.40,0.40) size=(508,687)
+[WARN] DBG bf pos=(-1970,290) scale=1.00 size=(433,399)
+[WARN] DBG dad pos=(478,-303) scale=(1.20,1.20) size=(718,683)
+[WARN] DBG bf pos=(-20,450) scale=-1.00 size=(-433,399)
+[WARN] DBG dad pos=(-490,-445) scale=(0.70,0.70) size=(282,479)
+[WARN] DBG bf pos=(920,-200) scale=1.00 size=(433,399)
+[WARN] DBG dad pos=(-3027,-298) scale=(1.90,1.90) size=(386,426)
+[WARN] DBG bf pos=(-1920,200) scale=1.00 size=(433,399)
+[WARN] DBG dad pos=(310,1240) scale=(0.70,0.70) size=(354,572)
+[WARN] DBG bf pos=(1600,1650) scale=1.00 size=(433,399)
+[WARN] Icone nao encontrado: 'exosphereinsanity' (usando padrao)
+[WARN] DBG dad pos=(-1210,-540) scale=(1.00,1.00) size=(919,1024)
+[WARN] DBG bf pos=(820,350) scale=1.00 size=(433,399)
+[WARN] Girlfriend 'air' nao encontrada: usando gf padrao
+[WARN] DBG dad pos=(-1777,-257) scale=(1.20,1.20) size=(430,827)
+[WARN] DBG bf pos=(-3438,227) scale=1.40 size=(728,895)

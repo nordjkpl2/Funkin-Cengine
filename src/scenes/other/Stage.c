@@ -679,7 +679,11 @@ int Stage_ParseLua(const char *luaText, StageSprite *out, int capacity, int *ign
                         Stage_ParseIntArg(&args, argsEnd, &order)) {
                         index = Stage_GetOrCreateSprite(maps, &mapCount, out, &objectCount, capacity, tag);
                         if (index >= 0) {
-                            out[index].front = order > 0 ? 1 : 0;
+                            /* Psych: o numero e o indice na lista do PlayState:
+                               [fixos, sprites de fundo..., gf, dad, bf, frente...].
+                               Numero baixo fica atras dos personagens; so passa para
+                               a frente depois dos tres grupos (fundos + 4). */
+                            out[index].front = order >= objectCount + 3 ? 1 : 0;
                         }
                     }
                 } break;
