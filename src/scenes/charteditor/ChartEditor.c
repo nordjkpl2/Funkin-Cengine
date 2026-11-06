@@ -11,814 +11,31 @@
 #include "Game.h"
 #include "GameData.h"
 #include "raymath.h"
-// helpers yyjson -> corrige bug do int vs double
-static inline double yy_to_double(yyjson_val *v){
-    if(yyjson_is_real(v)) return yyjson_get_real(v);
-    if(yyjson_is_sint(v)) return (double)yyjson_get_sint(v);
-    if(yyjson_is_uint(v)) return (double)yyjson_get_uint(v);
-    return 0;
-}
-static inline int yy_to_int(yyjson_val *v){
-    if(yyjson_is_sint(v)) return (int)yyjson_get_sint(v);
-    if(yyjson_is_uint(v)) return (int)yyjson_get_uint(v);
-    if(yyjson_is_real(v)) return (int)yyjson_get_real(v);
-    return 0;
-}
-/* // * Código do Chart Editor */
-// Chart Editor v1: palavras simples, sem jargao.
-// PICKER (escolher musica / abrir json) -> EDIT (grade) -> F5 testa no jogo.
-// ^ 1. Chart
+#include "EditorDataAndIO.h"
+#include "EditorTimeline.h"
+#include "EditorAudio.h"
+#include "EditorWidgets.h"
+#include "EditorGrid.h"
 
-static Color LaneColor(int lane);
-static Vector2 MouseWorld(void);
 static SongEntry* pickerSongs;
+
 static int pickerCount;
-
-typedef struct {
-    float time; // ms
-    int lane;   // 0-7 (0-3 oponente, 4-7 voce)
-    float len;  // ms de nota longa, 0 = normal
-} EdNote;
-
-typedef struct {
-    char mustHit; // 1 = sua vez, 0 = vez do oponente
-    float bpm;
-    char changeBPM;
-    int lenSteps;
-    EdNote* notes;
-    int count;
-    int cap;
-} EdSec;
-
-typedef struct {
-    char name[64];
-    char p1[SONG_NAME_MAX];
-    char p2[SONG_NAME_MAX];
-    char stage[SONG_NAME_MAX];
-    char gf[SONG_NAME_MAX]; // gfVersion (Girlfriend): "gf", "none"/"nogf" = sem girlfriend
-    char noteSkin[SONG_NAME_MAX]; // custom note skin (mod > global default)
-    char dir[256]; // pasta da musica ("" = ainda nao salva)
-    float bpm;
-    float speed;
-    EdSec* secs;
-    int nsec;
-    char dirty;
-} EdChart;
-
-static EdChart chart;
-static char chartLoaded = 0;
-
-// ---------- undo (pilha de copias) ----------
-#define UNDO_MAX 50
-static EdChart undoStack[UNDO_MAX];
-static int undoCount = 0;
-
-/*============
- * // ^ 1. Chart
- *=====================*/
-
-static void EdChart_Free(EdChart* c) {
-    if(c->secs != NULL) {
-        for(int i = 0; i < c->nsec; i++)
-            free(c->secs[i].notes);
-        free(c->secs);
-        c->secs = NULL;
-    }
-    c->nsec = 0;
-}
-
-static void EdChart_CopyInto(EdChart* dst, const EdChart* src) {
-    EdChart_Free(dst);
-    *dst = *src; // copia escalares + dir/name
-    dst->secs = NULL;
-    dst->nsec = 0;
-    if(src->nsec > 0) {
-        dst->secs = malloc(sizeof(EdSec) * (size_t)src->nsec);
-        dst->nsec = src->nsec;
-        for(int i = 0; i < src->nsec; i++) {
-            dst->secs[i] = src->secs[i];
-            dst->secs[i].notes = NULL;
-            dst->secs[i].count = 0;
-            dst->secs[i].cap = 0;
-            if(src->secs[i].count > 0) {
-                dst->secs[i].notes = malloc(sizeof(EdNote) * (size_t)src->secs[i].count);
-                dst->secs[i].cap = src->secs[i].count;
-                dst->secs[i].count = src->secs[i].count;
-                memcpy(dst->secs[i].notes, src->secs[i].notes, sizeof(EdNote) * (size_t)src->secs[i].count);
-            }
-        }
-    }
-}
-
-static void Undo_Push(void) {
-    if(undoCount >= UNDO_MAX) {
-        EdChart_Free(undoStack);
-        memmove(undoStack, undoStack + 1, sizeof(EdChart) * (UNDO_MAX - 1));
-        undoCount = UNDO_MAX - 1;
-    }
-    memset(undoStack + undoCount, 0, sizeof(EdChart));
-    EdChart_CopyInto(undoStack + undoCount, &chart);
-    undoCount++;
-}
-
-static void Undo_Clear(void) {
-    for(int i = 0; i < undoCount; i++)
-        EdChart_Free(undoStack + i);
-    undoCount = 0;
-}
-
-static void Undo_Pop(void) {
-    if(undoCount <= 0)
-        return;
-    undoCount--;
-    EdChart_Free(&chart);
-    memset(&chart, 0, sizeof(chart));
-    EdChart_CopyInto(&chart, undoStack + undoCount);
-    EdChart_Free(undoStack + undoCount);
-}
-
-// ---------- notas ----------
-static int EdNote_Cmp(const void* a, const void* b) {
-    float ta = ((const EdNote*)a)->time;
-    float tb = ((const EdNote*)b)->time;
-    if(ta < tb) return -1;
-    if(ta > tb) return 1;
-    return 0;
-}
-
-static void EdSec_Sort(EdSec* s) {
-    if(s->count > 1)
-        qsort(s->notes, (size_t)s->count, sizeof(EdNote), EdNote_Cmp);
-}
-
-static void EdSec_Add(EdSec* s, float time, int lane, float len) {
-    // tira duplicada (mesma casa, <2ms) igual ao jogo
-    for(int i = 0; i < s->count; i++) {
-        if(s->notes[i].lane == lane && fabsf(s->notes[i].time - time) < 2.0f)
-            return;
-    }
-    if(s->count >= s->cap) {
-        int nc = (s->cap == 0) ? 8 : s->cap * 2;
-        EdNote* g = realloc(s->notes, sizeof(EdNote) * (size_t)nc);
-        if(g == NULL) return;
-        s->notes = g;
-        s->cap = nc;
-    }
-    s->notes[s->count].time = time;
-    s->notes[s->count].lane = lane;
-    s->notes[s->count].len = (len < 0) ? 0 : len;
-    s->count++;
-    EdSec_Sort(s);
-}
-
-// bulk: anexa sem dedup/sort (import/paste em massa). Fecha com FinishBulk.
-static void EdSec_AddBulk(EdSec* s, float time, int lane, float len) {
-    if(s->count >= s->cap) {
-        int nc = (s->cap == 0) ? 1024 : s->cap * 2;
-        EdNote* g = realloc(s->notes, sizeof(EdNote) * (size_t)nc);
-        if(g == NULL) return;
-        s->notes = g;
-        s->cap = nc;
-    }
-    s->notes[s->count].time = time;
-    s->notes[s->count].lane = lane;
-    s->notes[s->count].len = (len < 0) ? 0 : len;
-    s->count++;
-}
-
-// ordena + dedup adjacente (mesma casa <2ms). Equivale ao Add um-a-um:
-// contra o set ja filtrado, so o vizinho anterior da mesma casa importa.
-static void EdSec_FinishBulk(EdSec* s) {
-    if(s->count < 2) return;
-    EdSec_Sort(s);
-    float lastT[8];
-    char seen[8] = {0, 0, 0, 0, 0, 0, 0, 0};
-    for(int i = 0; i < 8; i++)
-        lastT[i] = -1000000.0f;
-    int w = 0;
-    for(int r = 0; r < s->count; r++) {
-        int lane = s->notes[r].lane;
-        if(lane >= 0 && lane < 8) {
-            if(seen[lane] && fabsf(s->notes[r].time - lastT[lane]) < 2.0f)
-                continue;
-            seen[lane] = 1;
-            lastT[lane] = s->notes[r].time;
-        }
-        if(w != r)
-            s->notes[w] = s->notes[r];
-        w++;
-    }
-    s->count = w;
-}
-
-// lado da tela: no editor VOCE fica sempre a direita (igual ao jogo).
-// vira a casa pra exibir; a funcao e a propria inversa (vale pros 2 lados)
-static int DispLane(const EdSec* s, int lane) {
-    if(s->mustHit)
-        return (lane < 4) ? lane + 4 : lane - 4;
-    return lane;
-}
-
-// indice da nota perto, ou -1
-static int EdSec_FindNear(EdSec* s, float time, int lane, float windowMs) {
-    int best = -1;
-    float bestD = windowMs;
-    for(int i = 0; i < s->count; i++) {
-        if(s->notes[i].lane != lane)
-            continue;
-        float d = fabsf(s->notes[i].time - time);
-        if(d < bestD) {
-            bestD = d;
-            best = i;
-        }
-    }
-    return best;
-}
-
-static char EdSec_RemoveAt(EdSec* s, int idx) {
-    if(idx < 0 || idx >= s->count)
-        return 0;
-    memmove(s->notes + idx, s->notes + idx + 1, sizeof(EdNote) * (size_t)(s->count - idx - 1));
-    s->count--;
-    return 1;
-}
-
-// ---------- carregar ----------
-static void EdChart_Default(EdChart* c, const char* name) {
-    memset(c, 0, sizeof(*c));
-    strncpy(c->name, name, sizeof(c->name) - 1);
-    strncpy(c->p1, "bf", sizeof(c->p1) - 1);
-    strncpy(c->p2, "dad", sizeof(c->p2) - 1);
-    strncpy(c->stage, "stage", sizeof(c->stage) - 1);
-    strncpy(c->gf, "gf", sizeof(c->gf) - 1);
-    c->bpm = 100.0f;
-    c->speed = 1.0f;
-    c->secs = calloc(1, sizeof(EdSec));
-    c->nsec = 1;
-    c->secs[0].mustHit = 1;
-    c->secs[0].bpm = 100.0f;
-    c->secs[0].changeBPM = 1;
-    c->secs[0].lenSteps = 16;
-}
-
-// json FNF cru (lendo lanes 0-7 direto, sem converter)
-static char EdChart_LoadJSON(EdChart* c, const char* jsonPath, const char* dir, const char* fallbackName) {
-    FILE* f = fopen(jsonPath, "rb");
-    if(f == NULL)
-        return 0;
-    fseek(f, 0, SEEK_END);
-    long size = ftell(f);
-    fseek(f, 0, SEEK_SET);
-    if(size <= 0 || size > 8 * 1024 * 1024) {
-        fclose(f);
-        return 0;
-    }
-    char* buf = malloc((size_t)size + 1);
-    if(buf == NULL) {
-        fclose(f);
-        return 0;
-    }
-    if(fread(buf, 1, (size_t)size, f) != (size_t)size) {
-        free(buf);
-        fclose(f);
-        return 0;
-    }
-    buf[size] = 0;
-    fclose(f);
-
-    yyjson_doc* doc = yyjson_read(buf, (size_t)size, 0);
-    free(buf);
-    if(doc == NULL)
-        return 0;
-        
-    yyjson_val* root = yyjson_doc_get_root(doc);
-    if(root == NULL) {
-        yyjson_doc_free(doc);
-        return 0;
-    }
-
-    yyjson_val* js = yyjson_obj_get(root, "song");
-    if(js == NULL)
-        js = root;
-
-    yyjson_val* jnotes = yyjson_obj_get(js, "notes");
-    if(!yyjson_is_arr(jnotes)) {
-        yyjson_doc_free(doc);
-        return 0;
-    }
-
-    EdChart tmp;
-    EdChart_Default(&tmp, fallbackName);
-    strncpy(tmp.dir, dir, sizeof(tmp.dir) - 1);
-
-    yyjson_val* j = yyjson_obj_get(js, "song");
-    if(yyjson_is_str(j)) strncpy(tmp.name, yyjson_get_str(j), sizeof(tmp.name) - 1);
-
-    j = yyjson_obj_get(js, "bpm");
-    if(yyjson_is_num(j) && yy_to_double(j) >= 10) tmp.bpm = (float)yy_to_double(j);
-    
-    j = yyjson_obj_get(js, "speed");
-    if(yyjson_is_num(j) && yy_to_double(j) > 0) tmp.speed = (float)yy_to_double(j);
-    
-    j = yyjson_obj_get(js, "player1");
-    if(yyjson_is_str(j)) strncpy(tmp.p1, yyjson_get_str(j), sizeof(tmp.p1) - 1);
-    
-    j = yyjson_obj_get(js, "player2");
-    if(yyjson_is_str(j)) strncpy(tmp.p2, yyjson_get_str(j), sizeof(tmp.p2) - 1);
-    
-    j = yyjson_obj_get(js, "stage");
-    if(yyjson_is_str(j)) strncpy(tmp.stage, yyjson_get_str(j), sizeof(tmp.stage) - 1);
-    
-    j = yyjson_obj_get(js, "gfVersion");
-    if(yyjson_is_str(j)) strncpy(tmp.gf, yyjson_get_str(j), sizeof(tmp.gf) - 1);
-    
-    // noteSkin: custom note skin name
-    j = yyjson_obj_get(js, "noteSkin");
-    if(yyjson_is_str(j)) strncpy(tmp.noteSkin, yyjson_get_str(j), sizeof(tmp.noteSkin) - 1);
-    else
-        tmp.noteSkin[0] = 0;
-
-    int nsec = (int)yyjson_arr_size(jnotes);
-    if(nsec > 0) {
-        EdChart_Free(&tmp);
-        tmp.secs = calloc((size_t)nsec, sizeof(EdSec));
-        tmp.nsec = nsec;
-        float runBpm = tmp.bpm;
-        
-        for(int i = 0; i < nsec; i++) {
-            yyjson_val* jsec = yyjson_arr_get(jnotes, i);
-            EdSec* s = tmp.secs + i;
-            s->lenSteps = 16;
-            s->bpm = runBpm;
-            
-            if(!yyjson_is_obj(jsec))
-                continue;
-                
-            yyjson_val* jl = yyjson_obj_get(jsec, "lengthInSteps");
-            if(jl == NULL) jl = yyjson_obj_get(jsec, "lengthinsteps");
-            if(yyjson_is_num(jl) && yyjson_get_real(jl) >= 1) s->lenSteps = (int)yyjson_get_int(jl);
-            
-            yyjson_val* jmust = yyjson_obj_get(jsec, "mustHitSection");
-            if(yyjson_is_bool(jmust) && yyjson_get_bool(jmust)) 
-                s->mustHit = 1;
-            else 
-                s->mustHit = 0;
-
-            yyjson_val* jb = yyjson_obj_get(jsec, "bpm");
-            yyjson_val* jchange = yyjson_obj_get(jsec, "changeBPM");
-
-            s->changeBPM = 0;
-
-            if (yyjson_is_bool(jchange) &&
-                yyjson_get_bool(jchange) &&
-                yyjson_is_num(jb) &&
-                    yyjson_get_real(jb) >= 10.0) {
-
-            runBpm = (float)yyjson_get_real(jb);
-            s->changeBPM = 1;
-            }
-
-s->bpm = runBpm;
-            
-            yyjson_val* jarr = yyjson_obj_get(jsec, "sectionNotes");
-            if(!yyjson_is_arr(jarr))
-                continue;
-                
-            int rn = (int)yyjson_arr_size(jarr);
-            for(int k = 0; k < rn; k++) {
-                yyjson_val* jn = yyjson_arr_get(jarr, k);
-                if(!yyjson_is_arr(jn) || yyjson_arr_size(jn) < 2)
-                    continue;
-                    
-                yyjson_val* jt = yyjson_arr_get(jn, 0);
-                yyjson_val* ji = yyjson_arr_get(jn, 1);
-                yyjson_val* jln = yyjson_arr_size(jn) > 2 ? yyjson_arr_get(jn, 2) : NULL;
-                
-                if(yyjson_is_num(jl) && yy_to_double(jl) >= 1) s->lenSteps = yy_to_int(jl);
-                int lane = yy_to_int(ji) % 8; // agora funciona pra 0 e 0.0
-                float len = (yyjson_is_num(jln) && yy_to_double(jln) > 0) ? (float)yy_to_double(jln) : 0;
-
-                EdSec_AddBulk(s, (float)yy_to_double(jt), lane, len); // tempo correto
-            }
-            EdSec_FinishBulk(s);
-        }
-    }
-
-    yyjson_doc_free(doc);
-    EdChart_Free(c);
-    *c = tmp;
-    return 1;
-}
-
-// binario .song antigo -> converte ids de volta pra lanes 0-7
-static char EdChart_LoadBinary(EdChart* c, const char* binPath, const char* dir, const char* fallbackName) {
-    Song s;
-    memset(&s, 0, sizeof(s));
-    // Song_Parse sai do jogo se o arquivo for invalido; checa antes
-    FILE* t = fopen(binPath, "rb");
-    if(t == NULL)
-        return 0;
-    fclose(t);
-    Song_Parse(&s, binPath);
-
-    EdChart tmp;
-    EdChart_Default(&tmp, fallbackName);
-    strncpy(tmp.dir, dir, sizeof(tmp.dir) - 1);
-    strncpy(tmp.p1, s.player1, sizeof(tmp.p1) - 1);
-    strncpy(tmp.p2, s.player2, sizeof(tmp.p2) - 1);
-    strncpy(tmp.stage, s.stage, sizeof(tmp.stage) - 1);
-    strncpy(tmp.gf, s.gfVersion, sizeof(tmp.gf) - 1);
-    strncpy(tmp.noteSkin, s.noteSkin, sizeof(tmp.noteSkin) - 1);
-    tmp.speed = (s.speed > 0) ? s.speed : 1.0f;
-    tmp.bpm = (s.sectionCount > 0) ? s.sections[0].bpm : 100.0f;
-
-    if(s.sectionCount > 0) {
-        EdChart_Free(&tmp);
-        tmp.secs = calloc((size_t)s.sectionCount, sizeof(EdSec));
-        tmp.nsec = s.sectionCount;
-        for(int i = 0; i < s.sectionCount; i++) {
-            Section* src = s.sections + i;
-            EdSec* dst = tmp.secs + i;
-            dst->mustHit = src->mustHit;
-            dst->bpm = src->bpm;
-            dst->changeBPM = (i == 0) || (src->bpm != s.sections[i - 1].bpm);
-            dst->lenSteps = (src->len >= 1) ? src->len : 16;
-            for(int k = 0; k < src->noteCount; k++) {
-                DataNote* dn = src->notes + k;
-                int lane;
-                if(src->mustHit) {
-                    lane = (dn->id < 0) ? (-dn->id - 1) : (dn->id + 3);
-                } else {
-                    lane = (dn->id > 0) ? (dn->id - 1) : (3 - dn->id);
-                }
-                if(lane < 0 || lane > 7)
-                    continue;
-                EdSec_AddBulk(dst, dn->time, lane, dn->len);
-            }
-            EdSec_FinishBulk(dst);
-        }
-    }
-
-    Song_Free(&s);
-    EdChart_Free(c);
-    *c = tmp;
-    return 1;
-}
-
-static const char* DirName(const char* path) {
-    const char* a = strrchr(path, '/');
-    const char* b = strrchr(path, '\\');
-    const char* s = (a > b) ? a : b;
-    return (s != NULL) ? s + 1 : path;
-}
-
-static char EdLooksLikeChart(const char* path) {
-    FILE* f = fopen(path, "rb");
-    if(f == NULL) return 0;
-    fseek(f, 0, SEEK_END);
-    long size = ftell(f);
-    fseek(f, 0, SEEK_SET);
-    if(size <= 0 || size > 8 * 1024 * 1024) { fclose(f); return 0; }
-    char* buf = malloc((size_t)size + 1);
-    if(buf == NULL) { fclose(f); return 0; }
-    if(fread(buf, 1, (size_t)size, f) != (size_t)size) { free(buf); fclose(f); return 0; }
-    buf[size] = 0;
-    fclose(f);
-
-    yyjson_doc* doc = yyjson_read(buf, (size_t)size, 0);
-    free(buf);
-    if(doc == NULL) return 0;
-
-    yyjson_val* root = yyjson_doc_get_root(doc);
-    if(root == NULL) { yyjson_doc_free(doc); return 0; }
-
-    yyjson_val* js = yyjson_obj_get(root, "song");
-    if(js == NULL) js = root;
-
-    yyjson_val* jn = yyjson_obj_get(js, "notes");
-    char ok = (yyjson_is_arr(jn) && yyjson_arr_size(jn) > 0);
-
-    yyjson_doc_free(doc);
-    return ok;
-}
-
-static char EdChart_OpenDir(EdChart* c, const char* dir) {
-    char p[300];
-    snprintf(p, sizeof(p), "%s/data.json", dir);
-    if(EdChart_LoadJSON(c, p, dir, DirName(dir)))
-        return 1;
-    // Psych: <pasta>.json (milf/milf.json)
-    snprintf(p, sizeof(p), "%s/%s.json", dir, DirName(dir));
-    if(EdLooksLikeChart(p) && EdChart_LoadJSON(c, p, dir, DirName(dir)))
-        return 1;
-    // qualquer outro *.json que pareca chart (satin-panties-*.json, etc)
-    if(DirectoryExists(dir)) {
-        FilePathList list = LoadDirectoryFilesEx(dir, ".json", false);
-        for(unsigned int i = 0; i < list.count; i++) {
-            const char* jp = list.paths[i];
-            char stem[128];
-            const char* s1 = strrchr(jp, '/');
-            const char* s2 = strrchr(jp, '\\');
-            const char* b = (s1 > s2) ? s1 : s2;
-            b = (b != NULL) ? b + 1 : jp;
-            strncpy(stem, b, sizeof(stem) - 1);
-            stem[sizeof(stem) - 1] = 0;
-            if(strcmp(stem, "events.json") == 0 || strcmp(stem, "data.json") == 0)
-                continue;
-            if(EdLooksLikeChart(jp) && EdChart_LoadJSON(c, jp, dir, DirName(dir))) {
-                UnloadDirectoryFiles(list);
-                return 1;
-            }
-        }
-        UnloadDirectoryFiles(list);
-    }
-    snprintf(p, sizeof(p), "%s/data.song", dir);
-    if(EdChart_LoadBinary(c, p, dir, DirName(dir)))
-        return 1;
-    return 0;
-}
-
-// forward
-static char EdChart_SaveEx(const EdChart* c, char compressed);
-
-// ---------- salvar (json FNF) ----------
-static char EdChart_Save(const EdChart* c) {
-    return EdChart_SaveEx(c, 0);
-}
-
-// ---------- salvar compacto (json minificado, campos padrão omitidos) ----------
-static char EdChart_SaveCompressed(const EdChart* c) {
-    return EdChart_SaveEx(c, 1);
-}
-
-static char EdChart_SaveEx(const EdChart* c, char compressed) {
-    if(c->dir[0] == 0)
-        return 0;
-
-    yyjson_mut_doc* doc = yyjson_mut_doc_new(NULL);
-    yyjson_mut_val* root = yyjson_mut_obj(doc);
-    yyjson_mut_doc_set_root(doc, root);
-
-    yyjson_mut_val* js = yyjson_mut_obj(doc);
-    yyjson_mut_obj_add_val(doc, root, "song", js);
-
-    yyjson_mut_obj_add_str(doc, js, "song", c->name);
-    if(!compressed || c->bpm != 100.0f) yyjson_mut_obj_add_real(doc, js, "bpm", c->bpm);
-    if(!compressed || c->speed != 1.0f) yyjson_mut_obj_add_real(doc, js, "speed", c->speed);
-    yyjson_mut_obj_add_str(doc, js, "player1", c->p1);
-    yyjson_mut_obj_add_str(doc, js, "player2", c->p2);
-    yyjson_mut_obj_add_str(doc, js, "stage", c->stage);
-    if(!compressed || (c->gf[0] != 0 && strcmp(c->gf, "gf") != 0))
-        yyjson_mut_obj_add_str(doc, js, "gfVersion", c->gf[0] != 0 ? c->gf : "gf");
-    if(!compressed || c->noteSkin[0] != 0)
-        yyjson_mut_obj_add_str(doc, js, "noteSkin", c->noteSkin);
-
-    yyjson_mut_val* jnotes = yyjson_mut_arr(doc);
-    yyjson_mut_obj_add_val(doc, js, "notes", jnotes);
-
-    float runBpm = c->bpm;
-    for(int i = 0; i < c->nsec; i++) {
-        const EdSec* s = c->secs + i;
-        yyjson_mut_val* jsec = yyjson_mut_obj(doc);
-        yyjson_mut_arr_append(jnotes, jsec);
-
-        if(!compressed || s->lenSteps != 16)
-            yyjson_mut_obj_add_int(doc, jsec, "lengthInSteps", s->lenSteps);
-        if(!compressed || s->mustHit)
-            yyjson_mut_obj_add_bool(doc, jsec, "mustHitSection", s->mustHit);
-
-        char change = (s->bpm != runBpm);
-        if(change) runBpm = s->bpm;
-        if(!compressed || change)
-            yyjson_mut_obj_add_real(doc, jsec, "bpm", s->bpm);
-        if(!compressed || change)
-            yyjson_mut_obj_add_bool(doc, jsec, "changeBPM", change);
-
-        yyjson_mut_val* jarr = yyjson_mut_arr(doc);
-        yyjson_mut_obj_add_val(doc, jsec, "sectionNotes", jarr);
-
-        for(int k = 0; k < s->count; k++) {
-            yyjson_mut_val* jn = yyjson_mut_arr(doc);
-            yyjson_mut_arr_append(jarr, jn);
-            yyjson_mut_arr_append(jn, yyjson_mut_real(doc, s->notes[k].time));
-            yyjson_mut_arr_append(jn, yyjson_mut_int(doc, s->notes[k].lane));
-            if(!compressed || s->notes[k].len != 0.0f)
-                yyjson_mut_arr_append(jn, yyjson_mut_real(doc, s->notes[k].len));
-        }
-    }
-
-    size_t len = 0;
-    yyjson_write_flag flag = compressed ? 0 : YYJSON_WRITE_PRETTY;
-    char* txt = yyjson_mut_write(doc, flag, &len);
-    yyjson_mut_doc_free(doc);
-    if(txt == NULL)
-        return 0;
-
-    char p[300];
-    snprintf(p, sizeof(p), "%s/data.json", c->dir);
-    FILE* f = fopen(p, "w");
-    if(f == NULL) {
-        free(txt);
-        return 0;
-    }
-    fwrite(txt, 1, len, f);
-    fclose(f);
-    free(txt);
-    return 1;
-}
-
-// ---------- util ----------
-static void StatusMsg(const char* m);
-
-static char CopyFile(const char* src, const char* dst) {
-    FILE* in = fopen(src, "rb");
-    if(in == NULL) return 0;
-    FILE* out = fopen(dst, "wb");
-    if(out == NULL) {
-        fclose(in);
-        return 0;
-    }
-    char buf[8192];
-    size_t n;
-    while((n = fread(buf, 1, sizeof(buf), in)) > 0)
-        fwrite(buf, 1, n, out);
-    fclose(in);
-    fclose(out);
-    return 1;
-}
-
-static void SanitizeName(char* dst, size_t dstSize, const char* src) {
-    size_t w = 0;
-    for(size_t i = 0; src[i] != 0 && w + 1 < dstSize; i++) {
-        char ch = src[i];
-        if((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') ||
-           (ch >= '0' && ch <= '9') || ch == '_' || ch == '-')
-            dst[w++] = ch;
-    }
-    dst[w] = 0;
-}
-
-// ---------- caixinha de texto (clica e digita) ----------
-typedef struct {
-    char buf[128];
-} TxtBox;
-static TxtBox* focusBox = NULL;
-static float backTimer = 0;
-
-// caixinha de numero (digita e ENTER confirma)
-typedef struct {
-    char buf[16];
-} NumBox;
-static NumBox* focusNum = NULL;
-static NumBox nbSecBpm;
-static NumBox nbTopBpm;
-static NumBox nbSpeed;
-static NumBox nbLen;
-
-static void NumBox_Refresh(NumBox* nb, float v, char isInt) {
-    if(isInt)
-        snprintf(nb->buf, sizeof(nb->buf), "%d", (int)v);
-    else if(v == (int)v)
-        snprintf(nb->buf, sizeof(nb->buf), "%.0f", (double)v);
-    else
-        snprintf(nb->buf, sizeof(nb->buf), "%.1f", (double)v);
-}
-
-static void TxtBox_Update(TxtBox* box, Rectangle r, char blocked) {
-    if(blocked)
-        return;
-    Vector2 m = MouseWorld();
-    if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-        if(m.x >= r.x && m.x <= r.x + r.width && m.y >= r.y && m.y <= r.y + r.height) {
-            focusBox = box;
-            focusNum = NULL;
-        } else if(focusBox == box) {
-            focusBox = NULL;
-        }
-    }
-    if(focusBox != box)
-        return;
-    int ch;
-    while((ch = GetCharPressed()) > 0) {
-        size_t len = strlen(box->buf);
-        if(ch >= 32 && ch < 127 && len + 1 < sizeof(box->buf)) {
-            box->buf[len] = (char)ch;
-            box->buf[len + 1] = 0;
-        }
-    }
-    int ctrl = IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL);
-    if(ctrl && IsKeyPressed(KEY_V)) {
-        const char* clip = GetClipboardText();
-        if(clip != NULL) {
-            for(size_t ci = 0; clip[ci] != 0; ci++) {
-                size_t len = strlen(box->buf);
-                if(len + 1 >= sizeof(box->buf))
-                    break;
-                if(clip[ci] >= 32 && clip[ci] < 127) {
-                    box->buf[len] = clip[ci];
-                    box->buf[len + 1] = 0;
-                }
-            }
-        }
-    }
-    if(ctrl && IsKeyPressed(KEY_C) && box->buf[0] != 0)
-        SetClipboardText(box->buf);
-    if(IsKeyDown(KEY_BACKSPACE)) {
-        backTimer -= RayGame_DeltaTime();
-        if(IsKeyPressed(KEY_BACKSPACE) || backTimer <= 0) {
-            size_t len = strlen(box->buf);
-            if(len > 0) box->buf[len - 1] = 0;
-            backTimer = 0.05f;
-        }
-    } else {
-        backTimer = 0;
-    }
-}
-
-static void TxtBox_Draw(TxtBox* box, Rectangle r, const char* hint) {
-    DrawRectangleRec(r, (Color) {20, 20, 20, 255});
-    DrawRectangleLinesEx(r, 1, (focusBox == box) ? GREEN : GRAY);
-    const char* txt = (box->buf[0] != 0) ? box->buf : hint;
-    Color c = (box->buf[0] != 0) ? WHITE : (Color) {120, 120, 120, 255};
-    DrawTextEx(mainFont, txt, (Vector2) {r.x + 6, r.y + 6}, 20, 1, c);
-}
-
-static void NumBox_Update(NumBox* nb, Rectangle r, char blocked) {
-    if(blocked)
-        return;
-    Vector2 m = MouseWorld();
-    if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-        if(m.x >= r.x && m.x <= r.x + r.width && m.y >= r.y && m.y <= r.y + r.height) {
-            focusNum = nb;
-            focusBox = NULL;
-        } else if(focusNum == nb) {
-            focusNum = NULL;
-        }
-    }
-    if(focusNum != nb)
-        return;
-    int ch;
-    while((ch = GetCharPressed()) > 0) {
-        size_t len = strlen(nb->buf);
-        if(((ch >= '0' && ch <= '9') || ch == '.') && len + 1 < sizeof(nb->buf)) {
-            if(ch == '.' && strchr(nb->buf, '.') != NULL)
-                continue;
-            nb->buf[len] = (char)ch;
-            nb->buf[len + 1] = 0;
-        }
-    }
-    int ctrl = IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL);
-    if(ctrl && IsKeyPressed(KEY_V)) {
-        const char* clip = GetClipboardText();
-        if(clip != NULL) {
-            for(size_t ci = 0; clip[ci] != 0; ci++) {
-                size_t len = strlen(nb->buf);
-                if(len + 1 >= sizeof(nb->buf))
-                    break;
-                char c = clip[ci];
-                if((c >= '0' && c <= '9') || (c == '.' && strchr(nb->buf, '.') == NULL)) {
-                    nb->buf[len] = c;
-                    nb->buf[len + 1] = 0;
-                }
-            }
-        }
-    }
-    if(ctrl && IsKeyPressed(KEY_C) && nb->buf[0] != 0)
-        SetClipboardText(nb->buf);
-    if(IsKeyDown(KEY_BACKSPACE)) {
-        backTimer -= RayGame_DeltaTime();
-        if(IsKeyPressed(KEY_BACKSPACE) || backTimer <= 0) {
-            size_t len = strlen(nb->buf);
-            if(len > 0) nb->buf[len - 1] = 0;
-            backTimer = 0.05f;
-        }
-    } else if(focusNum != nb) {
-        backTimer = 0;
-    }
-}
-
-static void NumBox_Draw(NumBox* nb, Rectangle r) {
-    DrawRectangleRec(r, (Color) {20, 20, 20, 255});
-    DrawRectangleLinesEx(r, 1, (focusNum == nb) ? GREEN : GRAY);
-    const char* txt = (nb->buf[0] != 0) ? nb->buf : "0";
-    DrawTextEx(mainFont, txt, (Vector2) {r.x + 6, r.y + 6}, 20, 1, YELLOW);
-}
 
 // lista de cantores (artes que existem): pro seletor Boyfriend/Opponent
 #define NAME_LIST_MAX 256   /* mods grandes tem centenas de personagens */
+
 static char charNames[NAME_LIST_MAX][SONG_NAME_MAX];
+
 static int charCount = 0;
+
 // lista de girlfriends (so precisa de png + animset, nao tem icone)
 static char gfNames[NAME_LIST_MAX][SONG_NAME_MAX];
+
 static int gfCount = 0;
-// qual lista suspensa esta aberta
-enum { DROP_NONE, DROP_BOYFRIEND, DROP_OPPONENT, DROP_GIRLFRIEND, DROP_STAGE, DROP_SKIN };
-static char activeDrop = DROP_NONE;
-static char dropJustOpened = 0;
-static float dropX = 0, dropY = 0, dropW = 0;
 
 // stages que existem nas musicas (pro seletor de Stage)
 static char stageNames[32][SONG_NAME_MAX];
+
 static int stageCount = 0;
 
 static char StageOfDir(const char* dir, char out[SONG_NAME_MAX]) {
@@ -933,6 +150,7 @@ static char CharacterAssetForSong_Exists(const char* name, const char* songDir) 
     fclose(f);
     return 1;
 }
+
 // girlfriend vale se tem png + animset (global ou no mod da musica); "none"/"nogf" = sem girlfriend
 static char GirlfriendAsset_Exists(const char* name, const char* songDir) {
     if(name == NULL || name[0] == 0)
@@ -955,6 +173,7 @@ static char GirlfriendAsset_Exists(const char* name, const char* songDir) {
     }
     return 0;
 }
+
 // json: assets/stages/<nome>.json, assets/data/stages/<nome>.json.
 // "stage" builtin continua valido. Fantasmas sem arquivo caem aqui.
 static char StageJsonGlobal_Exists(const char* name) {
@@ -1059,6 +278,7 @@ static void StageList_Scan(void) {
         stageCount = 1;
     }
 }
+
 /* Lista os personagens de uma pasta (png + animset). O icone nao e exigido: sem ele o jogo usa o do bf/dad. */
 static void NameList_ScanDir(char (*names)[SONG_NAME_MAX], int* count, const char* charDir) {
     const int capacity = NAME_LIST_MAX;
@@ -1118,7 +338,9 @@ static void CharList_Scan(void) {
 
 // note skin list (scan assets/images/notes/ e mod/images/notes/)
 static char skinNames[32][SONG_NAME_MAX];
+
 static int skinCount = 0;
+
 static TxtBox skinBox;
 
 static void NoteSkinList_ScanDir(const char* notesDir) {
@@ -1188,9 +410,10 @@ static void NoteSkinList_Scan(void) {
 
 // ---------- estado da cena ----------
 typedef enum { CE_PICKER, CE_EDIT } CeMode;
-typedef enum { DLG_NONE, DLG_OPEN, DLG_SAVEAS, DLG_LEAVE } CeDlg;
+
 // abas estilo Psych (uma ativa por vez, resto colapsado)
 typedef enum { TAB_CHARTING, TAB_DATA, TAB_EVENTS, TAB_NOTE, TAB_SECTION, TAB_SONG, TAB_COUNT } ChartTab;
+
 static const char* ChartTab_Name(int t) {
     switch(t) {
         case TAB_CHARTING: return "Charting";
@@ -1204,35 +427,26 @@ static const char* ChartTab_Name(int t) {
 }
 
 static CeMode ceMode;
-static CeDlg ceDlg;
-static int activeTab = TAB_SECTION;
-static int menuOpen = 0; // 0=fechado 1=File 2=Edit 3=View
-static int pickerSel = 0; // 0 = open file, 1..N = songs
-static float pickerOffset = 0;
-static TxtBox openBox;
-static TxtBox saveAsBox;
-static TxtBox p1Box;
-static TxtBox p2Box;
-static TxtBox gfBox;
-static TxtBox stageBox;
-static char pendingDir[256]; // entrar direto no editor (volta do teste)
-static char statusText[128];
-static float statusTimer = 0;
 
-// editor
-static int secIdx = 0;
-static int snapDiv = 4; // 1, 2 ou 4 (por tempo)
-static double cursorMs = 0;
-static double viewTopMs = 0;
-static char playing = 0;
-static char playFollow = 1; // View: trava a grade no receptor durante o OUVIR, igual ao jogo
-static float edVolApplied = -1.0f;
-static Music edInst;
-static char edHasAudio = 0;
-static Texture2D edIconO;
-static Texture2D edIconP;
-static char edIconOOk = 0;
-static char edIconPOk = 0;
+static int activeTab = TAB_SECTION;
+
+static int pickerSel = 0; // 0 = open file, 1..N = songs
+
+static float pickerOffset = 0;
+
+static TxtBox openBox;
+
+static TxtBox saveAsBox;
+
+static TxtBox p1Box;
+
+static TxtBox p2Box;
+
+static TxtBox gfBox;
+
+static TxtBox stageBox;
+
+static char pendingDir[256]; // entrar direto no editor (volta do teste)
 
 static void Editor_UnloadIcons(void) {
     if(edIconOOk) {
@@ -1308,51 +522,12 @@ static void Editor_LoadIcons(void) {
     }
     edIconP = Editor_TryIcon(chart.p1, "bf", &edIconPOk);
 }
-static Music edVoices;
-static char edHasVoices = 0;
-static Music edSplitO;
-static Music edSplitP;
-static char edHasSplit = 0;
+
 static EdSec copyBuf;
+
 static char copyValid = 0;
+
 static RayGraphicObject bgEd;
-static Camera2D camEd;
-
-// setas do proprio jogo (NOTE_assets) pras cabecas das notas
-static RayAnimatedObject edArrows[4];
-static Vector2 edArrowAdj[4];
-static char edArrowsReady = 0;
-
-static void EdArrows_Init(void) {
-    if(edArrowsReady)
-        return;
-    const RayAnimationHandler* nah = Note_GetCurrentSkin();
-    // sprites claros das notas (iguais aos que descem no jogo), sem tinta
-    const char* names[4] = {"purple", "blue", "green", "red"};
-    for(int i = 0; i < 4; i++) {
-        Render_DefaultAnimated(edArrows + i);
-        edArrows[i].animationSet = *nah;
-        int ai = AnimationSet_FindAnimation(nah, names[i]);
-        if(ai >= 0) {
-            AnimatedObject_SetAnimation(edArrows + i, ai);
-            Frame* fr = nah->animations[ai].frames;
-            float big = (float)((fr->w > fr->h) ? fr->w : fr->h);
-            float s = (big > 1) ? 56.0f / big : 1.0f;
-            edArrows[i].scaleX = edArrows[i].scaleY = s;
-            edArrows[i].color = WHITE;
-            RayAnimation* an = nah->animations + ai;
-            edArrowAdj[i].x = (an->animationOffset.x + fr->fx) * s - fr->w * s / 2;
-            edArrowAdj[i].y = (an->animationOffset.y + fr->fy) * s - fr->h * s / 2;
-        }
-    }
-    edArrowsReady = 1;
-}
-
-static void StatusMsg(const char* m) {
-    strncpy(statusText, m, sizeof(statusText) - 1);
-    statusText[sizeof(statusText) - 1] = 0;
-    statusTimer = 3.0f;
-}
 
 static void Picker_Refresh(void) {
     SongList_Free(pickerSongs);
@@ -1362,92 +537,9 @@ static void Picker_Refresh(void) {
     pickerOffset = 0;
 }
 
-// tempo (ms) onde cada trecho comeca (pela duracao dos anteriores)
-static double* secTimes = NULL; // prefixo: [i] = inicio do trecho i, [nsec] = fim
-static int secTimesN = -1;      // nsec coberto; -1 = invalido
-
-static void SecTimes_Drop(void) {
-    free(secTimes);
-    secTimes = NULL;
-    secTimesN = -1;
-}
-
-static void SecTimes_Invalidate(void) {
-    secTimesN = -1;
-}
-
-static void SecTimes_Ensure(void) {
-    if(secTimesN == chart.nsec && secTimes != NULL)
-        return;
-    free(secTimes);
-    secTimes = NULL;
-    secTimesN = -1;
-    if(chart.nsec < 0)
-        return;
-    secTimes = malloc(sizeof(double) * ((size_t)chart.nsec + 1));
-    if(secTimes == NULL)
-        return;
-    double t = 0;
-    for(int i = 0; i < chart.nsec; i++) {
-        secTimes[i] = t;
-        t += chart.secs[i].lenSteps * (60000.0 / chart.secs[i].bpm) / 4.0;
-    }
-    secTimes[chart.nsec] = t;
-    secTimesN = chart.nsec;
-}
-
-static double SecStartMs(int idx) {
-    SecTimes_Ensure();
-    if(secTimes == NULL || secTimesN < 0) {
-        // sem cache (sem memoria): loop antigo
-        double t = 0;
-        for(int i = 0; i < idx && i < chart.nsec; i++)
-            t += chart.secs[i].lenSteps * (60000.0 / chart.secs[i].bpm) / 4.0;
-        return t;
-    }
-    if(idx < 0)
-        return 0;
-    if(idx > secTimesN)
-        idx = secTimesN;
-    return secTimes[idx];
-}
-
-static double SongEndMs(void) {
-    return SecStartMs(chart.nsec);
-}
-
-static int SecAtTime(double ms) {
-    SecTimes_Ensure();
-    if(secTimes == NULL || secTimesN <= 0)
-        return 0;
-    // ultimo trecho com inicio <= ms (igual ao linear antigo, O(log n))
-    if(ms < secTimes[0])
-        return (chart.nsec > 0) ? chart.nsec - 1 : 0;
-    int lo = 0, hi = secTimesN;
-    while(lo < hi) {
-        int mid = lo + (hi - lo + 1) / 2;
-        if(secTimes[mid] <= ms)
-            lo = mid;
-        else
-            hi = mid - 1;
-    }
-    if(lo >= chart.nsec)
-        lo = chart.nsec - 1;
-    return lo;
-}
-
-// painel segue o cursor (a barra que move)
-static void SecFollowCursor(void) {
-    if(chart.nsec > 0) {
-        int si = SecAtTime(cursorMs < 0 ? 0 : cursorMs);
-        if(si >= 0 && si < chart.nsec)
-            secIdx = si;
-    }
-}
-
 static void Editor_EnterDir(const char* dir) {
     if(!EdChart_OpenDir(&chart, dir)) {
-        StatusMsg("NAO ABRIU ESSA MUSICA");
+        EdStatusMsg("NAO ABRIU ESSA MUSICA");
         return;
     }
     chartLoaded = 1;
@@ -1537,7 +629,7 @@ static void Editor_EnterDir(const char* dir) {
         Note_SetCurrentSkin(NULL);
     }
 
-    StatusMsg("opened :)");
+    EdStatusMsg("opened :)");
 }
 
 static void Editor_Save(void) {
@@ -1578,31 +670,31 @@ static void Editor_Save(void) {
     if(EdChart_Save(&chart)) {
         chart.dirty = 0;
         Editor_LoadIcons();
-        StatusMsg("SALVO!");
+        EdStatusMsg("SALVO!");
     } else {
-        StatusMsg("ERRO AO SALVAR");
+        EdStatusMsg("ERRO AO SALVAR");
     }
 }
 
 // importa json solto -> vira pasta de mod -> abre (1 = ok)
 static char ImportJSON(const char* jsonPath, const char* modName) {
     char clean[64];
-    SanitizeName(clean, sizeof(clean), modName);
+    EdSanitizeName(clean, sizeof(clean), modName);
     if(clean[0] == 0) {
-        StatusMsg("NOME INVALIDO");
+        EdStatusMsg("NOME INVALIDO");
         return 0;
     }
     char dir[256];
     snprintf(dir, sizeof(dir), "assets/mods/%s", clean);
     if(Song_HasChart(dir)) {
-        StatusMsg("JA EXISTE ESSE NOME");
+        EdStatusMsg("JA EXISTE ESSE NOME");
         return 0;
     }
     MakeDirectory(dir);
     char dst[300];
     snprintf(dst, sizeof(dst), "%s/data.json", dir);
-    if(!CopyFile(jsonPath, dst)) {
-        StatusMsg("NAO DEU PRA COPIAR");
+    if(!EdCopyFile(jsonPath, dst)) {
+        EdStatusMsg("NAO DEU PRA COPIAR");
         return 0;
     }
     Editor_EnterDir(dir);
@@ -1612,9 +704,9 @@ static char ImportJSON(const char* jsonPath, const char* modName) {
 // SALVAR COMO: copia audio + salva json com outro nome (1 = ok)
 static char Editor_SaveAs(const char* modName) {
     char clean[64];
-    SanitizeName(clean, sizeof(clean), modName);
+    EdSanitizeName(clean, sizeof(clean), modName);
     if(clean[0] == 0) {
-        StatusMsg("NOME INVALIDO");
+        EdStatusMsg("NOME INVALIDO");
         return 0;
     }
     char dir[256];
@@ -1624,7 +716,7 @@ static char Editor_SaveAs(const char* modName) {
         return 1;
     }
     if(Song_HasChart(dir)) {
-        StatusMsg("JA EXISTE ESSE NOME");
+        EdStatusMsg("JA EXISTE ESSE NOME");
         return 0;
     }
     // mesma musica, outro nome: RENOMEIA a pasta ( so vale pros mods )
@@ -1636,7 +728,7 @@ static char Editor_SaveAs(const char* modName) {
             chart.name[sizeof(chart.name) - 1] = 0;
             Editor_Save();
             Picker_Refresh();
-            StatusMsg("PASTA RENOMEADA");
+            EdStatusMsg("PASTA RENOMEADA");
             return 1;
         }
         // rename falhou: cai pro copia normal abaixo
@@ -1645,16 +737,16 @@ static char Editor_SaveAs(const char* modName) {
     char src[300], dst[300];
     snprintf(src, sizeof(src), "%s/Inst.ogg", chart.dir);
     snprintf(dst, sizeof(dst), "%s/Inst.ogg", dir);
-    CopyFile(src, dst);
+    EdCopyFile(src, dst);
     snprintf(src, sizeof(src), "%s/Voices.ogg", chart.dir);
     snprintf(dst, sizeof(dst), "%s/Voices.ogg", dir);
-    CopyFile(src, dst);
+    EdCopyFile(src, dst);
     snprintf(src, sizeof(src), "%s/Voices-Opponent.ogg", chart.dir);
     snprintf(dst, sizeof(dst), "%s/Voices-Opponent.ogg", dir);
-    CopyFile(src, dst);
+    EdCopyFile(src, dst);
     snprintf(src, sizeof(src), "%s/Voices-Player.ogg", chart.dir);
     snprintf(dst, sizeof(dst), "%s/Voices-Player.ogg", dir);
-    CopyFile(src, dst);
+    EdCopyFile(src, dst);
     strncpy(chart.dir, dir, sizeof(chart.dir) - 1);
     strncpy(chart.name, clean, sizeof(chart.name) - 1);
     Editor_Save();
@@ -1662,58 +754,7 @@ static char Editor_SaveAs(const char* modName) {
     return 1;
 }
 
-// mouse em coordenada do mundo (stretch: proporcao direta; senao
-// camera centralizada COM zoom)
-static Vector2 MouseWorld(void) {
-    Vector2 m = GetMousePosition();
-    if(gameOptions.fillScreen) {
-        m.x = m.x * 1280 / GetScreenWidth();
-        m.y = m.y * 720 / GetScreenHeight();
-        return m;
-    }
-    float z = RayGame_ZoomFactor();
-    if(z <= 0) z = 1;
-    m.x = (m.x - GetScreenWidth() / 2) / z + 1280 / 2;
-    m.y = (m.y - GetScreenHeight() / 2) / z + 720 / 2;
-    return m;
-}
-
-// ---------- botoes e textos ----------
-static char Button(Rectangle r, const char* label, int fs) {
-    if(ceDlg != DLG_NONE || activeDrop || menuOpen)
-        return 0;
-    Vector2 m = MouseWorld();
-    char hov = (m.x >= r.x && m.x <= r.x + r.width && m.y >= r.y && m.y <= r.y + r.height);
-    DrawRectangleRec(r, hov ? (Color) {60, 60, 60, 255} : (Color) {30, 30, 30, 255});
-    DrawRectangleLinesEx(r, 1, hov ? GREEN : GRAY);
-    Vector2 s = MeasureTextEx(mainFont, label, fs, 1);
-    DrawTextEx(mainFont, label, (Vector2) {r.x + (r.width - s.x) / 2, r.y + (r.height - s.y) / 2}, fs, 1, WHITE);
-    return hov && IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
-}
-
-// setinha que abre lista (desenha o triangulo na mao)
-static TxtBox* dropBox = NULL;
 static char (*dropNames)[SONG_NAME_MAX] = NULL;
-static int dropCount = 0;
-
-static char DropBtn(Rectangle r, char open) {
-    if(ceDlg != DLG_NONE || menuOpen)
-        return 0;
-    Vector2 m = MouseWorld();
-    char hov = (m.x >= r.x && m.x <= r.x + r.width && m.y >= r.y && m.y <= r.y + r.height);
-    DrawRectangleRec(r, hov ? (Color) {60, 60, 60, 255} : (Color) {30, 30, 30, 255});
-    DrawRectangleLinesEx(r, 1, hov ? GREEN : GRAY);
-    Vector2 c = {r.x + r.width / 2, r.y + r.height / 2};
-    if(open)
-        DrawTriangle((Vector2) {c.x - 7, c.y + 4}, (Vector2) {c.x + 7, c.y + 4}, (Vector2) {c.x, c.y - 5}, WHITE);
-    else
-        DrawTriangle((Vector2) {c.x - 7, c.y - 4}, (Vector2) {c.x + 7, c.y - 4}, (Vector2) {c.x, c.y + 5}, WHITE);
-    return hov && IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
-}
-
-// lista por cima (clica e preenche a caixinha). Rola com a roda do mouse.
-#define DROP_ROWS_MAX 14
-static int dropScroll = 0;
 
 static void CharDrop_Draw(void) {
     if(!activeDrop || dropBox == NULL || dropNames == NULL)
@@ -1729,7 +770,7 @@ static void CharDrop_Draw(void) {
     if(r.x + r.width > 1270) r.x = 1270 - r.width;
     DrawRectangleRec(r, (Color) {15, 15, 15, 245});
     DrawRectangleLinesEx(r, 1, GREEN);
-    Vector2 m = MouseWorld();
+    Vector2 m = EdMouseWorld();
     const char inside = (m.x >= r.x && m.x <= r.x + r.width && m.y >= r.y && m.y <= r.y + r.height);
 
     // roda: rola a lista (so com o mouse em cima dela)
@@ -1782,36 +823,6 @@ static void CharDrop_Draw(void) {
     }
 }
 
-static void TimeFmt(char* out, size_t n, double ms) {
-    if(ms < 0) ms = 0;
-    int m = (int)(ms / 60000);
-    int s = (int)(ms / 1000) % 60;
-    int d = (int)(ms / 100) % 10;
-    snprintf(out, n, "%d:%02d.%d", m, s, d);
-}
-
-// ---------- grade ----------
-#define GRID_X0 40.0f
-#define LANE_W 64.0f
-#define GRID_Y0 112.0f
-#define GRID_Y1 680.0f
-#define VIEW_MS 2200.0
-#define MENU_H 28.0f
-#define PANEL_X 586.0f
-
-static float PxPerMs(void) {
-    return (GRID_Y1 - GRID_Y0) / (float)VIEW_MS;
-}
-
-static Color LaneColor(int lane) {
-    switch(lane % 4) {
-        case 0: return (Color) {200, 80, 255, 255};
-        case 1: return (Color) {80, 180, 255, 255};
-        case 2: return (Color) {80, 255, 150, 255};
-        default: return (Color) {255, 90, 90, 255};
-    }
-}
-
 // ---------- PICKER ----------
 static char importPath[512];
 
@@ -1854,7 +865,7 @@ static void Picker_NewSong(void) {
     ceDlg = DLG_NONE;
     focusBox = NULL;
     focusNum = NULL;
-    StatusMsg("NEW SONG - SALVAR COMO");
+    EdStatusMsg("NEW SONG - SALVAR COMO");
 }
 
 static void Picker_Draw(void) {
@@ -1893,8 +904,8 @@ static void Picker_Draw(void) {
 
     DrawTextEx(mainFont, "ENTER open   R update   N new   arraste um .json pra ca   ESC return",
         (Vector2) {150, 690}, 20, 1, (Color) {200, 200, 200, 255});
-    if(Button((Rectangle) {150, 630, 200, 40}, "OPEN", 22)) Picker_OpenSelected();
-    if(Button((Rectangle) {360, 630, 200, 40}, "NEW", 22)) Picker_NewSong();
+    if(EdButton((Rectangle) {150, 630, 200, 40}, "OPEN", 22)) Picker_OpenSelected();
+    if(EdButton((Rectangle) {360, 630, 200, 40}, "NEW", 22)) Picker_NewSong();
     Render_StopCamera();
 }
 
@@ -1908,14 +919,14 @@ static void Picker_Update(void) {
             if(L > 5 && (strcmp(p + L - 5, ".json") == 0 || strcmp(p + L - 5, ".JSON") == 0)) {
                 EdChart tmp;
                 memset(&tmp, 0, sizeof(tmp));
-                if(EdChart_LoadJSON(&tmp, p, "", DirName(p))) {
+                if(EdChart_LoadJSON(&tmp, p, "", EdDirName(p))) {
                     EdChart_Free(&tmp);
                     strncpy(importPath, p, sizeof(importPath) - 1);
                     saveAsBox.buf[0] = 0;
                     ceDlg = DLG_SAVEAS;
                     focusBox = &saveAsBox;
                 } else {
-                    StatusMsg("ESSE JSON NAO E MUSICA");
+                    EdStatusMsg("ESSE JSON NAO E MUSICA");
                 }
                 break;
             }
@@ -1951,7 +962,7 @@ static void Picker_Update(void) {
     }
     // clique: 1o seleciona, 2o abre (OPEN ao lado da musica)
     if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && ceDlg == DLG_NONE) {
-        Vector2 m = MouseWorld();
+        Vector2 m = EdMouseWorld();
         for(int i = 0; i < rows; i++) {
             int fs = (i == 0) ? 40 : 56;
             float y = 720 / 2 + ((float)i - pickerOffset) * (10 + fs);
@@ -1967,12 +978,9 @@ static void Picker_Update(void) {
     pickerOffset = Lerp(pickerOffset, (float)pickerSel, RayGame_DeltaTime() * 10.0f);
 }
 
-// ---------- sair do chart (nunca salva sozinho) ----------
-static void StopPlay(void);
-
 // volta pra lista de musicas, soltando audio e icones
 static void Editor_LeaveToPicker(void) {
-    StopPlay();
+    Audio_StopPlay();
     if(edHasAudio) {
         UnloadMusicStream(edInst);
         edHasAudio = 0;
@@ -2003,17 +1011,6 @@ static void Editor_RequestLeave(void) {
     }
 }
 
-// botao do dialogo (o Button() normal fica bloqueado com dialogo aberto)
-static char DlgButton(Rectangle r, const char* label, Color edge) {
-    Vector2 m = MouseWorld();
-    char hov = (m.x >= r.x && m.x <= r.x + r.width && m.y >= r.y && m.y <= r.y + r.height);
-    DrawRectangleRec(r, hov ? (Color) {60, 60, 60, 255} : (Color) {30, 30, 30, 255});
-    DrawRectangleLinesEx(r, 2, hov ? WHITE : edge);
-    Vector2 sz = MeasureTextEx(mainFont, label, 24, 1);
-    DrawTextEx(mainFont, label, (Vector2) {r.x + (r.width - sz.x) / 2, r.y + (r.height - sz.y) / 2}, 24, 1, WHITE);
-    return hov && IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
-}
-
 // ---------- dialogs (por cima de tudo) ----------
 static void Dialogs_Update(void) {
     if(ceDlg == DLG_NONE)
@@ -2032,19 +1029,19 @@ static void Dialogs_Update(void) {
         }
         if(ceDlg == DLG_OPEN) {
             if(openBox.buf[0] == 0) {
-                StatusMsg("COLE O CAMINHO PRIMEIRO");
+                EdStatusMsg("COLE O CAMINHO PRIMEIRO");
                 return;
             }
             EdChart tmp;
             memset(&tmp, 0, sizeof(tmp));
-            if(EdChart_LoadJSON(&tmp, openBox.buf, "", DirName(openBox.buf))) {
+            if(EdChart_LoadJSON(&tmp, openBox.buf, "", EdDirName(openBox.buf))) {
                 EdChart_Free(&tmp);
                 strncpy(importPath, openBox.buf, sizeof(importPath) - 1);
                 saveAsBox.buf[0] = 0;
                 ceDlg = DLG_SAVEAS;
                 focusBox = &saveAsBox;
             } else {
-                StatusMsg("NAO ABRIU: confira o caminho");
+                EdStatusMsg("NAO ABRIU: confira o caminho");
             }
         } else if(ceDlg == DLG_SAVEAS) {
             char ok = 0;
@@ -2069,13 +1066,13 @@ static void Dialogs_Draw(void) {
     if(ceDlg == DLG_LEAVE) {
         DrawTextEx(mainFont, "Salvar as alteracoes?", (Vector2) {340, 250}, 40, 3, WHITE);
         DrawTextEx(mainFont, "enter salva, esc cancela", (Vector2) {340, 310}, 20, 1, YELLOW);
-        if(DlgButton((Rectangle) {340, 360, 170, 48}, "SALVAR", GREEN)) {
+        if(EdDlgButton((Rectangle) {340, 360, 170, 48}, "SALVAR", GREEN)) {
             Editor_Save();
             Editor_LeaveToPicker();
-        } else if(DlgButton((Rectangle) {530, 360, 170, 48}, "DESCARTAR", RED)) {
+        } else if(EdDlgButton((Rectangle) {530, 360, 170, 48}, "DESCARTAR", RED)) {
             chart.dirty = 0;
             Editor_LeaveToPicker();
-        } else if(DlgButton((Rectangle) {720, 360, 170, 48}, "CANCELAR", GRAY)) {
+        } else if(EdDlgButton((Rectangle) {720, 360, 170, 48}, "CANCELAR", GRAY)) {
             ceDlg = DLG_NONE;
         }
     } else if(ceDlg == DLG_OPEN) {
@@ -2094,7 +1091,7 @@ static void Dialogs_Draw(void) {
         DrawTextEx(mainFont, "renames the folder if it already exists", (Vector2) {140, 350}, 20, 1, YELLOW);
         {
             char clean[64];
-            SanitizeName(clean, sizeof(clean), saveAsBox.buf);
+            EdSanitizeName(clean, sizeof(clean), saveAsBox.buf);
             char where[192];
             char dstDir[128];
             if(clean[0] != 0) {
@@ -2158,107 +1155,6 @@ static void Dialogs_Draw(void) {
     Render_StopCamera();
 }
 
-// ---------- EDIT ----------
-static void Touch(void) {
-    Undo_Push();
-    chart.dirty = 1;
-}
-
-static void TogglePlay(void) {
-    if(playing) {
-        playing = 0;
-        if(edHasAudio) PauseMusicStream(edInst);
-        if(edHasVoices) PauseMusicStream(edVoices);
-        if(edHasSplit) {
-            PauseMusicStream(edSplitO);
-            PauseMusicStream(edSplitP);
-        }
-    } else {
-        if(cursorMs >= SongEndMs())
-            cursorMs = 0;
-        float pos = (float)(cursorMs / 1000.0);
-        if(edHasAudio) {
-            SeekMusicStream(edInst, pos);
-            if(!IsMusicStreamPlaying(edInst))
-                PlayMusicStream(edInst);
-        }
-        if(edHasVoices) {
-            SeekMusicStream(edVoices, pos);
-            if(!IsMusicStreamPlaying(edVoices))
-                PlayMusicStream(edVoices);
-        }
-        if(edHasSplit) {
-            SeekMusicStream(edSplitO, pos);
-            SeekMusicStream(edSplitP, pos);
-            if(!IsMusicStreamPlaying(edSplitO))
-                PlayMusicStream(edSplitO);
-            if(!IsMusicStreamPlaying(edSplitP))
-                PlayMusicStream(edSplitP);
-        }
-        playing = 1;
-    }
-}
-
-static void StopPlay(void) {
-    playing = 0;
-    if(edHasAudio) PauseMusicStream(edInst);
-    if(edHasVoices) PauseMusicStream(edVoices);
-    if(edHasSplit) {
-        PauseMusicStream(edSplitO);
-        PauseMusicStream(edSplitP);
-    }
-}
-
-static void NumBox_Commit(void) {
-    if(focusNum == NULL)
-        return;
-    if(focusNum == &nbSecBpm) {
-        float v = (float)atof(nbSecBpm.buf);
-        if(v < 10) v = 10;
-        if(v > 300) v = 300;
-        if(v != chart.secs[secIdx].bpm) {
-            Touch();
-            chart.secs[secIdx].bpm = v;
-            SecTimes_Invalidate(); // inicio dos trechos seguintes muda
-        }
-    } else if(focusNum == &nbTopBpm) {
-        float v = (float)atof(nbTopBpm.buf);
-        if(v < 10) v = 10;
-        if(v > 300) v = 300;
-        if(v != chart.bpm) {
-            Touch();
-            chart.bpm = v;
-            SecTimes_Invalidate();
-        }
-    } else if(focusNum == &nbLen) {
-        int v = atoi(nbLen.buf);
-        if(v < 1) v = 1;
-        if(v > 64) v = 64;
-        if(v != chart.secs[secIdx].lenSteps) {
-            Touch();
-            chart.secs[secIdx].lenSteps = v;
-            SecTimes_Invalidate(); // duracao do trecho muda
-        }
-    } else if(focusNum == &nbSpeed) {
-        float v = (float)atof(nbSpeed.buf);
-        if(v < 0.2f) v = 0.2f;
-        if(v > 5) v = 5;
-        if(v != chart.speed) {
-            Touch();
-            chart.speed = v;
-        }
-    } else if(focusNum == &nbLen) {
-        int v = atoi(nbLen.buf);
-        if(v < 1) v = 1;
-        if(v > 64) v = 64;
-        if(v != chart.secs[secIdx].lenSteps) {
-            Touch();
-            chart.secs[secIdx].lenSteps = v;
-        }
-    }
-    focusNum = NULL;
-}
-
 static void Edit_UpdateKeys(void) {
     int ctrl = IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL);
     int shift = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
@@ -2270,7 +1166,7 @@ static void Edit_UpdateKeys(void) {
     if(ctrl && IsKeyPressed(KEY_Z) && focusBox == NULL && focusNum == NULL) {
         Undo_Pop();
         chart.dirty = 1;
-        StatusMsg("actions reverted");
+        EdStatusMsg("actions reverted");
         return;
     }
     // digitando numa caixinha: nao dispara atalho
@@ -2295,11 +1191,11 @@ static void Edit_UpdateKeys(void) {
         return;
     }
     if(IsKeyPressed(KEY_SPACE)) {
-        TogglePlay();
+        Audio_Toggle();
         return;
     }
     if(IsKeyPressed(KEY_F5)) {
-        StopPlay();
+        Audio_StopPlay();
         Editor_Save();
         PlayState_SetSongDir(chart.dir);
         PlayState_SetReturnEditor(1);
@@ -2307,16 +1203,16 @@ static void Edit_UpdateKeys(void) {
         return;
     }
     if(IsKeyPressed(KEY_TAB)) {
-        Touch();
+        EdTouch();
         chart.secs[secIdx].mustHit = !chart.secs[secIdx].mustHit;
-        StatusMsg(chart.secs[secIdx].mustHit ? "Turn: You" : "Turn: Opponent");
+        EdStatusMsg(chart.secs[secIdx].mustHit ? "Turn: You" : "Turn: Opponent");
         return;
     }
     if(IsKeyPressed(KEY_T)) {
         snapDiv = (snapDiv == 4) ? 1 : (snapDiv == 1) ? 2 : 4;
         return;
     }    if(IsKeyPressed(KEY_N)) {
-        Touch();
+        EdTouch();
         EdSec* last = chart.secs + chart.nsec - 1;
         EdSec* g = realloc(chart.secs, sizeof(EdSec) * (size_t)(chart.nsec + 1));
         if(g != NULL) {
@@ -2331,22 +1227,22 @@ static void Edit_UpdateKeys(void) {
             cursorMs = SecStartMs(secIdx);
             viewTopMs = cursorMs - VIEW_MS * 0.3;
             if(viewTopMs < 0) viewTopMs = 0;
-            StatusMsg("TRECHO NOVO NO FIM");
+            EdStatusMsg("TRECHO NOVO NO FIM");
         }
         return;
     }
     if(IsKeyPressed(KEY_X)) {
         /* // * part deleter */
         if(chart.nsec > 1) {
-            Touch();
+            EdTouch();
             free(chart.secs[secIdx].notes);
             memmove(chart.secs + secIdx, chart.secs + secIdx + 1,
                 sizeof(EdSec) * (size_t)(chart.nsec - secIdx - 1));
             chart.nsec--;
             if(secIdx >= chart.nsec) secIdx = chart.nsec - 1;
-            StatusMsg("part deleted");
+            EdStatusMsg("part deleted");
         } else {
-            StatusMsg("NOT POSSIBLE TO DELETE HAVE ONLY 1 PART");
+            EdStatusMsg("NOT POSSIBLE TO DELETE HAVE ONLY 1 PART");
         }
         return;
     }
@@ -2365,16 +1261,16 @@ static void Edit_UpdateKeys(void) {
             memcpy(copyBuf.notes, s->notes, sizeof(EdNote) * (size_t)s->count);
         }
         copyValid = 1;
-        StatusMsg("part Copyed");
+        EdStatusMsg("part Copyed");
         return;
     }
     if(IsKeyPressed(KEY_V)) {
         /* // * if pressing control v without control c */
         if(!copyValid) {
-            StatusMsg("V pressed missing Copy Before (C)");
+            EdStatusMsg("V pressed missing Copy Before (C)");
             return;
         }
-        Touch();
+        EdTouch();
         double base = SongEndMs();
         double srcStart = SecStartMs(secIdx);
         EdSec* g = realloc(chart.secs, sizeof(EdSec) * (size_t)(chart.nsec + 1));
@@ -2389,7 +1285,7 @@ static void Edit_UpdateKeys(void) {
                 EdSec_Add(n, (float)(base + (copyBuf.notes[i].time - srcStart)), copyBuf.notes[i].lane, copyBuf.notes[i].len);
             chart.nsec++;
             secIdx = chart.nsec - 1;
-            StatusMsg("Copyed on End");
+            EdStatusMsg("Copyed on End");
         }
         return;
     }
@@ -2414,7 +1310,7 @@ static void Edit_UpdateKeys(void) {
         return;
     }
     if(IsKeyPressed(KEY_COMMA) || IsKeyPressed(KEY_PERIOD)) {
-        Touch();
+        EdTouch();
         float d = (IsKeyPressed(KEY_PERIOD) ? 1 : -1) * (shift ? 10 : 1);
         chart.secs[secIdx].bpm += d;
         if(chart.secs[secIdx].bpm < 10) chart.secs[secIdx].bpm = 10;
@@ -2439,24 +1335,14 @@ static void Edit_Update(void) {
         float v = RayGame_MusicVolumeLevel();
         if(v != edVolApplied) {
             edVolApplied = v;
-            if(edHasAudio) SetMusicVolume(edInst, v);
-            if(edHasVoices) SetMusicVolume(edVoices, v);
-            if(edHasSplit) {
-                SetMusicVolume(edSplitO, v);
-                SetMusicVolume(edSplitP, v);
-            }
+            Audio_SetVolume(v);
         }
     }
     Edit_UpdateKeys();
 
     // roda a musica / relogio (tempo mestre = Inst, senao voz, senao silencio)
     if(playing) {
-        if(edHasAudio) UpdateMusicStream(edInst);
-        if(edHasVoices) UpdateMusicStream(edVoices);
-        if(edHasSplit) {
-            UpdateMusicStream(edSplitO);
-            UpdateMusicStream(edSplitP);
-        }
+        Audio_Update();
         if(edHasAudio)
             cursorMs = GetMusicTimePlayed(edInst) * 1000.0;
         else if(edHasVoices)
@@ -2466,7 +1352,7 @@ static void Edit_Update(void) {
         else
             cursorMs += RayGame_DeltaTime() * 1000.0;
         if(cursorMs >= SongEndMs() + 2000)
-            StopPlay();
+            Audio_StopPlay();
         else if(playFollow)
             viewTopMs = cursorMs - VIEW_MS * 0.25; // trava no receptor, igual ao jogo
     }
@@ -2485,20 +1371,20 @@ static void Edit_Update(void) {
     // roda do mouse = sobe/desce
     float wheel = GetMouseWheelMove();
     if(wheel != 0) {
-        Vector2 m = MouseWorld();
+        Vector2 m = EdMouseWorld();
         int shift = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
         int ctrl = IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL);
         if((shift || ctrl) && m.x >= GRID_X0 && m.x <= GRID_X0 + LANE_W * 8 && m.y >= GRID_Y0 && m.y <= GRID_Y1) {
             //na nota embaixo do mouse: muda a nota longa
             int lane = (int)((m.x - GRID_X0) / LANE_W);
-            double t = viewTopMs + (m.y - GRID_Y0) / PxPerMs();
+            double t = viewTopMs + (m.y - GRID_Y0) / EdPxPerMs();
             int si = SecAtTime(t);
             EdSec* s = chart.secs + si;
-            lane = DispLane(s, lane); // casa da tela -> casa do arquivo
+            lane = EdDispLane(s, lane); // casa da tela -> casa do arquivo
             float beatMs = 60000.0f / s->bpm;
             for(int i = 0; i < s->count; i++) {
                 if(s->notes[i].lane == lane && fabsf(s->notes[i].time - (float)t) < beatMs / 2) {
-                    Touch();
+                    EdTouch();
                     s->notes[i].len += wheel * beatMs / 4;
                     if(s->notes[i].len < 0) s->notes[i].len = 0;
                     if(s->notes[i].len > 10000) s->notes[i].len = 10000;
@@ -2512,249 +1398,9 @@ static void Edit_Update(void) {
     }
 }
 
-// barra da musica no topo (arrasta pra andar; substitui os botoes de trecho)
-#define SBAR_X GRID_X0
-#define SBAR_Y 36.0f
-#define SBAR_W (LANE_W * 8)
-#define SBAR_H 16.0f
-static char barDrag = 0;
-
-static void SeekAllAudio(double ms) {
-    float pos = (float)(ms / 1000.0);
-    if(edHasAudio) SeekMusicStream(edInst, pos);
-    if(edHasVoices) SeekMusicStream(edVoices, pos);
-    if(edHasSplit) {
-        SeekMusicStream(edSplitO, pos);
-        SeekMusicStream(edSplitP, pos);
-    }
-}
-
-static void Edit_DrawGrid(void) {
-    float ppm = PxPerMs();
-    double viewBottom = viewTopMs + VIEW_MS;
-
-    // barra da musica (preta e branca, arrasta pra andar)
-    {
-        double end = SongEndMs();
-        if(end < 1000) end = 1000;
-        Rectangle bar = {SBAR_X, SBAR_Y, SBAR_W, SBAR_H};
-        DrawRectangleRec(bar, BLACK);
-        float frac = (float)(cursorMs / end);
-        if(frac < 0) frac = 0;
-        if(frac > 1) frac = 1;
-        float kx = SBAR_X + frac * SBAR_W;
-        DrawRectangle((int)SBAR_X, (int)SBAR_Y, (int)(kx - SBAR_X), (int)SBAR_H, WHITE);
-        DrawRectangle((int)(kx - 6), (int)SBAR_Y - 2, 12, (int)SBAR_H + 4, RED);
-    }
-
-    DrawRectangle((int)GRID_X0 - 10, (int)GRID_Y0 - 34, (int)(LANE_W * 8) + 20, (int)(GRID_Y1 - GRID_Y0) + 44, (Color) {12, 12, 12, 255});
-
-    // casas brancas (da pra ver onde clica)
-    for(int l = 0; l < 8; l++) {
-        float x = GRID_X0 + l * LANE_W;
-        DrawRectangle((int)x + 1, (int)GRID_Y0, (int)LANE_W - 2, (int)(GRID_Y1 - GRID_Y0), (Color) {250, 250, 250, 255});
-        if(l == 4)
-            DrawRectangle((int)x - 1, (int)GRID_Y0 - 30, 2, (int)(GRID_Y1 - GRID_Y0) + 34, (Color) {60, 60, 60, 255});
-    }
-    // seu lado (direita) com verde claro
-    DrawRectangle((int)(GRID_X0 + LANE_W * 4), (int)GRID_Y0, (int)(LANE_W * 4), (int)(GRID_Y1 - GRID_Y0), (Color) {140, 230, 170, 70});
-    // (letras das casas removidas: as setas ja mostram a direcao)
-    // icones dos cantores em cima (igual a barra de vida do jogo)
-    if(edIconOOk)
-        DrawTexturePro(edIconO, Character_IconFrame(edIconO),
-            (Rectangle) {GRID_X0 + LANE_W * 2 - 22, GRID_Y0 - 52, 44, 44}, (Vector2) {0, 0}, 0, WHITE);
-    if(edIconPOk)
-        DrawTexturePro(edIconP, Character_IconFrame(edIconP),
-            (Rectangle) {GRID_X0 + LANE_W * 6 - 22, GRID_Y0 - 52, 44, 44}, (Vector2) {0, 0}, 0, WHITE);
-
-    // linhas de tempo por trecho
-    for(int i = 0; i < chart.nsec; i++) {
-        double start = SecStartMs(i);
-        double end = (i + 1 < chart.nsec) ? SecStartMs(i + 1) : SongEndMs() + 4000;
-        if(end < viewTopMs || start > viewBottom)
-            continue;
-        if(i == secIdx)
-            DrawRectangle((int)GRID_X0, (int)(GRID_Y0 + (fmax(start, viewTopMs) - viewTopMs) * ppm),
-                (int)(LANE_W * 8), (int)((fmin(end, viewBottom) - fmax(start, viewTopMs)) * ppm),
-                (Color) {255, 255, 255, 12});
-        float beatMs = 60000.0f / chart.secs[i].bpm;
-        float stepMs = beatMs / snapDiv;
-        for(double t = start; t <= end + 0.5; t += stepMs) {
-            if(t < viewTopMs || t > viewBottom)
-                continue;
-            float y = GRID_Y0 + (float)(t - viewTopMs) * ppm;
-            char isBeat = (fabs(fmod(t - start, beatMs)) < stepMs / 2);
-            DrawLine((int)GRID_X0, (int)y, (int)(GRID_X0 + LANE_W * 8), (int)y,
-                isBeat ? (Color) {90, 90, 90, 160} : (Color) {160, 160, 160, 130});
-        }
-        // comeco do trecho (so a linha, sem texto em cima do chart)
-        if(start >= viewTopMs && start <= viewBottom) {
-            float y = GRID_Y0 + (float)(start - viewTopMs) * ppm;
-            DrawLine((int)GRID_X0 - 8, (int)y, (int)(GRID_X0 + LANE_W * 8) + 8, (int)y, (Color) {210, 130, 0, 255});
-        }
-    }
-
-    // notas (casa virada pra tela; cor/seta pela casa real do arquivo)
-    // Note player ON: passado apaga, na agulha acende (so visual, sem tocar no chart)
-    for(int i = 0; i < chart.nsec; i++) {
-        EdSec* s = chart.secs + i;
-        for(int k = 0; k < s->count; k++) {
-            EdNote* n = s->notes + k;
-            float y = GRID_Y0 + (float)(n->time - viewTopMs) * ppm;
-            if(y < GRID_Y0 - 30 || y > GRID_Y1 + 30)
-                continue;
-            float x = GRID_X0 + DispLane(s, n->lane) * LANE_W;
-            Color c = LaneColor(n->lane);
-            char isPast = 0;
-            char isHit = 0;
-            if(playFollow) {
-                float dt = n->time - (float)cursorMs;
-                if(playing && fabsf(dt) <= 200.0f)
-                    isHit = 1;
-                else if(dt < 0)
-                    isPast = 1;
-            }
-            if(n->len > 0) {
-                float h = n->len * ppm;
-                if(h < 6) h = 6;
-                float top = y;
-                float bot = y + h;
-                if(top < GRID_Y0) top = GRID_Y0;
-                if(bot > GRID_Y1) bot = GRID_Y1;
-                if(bot > top) {
-                    Color bc = c;
-                    bc.a = isPast ? 50 : (isHit ? 255 : 160);
-                    DrawRectangle((int)(x + LANE_W / 2 - 7), (int)top, 14, (int)(bot - top), bc);
-                }
-            }
-            // seta do jogo (bem mais visivel que quadrado)
-            {
-                int d = n->lane % 4;
-                float cx = x + LANE_W / 2;
-                if(isHit) {
-                    float r = 34.0f;
-                    DrawCircle((int)cx, (int)(y + 1), r, (Color) {255, 255, 255, 60});
-                    DrawCircle((int)cx, (int)(y + 1), r - 8, (Color) {255, 255, 200, 90});
-                }
-                Color keepC = edArrows[d].color;
-                float keepSx = edArrows[d].scaleX;
-                float keepSy = edArrows[d].scaleY;
-                if(isPast)
-                    edArrows[d].color = (Color) {255, 255, 255, 90};
-                else if(isHit) {
-                    edArrows[d].color = WHITE;
-                    edArrows[d].scaleX = keepSx * 1.25f;
-                    edArrows[d].scaleY = keepSy * 1.25f;
-                }
-                edArrows[d].position.x = cx + edArrowAdj[d].x;
-                edArrows[d].position.y = y + 1 + edArrowAdj[d].y;
-                Render_DrawAnimatedObject(edArrows + d);
-                edArrows[d].color = keepC;
-                edArrows[d].scaleX = keepSx;
-                edArrows[d].scaleY = keepSy;
-            }
-        }
-    }
-
-    // cursor (play grosso + agulha de vinil; as notas sobem ate ele, igual ao jogo)
-    {
-        float y = GRID_Y0 + (float)(cursorMs - viewTopMs) * ppm;
-        if(y >= GRID_Y0 - 30 && y <= GRID_Y1 + 30) {
-            int x0 = (int)GRID_X0 - 8;
-            int x1 = (int)(GRID_X0 + LANE_W * 8) + 8;
-            int yi = (int)y;
-            // linha grossa: sombra preta + vermelho + fio branco no meio
-            DrawRectangle(x0 - 2, yi - 4, (x1 - x0) + 4, 8, BLACK);
-            DrawRectangle(x0, yi - 3, x1 - x0, 6, RED);
-            DrawRectangle(x0, yi - 1, x1 - x0, 2, WHITE);
-            // agulha: triangulo apontando pro play (lado esquerdo, estilo vinil)
-            DrawTriangle((Vector2) {(float)x0 - 22, (float)yi - 13},
-                         (Vector2) {(float)x0 - 22, (float)yi + 13},
-                         (Vector2) {(float)x0 + 2, (float)yi}, WHITE);
-            DrawTriangle((Vector2) {(float)x0 - 19, (float)yi - 10},
-                         (Vector2) {(float)x0 - 19, (float)yi + 10},
-                         (Vector2) {(float)x0 - 1, (float)yi}, RED);
-        }
-    }
-
-    // mouse (travado com janela/drop abertos)
-    if(ceDlg == DLG_NONE && !activeDrop) {
-        Vector2 m = MouseWorld();
-        // barra: clica e arrasta pra andar na musica
-        {
-            double end = SongEndMs();
-            if(end < 1000) end = 1000;
-            Rectangle bar = {SBAR_X, SBAR_Y, SBAR_W, SBAR_H};
-            char inside = (m.x >= bar.x && m.x <= bar.x + bar.width && m.y >= bar.y - 8 && m.y <= bar.y + bar.height + 8);
-            if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && inside)
-                barDrag = 1;
-            if(barDrag) {
-                if(IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
-                    double frac = (m.x - bar.x) / bar.width;
-                    if(frac < 0) frac = 0;
-                    if(frac > 1) frac = 1;
-                    cursorMs = frac * end;
-                    viewTopMs = cursorMs - VIEW_MS * 0.5;
-                    if(viewTopMs < -500) viewTopMs = -500;
-                } else {
-                    if(playing)
-                        SeekAllAudio(cursorMs);
-                    barDrag = 0;
-                }
-            }
-        }
-        if(m.x >= GRID_X0 && m.x <= GRID_X0 + LANE_W * 8 && m.y >= GRID_Y0 && m.y <= GRID_Y1) {
-            int lane = (int)((m.x - GRID_X0) / LANE_W);
-            if(lane >= 0 && lane < 8) {
-                // fantasma: mostra onde a nota vai cair (X vermelho = ja tem, direito apaga)
-                double t = viewTopMs + (m.y - GRID_Y0) / ppm;
-                int si = SecAtTime(fmax(t, 0));
-                EdSec* s = chart.secs + si;
-                int raw = DispLane(s, lane); // casa da tela -> casa do arquivo
-                float beatMs = 60000.0f / s->bpm;
-                float stepMs = beatMs / snapDiv;
-                float snapped = roundf((float)(t / stepMs)) * stepMs;
-                if(snapped < 0) snapped = 0;
-                float gy = GRID_Y0 + (float)(snapped - viewTopMs) * ppm;
-                float cx = GRID_X0 + lane * LANE_W + LANE_W / 2;
-                int exist = EdSec_FindNear(s, snapped, raw, fmaxf(stepMs / 2, 15.0f));
-                if(gy >= GRID_Y0 - 26 && gy <= GRID_Y1 + 26) {
-                    if(exist >= 0) {
-                        DrawLine((int)(cx - 14), (int)(gy - 14), (int)(cx + 14), (int)(gy + 14), RED);
-                        DrawLine((int)(cx - 14), (int)(gy + 14), (int)(cx + 14), (int)(gy - 14), RED);
-                    } else {
-                        Color keep = edArrows[raw % 4].color;
-                        edArrows[raw % 4].color = (Color) {255, 255, 255, 150};
-                        edArrows[raw % 4].position.x = cx + edArrowAdj[raw % 4].x;
-                        edArrows[raw % 4].position.y = gy + 1 + edArrowAdj[raw % 4].y;
-                        Render_DrawAnimatedObject(edArrows + (raw % 4));
-                        edArrows[raw % 4].color = keep;
-                    }
-                }
-                // esquerdo SO poe, direito SO apaga
-                if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-                    if(exist < 0) {
-                        Touch();
-                        EdSec_Add(s, snapped, raw, 0);
-                        secIdx = si;
-                        cursorMs = snapped;
-                    }
-                }
-                if(IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) {
-                    int idx = EdSec_FindNear(s, (float)t, raw, beatMs);
-                    if(idx >= 0 && EdSec_RemoveAt(s, idx)) {
-                        Touch();
-                        secIdx = si;
-                    }
-                }
-            }
-        }
-    }
-}
-
 // ---------- acoes de trecho (usadas no menu e nas abas, sem duplicar) ----------
 static void Edit_DoNewPart(void) {
-    Touch();
+    EdTouch();
     EdSec* last = chart.secs + chart.nsec - 1;
     EdSec* g = realloc(chart.secs, sizeof(EdSec) * (size_t)(chart.nsec + 1));
     if(g == NULL) return;
@@ -2770,18 +1416,20 @@ static void Edit_DoNewPart(void) {
     cursorMs = SecStartMs(secIdx);
     viewTopMs = cursorMs - VIEW_MS * 0.3;
     if(viewTopMs < 0) viewTopMs = 0;
-    StatusMsg("TRECHO NOVO NO FIM");
+    EdStatusMsg("TRECHO NOVO NO FIM");
 }
+
 static void Edit_DoDelPart(void) {
-    if(chart.nsec <= 1) { StatusMsg("NOT POSSIBLE TO DELETE HAVE ONLY 1 PART"); return; }
-    Touch();
+    if(chart.nsec <= 1) { EdStatusMsg("NOT POSSIBLE TO DELETE HAVE ONLY 1 PART"); return; }
+    EdTouch();
     free(chart.secs[secIdx].notes);
     memmove(chart.secs + secIdx, chart.secs + secIdx + 1, sizeof(EdSec) * (size_t)(chart.nsec - secIdx - 1));
     chart.nsec--;
     if(secIdx >= chart.nsec) secIdx = chart.nsec - 1;
     SecTimes_Invalidate();
-    StatusMsg("part deleted");
+    EdStatusMsg("part deleted");
 }
+
 static void Edit_DoCopy(void) {
     if(copyValid) free(copyBuf.notes);
     memset(&copyBuf, 0, sizeof(copyBuf));
@@ -2797,11 +1445,12 @@ static void Edit_DoCopy(void) {
         }
     }
     copyValid = 1;
-    StatusMsg("TRECHO COPIADO");
+    EdStatusMsg("TRECHO COPIADO");
 }
+
 static void Edit_DoPaste(void) {
-    if(!copyValid) { StatusMsg("COPIE ANTES (C)"); return; }
-    Touch();
+    if(!copyValid) { EdStatusMsg("COPIE ANTES (C)"); return; }
+    EdTouch();
     double base = SongEndMs();
     double srcStart = SecStartMs(secIdx);
     EdSec* g = realloc(chart.secs, sizeof(EdSec) * (size_t)(chart.nsec + 1));
@@ -2821,27 +1470,21 @@ static void Edit_DoPaste(void) {
     cursorMs = SecStartMs(secIdx);
     viewTopMs = cursorMs - VIEW_MS * 0.3;
     if(viewTopMs < 0) viewTopMs = 0;
-    StatusMsg("COLADO NO FIM");
+    EdStatusMsg("COLADO NO FIM");
 }
+
 static void Edit_DoTestPlay(void) {
-    StopPlay();
+    Audio_StopPlay();
     Editor_Save();
     PlayState_SetSongDir(chart.dir);
     PlayState_SetReturnEditor(1);
     PlayState_SetScene();
 }
-// menu File/Edit/View estilo Psych (dropdown, sem alloc)
-static char MenuItem(Rectangle r, const char* label) {
-    Vector2 m = MouseWorld();
-    char hov = (m.x >= r.x && m.x <= r.x + r.width && m.y >= r.y && m.y <= r.y + r.height);
-    DrawRectangleRec(r, hov ? (Color){60,60,60,255} : (Color){18,18,18,255});
-    DrawTextEx(mainFont, label, (Vector2){r.x + 8, r.y + 5}, 20, 1, WHITE);
-    return hov && IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
-}
+
 static void Edit_DrawMenuBar(void) {
     DrawRectangle(0, 0, 1280, (int)MENU_H, (Color){16,16,16,255});
     DrawLine(0, (int)MENU_H, 1280, (int)MENU_H, (Color){60,60,60,255});
-    Vector2 m = MouseWorld();
+    Vector2 m = EdMouseWorld();
     const char* names[3] = {"File", "Edit", "View"};
     for(int i = 0; i < 3; i++) {
         Rectangle r = {(float)(PANEL_X + i * 70), 0, 68, MENU_H};
@@ -2862,11 +1505,11 @@ static void Edit_DrawMenuBar(void) {
         Rectangle box = {mx, MENU_H, 230, 5 * 30 + 8};
         DrawRectangleRec(box, (Color){15,15,15,245});
         DrawRectangleLinesEx(box, 1, GREEN);
-        if(MenuItem((Rectangle){box.x + 4, box.y + 4, 222, 28}, "Save  Ctrl+S")) { menuOpen = 0; Editor_Save(); }
-        else if(MenuItem((Rectangle){box.x + 4, box.y + 32, 222, 28}, "Save As...")) { menuOpen = 0; saveAsBox.buf[0] = 0; importPath[0] = 0; ceDlg = DLG_SAVEAS; focusBox = &saveAsBox; }
-        else if(MenuItem((Rectangle){box.x + 4, box.y + 60, 222, 28}, "Save Compressed")) { menuOpen = 0; EdChart_SaveCompressed(&chart); StatusMsg("SALVO COMPRIMIDO"); }
-        else if(MenuItem((Rectangle){box.x + 4, box.y + 88, 222, 28}, "Test Play  F5")) { menuOpen = 0; Edit_DoTestPlay(); }
-        else if(MenuItem((Rectangle){box.x + 4, box.y + 116, 222, 28}, "Back to list  ESC")) { menuOpen = 0; Editor_RequestLeave(); }
+        if(EdMenuItem((Rectangle){box.x + 4, box.y + 4, 222, 28}, "Save  Ctrl+S")) { menuOpen = 0; Editor_Save(); }
+        else if(EdMenuItem((Rectangle){box.x + 4, box.y + 32, 222, 28}, "Save As...")) { menuOpen = 0; saveAsBox.buf[0] = 0; importPath[0] = 0; ceDlg = DLG_SAVEAS; focusBox = &saveAsBox; }
+        else if(EdMenuItem((Rectangle){box.x + 4, box.y + 60, 222, 28}, "Save Compressed")) { menuOpen = 0; EdChart_SaveCompressed(&chart); EdStatusMsg("SALVO COMPRIMIDO"); }
+        else if(EdMenuItem((Rectangle){box.x + 4, box.y + 88, 222, 28}, "Test Play  F5")) { menuOpen = 0; Edit_DoTestPlay(); }
+        else if(EdMenuItem((Rectangle){box.x + 4, box.y + 116, 222, 28}, "Back to list  ESC")) { menuOpen = 0; Editor_RequestLeave(); }
         else if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             if(!(m.x >= box.x && m.x <= box.x + box.width && m.y >= 0 && m.y <= box.y + box.height)) menuOpen = 0;
         }
@@ -2874,11 +1517,11 @@ static void Edit_DrawMenuBar(void) {
         Rectangle box = {mx, MENU_H, 230, 5 * 30 + 8};
         DrawRectangleRec(box, (Color){15,15,15,245});
         DrawRectangleLinesEx(box, 1, GREEN);
-        if(MenuItem((Rectangle){box.x + 4, box.y + 4, 222, 28}, "Undo  Ctrl+Z")) { menuOpen = 0; Undo_Pop(); chart.dirty = 1; }
-        else if(MenuItem((Rectangle){box.x + 4, box.y + 32, 222, 28}, "Copy part  C")) { menuOpen = 0; Edit_DoCopy(); }
-        else if(MenuItem((Rectangle){box.x + 4, box.y + 60, 222, 28}, "Paste at end  V")) { menuOpen = 0; Edit_DoPaste(); }
-        else if(MenuItem((Rectangle){box.x + 4, box.y + 88, 222, 28}, "New part  N")) { menuOpen = 0; Edit_DoNewPart(); }
-        else if(MenuItem((Rectangle){box.x + 4, box.y + 116, 222, 28}, "Delete part  X")) { menuOpen = 0; Edit_DoDelPart(); }
+        if(EdMenuItem((Rectangle){box.x + 4, box.y + 4, 222, 28}, "Undo  Ctrl+Z")) { menuOpen = 0; Undo_Pop(); chart.dirty = 1; }
+        else if(EdMenuItem((Rectangle){box.x + 4, box.y + 32, 222, 28}, "Copy part  C")) { menuOpen = 0; Edit_DoCopy(); }
+        else if(EdMenuItem((Rectangle){box.x + 4, box.y + 60, 222, 28}, "Paste at end  V")) { menuOpen = 0; Edit_DoPaste(); }
+        else if(EdMenuItem((Rectangle){box.x + 4, box.y + 88, 222, 28}, "New part  N")) { menuOpen = 0; Edit_DoNewPart(); }
+        else if(EdMenuItem((Rectangle){box.x + 4, box.y + 116, 222, 28}, "Delete part  X")) { menuOpen = 0; Edit_DoDelPart(); }
         else if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             if(!(m.x >= box.x && m.x <= box.x + box.width && m.y >= 0 && m.y <= box.y + box.height)) menuOpen = 0;
         }
@@ -2887,19 +1530,20 @@ static void Edit_DrawMenuBar(void) {
         DrawRectangleRec(box, (Color){15,15,15,245});
         DrawRectangleLinesEx(box, 1, GREEN);
         const char* followName = playFollow ? "Note player : ON" : "Note player : OFF";
-        if(MenuItem((Rectangle){box.x + 4, box.y + 4, 222, 28}, followName)) { menuOpen = 0; playFollow = !playFollow; }
-        else if(MenuItem((Rectangle){box.x + 4, box.y + 32, 222, 28}, "Go to part start")) { menuOpen = 0; cursorMs = SecStartMs(secIdx); }
+        if(EdMenuItem((Rectangle){box.x + 4, box.y + 4, 222, 28}, followName)) { menuOpen = 0; playFollow = !playFollow; }
+        else if(EdMenuItem((Rectangle){box.x + 4, box.y + 32, 222, 28}, "Go to part start")) { menuOpen = 0; cursorMs = SecStartMs(secIdx); }
         else if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             if(!(m.x >= box.x && m.x <= box.x + box.width && m.y >= 0 && m.y <= box.y + box.height)) menuOpen = 0;
         }
     }
 }
+
 // abas laterais (uma ativa por vez)
 static void Edit_DrawTabs(void) {
     float x0 = PANEL_X;
     float y0 = 34;
     float tw = 102;
-    Vector2 m = MouseWorld();
+    Vector2 m = EdMouseWorld();
     for(int t = 0; t < TAB_COUNT; t++) {
         Rectangle r = {x0 + t * (tw + 4), y0, tw, 26};
         char active = (activeTab == t);
@@ -2929,7 +1573,7 @@ static void DrawDropField(float x, float y, float boxW, const char* label, TxtBo
     TxtBox_Draw(box, field, hint);
 
     const Rectangle button = {field.x + boxW + 6, y, 30, 32};
-    if(DropBtn(button, activeDrop == dropId)) {
+    if(EdDropBtn(button, activeDrop == dropId)) {
         if(activeDrop == dropId) {
             activeDrop = DROP_NONE;
         } else {
@@ -2997,11 +1641,12 @@ static void Edit_DrawPanel_Song(float x, float y) {
     }
     y += 44;
 
-    if(Button((Rectangle){x, y, 190, 40}, "SALVAR", 22)) Editor_Save();
-    if(Button((Rectangle){x + 200, y, 190, 40}, "SALVAR COMO", 20)) {
+    if(EdButton((Rectangle){x, y, 190, 40}, "SALVAR", 22)) Editor_Save();
+    if(EdButton((Rectangle){x + 200, y, 190, 40}, "SALVAR COMO", 20)) {
         saveAsBox.buf[0] = 0; importPath[0] = 0; ceDlg = DLG_SAVEAS; focusBox = &saveAsBox;
     }
 }
+
 static void Edit_DrawPanel_Section(float x, float y) {
     char blocked = (ceDlg != DLG_NONE || activeDrop || menuOpen);
     char buf[96];
@@ -3010,8 +1655,8 @@ static void Edit_DrawPanel_Section(float x, float y) {
     DrawTextEx(mainFont, buf, (Vector2){x, y}, 22, 1, GREEN);
     y += 32;
     DrawTextEx(mainFont, "turn (TAB):", (Vector2){x, y + 4}, 22, 1, WHITE);
-    if(Button((Rectangle){x + 150, y, 180, 32}, chart.secs[secIdx].mustHit ? "boyfriend" : "opponent", 20)) {
-        Touch(); chart.secs[secIdx].mustHit = !chart.secs[secIdx].mustHit;
+    if(EdButton((Rectangle){x + 150, y, 180, 32}, chart.secs[secIdx].mustHit ? "boyfriend" : "opponent", 20)) {
+        EdTouch(); chart.secs[secIdx].mustHit = !chart.secs[secIdx].mustHit;
     }
     y += 42;
     // steps = tamanho do trecho em passos (16 = padrao, 4 tempos). Era "size:".
@@ -3032,20 +1677,21 @@ static void Edit_DrawPanel_Section(float x, float y) {
         NumBox_Draw(&nbSecBpm, r);
     }
     y += 46;
-    if(Button((Rectangle){x, y, 120, 36}, "+part", 20)) Edit_DoNewPart();
-    if(Button((Rectangle){x + 130, y, 120, 36}, "X part", 20)) Edit_DoDelPart();
+    if(EdButton((Rectangle){x, y, 120, 36}, "+part", 20)) Edit_DoNewPart();
+    if(EdButton((Rectangle){x + 130, y, 120, 36}, "X part", 20)) Edit_DoDelPart();
     y += 44;
-    if(Button((Rectangle){x, y, 120, 36}, "copy", 20)) Edit_DoCopy();
-    if(Button((Rectangle){x + 130, y, 120, 36}, "paste", 20)) Edit_DoPaste();
+    if(EdButton((Rectangle){x, y, 120, 36}, "copy", 20)) Edit_DoCopy();
+    if(EdButton((Rectangle){x + 130, y, 120, 36}, "paste", 20)) Edit_DoPaste();
     y += 44;
 }
+
 static void Edit_DrawPanel_Note(float x, float y) {
     char buf[128];
     SecFollowCursor();
     DrawTextEx(mainFont, "NOTE", (Vector2){x, y}, 22, 1, GREEN);
     y += 32;
     char tbuf[32];
-    TimeFmt(tbuf, sizeof(tbuf), cursorMs);
+    EdTimeFmt(tbuf, sizeof(tbuf), cursorMs);
     snprintf(buf, sizeof(buf), "cursor: %s", tbuf);
     DrawTextEx(mainFont, buf, (Vector2){x, y}, 20, 1, WHITE);
     y += 30;
@@ -3061,6 +1707,7 @@ static void Edit_DrawPanel_Note(float x, float y) {
     y += 24;
     DrawTextEx(mainFont, "SHIFT/CTRL+wheel = long note", (Vector2){x, y}, 18, 1, YELLOW);
 }
+
 static void Edit_DrawPanel_Data(float x, float y) {
     char buf[160];
     DrawTextEx(mainFont, "DATA", (Vector2){x, y}, 22, 1, GREEN);
@@ -3074,7 +1721,7 @@ static void Edit_DrawPanel_Data(float x, float y) {
     DrawTextEx(mainFont, buf, (Vector2){x, y}, 20, 1, WHITE);
     y += 30;
     char tbuf[32];
-    TimeFmt(tbuf, sizeof(tbuf), SongEndMs());
+    EdTimeFmt(tbuf, sizeof(tbuf), SongEndMs());
     snprintf(buf, sizeof(buf), "length: %s", tbuf);
     DrawTextEx(mainFont, buf, (Vector2){x, y}, 20, 1, WHITE);
     y += 30;
@@ -3084,12 +1731,13 @@ static void Edit_DrawPanel_Data(float x, float y) {
     snprintf(buf, sizeof(buf), "bpm %.1f  speed %.2f%s", (double)chart.bpm, (double)chart.speed, chart.dirty ? " *" : "");
     DrawTextEx(mainFont, buf, (Vector2){x, y}, 18, 1, YELLOW);
 }
+
 static void Edit_DrawPanel_Charting(float x, float y) {
     DrawTextEx(mainFont, "CHARTING", (Vector2){x, y}, 22, 1, GREEN);
     y += 34;
-    if(Button((Rectangle){x, y, 190, 40}, playing ? "PAUSAR" : "OUVIR", 22)) TogglePlay();
+    if(EdButton((Rectangle){x, y, 190, 40}, playing ? "PAUSAR" : "OUVIR", 22)) Audio_Toggle();
     y += 50;
-    if(Button((Rectangle){x, y, 190, 40}, "play (F5)", 22)) Edit_DoTestPlay();
+    if(EdButton((Rectangle){x, y, 190, 40}, "play (F5)", 22)) Edit_DoTestPlay();
     y += 50;
     DrawTextEx(mainFont, "space = play/stop", (Vector2){x, y}, 18, 1, YELLOW);
     y += 24;
@@ -3097,6 +1745,7 @@ static void Edit_DrawPanel_Charting(float x, float y) {
     y += 24;
     DrawTextEx(mainFont, "W/S or wheel = scroll", (Vector2){x, y}, 18, 1, YELLOW);
 }
+
 static void Edit_DrawPanel_Events(float x, float y) {
     DrawTextEx(mainFont, "EVENTS", (Vector2){x, y}, 22, 1, GREEN);
     y += 34;
@@ -3125,7 +1774,7 @@ static void Edit_DrawPanel(void) {
     }
     DrawTextEx(mainFont, titleBuf, (Vector2){x, 66}, 24, 2, WHITE);
     // OPEN ao lado da musica: volta p/ lista p/ abrir outra (mesmo que ESC)
-    if(Button((Rectangle){x + 300, 62, 110, 32}, "OPEN", 20)) {
+    if(EdButton((Rectangle){x + 300, 62, 110, 32}, "OPEN", 20)) {
         Editor_RequestLeave();
         return;
     }
@@ -3152,6 +1801,7 @@ static void Edit_DrawPanel(void) {
         }
     }
 }
+
 // (removido: migrado p/ abas Song/Section)
 
 static void Edit_Draw(void) {
@@ -3160,7 +1810,7 @@ static void Edit_Draw(void) {
 
     // tempo no canto + status
     char tbuf[32];
-    TimeFmt(tbuf, sizeof(tbuf), cursorMs);
+    EdTimeFmt(tbuf, sizeof(tbuf), cursorMs);
     DrawTextEx(mainFont, tbuf, (Vector2) {1110, 2}, 24, 2, WHITE);
     // status embaixo da grade (antes caia em cima do painel, lado direito)
     if(statusTimer > 0) {
@@ -3237,7 +1887,7 @@ static void ChartEditor_Destroy([[maybe_unused]] RayScene* scene) {
     SongList_Free(pickerSongs);
     pickerSongs = NULL;
     pickerCount = 0;
-    StopPlay();
+    Audio_StopPlay();
     if(edHasAudio) {
         UnloadMusicStream(edInst);
         edHasAudio = 0;
@@ -3269,6 +1919,7 @@ void ChartEditor_SetSongDir(const char* dir) {
 }
 
 static RayScene chartScene;
+
 Scene_MakeSceneCode(
     chartScene,
     ChartEditor_SetScene,
