@@ -56,12 +56,16 @@ All Things your 2d (or semi 3d) game / mod needs
 <details>
 <summary><b>——Credits</b></summary>
 
-(c)2026 nordjkpl
+<div align="left">
+
+//
+
+// Created by (c)2026 nordjkpl
 
 ```text
-All Friday Night Funkin' assets belong to their respective owners
+// All Friday Night Funkin' assets belong to their respective owners
 ```
 
-View License file for View Copyright
+// View License file for View Copyright
 
 </details>
