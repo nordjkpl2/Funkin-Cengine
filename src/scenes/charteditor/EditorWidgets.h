@@ -46,6 +46,7 @@ extern Camera2D camEd;
 Vector2 EdMouseWorld(void);
 char EdButton(Rectangle r, const char* label, int fs);
 extern TxtBox* dropBox;
+extern char (*dropNames)[SONG_NAME_MAX];
 extern int dropCount;
 char EdDropBtn(Rectangle r, char open);
 extern int dropScroll;

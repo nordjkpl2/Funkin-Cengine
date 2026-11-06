@@ -200,6 +200,7 @@ char EdButton(Rectangle r, const char* label, int fs) {
 
 // setinha que abre lista (desenha o triangulo na mao)
 TxtBox* dropBox = NULL;
+char (*dropNames)[SONG_NAME_MAX] = NULL;
 
 int dropCount = 0;
 
