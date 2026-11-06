@@ -1,13 +1,12 @@
-
 cmake_minimum_required(VERSION 3.21)
 
 project(FNF_C_ENGINE LANGUAGES C)
 
 # =========
 # COMPILER
-# ==
+# =========
 if(NOT CMAKE_C_COMPILER_ID MATCHES "Clang")
-    message(FATAL_ERROR "this build code requires LLVMClang")
+    message(FATAL_ERROR "This build requires LLVM Clang.")
 endif()
 
 if(NOT WIN32)
@@ -17,9 +16,10 @@ endif()
 set(CMAKE_C_STANDARD 23)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
-# ======
+
+# =========
 # DIRECTORIES
-# ====
+# =========
 set(RAYLIB_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/lib/raylib55")
 set(RAYLIB_SRC "${RAYLIB_ROOT}/src")
 
@@ -27,55 +27,59 @@ if(NOT EXISTS "${RAYLIB_SRC}/raylib.h")
     message(FATAL_ERROR "Raylib 5.5 not found in lib/raylib55.")
 endif()
 
-if(NOT EXISTS "${RAYLIB_SRC}/rglfw.c")
-    message(FATAL_ERROR "Raylib GLFW module not found.")
-endif()
 # =========
 # ENGINE SOURCES
-# ======
+# =========
 file(GLOB_RECURSE ENGINE_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/*.c"
 )
-# =============
+
+# =========
 # OTHER LIBRARIES
-# ======
+# =========
 file(GLOB_RECURSE LIB_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/lib/*.c"
 )
-# Exclude Raylib sources from this collection
+# Excluir sources do Raylib desta coleção genérica
 list(FILTER LIB_SOURCES EXCLUDE REGEX "raylib55")
-# ============
-# RAYLIB 5.5 SOURCES
-# =====
 
-# Non-recursive: only the actual module .c files.
-# Excludes external and platform-specific standalone sources.
-
-file(GLOB RAYLIB_SOURCES CONFIGURE_DEPENDS
-    "${RAYLIB_SRC}/*.c"
+# =========
+# RAYLIB 5.5 SOURCES (Módulos Manuais)
+# =========
+set(RAYLIB_MODULES
+    "${RAYLIB_SRC}/raudio.c"
+    "${RAYLIB_SRC}/rcore.c"
+    "${RAYLIB_SRC}/rmodels.c"
+    "${RAYLIB_SRC}/rshapes.c"
+    "${RAYLIB_SRC}/rtext.c"
+    "${RAYLIB_SRC}/rtextures.c"
+    "${RAYLIB_SRC}/utils.c"
+    "${RAYLIB_SRC}/rglfw.c"
 )
 
 # =========
-# OPTIMIZATION FLAGS
-# ====
-
+# OPTIMIZATION FLAGS (Espelhando sua linha de comando)
+# =========
 set(FNF_COMPILE_FLAGS
     -Os
     -flto=thin
     -ffunction-sections
     -fdata-sections
+    -fmerge-all-constants
     -funroll-loops
     -fomit-frame-pointer
     -fno-math-errno
     -fno-common
     -DNDEBUG
+    -DPLATFORM_DESKTOP
+    -DGRAPHICS_API_OPENGL_33
 )
 
-# ========
-# RAYLIB OBJECTS
-# ====
+# =========
+# RAYLIB OBJECT LIBRARY
+# =========
 add_library(raylib_objects OBJECT
-    ${RAYLIB_SOURCES}
+    ${RAYLIB_MODULES}
 )
 
 target_include_directories(raylib_objects PRIVATE
@@ -83,17 +87,13 @@ target_include_directories(raylib_objects PRIVATE
     "${RAYLIB_SRC}/external/glfw/include"
 )
 
-target_compile_definitions(raylib_objects PRIVATE
-    PLATFORM_DESKTOP_GLFW
-    GRAPHICS_API_OPENGL_33
-)
-
 target_compile_options(raylib_objects PRIVATE
     ${FNF_COMPILE_FLAGS}
 )
-# =============
+
+# =========
 # EXECUTABLE
-# ======
+# =========
 add_executable(FNF_C_ENGINE WIN32
     main.c
     ${ENGINE_SOURCES}
@@ -102,26 +102,25 @@ add_executable(FNF_C_ENGINE WIN32
 )
 
 target_include_directories(FNF_C_ENGINE PRIVATE
-    "${RAYLIB_SRC}"
-    "${RAYLIB_SRC}/external/glfw/include"
     "${CMAKE_CURRENT_SOURCE_DIR}/headers"
     "${CMAKE_CURRENT_SOURCE_DIR}/src"
     "${CMAKE_CURRENT_SOURCE_DIR}/lib"
+    "${RAYLIB_SRC}"
+    "${RAYLIB_SRC}/external/glfw/include"
 )
 
 target_compile_options(FNF_C_ENGINE PRIVATE
     ${FNF_COMPILE_FLAGS}
 )
-# ========
-# LINKER
-# ====
 
+# =========
+# LINKER OPTIONS & LIBRARIES
+# =========
 target_link_options(FNF_C_ENGINE PRIVATE
     -Os
     -flto=thin
     -fuse-ld=lld
-    -Wl,--gc-sections
-    -s
+    -Wl,--gc-sections,--icf=all,-O2
 )
 
 target_link_libraries(FNF_C_ENGINE PRIVATE
@@ -131,24 +130,10 @@ target_link_libraries(FNF_C_ENGINE PRIVATE
     user32
     shell32
 )
-# ======
-# OUTPUT
-# ===
+
+# =========
+# OUTPUT DIRECTORY
+# =========
 set_target_properties(FNF_C_ENGINE PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
 )
-# ======
-# BUILD INFO
-# ===
-message(STATUS "====================================")
-message(STATUS "FNF_C_ENGINE")
-message(STATUS "Compiler: ${CMAKE_C_COMPILER_ID}")
-message(STATUS "Standard: C23")
-message(STATUS "Optimization: -Os")
-message(STATUS "LTO: ThinLTO")
-message(STATUS "Linker: LLD")
-message(STATUS "Raylib: 5.5 SOURCE")
-message(STATUS "Platform: Windows GLFW")
-message(STATUS "Graphics: OpenGL 3.3")
-message(STATUS "Raylib static archive: NONE")
-message(STATUS "====================================")

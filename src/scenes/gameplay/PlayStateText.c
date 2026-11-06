@@ -3,8 +3,8 @@
  * PlayStateText.c - textos do HUD: tempo, titulo, score, misses e BOTPLAY.
  */
 
-#include "scenes/playstate/PlayStateText.h"
-#include "scenes/playstate/PlayStateAudio.h"
+#include "scenes/gameplay/PlayStateText.h"
+#include "scenes/gameplay/PlayStateAudio.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -21,6 +21,11 @@ static Vector2 missPos;
 // Nome da musica exibido acima do score.
 static char songDisplayName[128] = "Unknown Song";
 static Vector2 songDisplayNamePos = {910.0f, 650.0f};
+
+// Canto inferior direito (titulo, score e misses alinhados a direita).
+#define TEXT_RIGHT_X 1270.0f
+// Tempo do topo, centralizado igual a barra de vida.
+#define TEXT_CENTER_X 600.0f
 
 static int lastTimeSec = -1;
 static char timeBuf[32] = "0:00 / 0:00";
@@ -68,7 +73,7 @@ static void UpdateSongDisplayName(const char* songDir) {
         textSize = MeasureTextEx(vcrFont, songDisplayName, 13.0f, 1.0f);
     }
 
-    songDisplayNamePos.x = 1270.0f - textSize.x;
+    songDisplayNamePos.x = TEXT_RIGHT_X - textSize.x;
     songDisplayNamePos.y = 651.0f;
 }
 
@@ -78,15 +83,15 @@ void PlayStateText_Init(const char* songDir) {
 
     snprintf(scoreBuf, sizeof(scoreBuf), "Score: 0");
     Vector2 ss = MeasureTextEx(vcrFont, scoreBuf, 16, 1);
-    scorePos = (Vector2) {1270 - ss.x, 672};
+    scorePos = (Vector2) {TEXT_RIGHT_X - ss.x, 672};
 
     snprintf(missBuf, sizeof(missBuf), "Misses: 0");
     Vector2 ms = MeasureTextEx(vcrFont, missBuf, 16, 1);
-    missPos = (Vector2) {1270 - ms.x, 690};
+    missPos = (Vector2) {TEXT_RIGHT_X - ms.x, 690};
 
     snprintf(timeBuf, sizeof(timeBuf), "0:00 / 0:00");
     Vector2 ts = MeasureTextEx(vcrFont, timeBuf, 20.0f, 1);
-    timePos = (Vector2) {(1200.0f / 2.0f) - (ts.x / 2.0f), 15.0f};
+    timePos = (Vector2) {TEXT_CENTER_X - (ts.x / 2.0f), 15.0f};
 
     UpdateSongDisplayName(songDir);
 }
@@ -113,7 +118,7 @@ void PlayStateText_Draw(int score, int misses, float songTime, char showScore) {
                 currentSec / 60, currentSec % 60, (int)total / 60, (int)total % 60);
 
             Vector2 textSize = MeasureTextEx(vcrFont, timeBuf, 20.0f, 1);
-            timePos = (Vector2) {(1200.0f / 2.0f) - (textSize.x / 2.0f), 15.0f};
+            timePos = (Vector2) {TEXT_CENTER_X - (textSize.x / 2.0f), 15.0f};
         }
 
         const float tsh = 1.5f;
@@ -138,7 +143,7 @@ void PlayStateText_Draw(int score, int misses, float songTime, char showScore) {
             snprintf(scoreBuf, sizeof(scoreBuf), "Score: %d", score);
             lastScoreDrawn = score;
             Vector2 ss = MeasureTextEx(vcrFont, scoreBuf, 16, 1);
-            scorePos = (Vector2) {1270 - ss.x, 672};
+            scorePos = (Vector2) {TEXT_RIGHT_X - ss.x, 672};
         }
         const float shadow = 1.5f;
         DrawTextEx(vcrFont, scoreBuf, (Vector2) {scorePos.x + shadow, scorePos.y - shadow}, 16, 1, BLACK);
@@ -148,7 +153,7 @@ void PlayStateText_Draw(int score, int misses, float songTime, char showScore) {
             snprintf(missBuf, sizeof(missBuf), "Misses: %d", misses);
             lastMissesDrawn = misses;
             Vector2 ms = MeasureTextEx(vcrFont, missBuf, 16, 1);
-            missPos = (Vector2) {1270 - ms.x, 690};
+            missPos = (Vector2) {TEXT_RIGHT_X - ms.x, 690};
         }
         DrawTextEx(vcrFont, missBuf, (Vector2) {missPos.x + shadow, missPos.y - shadow}, 16, 1, BLACK);
         DrawTextEx(vcrFont, missBuf, missPos, 16, 1, WHITE);

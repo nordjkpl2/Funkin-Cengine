@@ -3,7 +3,7 @@
  * PlayStateHealth.c - vida, barra de vida e icones do PlayState.
  */
 
-#include "scenes/playstate/PlayStateHealth.h"
+#include "scenes/gameplay/PlayStateHealth.h"
 #include <math.h>
 
 static float health;          /* 0 - 1; abaixo de 0 = morte */

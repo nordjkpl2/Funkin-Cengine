@@ -4,7 +4,7 @@
  * Usa Stage.c apenas como parser; aqui ficam texturas, desenho e liberacao.
  */
 
-#include "scenes/playstate/PlayStateStage.h"
+#include "scenes/gameplay/PlayStateStage.h"
 #include "scenes/Stage.h"
 #include "Log.h"
 #include <stdlib.h>
@@ -113,7 +113,6 @@ static char LoadModStage(PlayStateStage* stage, const char* name, const char* so
 
     char hasLua = Stage_FindLua(name, songDir, luaPath);
     char hasJson = Stage_FindJson(name, songDir, jsonPath);
-    Log_ErrorF("STAGE: nome='%s' songDir='%s' lua=%d json=%d", name, songDir, hasLua, hasJson);
     // Stage "stage" (ou vazio) = padrao do engine. Qualquer outro nome sem
     // arquivos vira um "void" vazio, como na Psych (posicoes e zoom padrao).
     if (!hasLua && !hasJson && (name[0] == '\0' || strcmp(name, "stage") == 0)) return 0;
@@ -132,7 +131,6 @@ static char LoadModStage(PlayStateStage* stage, const char* name, const char* so
 
     char root[256];
     ModRoot(songDir, root);
-    Log_ErrorF("STAGE: modRoot='%s' sprites=%d lua='%s'", root, count, luaPath);
 
     if (count > 0) {
         stage->objects = malloc(sizeof(RayGraphicObject) * count);
@@ -223,8 +221,6 @@ static char LoadModStage(PlayStateStage* stage, const char* name, const char* so
         }
     }
 
-    Log_ErrorF("STAGE: carregado back=%d front=%d animBack=%d anim=%d zoom=%.2f",
-        stage->backgroundObjects, stage->objectCount, stage->animBackground, stage->animCount, meta.defaultZoom);
     stage->defaultCameraZoom = meta.defaultZoom;
 
     gf->object.scrollFactor = (Vector2) {0.95f, 0.95f};
@@ -241,7 +237,6 @@ static char LoadModStage(PlayStateStage* stage, const char* name, const char* so
 void PlayStateStage_Load(PlayStateStage* stage, const char* stageName, const char* songDir,
                          Girlfriend* gf, Character* dad, Character* bf)
 {
-    Log_ErrorF("STAGE: Load chamado (stage do chart='%s')", stageName);
     memset(stage, 0, sizeof(*stage));
     if (!LoadModStage(stage, stageName, songDir, gf, dad, bf)) {
         free(stage->objects);

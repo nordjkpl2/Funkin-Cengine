@@ -14,6 +14,16 @@
 #############################################
 # Rule for compiling C files.
 
+rule C_COMPILER__raylib_objects_unscanned_Release
+  depfile = $DEP_FILE
+  deps = gcc
+  command = ${LAUNCHER}${CODE_CHECK}C:\msys64\clang64\bin\clang.exe $DEFINES $INCLUDES $FLAGS -MD -MT $out -MF $DEP_FILE -o $out -c $in
+  description = Building C object $out
+
+
+#############################################
+# Rule for compiling C files.
+
 rule C_COMPILER__FNF_C_ENGINE_unscanned_Release
   depfile = $DEP_FILE
   deps = gcc

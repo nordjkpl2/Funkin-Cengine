@@ -3,7 +3,7 @@
  * PlayStateCamera.c - cameras de jogo e HUD do PlayState.
  */
 
-#include "scenes/playstate/PlayStateCamera.h"
+#include "scenes/gameplay/PlayStateCamera.h"
 
 static Character* followTarget;
 static Camera2D camGame;

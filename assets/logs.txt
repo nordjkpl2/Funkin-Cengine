@@ -37,3 +37,101 @@ STAGE: Load chamado (stage do chart='ampers')
 STAGE: nome='ampers' songDir='assets/mods/songs/ampersand' lua=1 json=1
 STAGE: modRoot='assets/mods' sprites=1 lua='assets/mods/stages/ampers.lua'
 STAGE: carregado back=1 front=1 animBack=0 anim=0 zoom=0.40
+
+--- SESSION LOG START ---
+STAGE: Load chamado (stage do chart='spaci1')
+STAGE: nome='spaci1' songDir='assets/mods/songs/Astray' lua=1 json=1
+STAGE: modRoot='assets/mods' sprites=1 lua='assets/mods/stages/spaci1.lua'
+STAGE: carregado back=1 front=1 animBack=0 anim=0 zoom=0.40
+STAGE: Load chamado (stage do chart='crisisBG')
+STAGE: nome='crisisBG' songDir='assets/mods/songs/Crisis' lua=1 json=1
+STAGE: modRoot='assets/mods' sprites=2 lua='assets/mods/stages/crisisBG.lua'
+STAGE: carregado back=2 front=2 animBack=0 anim=0 zoom=0.38
+STAGE: Load chamado (stage do chart='crisisBG')
+STAGE: nome='crisisBG' songDir='assets/mods/songs/Crisis' lua=1 json=1
+STAGE: modRoot='assets/mods' sprites=2 lua='assets/mods/stages/crisisBG.lua'
+STAGE: carregado back=2 front=2 animBack=0 anim=0 zoom=0.38
+
+--- SESSION LOG START ---
+STAGE: Load chamado (stage do chart='crisisBG')
+STAGE: nome='crisisBG' songDir='assets/mods/songs/Crisis' lua=1 json=1
+STAGE: modRoot='assets/mods' sprites=2 lua='assets/mods/stages/crisisBG.lua'
+STAGE: carregado back=2 front=2 animBack=0 anim=0 zoom=0.38
+
+--- SESSION LOG START ---
+STAGE: Load chamado (stage do chart='apostropheBG-V2')
+STAGE: nome='apostropheBG-V2' songDir='assets/mods/songs/apostrophe' lua=1 json=1
+STAGE: modRoot='assets/mods' sprites=2 lua='assets/mods/stages/apostropheBG-V2.lua'
+STAGE: carregado back=2 front=2 animBack=0 anim=0 zoom=0.30
+STAGE: Load chamado (stage do chart='fice')
+STAGE: nome='fice' songDir='assets/mods/songs/sacrifice' lua=1 json=1
+STAGE: modRoot='assets/mods' sprites=2 lua='assets/mods/stages/fice.lua'
+STAGE: carregado back=2 front=2 animBack=0 anim=0 zoom=0.40
+STAGE: Load chamado (stage do chart='trauma')
+STAGE: nome='trauma' songDir='assets/mods/songs/Trauma' lua=1 json=1
+STAGE: modRoot='assets/mods' sprites=1 lua='assets/mods/stages/trauma.lua'
+STAGE: carregado back=0 front=0 animBack=1 anim=1 zoom=0.40
+
+--- SESSION LOG START ---
+STAGE: Load chamado (stage do chart='scorn')
+STAGE: nome='scorn' songDir='assets/mods/songs/scorn' lua=1 json=1
+STAGE: modRoot='assets/mods' sprites=2 lua='assets/mods/stages/scorn.lua'
+STAGE: carregado back=2 front=2 animBack=0 anim=0 zoom=0.40
+
+--- SESSION LOG START ---
+STAGE: Load chamado (stage do chart='scorn')
+STAGE: nome='scorn' songDir='assets/mods/songs/scorn' lua=1 json=1
+STAGE: modRoot='assets/mods' sprites=2 lua='assets/mods/stages/scorn.lua'
+STAGE: carregado back=2 front=2 animBack=0 anim=0 zoom=0.40
+
+--- SESSION LOG START ---
+STAGE: Load chamado (stage do chart='scorn')
+STAGE: nome='scorn' songDir='assets/mods/songs/scorn' lua=1 json=1
+STAGE: modRoot='assets/mods' sprites=2 lua='assets/mods/stages/scorn.lua'
+STAGE: carregado back=2 front=2 animBack=0 anim=0 zoom=0.40
+STAGE: Load chamado (stage do chart='undaunted demise remake')
+STAGE: nome='undaunted demise remake' songDir='assets/mods/songs/undaunted-demise-naether' lua=1 json=1
+STAGE: modRoot='assets/mods' sprites=2 lua='assets/mods/stages/undaunted demise remake.lua'
+STAGE: carregado back=2 front=2 animBack=0 anim=0 zoom=0.30
+STAGE: Load chamado (stage do chart='spaci1')
+STAGE: nome='spaci1' songDir='assets/mods/songs/Astray' lua=1 json=1
+STAGE: modRoot='assets/mods' sprites=1 lua='assets/mods/stages/spaci1.lua'
+STAGE: carregado back=1 front=1 animBack=0 anim=0 zoom=0.40
+
+--- SESSION LOG START ---
+STAGE: Load chamado (stage do chart='crisisBG')
+STAGE: nome='crisisBG' songDir='assets/mods/songs/Crisis' lua=1 json=1
+STAGE: modRoot='assets/mods' sprites=2 lua='assets/mods/stages/crisisBG.lua'
+STAGE: carregado back=2 front=2 animBack=0 anim=0 zoom=0.38
+STAGE: Load chamado (stage do chart='crisisBG')
+STAGE: nome='crisisBG' songDir='assets/mods/songs/Crisis' lua=1 json=1
+STAGE: modRoot='assets/mods' sprites=2 lua='assets/mods/stages/crisisBG.lua'
+STAGE: carregado back=2 front=2 animBack=0 anim=0 zoom=0.38
+
+--- SESSION LOG START ---
+STAGE: Load chamado (stage do chart='trikizo')
+STAGE: nome='trikizo' songDir='assets/mods/songs/triklizo-koooled' lua=1 json=1
+STAGE: modRoot='assets/mods' sprites=2 lua='assets/mods/stages/trikizo.lua'
+STAGE: carregado back=2 front=2 animBack=0 anim=0 zoom=0.20
+STAGE: Load chamado (stage do chart='trauma')
+STAGE: nome='trauma' songDir='assets/mods/songs/Trauma' lua=1 json=1
+STAGE: modRoot='assets/mods' sprites=1 lua='assets/mods/stages/trauma.lua'
+STAGE: carregado back=0 front=0 animBack=1 anim=1 zoom=0.40
+
+--- SESSION LOG START ---
+STAGE: Load chamado (stage do chart='spaci1')
+STAGE: nome='spaci1' songDir='assets/mods/songs/Astray' lua=1 json=1
+STAGE: modRoot='assets/mods' sprites=1 lua='assets/mods/stages/spaci1.lua'
+STAGE: carregado back=1 front=1 animBack=0 anim=0 zoom=0.40
+STAGE: Load chamado (stage do chart='trikizo')
+STAGE: nome='trikizo' songDir='assets/mods/songs/triklizo-koooled' lua=1 json=1
+STAGE: modRoot='assets/mods' sprites=2 lua='assets/mods/stages/trikizo.lua'
+STAGE: carregado back=2 front=2 animBack=0 anim=0 zoom=0.20
+STAGE: Load chamado (stage do chart='unstable')
+STAGE: nome='unstable' songDir='assets/mods/songs/unstable' lua=1 json=1
+STAGE: modRoot='assets/mods' sprites=3 lua='assets/mods/stages/unstable.lua'
+STAGE: carregado back=3 front=3 animBack=0 anim=0 zoom=0.40
+STAGE: Load chamado (stage do chart='agony')
+STAGE: nome='agony' songDir='assets/mods/songs/agony' lua=1 json=1
+STAGE: modRoot='assets/mods' sprites=2 lua='assets/mods/stages/agony.lua'
+STAGE: carregado back=2 front=2 animBack=0 anim=0 zoom=0.30

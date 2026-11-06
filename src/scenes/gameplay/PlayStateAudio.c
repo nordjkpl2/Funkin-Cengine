@@ -3,7 +3,7 @@
  * PlayStateAudio.c - instrumental e vozes do PlayState.
  */
 
-#include "scenes/playstate/PlayStateAudio.h"
+#include "scenes/gameplay/PlayStateAudio.h"
 #include <math.h>
 #include <stdio.h>
 

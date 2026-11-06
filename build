@@ -26,6 +26,12 @@ clang -std=c23 -Os -flto=thin -fuse-ld=lld -ffunction-sections -fdata-sections -
 
 clang -std=c23 -Os -flto=thin -fuse-ld=lld -ffunction-sections -fdata-sections -fmerge-all-constants -funroll-loops -fomit-frame-pointer -fno-math-errno -fno-common -DNDEBUG -mwindows -DPLATFORM_DESKTOP_GLFW -DGRAPHICS_API_OPENGL_33 main.c $(find src -type f -name "*.c") $(find lib -type f -name "*.c" ! -path "lib/raylib55/*") $(find lib/raylib55/src -maxdepth 1 -type f -name "*.c") -o FNF_C_ENGINE.exe -I./headers -I./src -I./lib -I./lib/raylib55/src -I./lib/raylib55/src/external/glfw/include -lopengl32 -lgdi32 -lwinmm -luser32 -lshell32 -Wl,--gc-sections,--icf=all,-O2
 // por -fno-plt pra ELF64
+
+    Cmake e Ninja
+cmake -B build-clang -G Ninja -DCMAKE_C_COMPILER=clang
+    Cmake
+cmake --build build-clang --config Release
+
 2.  Map
     &   Renderização    &
     ### Scene.c -> Cria e Destroi Cenas de Forma Gênerica, Parte do Código pras Cenas
@@ -38,7 +44,7 @@ clang -std=c23 -Os -flto=thin -fuse-ld=lld -ffunction-sections -fdata-sections -
     # Chart Editor.c -> Chart Editor bruhhh
     &   Cenas   &
     ###### Freeplay.c -> Freeplay
-    ## LoadingState.c -> Loading para charts muito grandes (ficar numa tela preta é badd, talvez eu faço uma barra de carregamento, mas não precisa)
+    ## LoadingState.c -> Loading para charts muito grandes (ficar numa tela preta é badd, talvez eu faço uma barra de carregamento, mas não preisa)
     ##### MenuState.c -> Le o Titulo
     ## ModdingState.c -> Submenu e Código pra aba de Modding
     ### OptionsMenu.c -> Diferente do Game Data C é o menu pra mudar as opções (cena) não o código do menu

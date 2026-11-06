@@ -3,9 +3,9 @@
  * PlayStatePlayerInput.c - input do jogador: teclas, julgamento, score e misses.
  */
 
-#include "scenes/playstate/PlayStatePlayerInput.h"
-#include "scenes/playstate/PlayStateHealth.h"
-#include "scenes/playstate/PlayStateNoteSpawn.h"
+#include "scenes/gameplay/PlayStatePlayerInput.h"
+#include "scenes/gameplay/PlayStateHealth.h"
+#include "scenes/gameplay/PlayStateNoteSpawn.h"
 #include <math.h>
 
 static int score;
