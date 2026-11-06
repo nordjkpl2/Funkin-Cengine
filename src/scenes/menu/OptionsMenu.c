@@ -20,6 +20,18 @@
 #define CULL_TOP -100.0f
 #define CULL_BOTTOM 850.0f
 
+// Logo de 4 quadrados ao lado de "Window Options".
+#define LOGO_SQUARE 30.0f
+#define LOGO_GAP 5.0f
+#define LOGO_MARGIN 25.0f // distancia do fim do texto
+#define LOGO_TOP 13.0f    // distancia do topo da linha
+#define LOGO_CIRCLE_RADIUS 32.0f // circulo ao lado de "Other Options"
+
+// Simbolos do PlayStation ao lado de "Gameplay Options": X, quadrado, triangulo, bolinha.
+#define SYMBOL_HALF 24.0f    // metade do tamanho de cada simbolo
+#define SYMBOL_STROKE 7.0f   // espessura do traco
+#define SYMBOL_GAP 22.0f     // espaco entre simbolos
+
 typedef enum {
     OPTION_VALUE_INT,
     OPTION_VALUE_FLOAT,
@@ -85,6 +97,9 @@ static Option options[OPTION_COUNT] = {
 };
 
 static float scrollOffset; // posicao suavizada da lista (em linhas)
+static float windowLogoX;  // calculado uma vez no Create
+static float otherLogoX;
+static float gameplayLogoX;
 static int currentOption;
 static Camera2D cam;
 static RayGraphicObject bg;
@@ -196,6 +211,15 @@ static void OptionsMenu_Create([[maybe_unused]] RayScene* scene) {
     bg.image = Render_LoadTexture("assets/images/freeplay/menuBGBlue.png");
     Render_DefaultCamera(&cam);
 
+    const Vector2 headerSize = MeasureTextEx(mainFont, options[OPTION_HEADER_WINDOW].text, HEADER_FONT_SIZE, TEXT_SPACING);
+    windowLogoX = HEADER_X - TEXT_SHADOW + headerSize.x + LOGO_MARGIN;
+
+    const Vector2 otherSize = MeasureTextEx(mainFont, options[OPTION_HEADER_OTHER].text, HEADER_FONT_SIZE, TEXT_SPACING);
+    otherLogoX = HEADER_X - TEXT_SHADOW + otherSize.x + LOGO_MARGIN;
+
+    const Vector2 gameplaySize = MeasureTextEx(mainFont, options[OPTION_HEADER_GAMEPLAY].text, HEADER_FONT_SIZE, TEXT_SPACING);
+    gameplayLogoX = HEADER_X - TEXT_SHADOW + gameplaySize.x + LOGO_MARGIN;
+
     for (int i = 0; i < OPTION_COUNT; i++) {
         options[i].active = 1;
         options[i].dirty = true;
@@ -269,6 +293,75 @@ static void DrawOptionText(const char* text, float x, float y, int fontSize, Col
     DrawTextEx(mainFont, text, (Vector2) {x - TEXT_SHADOW, y}, fontSize, TEXT_SPACING, fill);
 }
 
+/* Quatro quadrados (estilo logo do Windows), com a mesma sombra do texto. */
+static void DrawWindowLogo(float rowY) {
+    const float step = LOGO_SQUARE + LOGO_GAP;
+
+    for (int pass = 0; pass < 2; pass++) {
+        const Color color = pass == 0 ? BLACK : YELLOW;
+        const float shift = pass == 0 ? TEXT_SHADOW : 0.0f;
+
+        for (int i = 0; i < 4; i++) {
+            const float x = windowLogoX + (i % 2) * step + shift;
+            const float y = rowY + LOGO_TOP + (i / 2) * step + shift;
+            DrawRectangleRec((Rectangle) {x, y, LOGO_SQUARE, LOGO_SQUARE}, color);
+        }
+    }
+}
+
+/* Circulo com a mesma sombra do texto. */
+static void DrawOtherLogo(float rowY) {
+    const float centerY = rowY + LOGO_TOP + LOGO_SQUARE + LOGO_GAP * 0.5f; // alinhado ao meio do logo de quadrados
+    const float centerX = otherLogoX + LOGO_CIRCLE_RADIUS;
+
+    DrawCircleV((Vector2) {centerX + TEXT_SHADOW, centerY + TEXT_SHADOW}, LOGO_CIRCLE_RADIUS, BLACK);
+    DrawCircleV((Vector2) {centerX, centerY}, LOGO_CIRCLE_RADIUS, YELLOW);
+}
+
+/* Linha com pontas arredondadas. */
+static void DrawRoundLine(Vector2 a, Vector2 b, Color color) {
+    DrawLineEx(a, b, SYMBOL_STROKE, color);
+    DrawCircleV(a, SYMBOL_STROKE * 0.5f, color);
+    DrawCircleV(b, SYMBOL_STROKE * 0.5f, color);
+}
+
+/* X, quadrado, triangulo e bolinha em uma cor, deslocados por `shift`. */
+static void DrawPlayStationSymbols(float rowY, float shift, Color color) {
+    const float h = SYMBOL_HALF;
+    const float step = 2.0f * h + SYMBOL_GAP;
+    const float cy = rowY + LOGO_TOP + LOGO_SQUARE + LOGO_GAP * 0.5f + shift;
+    float cx = gameplayLogoX + h + shift;
+
+    // X
+    DrawRoundLine((Vector2) {cx - h, cy - h}, (Vector2) {cx + h, cy + h}, color);
+    DrawRoundLine((Vector2) {cx - h, cy + h}, (Vector2) {cx + h, cy - h}, color);
+
+    // Quadrado
+    cx += step;
+    DrawRoundLine((Vector2) {cx - h, cy - h}, (Vector2) {cx + h, cy - h}, color);
+    DrawRoundLine((Vector2) {cx + h, cy - h}, (Vector2) {cx + h, cy + h}, color);
+    DrawRoundLine((Vector2) {cx + h, cy + h}, (Vector2) {cx - h, cy + h}, color);
+    DrawRoundLine((Vector2) {cx - h, cy + h}, (Vector2) {cx - h, cy - h}, color);
+
+    // Triangulo
+    cx += step;
+    const Vector2 top = {cx, cy - h - 2.0f};
+    const Vector2 left = {cx - h - 2.0f, cy + h - 2.0f};
+    const Vector2 right = {cx + h + 2.0f, cy + h - 2.0f};
+    DrawRoundLine(top, left, color);
+    DrawRoundLine(left, right, color);
+    DrawRoundLine(right, top, color);
+
+    // Bolinha
+    cx += step;
+    DrawRing((Vector2) {cx, cy}, h + 2.0f - SYMBOL_STROKE * 0.5f, h + 2.0f + SYMBOL_STROKE * 0.5f, 0.0f, 360.0f, 36, color);
+}
+
+static void DrawGameplayLogo(float rowY) {
+    DrawPlayStationSymbols(rowY, TEXT_SHADOW, BLACK);
+    DrawPlayStationSymbols(rowY, 0.0f, YELLOW);
+}
+
 static void OptionsMenu_Draw([[maybe_unused]] RayScene* scene) {
     Render_SetCamera(&cam);
     Render_DrawGraphicObject(&bg);
@@ -289,6 +382,12 @@ static void OptionsMenu_Draw([[maybe_unused]] RayScene* scene) {
 
         if (isHeader) {
             DrawOptionText(o->text, HEADER_X, drawY, HEADER_FONT_SIZE, YELLOW, BLACK);
+            if (i == OPTION_HEADER_WINDOW)
+                DrawWindowLogo(drawY);
+            else if (i == OPTION_HEADER_GAMEPLAY)
+                DrawGameplayLogo(drawY);
+            else if (i == OPTION_HEADER_OTHER)
+                DrawOtherLogo(drawY);
             continue;
         }
 

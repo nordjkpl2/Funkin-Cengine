@@ -51,6 +51,7 @@ static char impConfirmDel;
 
 static Color outlineColor = {0, 0, 0, 0};
 static Color fontColor = {255, 255, 255, 255};
+static const Color selectedColor = {42, 209, 86, 255};
 
 /* ------------------------------------------------------------------------- */
 /* Small utilities                                                           */
@@ -415,21 +416,17 @@ static void Modding_DrawList(void)
             shadow + 360.0f + distance * 90.0f
         };
 
-        textColor.a = selectedItem ? 255 : 150;
+        // Selecionado em verde, igual ao menu principal.
+        if (selectedItem)
+            textColor = selectedColor;
+        else
+            textColor.a = 150;
         shadowColor.a = selectedItem ? 255 : 100;
 
         DrawTextEx(mainFont, tabs[i], position, fontSize, 5, shadowColor);
         position.x -= shadow;
         position.y -= shadow;
         DrawTextEx(mainFont, tabs[i], position, fontSize, 5, textColor);
-
-        if (selectedItem) {
-            const Vector2 tip = {position.x - 72.0f, position.y + 14.0f};
-            DrawTriangle(tip,
-                         (Vector2){tip.x, tip.y + 44.0f},
-                         (Vector2){tip.x + 36.0f, tip.y + 22.0f},
-                         (Color){80, 220, 100, 255});
-        }
     }
 
     Render_StopCamera();

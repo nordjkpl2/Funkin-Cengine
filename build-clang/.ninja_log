@@ -70,3 +70,11 @@
 80	354	8156481650250674	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/menu/FreeplayIcon.c.obj	55d189bd34a46c59
 93	364	8156481650374515	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/menu/StoryCover.c.obj	c40583abe168a9b0
 364	3747	8156481653050571	D:/dev/funkin c/FNF_C_ENGINE.exe	f238c2f25e592d5
+20	64	8156487161629682	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+80	247	8156487162227494	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/menu/OptionsMenu.c.obj	7f49eb7aa1cbbf7c
+71	249	8156487162133591	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/AllScenes.c.obj	c0d6720078ada35d
+76	277	8156487162186895	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/menu/ModdingMenu.c.obj	8c68764746d843a4
+277	5014	8156487164194775	D:/dev/funkin c/FNF_C_ENGINE.exe	f238c2f25e592d5
+25	71	8156489372310907	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+76	203	8156489372818410	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/menu/OptionsMenu.c.obj	7f49eb7aa1cbbf7c
+203	3884	8156489374087503	D:/dev/funkin c/FNF_C_ENGINE.exe	f238c2f25e592d5
