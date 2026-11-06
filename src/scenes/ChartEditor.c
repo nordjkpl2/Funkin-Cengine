@@ -4,6 +4,7 @@
 #include"scenes/Song.h"
 #include"scenes/SongList.h"
 #include "scenes/ModPath.h"
+#include "scenes/Character.h"
 #include"scenes/Stage.h"
 #include"scenes/Note.h"
 #include"yyjson.h"
@@ -2504,10 +2505,10 @@ static void Edit_DrawGrid(void) {
     // (letras das casas removidas: as setas ja mostram a direcao)
     // icones dos cantores em cima (igual a barra de vida do jogo)
     if(edIconOOk)
-        DrawTexturePro(edIconO, (Rectangle) {0, 0, 150, 150},
+        DrawTexturePro(edIconO, Character_IconFrame(edIconO),
             (Rectangle) {GRID_X0 + LANE_W * 2 - 22, GRID_Y0 - 52, 44, 44}, (Vector2) {0, 0}, 0, WHITE);
     if(edIconPOk)
-        DrawTexturePro(edIconP, (Rectangle) {0, 0, 150, 150},
+        DrawTexturePro(edIconP, Character_IconFrame(edIconP),
             (Rectangle) {GRID_X0 + LANE_W * 6 - 22, GRID_Y0 - 52, 44, 44}, (Vector2) {0, 0}, 0, WHITE);
 
     // linhas de tempo por trecho

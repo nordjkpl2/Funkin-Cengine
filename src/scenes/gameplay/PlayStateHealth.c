@@ -87,7 +87,6 @@ void PlayStateHealth_Draw(Texture2D dadIcon, Texture2D bfIcon) {
         DrawRectangle((int)(offsetX + middle), (int)(healthbar.y + healthbarPadding), (int)(availableWidth - middle), (int)availableHeight, bfColor);
     }
 
-    Rectangle frameRect = {0, 0, 150, 150};
     float iconHalf = 75 * bop;
     float iconCY = healthbar.y + healthbar.height / 2;
     float kk = 1 - bopT;
@@ -95,14 +94,14 @@ void PlayStateHealth_Draw(Texture2D dadIcon, Texture2D bfIcon) {
     float bobY = -7 * kk;
     float sway = 4 * kk;
 
-    DrawTexturePro(dadIcon, frameRect, (Rectangle) {
+    DrawTexturePro(dadIcon, Character_IconFrame(dadIcon), (Rectangle) {
         .x = offsetX + middle + C - 75 - iconHalf - sway,
         .y = iconCY - iconHalf + bobY,
         .width = 130 * bop,
         .height = 130 * bop
     }, (Vector2) {0, 0}, 0, WHITE);
 
-    DrawTexturePro(bfIcon, frameRect, (Rectangle) {
+    DrawTexturePro(bfIcon, Character_IconFrame(bfIcon), (Rectangle) {
         .x = offsetX + middle - C + 75 - iconHalf + sway,
         .y = iconCY - iconHalf - bobY,
         .width = 145 * bop,

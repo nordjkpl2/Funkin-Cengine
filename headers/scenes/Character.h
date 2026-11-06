@@ -40,6 +40,10 @@ void Character_SetSongDir(const char* restrict songDir);
 void Character_Load(Character* restrict character, const char* restrict characterName, CharRole role);
 void Girlfriend_Load(Girlfriend* restrict gf, const char* restrict name);
 
+/* Primeiro frame (normal) do icone. Frames sao quadrados da altura da imagem:
+   150x150 padrao, 300x300 em icone hi-res; 450x150 = 3 frames (com vitoria). */
+Rectangle Character_IconFrame(Texture2D icon);
+
 /* anims[0..2] = morrer, loop, confirmar (usa a idle quando o personagem nao tem). */
 void Character_LoadDeathAnimations(Character* restrict character, int* restrict anims);
 

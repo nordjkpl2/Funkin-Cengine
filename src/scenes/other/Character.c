@@ -817,6 +817,19 @@ void Character_Load(Character *restrict character,
     Log_Fatal("Character_Load: could not load character assets");
 }
 
+Rectangle Character_IconFrame(Texture2D icon)
+{
+    if (icon.id == 0 || icon.height <= 0)
+        return (Rectangle){ 0.0f, 0.0f, 150.0f, 150.0f };
+
+    /* 2 ou 3 frames lado a lado; o frame nunca passa da largura/2 */
+    const float height = (float)icon.height;
+    float width = height;
+    if (width * 2.0f > (float)icon.width)
+        width = (float)icon.width * 0.5f;
+    return (Rectangle){ 0.0f, 0.0f, width, height };
+}
+
 void Character_LoadDeathAnimations(Character *restrict character, int *restrict anims)
 {
     if (!character || !anims)
