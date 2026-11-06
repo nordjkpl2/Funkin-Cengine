@@ -6,6 +6,7 @@
 #include "Game.h"
 #include "GameData.h"
 #include "raymath.h"
+#include <stdio.h>
 
 #define SCREEN_H 720.0f
 
@@ -95,7 +96,7 @@ static Option options[OPTION_COUNT] = {
     [OPTION_SHOW_FPS] = {.text = "Show FPS", .type = OPTION_VALUE_BOOL},
     [OPTION_VSYNC] = {.text = "V-SYNC", .type = OPTION_VALUE_BOOL},
     [OPTION_HEADER_GAMEPLAY] = {.text = "[ Gameplay Options ]", .type = OPTION_VALUE_HEADER},
-    [OPTION_KEYBOARD_SCHEME] = {.text = "Scheme", .type = OPTION_VALUE_LIST, .options = game_available_schemes, .step = 1, .max = 3, .min = 0},
+    [OPTION_KEYBOARD_SCHEME] = {.text = "Scheme", .type = OPTION_VALUE_LIST, .options = game_available_schemes, .step = 1, .max = SCHEME_COUNT - 1, .min = 0},
     [OPTION_SCROLL_STYLE] = {.text = "Scroll Style", .type = OPTION_VALUE_LIST, .options = scroll_names, .step = 1, .max = 2, .min = 0},
     [OPTION_GHOST] = {.text = "Ghost Tapping", .type = OPTION_VALUE_LIST, .options = ghost_names, .step = 1, .max = 2, .min = 0},
     [OPTION_HITSOUND] = {.text = "Hit Sound", .type = OPTION_VALUE_BOOL},
@@ -229,6 +230,116 @@ static void MoveSelection(int dir) {
 }
 
 /* ------------------------------------------------------------------ */
+/* Teclas customizadas (esquema "Custom")                              */
+/* ------------------------------------------------------------------ */
+
+static const char* const LANE_NAMES[4] = {"LEFT", "DOWN", "UP", "RIGHT"};
+
+static bool capturing;           // tela preta de captura aberta
+static int captureStep;          // 0..3 = esperando a tecla dessa direcao; 4 = confirmar
+static int captureKeys[4];
+static const char* captureMessage = "";
+
+/* Nome curto da tecla para mostrar na tela. */
+static void KeyName(int key, char* out, size_t size) {
+    static const struct { int key; const char* name; } named[] = {
+        {KEY_SPACE, "SPACE"}, {KEY_LEFT, "LEFT"}, {KEY_RIGHT, "RIGHT"}, {KEY_UP, "UP"}, {KEY_DOWN, "DOWN"},
+        {KEY_COMMA, ","}, {KEY_PERIOD, "."}, {KEY_SEMICOLON, ";"}, {KEY_APOSTROPHE, "'"}, {KEY_SLASH, "/"},
+        {KEY_BACKSLASH, "\\"}, {KEY_LEFT_BRACKET, "["}, {KEY_RIGHT_BRACKET, "]"}, {KEY_MINUS, "-"},
+        {KEY_EQUAL, "="}, {KEY_GRAVE, "`"}, {KEY_TAB, "TAB"}, {KEY_LEFT_SHIFT, "L-SHIFT"},
+        {KEY_RIGHT_SHIFT, "R-SHIFT"}, {KEY_LEFT_CONTROL, "L-CTRL"}, {KEY_RIGHT_CONTROL, "R-CTRL"},
+        {KEY_LEFT_ALT, "L-ALT"}, {KEY_RIGHT_ALT, "R-ALT"}, {KEY_INSERT, "INSERT"}, {KEY_DELETE, "DELETE"},
+        {KEY_HOME, "HOME"}, {KEY_END, "END"}, {KEY_PAGE_UP, "PGUP"}, {KEY_PAGE_DOWN, "PGDN"},
+    };
+
+    if (key >= KEY_A && key <= KEY_Z)         (void)snprintf(out, size, "%c", 'A' + (key - KEY_A));
+    else if (key >= KEY_ZERO && key <= KEY_NINE) (void)snprintf(out, size, "%c", '0' + (key - KEY_ZERO));
+    else if (key >= KEY_KP_0 && key <= KEY_KP_9) (void)snprintf(out, size, "NUM %d", key - KEY_KP_0);
+    else if (key >= KEY_F1 && key <= KEY_F12)    (void)snprintf(out, size, "F%d", key - KEY_F1 + 1);
+    else {
+        for (size_t i = 0; i < sizeof(named) / sizeof(named[0]); i++)
+            if (named[i].key == key) { (void)snprintf(out, size, "%s", named[i].name); return; }
+        (void)snprintf(out, size, "KEY %d", key);
+    }
+}
+
+static void Capture_Begin(void) {
+    capturing = true;
+    captureStep = 0;
+    captureMessage = "";
+    for (int k = 0; k < 4; k++) captureKeys[k] = 0;
+    while (GetKeyPressed() != 0) {}   // descarta o Enter que abriu a tela
+}
+
+static void Capture_Update(void) {
+    if (IsKeyPressed(KEY_ESCAPE)) {   // cancela e mantem as teclas antigas
+        capturing = false;
+        return;
+    }
+
+    if (captureStep == 4) {
+        if (IsKeyPressed(KEY_ENTER)) {
+            for (int k = 0; k < 4; k++) game_scheme_keys[SCHEME_CUSTOM][k] = captureKeys[k];
+            gameOptions.scheme = SCHEME_CUSTOM;
+            options[OPTION_KEYBOARD_SCHEME].value = SCHEME_CUSTOM;
+            options[OPTION_KEYBOARD_SCHEME].dirty = true;
+            GameData_Flush();
+            capturing = false;
+        }
+        else if (IsKeyPressed(KEY_BACKSPACE)) {
+            captureStep = 3;
+            captureMessage = "";
+        }
+        return;
+    }
+
+    if (IsKeyPressed(KEY_BACKSPACE)) {   // volta uma direcao
+        if (captureStep > 0) captureStep--;
+        captureKeys[captureStep] = 0;
+        captureMessage = "";
+        return;
+    }
+
+    const int key = GetKeyPressed();
+    if (key == 0) return;
+    if (key == KEY_ENTER || key == KEY_KP_ENTER) { captureMessage = "ENTER e reservado"; return; }
+
+    for (int k = 0; k < captureStep; k++) {
+        if (captureKeys[k] == key) { captureMessage = "Tecla ja usada"; return; }
+    }
+
+    captureKeys[captureStep++] = key;
+    captureMessage = "";
+}
+
+static void Capture_Draw(void) {
+    DrawRectangle(0, 0, 1280, 720, BLACK);
+    DrawTextEx(mainFont, "CUSTOM KEYS", (Vector2) {80, 50}, 70, TEXT_SPACING, YELLOW);
+
+    for (int k = 0; k < 4; k++) {
+        char name[24] = "...";
+        if (captureKeys[k] != 0 && k < captureStep) KeyName(captureKeys[k], name, sizeof(name));
+
+        char line[64];
+        (void)snprintf(line, sizeof(line), "%-6s  %s", LANE_NAMES[k], name);
+        Color color = k < captureStep ? GREEN : (k == captureStep ? WHITE : GRAY);
+        DrawTextEx(mainFont, line, (Vector2) {120, 190.0f + (float)k * 80.0f}, 56, TEXT_SPACING, color);
+    }
+
+    if (captureStep < 4) {
+        char prompt[48];
+        (void)snprintf(prompt, sizeof(prompt), "Press the key for %s", LANE_NAMES[captureStep]);
+        DrawTextEx(mainFont, prompt, (Vector2) {80, 540}, 36, 3, WHITE);
+        DrawTextEx(mainFont, "BACKSPACE back     ESC cancel", (Vector2) {80, 650}, 24, 2, GRAY);
+    } else {
+        DrawTextEx(mainFont, "ENTER to confirm", (Vector2) {80, 540}, 36, 3, GREEN);
+        DrawTextEx(mainFont, "BACKSPACE back     ESC cancel", (Vector2) {80, 650}, 24, 2, GRAY);
+    }
+    if (captureMessage[0] != 0)
+        DrawTextEx(mainFont, captureMessage, (Vector2) {80, 595}, 28, 2, RED);
+}
+
+/* ------------------------------------------------------------------ */
 /* Cena                                                                */
 /* ------------------------------------------------------------------ */
 
@@ -286,6 +397,11 @@ static void OptionsMenu_Create([[maybe_unused]] RayScene* scene) {
 }
 
 static void OptionsMenu_Update([[maybe_unused]] RayScene* scene) {
+    if (capturing) {
+        Capture_Update();
+        return;
+    }
+
     if (IsKeyPressed(KEY_BACKSPACE) || IsKeyPressed(KEY_ESCAPE)) {
         GameData_Flush();
         MenuState_SetScene();
@@ -306,6 +422,9 @@ static void OptionsMenu_Update([[maybe_unused]] RayScene* scene) {
         }
         else if (cur->type == OPTION_VALUE_HEADER) {
             cur->collapsed = !cur->collapsed;
+        }
+        else if (currentOption == OPTION_KEYBOARD_SCHEME && (int)cur->value == SCHEME_CUSTOM) {
+            Capture_Begin();
         }
     }
     else if (cur->type != OPTION_VALUE_BOOL && cur->type != OPTION_VALUE_HEADER) {
@@ -476,6 +595,12 @@ static void OptionsMenu_Draw([[maybe_unused]] RayScene* scene) {
 
         DrawOptionText(o->cachedText, ROW_X, drawY, ROW_FONT_SIZE, fill, shadow);
     }
+
+    if (currentOption == OPTION_KEYBOARD_SCHEME && (int)options[OPTION_KEYBOARD_SCHEME].value == SCHEME_CUSTOM)
+        DrawTextEx(mainFont, "ENTER: edit custom keys", (Vector2) {ROW_X, SCREEN_H - 50.0f}, 24, 2, (Color) {245, 220, 120, 255});
+
+    if (capturing)
+        Capture_Draw();
 
     Render_StopCamera();
 }

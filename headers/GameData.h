@@ -16,8 +16,11 @@ typedef struct GameOptions {
 
 extern GameOptions gameOptions;
 
-extern const char* game_available_schemes[4];
-extern const int   game_scheme_keys[4][4];
+/* Esquemas de teclas: Arrows, WASD, DFJK, ASKL e Custom (teclas do jogador, salvas). */
+#define SCHEME_COUNT 5
+#define SCHEME_CUSTOM 4
+extern const char* game_available_schemes[SCHEME_COUNT];
+extern int         game_scheme_keys[SCHEME_COUNT][4];   /* a linha SCHEME_CUSTOM e editavel */
 
 void GameData_Start(void);
 void GameData_Flush(void);

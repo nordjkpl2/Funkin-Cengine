@@ -905,14 +905,10 @@ static char CharacterAsset_Exists(const char* name) {
     f = fopen(p, "rb");
     if(f == NULL) return 0;
     fclose(f);
-    snprintf(p, sizeof(p), "assets/images/icons/%s.png", name);
-    f = fopen(p, "rb");
-    if(f == NULL) return 0;
-    fclose(f);
-    return 1;
+    return 1;   // icone nao e exigido: sem ele o jogo usa o do bf/dad
 }
 
-// vale no mod da musica (png+animset+icone no mod) ou no global
+// vale no mod da musica (png+animset no mod) ou no global
 static char CharacterAssetForSong_Exists(const char* name, const char* songDir) {
     if(CharacterAsset_Exists(name))
         return 1;
@@ -931,11 +927,6 @@ static char CharacterAssetForSong_Exists(const char* name, const char* songDir) 
         return 0;
     fclose(f);
     snprintf(p, sizeof(p), "%s/images/characters/%s.animset", modRoot, name);
-    f = fopen(p, "rb");
-    if(f == NULL)
-        return 0;
-    fclose(f);
-    snprintf(p, sizeof(p), "%s/images/icons/%s.png", modRoot, name);
     f = fopen(p, "rb");
     if(f == NULL)
         return 0;
@@ -1068,8 +1059,8 @@ static void StageList_Scan(void) {
         stageCount = 1;
     }
 }
-/* Lista os personagens de uma pasta (png + animset). Com iconDir, exige tambem o icone. */
-static void NameList_ScanDir(char (*names)[SONG_NAME_MAX], int* count, const char* charDir, const char* iconDir) {
+/* Lista os personagens de uma pasta (png + animset). O icone nao e exigido: sem ele o jogo usa o do bf/dad. */
+static void NameList_ScanDir(char (*names)[SONG_NAME_MAX], int* count, const char* charDir) {
     const int capacity = NAME_LIST_MAX;
     if(!DirectoryExists(charDir))
         return;
@@ -1098,12 +1089,6 @@ static void NameList_ScanDir(char (*names)[SONG_NAME_MAX], int* count, const cha
         snprintf(ap, sizeof(ap), "%s/%.*s.animset", charDir, (int)nlen, b);
         if(!FileExists(ap))
             continue;
-        if(iconDir != NULL) {
-            char ip[300];
-            snprintf(ip, sizeof(ip), "%s/%.*s.png", iconDir, (int)nlen, b);
-            if(!FileExists(ip))
-                continue;
-        }
         memcpy(names[*count], b, nlen);
         names[*count][nlen] = 0;
         (*count)++;
@@ -1117,18 +1102,17 @@ static void CharList_Scan(void) {
     gfCount = 0;
     strcpy(gfNames[gfCount++], "none"); // primeira opcao: sem girlfriend
 
-    NameList_ScanDir(charNames, &charCount, "assets/images/characters", "assets/images/icons");
-    NameList_ScanDir(gfNames, &gfCount, "assets/images/characters", NULL);
+    NameList_ScanDir(charNames, &charCount, "assets/images/characters");
+    NameList_ScanDir(gfNames, &gfCount, "assets/images/characters");
 
     // chars do mod da musica (importador gera .animset + icones no mod)
     char modRoot[256];
     EdModRoot(chart.dir, modRoot);
     if(modRoot[0] != 0) {
-        char cd[300], id[300];
+        char cd[300];
         snprintf(cd, sizeof(cd), "%s/images/characters", modRoot);
-        snprintf(id, sizeof(id), "%s/images/icons", modRoot);
-        NameList_ScanDir(charNames, &charCount, cd, id);
-        NameList_ScanDir(gfNames, &gfCount, cd, NULL);
+        NameList_ScanDir(charNames, &charCount, cd);
+        NameList_ScanDir(gfNames, &gfCount, cd);
     }
 }
 
@@ -1568,7 +1552,7 @@ static void Editor_Save(void) {
     strncpy(chart.stage, (stageBox.buf[0] != 0) ? stageBox.buf : "stage", sizeof(chart.stage) - 1);
     chart.p1[sizeof(chart.p1) - 1] = 0;
     chart.stage[sizeof(chart.stage) - 1] = 0;
-    // sem fantasma no save: so entra quem tem png+animset+icone (mod ou global), senao bf/dad/stage
+    // sem fantasma no save: so entra quem tem png+animset (mod ou global), senao bf/dad/stage
     // p2 vazio e valido (tutorial, so bf) e nao cai na validacao de asset
     if(!CharacterAssetForSong_Exists(chart.p1, chart.dir)) {
         strncpy(chart.p1, "bf", sizeof(chart.p1) - 1);

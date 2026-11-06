@@ -1,0 +1,3 @@
+
+--- SESSION LOG START ---
+[WARN] Icone nao encontrado: 'none' (usando padrao)

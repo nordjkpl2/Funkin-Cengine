@@ -615,14 +615,14 @@ static void UpdateDeath(float dt) {
         else {
             UpdateMusicStream(deathMusic);
 
-            if (IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_ENTER)) {
+            if (IsKeyPressed(KEY_SPACE)) {
                 retryin = 1;
                 deadTime = 0;
                 AnimatedObject_SetAnimation(&bf.object, deathAnimations[2]);
                 StopMusicStream(deathMusic);
                 PlayMusicStream(deathMusicEnd);
             }
-            else if (IsKeyPressed(KEY_BACKSPACE) || IsKeyPressed(KEY_ESCAPE)) {
+            else if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_BACKSPACE) || IsKeyPressed(KEY_ESCAPE)) {
                 StopMusicStream(deathMusic);
                 LeaveGameplay(0);
                 return;
