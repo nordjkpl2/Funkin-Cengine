@@ -4,8 +4,6 @@
 #define GAME_DATA_H
 
 #include "raylib.h"
-#include <stdlib.h>
-#include <stdio.h>
 
 extern const char* game_available_schemes[4];
 extern const int   game_scheme_keys[4][4];

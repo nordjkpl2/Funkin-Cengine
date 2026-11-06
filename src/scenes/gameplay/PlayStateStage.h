@@ -6,7 +6,6 @@
 #ifndef PLAYSTATE_STAGE_H
 #define PLAYSTATE_STAGE_H
 
-#include "scenes/AllScenes.h"
 #include "scenes/Character.h"
 
 typedef struct {

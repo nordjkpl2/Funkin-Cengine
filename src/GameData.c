@@ -1,6 +1,7 @@
 /* // * Friday Night Funkin´ c engine (c) 2026 nordjkpl */
 #include "GameData.h" 
 #include "Log.h"
+#include <stdio.h>
 
 #define IERR Log_Fatal("[ SAVE ] invalid data");
 #define READ(type, count, output) if(fread(&output, sizeof(type), count, saveFile) != count) IERR

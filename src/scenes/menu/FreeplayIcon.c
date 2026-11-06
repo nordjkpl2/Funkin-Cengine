@@ -5,7 +5,7 @@
  * Ordem de preferencia: icone da week > healthicon do personagem > nome do oponente.
  * Pastas de mods vem antes das do jogo base. Roda so quando a selecao muda.
  */
-#include "scenes/AllScenes.h"
+#include "Render.h"
 #include "scenes/menu/FreeplayIcon.h"
 #include "yyjson.h"
 

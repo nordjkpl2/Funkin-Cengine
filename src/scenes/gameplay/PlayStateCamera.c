@@ -4,6 +4,7 @@
  */
 
 #include "scenes/gameplay/PlayStateCamera.h"
+#include "raymath.h"
 
 static Character* followTarget;
 static Camera2D camGame;

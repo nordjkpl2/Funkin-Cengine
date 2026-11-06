@@ -4,7 +4,6 @@
 #define BEATMANAGER_H
 
 #include "std.h"
-#include "Game.h"
 #include <stdbool.h>
 
 typedef struct {

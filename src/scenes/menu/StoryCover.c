@@ -6,7 +6,7 @@
  * personagem da primeira musica e do titulo. Cai na imagem padrao se nada existir.
  * So olha o mod dono da week e os assets base, sem listar pastas.
  */
-#include "scenes/AllScenes.h"
+#include "Render.h"
 #include "scenes/menu/StoryCover.h"
 #include "yyjson.h"
 
@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "scenes/Week.h"
 
 #define PATH_MAX_LEN 512
 #define KEY_MAX_LEN 64

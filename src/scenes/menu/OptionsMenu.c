@@ -3,6 +3,9 @@
  * OptionsMenu.c - menu de opcoes (cena). Os valores salvos ficam em GameData.
  */
 #include "scenes/AllScenes.h"
+#include "Game.h"
+#include "GameData.h"
+#include "raymath.h"
 
 #define SCREEN_H 720.0f
 

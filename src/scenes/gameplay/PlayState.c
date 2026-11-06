@@ -21,6 +21,11 @@
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
+#include "Game.h"
+#include "GameData.h"
+#include "scenes/BeatManager.h"
+#include "scenes/Week.h"
+#include "raymath.h"
 
 #define SCREEN_W 1280.0f
 #define SCREEN_H 720.0f

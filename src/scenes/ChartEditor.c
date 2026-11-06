@@ -6,6 +6,9 @@
 #include"scenes/Stage.h"
 #include"scenes/Note.h"
 #include"yyjson.h"
+#include "Game.h"
+#include "GameData.h"
+#include "raymath.h"
 // helpers yyjson -> corrige bug do int vs double
 static inline double yy_to_double(yyjson_val *v){
     if(yyjson_is_real(v)) return yyjson_get_real(v);

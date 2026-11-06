@@ -4,7 +4,6 @@
 #define RENDER_H
 
 #include "std.h" 
-#include <string.h>
 
 #define ADD_VEC(a, b) ((Vector2){ (a).x + (b).x, (a).y + (b).y })
 

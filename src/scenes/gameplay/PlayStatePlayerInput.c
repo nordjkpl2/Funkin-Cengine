@@ -7,6 +7,7 @@
 #include "scenes/gameplay/PlayStateHealth.h"
 #include "scenes/gameplay/PlayStateNoteSpawn.h"
 #include <math.h>
+#include "GameData.h"
 
 static int score;
 static int misses;

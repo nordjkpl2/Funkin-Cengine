@@ -6,6 +6,8 @@
 #include "scenes/gameplay/PlayStateNoteSpawn.h"
 #include <math.h>
 #include <stdlib.h>
+#include "GameData.h"
+#include "rlgl.h"
 
 static RayAnimatedObject trail;
 static RayAnimatedObject end;

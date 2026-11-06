@@ -6,7 +6,6 @@
 #ifndef PLAYSTATE_HEALTH_H
 #define PLAYSTATE_HEALTH_H
 
-#include "scenes/AllScenes.h"
 #include "scenes/Character.h"
 
 /* Posicao e cores padrao da barra. Chamar uma vez ao criar a cena. */

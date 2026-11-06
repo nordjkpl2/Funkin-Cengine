@@ -6,7 +6,6 @@
 #ifndef PLAYSTATE_CAMERA_H
 #define PLAYSTATE_CAMERA_H
 
-#include "scenes/AllScenes.h"
 #include "scenes/Character.h"
 
 /* Estado inicial das duas cameras. Chamar em todo Create. */

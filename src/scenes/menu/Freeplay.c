@@ -11,6 +11,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
+#include "Game.h"
 
 #define SCREEN_W 1280.0f
 #define SCREEN_H 720.0f

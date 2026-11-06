@@ -6,7 +6,6 @@
 #ifndef PLAYSTATE_TEXT_H
 #define PLAYSTATE_TEXT_H
 
-#include "scenes/AllScenes.h"
 
 /* Carrega a fonte e prepara o titulo (nome da pasta de songDir). Uma vez por cena. */
 void PlayStateText_Init(const char* songDir);

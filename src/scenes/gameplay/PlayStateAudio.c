@@ -6,6 +6,7 @@
 #include "scenes/gameplay/PlayStateAudio.h"
 #include <math.h>
 #include <stdio.h>
+#include "Game.h"
 
 static Music inst;
 static Music voices;

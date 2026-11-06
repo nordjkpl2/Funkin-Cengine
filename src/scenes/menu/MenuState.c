@@ -5,6 +5,8 @@
  */
 #include "scenes/AllScenes.h"
 #include <math.h>
+#include "Game.h"
+#include "raymath.h"
 
 #define SCREEN_W 1280.0f
 #define SCREEN_H 720.0f

@@ -9,6 +9,7 @@
 #include "scenes/AllScenes.h"
 #include <string.h>
 #include <stdbool.h>
+#include "Game.h"
 
 #define NOTE_SKIN_MAX 16
 #define NOTE_SKIN_NAME_MAX 31

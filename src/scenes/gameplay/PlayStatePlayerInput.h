@@ -8,7 +8,6 @@
 #ifndef PLAYSTATE_PLAYERINPUT_H
 #define PLAYSTATE_PLAYERINPUT_H
 
-#include "scenes/AllScenes.h"
 #include "scenes/Note.h"
 
 typedef enum {

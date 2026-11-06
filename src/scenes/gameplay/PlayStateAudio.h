@@ -6,7 +6,7 @@
 #ifndef PLAYSTATE_AUDIO_H
 #define PLAYSTATE_AUDIO_H
 
-#include "scenes/AllScenes.h"
+#include "Render.h"
 
 /* Carrega Inst e Voices (ogg, mp3 ou wav) de songDir. Voices e opcional. */
 void PlayStateAudio_Load(const char* songDir);

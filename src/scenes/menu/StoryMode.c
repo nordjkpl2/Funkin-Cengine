@@ -15,6 +15,8 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
+#include "Game.h"
+#include "scenes/Week.h"
 
 #define SCREEN_W 1280
 #define SCREEN_H 720

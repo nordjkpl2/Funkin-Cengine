@@ -3,9 +3,7 @@
 #ifndef ALLSCENES_H
 #define ALLSCENES_H
 
-#include "GameData.h"
-#include "BeatManager.h"
-#include "scenes/Week.h"
+#include "Render.h"
 
 /* // * code */
 void PlayState_SetScene(void);
