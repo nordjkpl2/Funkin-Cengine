@@ -57,3 +57,6 @@
 85	279	8156439868231134	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayStateStage.c.obj	895e295cba88cc62
 74	300	8156439868136231	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayState.c.obj	6cb6e51baac2993
 300	5815	8156439870401190	D:/dev/funkin c/FNF_C_ENGINE.exe	17383a5e3a86464f
+23	64	8156447965483848	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+69	207	8156447965956265	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayStateNoteSpawn.c.obj	aec72b9574efe967
+207	3938	8156447967382605	D:/dev/funkin c/FNF_C_ENGINE.exe	17383a5e3a86464f

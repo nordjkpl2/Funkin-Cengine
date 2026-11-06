@@ -100,7 +100,6 @@ size_t PlayStateNoteSpawn_First(void) { return firstNote; }
 /* Escala da cabeca da nota conforme o modo de scroll. */
 static float HeadScale(const Note* note) {
     if (game_options_scroll == 2 && !note->mustHit) return 0.4f;
-    if (game_options_scroll == 1) return 0.85f;
     return NOTE_SCALE;
 }
 
