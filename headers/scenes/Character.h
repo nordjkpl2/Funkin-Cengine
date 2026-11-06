@@ -16,7 +16,8 @@ typedef enum {
 
 typedef struct {
     RayAnimatedObject object;
-    Vector2 cameraOffset;
+    Vector2 cameraOffset;    /* foco da camera = object.position + cameraOffset */
+    bool psychCamera;        /* cameraOffset guarda o camera_position cru do JSON (ver PlayStateStage) */
     Texture2D icon;          /* icone da barra de vida */
     float idleTimer;
     bool idled;

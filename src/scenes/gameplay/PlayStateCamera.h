@@ -21,6 +21,9 @@ void PlayStateCamera_SetGameZoom(float zoom);
 /* Pulso de zoom no beat (somado ao zoom atual). */
 void PlayStateCamera_Bump(float hudZoom, float gameZoom);
 
+/* Velocidade da camera (camera_speed do stage; 1 = normal). */
+void PlayStateCamera_SetSpeed(float speed);
+
 /* Suaviza posicao e zoom. Uma vez por frame. */
 void PlayStateCamera_Update(float deltaTime, float defaultGameZoom);
 

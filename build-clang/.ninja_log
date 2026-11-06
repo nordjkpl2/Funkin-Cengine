@@ -72,3 +72,21 @@
 70	311	8156853517824033	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/other/Character.c.obj	71db5ab4bc39f3fd
 63	544	8156853517756412	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/ChartEditor.c.obj	e5ace1f6581241d
 545	3240	8156853522532346	D:/dev/funkin c/FNF_C_ENGINE.exe	b75268f1664f442c
+17	48	8156864483975013	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+52	227	8156864484315650	CMakeFiles/FNF_C_ENGINE.dir/src/Render.c.obj	4643b63720049f9f
+70	229	8156864484450072	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayStatePlayerInput.c.obj	3846446947f8b1af
+66	231	8156864484450072	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayStateHealth.c.obj	99b33ad82d8de672
+62	244	8156864484398413	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayStateCamera.c.obj	aba5c71d10eab6a4
+59	279	8156864484398413	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayState.c.obj	6cb6e51baac2993
+79	334	8156864484609228	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/other/AnimationSets.c.obj	7baeae598132c43b
+90	339	8156864484709874	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/other/Stage.c.obj	c8f390455bfe7c6e
+55	589	8156864484315650	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/ChartEditor.c.obj	e5ace1f6581241d
+18	49	8156865142459651	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+63	168	8156865143038140	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayStateHealth.c.obj	99b33ad82d8de672
+67	181	8156865143079282	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayStatePlayerInput.c.obj	3846446947f8b1af
+58	187	8156865142956726	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayStateCamera.c.obj	aba5c71d10eab6a4
+71	215	8156865143097924	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayStateStage.c.obj	895e295cba88cc62
+55	227	8156865142956726	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayState.c.obj	6cb6e51baac2993
+76	302	8156865143162345	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/other/Character.c.obj	71db5ab4bc39f3fd
+52	529	8156865142915164	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/ChartEditor.c.obj	e5ace1f6581241d
+529	3174	8156865147611440	D:/dev/funkin c/FNF_C_ENGINE.exe	b75268f1664f442c

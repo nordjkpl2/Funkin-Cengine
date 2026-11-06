@@ -8,6 +8,7 @@
 #include "scenes/Stage.h"
 #include "scenes/ModPath.h"
 #include "Log.h"
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -80,6 +81,37 @@ static float CoverScreen(float baseW, float baseH, float luaScale, float zoom, V
     pos->x = -baseW * s * 0.5f;
     pos->y = -baseH * s * 0.5f;
     return s;
+}
+
+// Camera_* do stage JSON (so valem durante o PlayStateStage_Load).
+static const float* cameraOffsetBf;
+static const float* cameraOffsetDad;
+
+// Foco da camera como na Psych (moveCamera), calculado uma vez depois das posicoes finais.
+//   dad: ponto medio + (150, -100) + camera_position + camera_opponent
+//   bf:  ponto medio + (-100, -100) + (-camera_position.x, camera_position.y)
+//        + (camera_boyfriend.x, camera_boyfriend.y)
+// Personagem sem JSON (bf/dad padrao do engine) mantem o foco proprio, so soma o offset do stage.
+static void FinalizeCamera(Character* c, char isDad, const float* stageOffset) {
+    const float sx = stageOffset != NULL ? stageOffset[0] : 0.0f;
+    const float sy = stageOffset != NULL ? stageOffset[1] : 0.0f;
+
+    if (!c->psychCamera) {
+        c->cameraOffset.x += sx;
+        c->cameraOffset.y += sy;
+        return;
+    }
+
+    const Vector2 size = AnimatedObject_Sizes(&c->object);   // frame idle * escala
+    const float halfW = fabsf(size.x) * 0.5f;
+    const float halfH = fabsf(size.y) * 0.5f;
+    const Vector2 raw = c->cameraOffset;
+
+    if (isDad)
+        c->cameraOffset = (Vector2) {halfW + 150.0f + raw.x + sx, halfH - 100.0f + raw.y + sy};
+    else
+        c->cameraOffset = (Vector2) {halfW - 100.0f - raw.x + sx, halfH - 100.0f + raw.y + sy};
+    c->psychCamera = false;   // ja convertido
 }
 
 // Carrega o stage do mod. Retorna 0 se nao existe (usa o padrao).
@@ -200,6 +232,9 @@ static char LoadModStage(PlayStateStage* stage, const char* name, const char* so
 
     stage->defaultCameraZoom = meta.defaultZoom;
     stage->hideGirlfriend = (char)meta.hideGirlfriend;
+    stage->cameraSpeed = meta.cameraSpeed;
+    cameraOffsetBf = meta.cameraBoyfriend;
+    cameraOffsetDad = meta.cameraOpponent;
 
     gf->object.scrollFactor = (Vector2) {0.95f, 0.95f};
     // Posicao final = posicao do stage + offset proprio do personagem (como na Psych).
@@ -216,12 +251,18 @@ void PlayStateStage_Load(PlayStateStage* stage, const char* stageName, const cha
                          Girlfriend* gf, Character* dad, Character* bf)
 {
     memset(stage, 0, sizeof(*stage));
+    stage->cameraSpeed = 1.0f;
+    cameraOffsetBf = NULL;
+    cameraOffsetDad = NULL;
     if (!LoadModStage(stage, stageName, songDir, gf, dad, bf)) {
         free(stage->objects);
         free(stage->animObjects);
         memset(stage, 0, sizeof(*stage));
+        stage->cameraSpeed = 1.0f;
         LoadDefaultStage(stage, gf, dad, bf);
     }
+    FinalizeCamera(dad, 1, cameraOffsetDad);
+    FinalizeCamera(bf, 0, cameraOffsetBf);
 }
 
 void PlayStateStage_DrawBack(PlayStateStage* stage, char paused)

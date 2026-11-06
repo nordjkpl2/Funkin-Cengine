@@ -512,6 +512,7 @@ static void PlayState_Create([[maybe_unused]] RayScene* scene) {
     LoadUiAssets();
 
     PlayStateCamera_SetGameZoom(stage.defaultCameraZoom);
+    PlayStateCamera_SetSpeed(stage.cameraSpeed);
 
     // Aquece os streams de audio antes do primeiro frame.
     ClearBackground(BLACK);

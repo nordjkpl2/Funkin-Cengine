@@ -12,6 +12,7 @@ typedef struct {
     RayGraphicObject* objects;
     float defaultCameraZoom;
     char hideGirlfriend;     /* stage JSON hide_girlfriend */
+    float cameraSpeed;       /* stage JSON camera_speed (1 = normal) */
 
     int backgroundObjects;
     int objectCount;

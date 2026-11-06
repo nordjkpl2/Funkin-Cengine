@@ -194,6 +194,7 @@ char Stage_LoadJson(const char *path, StageMeta *out)
 
     memset(out, 0, sizeof(*out));
     out->defaultZoom = 1.0f;
+    out->cameraSpeed = 1.0f;
     out->boyfriend[0] = 770.0f;  out->boyfriend[1] = 100.0f;
     out->girlfriend[0] = 400.0f; out->girlfriend[1] = 130.0f;
     out->opponent[0] = 100.0f;   out->opponent[1] = 100.0f;
@@ -250,6 +251,12 @@ char Stage_LoadJson(const char *path, StageMeta *out)
     Stage_JsonPair(root, "boyfriend", out->boyfriend);
     Stage_JsonPair(root, "girlfriend", out->girlfriend);
     Stage_JsonPair(root, "opponent", out->opponent);
+    Stage_JsonPair(root, "camera_boyfriend", out->cameraBoyfriend);
+    Stage_JsonPair(root, "camera_opponent", out->cameraOpponent);
+
+    value = yyjson_obj_get(root, "camera_speed");
+    if (Stage_JsonNumber(value, &zoom) && zoom > 0.0 && zoom < 20.0)
+        out->cameraSpeed = (float)zoom;
 
     yyjson_doc_free(doc);
     return 1;

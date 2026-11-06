@@ -46,6 +46,9 @@ typedef struct {
     float boyfriend[2];
     float girlfriend[2];
     float opponent[2];
+    float cameraBoyfriend[2];   /* camera_boyfriend (padrao 0,0) */
+    float cameraOpponent[2];    /* camera_opponent (padrao 0,0) */
+    float cameraSpeed;          /* camera_speed (padrao 1) */
 } StageMeta;
 
 /* Procura <nome>.json nos mesmos lugares do .lua. Retorna 1 se achou. */

@@ -686,8 +686,9 @@ static bool Char_LoadLegacyCustom(const CharCtx *ctx, Character *character,
     character->singDuration = json.singDuration;
     character->hasHealthColor = json.hasHealthColor;
     character->healthColor = json.healthColor;
-    character->cameraOffset = (json.camera.x != 0.0f || json.camera.y != 0.0f)
-                                  ? json.camera : Char_DefaultCamera(role);
+    /* camera_position cru: PlayStateStage soma o ponto medio e as constantes da Psych. */
+    character->cameraOffset = json.camera;
+    character->psychCamera = true;
 
     AnimatedObject_SetAnimation(&character->object, character->animations.idle);
     Char_LoadIcon(ctx, character, name, json.healthIcon, role);
@@ -785,6 +786,7 @@ void Character_Load(Character *restrict character,
 
     Render_DefaultAnimated(&character->object);
     character->idled = false;
+    character->psychCamera = false;
     character->idleTimer = 0.0f;
     character->singDuration = 4.0f;
     character->hasHealthColor = false;

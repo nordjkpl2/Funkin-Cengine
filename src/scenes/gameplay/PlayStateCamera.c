@@ -10,7 +10,14 @@ static Character* followTarget;
 static Camera2D camGame;
 static Camera2D camHUD;
 
+static float followSpeed = 1.0f;
+
+void PlayStateCamera_SetSpeed(float speed) {
+    followSpeed = speed > 0.0f ? speed : 1.0f;
+}
+
 void PlayStateCamera_Reset(Character* initialTarget) {
+    followSpeed = 1.0f;
     followTarget = initialTarget;
 
     camGame = (Camera2D) {
@@ -49,8 +56,8 @@ void PlayStateCamera_Update(float deltaTime, float defaultGameZoom) {
     goal.x += followTarget->cameraOffset.x;
     goal.y += followTarget->cameraOffset.y;
 
-    camGame.target.x = Lerp(camGame.target.x, goal.x, deltaTime * 5);
-    camGame.target.y = Lerp(camGame.target.y, goal.y, deltaTime * 5);
+    camGame.target.x = Lerp(camGame.target.x, goal.x, deltaTime * 5 * followSpeed);
+    camGame.target.y = Lerp(camGame.target.y, goal.y, deltaTime * 5 * followSpeed);
     camGame.zoom = Lerp(camGame.zoom, defaultGameZoom, deltaTime * 8);
     camHUD.zoom = Lerp(camHUD.zoom, 1, deltaTime * 8);
 }
