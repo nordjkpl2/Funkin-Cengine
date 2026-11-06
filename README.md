@@ -44,5 +44,8 @@ It’s being developed by me, and I’m writing the code from scratch, so it mig
 
 <details>
 <summary><b>——Idea</b></summary>
+```text
 All Things your 2d (or semi 3d) game / mod needs
+```
+⚙️ Backend, performance focus, and be all your need
 </details>
