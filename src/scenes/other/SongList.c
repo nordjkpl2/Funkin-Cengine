@@ -74,7 +74,7 @@ static char Opp_IsSafeName(const char *name)
     return 1;
 }
 
-static char Opp_FromJsonFile(const char *path, char out[32])
+static char Opp_FromJsonFile(const char *path, char out[SONG_NAME_MAX])
 {
     out[0] = '\0';
 
@@ -129,7 +129,7 @@ static char Opp_FromJsonFile(const char *path, char out[32])
             if (!yyjson_is_str(value)) continue;
 
             const char *name = yyjson_get_str(value);
-            if (!Opp_IsSafeName(name) || strlen(name) >= 32) continue;
+            if (!Opp_IsSafeName(name) || strlen(name) >= SONG_NAME_MAX) continue;
 
             strcpy(out, name);
             found = 1;
@@ -141,13 +141,13 @@ static char Opp_FromJsonFile(const char *path, char out[32])
     return found;
 }
 
-static char Opp_FromSongBin(const char *path, char out[32])
+static char Opp_FromSongBin(const char *path, char out[SONG_NAME_MAX])
 {
     out[0] = '\0';
     FILE *file = fopen(path, "rb");
     if (!file) return 0;
 
-    char values[3][32] = {{0}};
+    char values[3][SONG_NAME_MAX] = {{0}};
     for (int i = 0; i < 3; ++i) {
         int32_t length = 0;
         if (fread(&length, sizeof(length), 1, file) != 1 ||
@@ -168,7 +168,7 @@ static char Opp_FromSongBin(const char *path, char out[32])
     return 1;
 }
 
-static char Opp_FromDirectory(const char *directory, char out[32])
+static char Opp_FromDirectory(const char *directory, char out[SONG_NAME_MAX])
 {
     if (!directory || !directory[0] || !DirectoryExists(directory)) return 0;
 
@@ -374,7 +374,7 @@ static void SongList_FindWeekIcon(const char *songName, char out[64])
     }
 }
 
-char SongList_Opponent(const char *dir, char out[32])
+char SongList_Opponent(const char *dir, char out[SONG_NAME_MAX])
 {
     if (!out) return 0;
     out[0] = '\0';

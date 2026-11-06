@@ -43,7 +43,7 @@ static float smooth(float a, float b, float c) {
 
 // cena
 static char songDir[256];
-static char returnToEditor, returnToWeek, diffSuf[16], overrideP2[32];
+static char returnToEditor, returnToWeek, diffSuf[16], overrideP2[SONG_NAME_MAX];
 static char restarted;
 static float lastAppliedMusicVolume = -1.0f;
 
@@ -97,28 +97,28 @@ static float optionOffset;
 static float pauseTimer;
 
 /* ------------------------------------------------------------------ */
-/* Receptores (game_options_scroll: 0 = up, 1 = down, 2 = middle)      */
+/* Receptores (gameOptions.scroll: 0 = up, 1 = down, 2 = middle)      */
 /* ------------------------------------------------------------------ */
 
 static float StrumY(void) {
-    if (game_options_scroll == 2) return 20.0f;
-    if (game_options_scroll == 1) return 600.0f;
+    if (gameOptions.scroll == 2) return 20.0f;
+    if (gameOptions.scroll == 1) return 600.0f;
     return 50.0f;
 }
 
 static float StrumX(char mustHit, int lane) {
-    if (game_options_scroll != 2)
+    if (gameOptions.scroll != 2)
         return (mustHit ? 700.0f : 50.0f) + LANE_SPACING * lane;
 
     return mustHit ? bfMiddleX + LANE_SPACING * lane : 50.0f + 55.0f * lane;
 }
 
 static float NoteVelocity(void) {
-    return game_options_scroll == 1 ? 450.0f : -450.0f;
+    return gameOptions.scroll == 1 ? 450.0f : -450.0f;
 }
 
 static void Strumlines_Load(void) {
-    const char middle = game_options_scroll == 2;
+    const char middle = gameOptions.scroll == 2;
 
     for (int i = 0; i < LANES; i++) {
         StrumNote_Load(dadStrumline + i, i);
@@ -184,7 +184,7 @@ static void Strumlines_Draw(void) {
     }
 
     // Botplay: volta o BF ao idle quando a animacao de confirm termina.
-    if (game_options_botplay) {
+    if (gameOptions.botplay) {
         for (int i = 0; i < LANES; i++) {
             if (AnimatedObject_FinishedAnimation(&bfStrumline[i].object))
                 AnimatedObject_SetAnimation(&bfStrumline[i].object, StrumNote_IdleAnimation(i));
@@ -243,7 +243,7 @@ static void Event_PlayerHit(Note* note, PlayerRating rating) {
     popupVelocity = -150;
     popupTimer = 1.0f;
 
-    if (game_options_hitSound)
+    if (gameOptions.hitSound)
         PlaySound(hitSFX);
 
     bf.idleTimer = 0;
@@ -335,11 +335,11 @@ static void BeatHit(void) {
     gf.f = !gf.f;
     AnimatedObject_SetAnimation(&gf.object, gf.anims[gf.f]);
 
-    if (game_options_bopIcons)
+    if (gameOptions.bopIcons)
         PlayStateHealth_Bop();
 
     if (songBeat.beat % 4 == 0)
-        PlayStateCamera_Bump(0.03f * game_options_zoomFactorUI, 0.015f * game_options_zoomFactorGAME);
+        PlayStateCamera_Bump(0.03f * gameOptions.zoomFactorUI, 0.015f * gameOptions.zoomFactorGAME);
 
     if (songBeat.beat % 2 == 0) {
         BeatIdle(&bf);
@@ -487,7 +487,7 @@ static void PlayState_Create([[maybe_unused]] RayScene* scene) {
         return;
     }
 
-    PlayStateHealth_Init(game_options_scroll == 1);
+    PlayStateHealth_Init(gameOptions.scroll == 1);
     PlayStateText_Init(songDir);
 
     Strumlines_Load();
@@ -673,7 +673,7 @@ static void PlayState_Update([[maybe_unused]] RayScene* scene) {
     }
 
     // No botplay, vida nunca e menor que 0
-    if (!game_options_botplay && PlayStateHealth_IsDead()) {
+    if (!gameOptions.botplay && PlayStateHealth_IsDead()) {
         UpdateDeath(dt);
     }
     else if (songBeat.time < 0) {
@@ -789,13 +789,13 @@ static void DrawHud(float dt) {
     PlayStateNoteSpawn_Draw(&view);
 
     PlayStateHealth_Draw(dad.icon, bf.icon);
-    PlayStateText_Draw(PlayStatePlayerInput_Score(), PlayStatePlayerInput_Misses(), songBeat.time, game_options_showScore);
+    PlayStateText_Draw(PlayStatePlayerInput_Score(), PlayStatePlayerInput_Misses(), songBeat.time, gameOptions.showScore);
 
     if (songBeat.time < 0)
         Render_DrawAnimatedObject(&introText);
 
     // No botplay nao cria popup para nao matar o FPS em spam notes
-    if (!game_options_botplay && popupTimer > 0) {
+    if (!gameOptions.botplay && popupTimer > 0) {
         popupVelocity += 500 * dt;
         popupObj.position.y += popupVelocity * dt;
         popupObj.color.a = smooth(255.0f, 0, 1 - popupTimer);
@@ -805,12 +805,12 @@ static void DrawHud(float dt) {
     }
 
     // Marca d'agua fixa: sem movimento, escala pulsante ou fade.
-    if (game_options_botplay)
+    if (gameOptions.botplay)
         PlayStateText_DrawBotplayMark();
 }
 
 static void PlayState_Draw([[maybe_unused]] RayScene* scene) {
-    if (!game_options_botplay && PlayStateHealth_IsDead()) {
+    if (!gameOptions.botplay && PlayStateHealth_IsDead()) {
         ClearBackground(BLACK);
 
         PlayStateCamera_BeginGame();
@@ -873,10 +873,6 @@ void PlayState_SetCharsOverride(const char* p2) {
     else
         overrideP2[0] = 0;
     overrideP2[sizeof(overrideP2) - 1] = 0;
-}
-
-int PlayState_GetScore(void) {
-    return PlayStatePlayerInput_Score();
 }
 
 /* ------------------------------------------------------------------ */

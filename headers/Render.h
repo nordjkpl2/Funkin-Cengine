@@ -88,7 +88,6 @@ Texture2D Render_LoadTexture(const char* path);
 // --- AnimationSet ---
 RayAnimationHandler AnimationSet_LoadAnimations(const char* animset, Texture2D image);
 int AnimationSet_FindAnimation(const RayAnimationHandler* restrict animations, const char* animationName);
-void AnimationSet_FreeAnimations(RayAnimationHandler* animations);
 void AnimationSet_FreeAll(RayAnimationHandler* animations);
 
 static inline void AnimationSet_SetAnimationOffset(RayAnimationHandler* restrict animations, int idx, Vector2 offset) {

@@ -1,3 +1,4 @@
+#pragma once
 #ifndef MODIMPORT_H
 #define MODIMPORT_H
 

@@ -40,14 +40,14 @@ static const char *Song_BaseName(const char *path)
     return base;
 }
 
-static void Song_CopyString(char dst[32], const char *src, const char *fallback)
+static void Song_CopyString(char dst[SONG_NAME_MAX], const char *src, const char *fallback)
 {
     const char *value = src != NULL ? src : fallback;
     size_t length;
-    memset(dst, 0, 32);
+    memset(dst, 0, SONG_NAME_MAX);
     if (value == NULL) return;
     length = strlen(value);
-    if (length > 31u) length = 31u;
+    if (length > SONG_NAME_MAX - 1u) length = SONG_NAME_MAX - 1u;
     memcpy(dst, value, length);
 }
 
@@ -178,10 +178,10 @@ static int Song_ReadFile(const char *path, char **outBuffer, size_t *outSize)
     return 1;
 }
 
-void File_ReadString(FILE *file, char str[32])
+void File_ReadString(FILE *file, char str[SONG_NAME_MAX])
 {
     int32_t length;
-    if (fread(&length, sizeof(length), 1, file) != 1 || length < 1 || length > 31)
+    if (fread(&length, sizeof(length), 1, file) != 1 || length < 1 || length > SONG_NAME_MAX - 1)
         Log_Fatal("invalid song string");
     if (fread(str, 1, (size_t)length, file) != (size_t)length)
         Log_Fatal("truncated song string");
@@ -305,7 +305,7 @@ static float Song_JsonFloat(yyjson_val *value, float fallback)
     return (float)number;
 }
 
-char Song_ParseJSON(Song *song, const char *jsonPath)
+static char Song_ParseJSON(Song *song, const char *jsonPath)
 {
     char *buffer = NULL;
     size_t bufferSize = 0;
@@ -730,15 +730,6 @@ static int Song_TryLoadBinary(const char *dirPath, Song *song)
         }
     }
     return 0;
-}
-
-void Song_LoadSong(Song *song, const char *songName)
-{
-    char directory[SONG_PATH_MAX];
-    if (song == NULL || songName == NULL) Log_Fatal("invalid song name");
-    if (snprintf(directory, sizeof(directory), "assets/songs/%s", songName) >= (int)sizeof(directory))
-        Log_Fatal("song path too long");
-    Song_LoadSongFromDir(song, directory);
 }
 
 void Song_LoadSongFromDir(Song *song, const char *dirPath)

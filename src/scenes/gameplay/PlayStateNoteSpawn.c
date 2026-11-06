@@ -101,7 +101,7 @@ size_t PlayStateNoteSpawn_First(void) { return firstNote; }
 
 /* Escala da cabeca da nota conforme o modo de scroll. */
 static float HeadScale(const Note* note) {
-    if (game_options_scroll == 2 && !note->mustHit) return 0.4f;
+    if (gameOptions.scroll == 2 && !note->mustHit) return 0.4f;
     return NOTE_SCALE;
 }
 
@@ -122,7 +122,7 @@ static void DrawSustainClipped(const StrumNote* strum, float k) {
     const float receptorY = strum->object.position.y + trailOffset.y * k;
     const float trailBottom = trail.position.y + trail.scaleY * TRAIL_SEGMENT_H;
 
-    if (game_options_scroll == 1) {
+    if (gameOptions.scroll == 1) {
         if (trailBottom > receptorY)
             trail.scaleY = fmaxf(0.0f, (receptorY - trail.position.y) / TRAIL_SEGMENT_H);
     } else if (trail.position.y < receptorY) {
@@ -140,7 +140,7 @@ static void DrawSustainClipped(const StrumNote* strum, float k) {
 static void DrawSustain(Note* note, const StrumNote* strum, const PlayStateNoteView* view,
                         const char* holdDown, float scrollSpeed, float endHeight, char fullyAbove) {
     // Middlescroll: sustain do oponente acompanha a escala menor do receptor.
-    const float k = (game_options_scroll == 2 && !note->mustHit) ? (0.4f / NOTE_SCALE) : 1.0f;
+    const float k = (gameOptions.scroll == 2 && !note->mustHit) ? (0.4f / NOTE_SCALE) : 1.0f;
 
     SetAnimIfChanged(&trail, Note_TrailAnimation(note->id));
     trail.scaleX = end.scaleX = NOTE_SCALE * k;
@@ -166,7 +166,7 @@ static void DrawSustain(Note* note, const StrumNote* strum, const PlayStateNoteV
     if (!note->mustHit) {
         if (shouldHold) events.opponentHold();
     }
-    else if (game_options_botplay) {
+    else if (gameOptions.botplay) {
         if (shouldHold) events.botHold();
     }
     else if (!note->pressed) {
@@ -209,7 +209,7 @@ void PlayStateNoteSpawn_Draw(const PlayStateNoteView* view) {
 
     char holdDown[4];
     for (int k = 0; k < 4; k++)
-        holdDown[k] = game_options_botplay || IsKeyDown(game_scheme_keys[game_options_scheme][k]);
+        holdDown[k] = gameOptions.botplay || IsKeyDown(game_scheme_keys[gameOptions.scheme][k]);
 
     CullPassedNotes(time, 400.0f / scrollSpeed);
 
@@ -227,7 +227,7 @@ void PlayStateNoteSpawn_Draw(const PlayStateNoteView* view) {
         renderNote.position.x = strum->object.position.x;
         renderNote.position.y = strum->object.position.y - speedMult * (note->time - time);
 
-        const char fullyAbove = (game_options_scroll == 1) ? (renderNote.position.y > 900.0f)
+        const char fullyAbove = (gameOptions.scroll == 1) ? (renderNote.position.y > 900.0f)
                                                            : (renderNote.position.y < -200.0f);
 
         if (note->pressed && fullyAbove && time >= note->time + note->length)
@@ -240,7 +240,7 @@ void PlayStateNoteSpawn_Draw(const PlayStateNoteView* view) {
             if (!note->mustHit) {
                 note->pressed = 1;
                 events.opponentHit(note);
-            } else if (game_options_botplay) {
+            } else if (gameOptions.botplay) {
                 note->pressed = 1;
                 events.botHit(note);
             }

@@ -8,19 +8,6 @@
  * Nao executa Lua: apenas extrai comandos de criacao e propriedades de sprites.
  */
 
-typedef struct {
-    float x, y;          /* posicao mundial (topo-esquerda) */
-    float imgW, imgH;    /* tamanho original da textura */
-    float scaleX, scaleY;
-} StageBg;
-
-/* Cobertura do percurso da camera: escala uniforme minima + deslocamento.
- * So cresce, nunca reduz. Executar apenas durante o carregamento do stage.
- */
-void Stage_CoverBackgrounds(StageBg *bgs, int n, float zoom,
-    float dadX, float dadY, float dadOffX, float dadOffY,
-    float bfX, float bfY, float bfOffX, float bfOffY);
-
 #define STAGE_MAX_SPRITES 32
 
 typedef struct {

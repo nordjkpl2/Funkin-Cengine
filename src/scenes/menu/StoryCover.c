@@ -274,7 +274,7 @@ static int FindCoverPath(const WeekEntry* week, char out[PATH_MAX_LEN]) {
 /* API                                                                 */
 /* ------------------------------------------------------------------ */
 
-void StoryCover_Unload(void) {
+static void StoryCover_Unload(void) {
     if (coverLoaded && cover.id != 0)
         UnloadTexture(cover);
 

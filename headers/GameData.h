@@ -5,13 +5,19 @@
 
 #include "raylib.h"
 
+/* Opcoes do jogador (salvas em assets/save.data). Para criar uma opcao nova:
+   campo aqui, valor padrao em GameData_Defaults() e leitura/escrita em GameData.c. */
+typedef struct GameOptions {
+    char showScore, bopIcons, vsync, fillScreen;
+    char botplay, ghost, scroll, hitSound, showFps;
+    int scheme, fps;
+    float zoomFactorUI, zoomFactorGAME;
+} GameOptions;
+
+extern GameOptions gameOptions;
+
 extern const char* game_available_schemes[4];
 extern const int   game_scheme_keys[4][4];
-
-extern char game_options_showScore, game_options_bopIcons, game_options_vsync, game_options_fillScreen;
-extern char game_options_botplay, game_options_ghost, game_options_scroll, game_options_hitSound, game_options_showFps;
-extern int  game_options_scheme, game_options_fps;
-extern float game_options_zoomFactorUI, game_options_zoomFactorGAME; 
 
 void GameData_Start(void);
 void GameData_Flush(void);

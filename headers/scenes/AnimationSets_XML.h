@@ -1,3 +1,4 @@
+#pragma once
 #ifndef ANIMATIONSETS_XML_H
 #define ANIMATIONSETS_XML_H
 

@@ -759,11 +759,6 @@ int AnimationSet_FindAnimation(const RayAnimationHandler *restrict animations,
     return -1;
 }
 
-void AnimationSet_FreeAnimations(RayAnimationHandler *restrict animations)
-{
-    AnimationSet_FreeArrays(animations);
-}
-
 void AnimationSet_FreeAll(RayAnimationHandler *restrict animations)
 {
     if (!animations) return;

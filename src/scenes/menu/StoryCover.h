@@ -19,7 +19,6 @@ void StoryCover_Reset(int weekCount);
 /* Carrega a capa da week `index` (nao faz nada se ja e a atual). Le disco: chame so ao trocar de week. */
 void StoryCover_Load(int index, const WeekEntry* week);
 
-void StoryCover_Unload(void);
 void StoryCover_Free(void);
 
 char StoryCover_IsLoaded(void);

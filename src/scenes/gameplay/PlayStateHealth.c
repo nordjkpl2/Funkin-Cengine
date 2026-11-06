@@ -32,18 +32,9 @@ void PlayStateHealth_Reset(void) {
     bopT = 1;
 }
 
-void PlayStateHealth_SetColors(Color dad, Color bf) {
-    dadColor = dad;
-    bfColor = bf;
-}
-
 void PlayStateHealth_SetCharacterColors(const Character* dad, const Character* bf) {
     if (dad->hasHealthColor) dadColor = dad->healthColor;
     if (bf->hasHealthColor) bfColor = bf->healthColor;
-}
-
-float PlayStateHealth_Get(void) {
-    return health;
 }
 
 void PlayStateHealth_Set(float value) {

@@ -78,10 +78,6 @@ void Note_SetWindow(float windowSeconds) {
     }
 }
 
-float Note_Window(void) {
-    return noteWindow;
-}
-
 void Note_SetCurrentSkin(const RayAnimationHandler* skin) {
     if (currentSkin == skin)
         return;
@@ -132,10 +128,6 @@ static const RayAnimationHandler* Note_EnsureCurrentAnimations(void) {
         NoteStuff_LoadAnimationsInternal(animations);
 
     return animationsReady ? animations : NULL;
-}
-
-void NoteStuff_LoadAnimations(void) {
-    NoteStuff_LoadAnimationsInternal(Note_GetCurrentSkin());
 }
 
 void StrumNote_Load(StrumNote* note, int id) {

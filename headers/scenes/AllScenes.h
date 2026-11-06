@@ -13,7 +13,6 @@ void PlayState_SetReturnEditor(char on);
 void PlayState_SetReturnWeek(char on);
 void PlayState_SetDiff(const char* diff);
 void PlayState_SetCharsOverride(const char* p2);
-int PlayState_GetScore(void);
 void LoadingState_SetScene(void);
 void LoadingState_SetSongDir(const char* dir);
 void ModdingMenu_SetScene(void);
@@ -34,6 +33,5 @@ void AllScenes_DestroyGame(void);
 RayAnimationHandler Cache_GetNoteAnimations(void);
 RayAnimationHandler Cache_GetNoteSkin(const char* skinName, const char* songDir);
 RayAnimationHandler* Cache_GetDefaultNoteSkinPtr(void);
-void Cache_UnloadCustomNoteSkins(void);
 
 #endif

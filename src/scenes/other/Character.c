@@ -488,8 +488,8 @@ typedef struct {
     float singDuration;      /* sing_duration */
     bool hasHealthColor;     /* healthbar_colors */
     Color healthColor;
-    char healthIcon[32];     /* healthicon */
-    char imageBase[32];      /* image (nome do png, sem pasta/extensao) */
+    char healthIcon[64];     /* healthicon */
+    char imageBase[64];      /* image (nome do png, sem pasta/extensao) */
     CharAnimDef defs[CHAR_MAX_DEFS];
     int defCount;
 } CharJson;

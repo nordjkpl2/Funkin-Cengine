@@ -39,7 +39,7 @@ static char* WK_ReadFile(const char* path, long* outSz, long maxSz){
     buf[sz]=0; fclose(f); if(outSz) *outSz=sz; return buf;
 }
 
-char Week_ParseFile(const char* path, const char* dir, const char* fileBase, WeekEntry* out){
+static char Week_ParseFile(const char* path, const char* dir, const char* fileBase, WeekEntry* out){
     memset(out,0,sizeof(*out));
     StrCopy(out->file,sizeof(out->file),fileBase,"week");
     StrCopy(out->dir,sizeof(out->dir),dir,"");
@@ -188,7 +188,6 @@ void WeekRun_Start(const WeekEntry* e, int diff){
     }
     SongList_Free(songs); runActive=(resolved>0);
 }
-char WeekRun_Active(void){ return runActive; }
 void WeekRun_Stop(void){ runActive=0; }
 static inline void SkipMissing(void){
     while(runPos<runWeek.songCount && runDirs[runPos][0]==0){ strncpy(runMissing,runWeek.songs[runPos].song,sizeof(runMissing)-1); runMissing[sizeof(runMissing)-1]=0; runPos++; }
@@ -198,9 +197,6 @@ const char* WeekRun_Char(void){ SkipMissing(); return runPos<runWeek.songCount?r
 const char* WeekRun_DiffSuffix(void){ return DIFFS[runDiff]; }
 int WeekRun_Advance(void){ runPos++; SkipMissing(); return runPos<runWeek.songCount; }
 void WeekRun_AddScore(int s){ runTotal+=s; }
-int WeekRun_Total(void){ return runTotal; }
-int WeekRun_Pos(void){ return runPos; }
-int WeekRun_TotalSongs(void){ return runWeek.songCount; }
 int WeekRun_LastTotal(void){ return lastTotal; }
 const char* WeekRun_Missing(void){ return runMissing; }
 void WeekRun_Finish(void){ lastTotal=runTotal; runActive=0; }

@@ -31,7 +31,7 @@ void BeatManager_New(BeatManager* restrict manager) {
     manager->loop = 0;
 }
 
-void BeatManager_Reset(BeatManager* restrict manager) {
+static void BeatManager_Reset(BeatManager* restrict manager) {
     if(manager == NULL)
         return;
 

@@ -19,7 +19,6 @@ typedef struct {
 
 void BeatManager_New(BeatManager* restrict mng);
 void BeatManager_Update(BeatManager* restrict manager, void (*onStepHit)(void), void (*onBeatHit)(void));
-void BeatManager_Reset(BeatManager* restrict mng);
 static inline void BeatManager_SetBPM(BeatManager* restrict mng, float bpm);
 
 static inline void BeatManager_SetBPM(BeatManager* restrict mng, float bpm) {

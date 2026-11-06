@@ -10,11 +10,7 @@
 #define SREAD(type, output) READ(type, 1, output)
 #define SWRITE(type, source) WRITE(type, 1, source)
 
-/* Declaração agrupada de variáveis do mesmo tipo */
-char game_options_showScore, game_options_bopIcons, game_options_vsync, game_options_fillScreen;
-char game_options_botplay, game_options_ghost, game_options_scroll, game_options_hitSound, game_options_showFps;
-int game_options_scheme, game_options_fps;
-float game_options_zoomFactorUI, game_options_zoomFactorGAME;
+GameOptions gameOptions;
 
 const char* game_available_schemes[4] = {"Arrows", "WASD", "DFJK", "ASKL"};
 const int   game_scheme_keys[4][4] = {
@@ -29,28 +25,20 @@ static FILE* saveFile;
 #define SAVE_VERSION 5
 
 static void GameData_Defaults(void) {
-    game_options_showScore  = 1;
-    game_options_bopIcons   = 1;
-    game_options_vsync      = 0;
-    game_options_fillScreen = 0;
-    game_options_botplay    = 0;
-    game_options_ghost      = 0; 
-    game_options_scroll     = 0; 
-    game_options_hitSound   = 0; 
-    game_options_showFps    = 1; 
-    game_options_fps        = 120;
-    game_options_scheme     = 0;
-    game_options_zoomFactorUI   = 1.0f;
-    game_options_zoomFactorGAME = 1.0f;
+    gameOptions = (GameOptions) {
+        .showScore = 1, .bopIcons = 1, .showFps = 1,
+        .fps = 120,
+        .zoomFactorUI = 1.0f, .zoomFactorGAME = 1.0f,
+    };
 }
 
 static void GameData_Checks(void) {
-    if(game_options_scheme < 0 || game_options_scheme > 3) IERR 
-    if(game_options_fps < 0) IERR
-    if(game_options_ghost < 0 || game_options_ghost > 2) IERR
-    if(game_options_scroll < 0 || game_options_scroll > 2) IERR
-    if(game_options_hitSound < 0 || game_options_hitSound > 1) IERR
-    if(game_options_showFps < 0 || game_options_showFps > 1) IERR
+    if(gameOptions.scheme < 0 || gameOptions.scheme > 3) IERR
+    if(gameOptions.fps < 0) IERR
+    if(gameOptions.ghost < 0 || gameOptions.ghost > 2) IERR
+    if(gameOptions.scroll < 0 || gameOptions.scroll > 2) IERR
+    if(gameOptions.hitSound < 0 || gameOptions.hitSound > 1) IERR
+    if(gameOptions.showFps < 0 || gameOptions.showFps > 1) IERR
 }
 
 void GameData_Start(void) {
@@ -71,18 +59,18 @@ void GameData_Start(void) {
         return;
     }
 
-    SREAD(char, game_options_showScore)
-    SREAD(char, game_options_bopIcons)
-    SREAD(char, game_options_vsync)
-    SREAD(char, game_options_fillScreen)
-    SREAD(char, game_options_botplay)
-    SREAD(char, game_options_ghost)
-    SREAD(char, game_options_scroll)
-    SREAD(char, game_options_showFps)
-    SREAD(int,  game_options_scheme) 
-    SREAD(int,  game_options_fps) 
-    SREAD(float,game_options_zoomFactorUI) 
-    SREAD(float,game_options_zoomFactorGAME) 
+    SREAD(char, gameOptions.showScore)
+    SREAD(char, gameOptions.bopIcons)
+    SREAD(char, gameOptions.vsync)
+    SREAD(char, gameOptions.fillScreen)
+    SREAD(char, gameOptions.botplay)
+    SREAD(char, gameOptions.ghost)
+    SREAD(char, gameOptions.scroll)
+    SREAD(char, gameOptions.showFps)
+    SREAD(int,  gameOptions.scheme) 
+    SREAD(int,  gameOptions.fps) 
+    SREAD(float,gameOptions.zoomFactorUI) 
+    SREAD(float,gameOptions.zoomFactorGAME) 
 
     GameData_Checks();
 }
@@ -92,18 +80,18 @@ void GameData_Flush(void) {
 
     char version = SAVE_VERSION;
     SWRITE(char, version)
-    SWRITE(char, game_options_showScore)
-    SWRITE(char, game_options_bopIcons)
-    SWRITE(char, game_options_vsync)
-    SWRITE(char, game_options_fillScreen)
-    SWRITE(char, game_options_botplay)
-    SWRITE(char, game_options_ghost)
-    SWRITE(char, game_options_scroll)
-    SWRITE(char, game_options_showFps)
-    SWRITE(int,  game_options_scheme) 
-    SWRITE(int,  game_options_fps)
-    SWRITE(float,game_options_zoomFactorUI) 
-    SWRITE(float,game_options_zoomFactorGAME) 
+    SWRITE(char, gameOptions.showScore)
+    SWRITE(char, gameOptions.bopIcons)
+    SWRITE(char, gameOptions.vsync)
+    SWRITE(char, gameOptions.fillScreen)
+    SWRITE(char, gameOptions.botplay)
+    SWRITE(char, gameOptions.ghost)
+    SWRITE(char, gameOptions.scroll)
+    SWRITE(char, gameOptions.showFps)
+    SWRITE(int,  gameOptions.scheme) 
+    SWRITE(int,  gameOptions.fps)
+    SWRITE(float,gameOptions.zoomFactorUI) 
+    SWRITE(float,gameOptions.zoomFactorGAME) 
 }
 
 void GameData_Stop(void) {

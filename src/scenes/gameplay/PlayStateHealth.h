@@ -18,12 +18,10 @@ float PlayStateHealth_BarY(void);
 /* Vida = 0.5 e icones sem bop. Chamar em todo Create, inclusive no restart. */
 void PlayStateHealth_Reset(void);
 
-void PlayStateHealth_SetColors(Color dad, Color bf);
 
 /* Usa healthbar_colors dos personagens; sem cor no JSON, mantem a atual. */
 void PlayStateHealth_SetCharacterColors(const Character* dad, const Character* bf);
 
-float PlayStateHealth_Get(void);
 void PlayStateHealth_Set(float value);
 
 /* Soma delta (positivo ou negativo). O topo e limitado a 1; abaixo de 0 = morte. */

@@ -10,9 +10,10 @@
 #include <string.h>
 #include <stdbool.h>
 #include "Game.h"
+#include "scenes/Song.h"
 
 #define NOTE_SKIN_MAX 16
-#define NOTE_SKIN_NAME_MAX 31
+#define NOTE_SKIN_NAME_MAX (SONG_NAME_MAX - 1)
 #define SKIN_PATH_MAX 260
 
 #define DEFAULT_SKIN_ANIMSET "assets/images/NOTE_assets.animset"
@@ -187,7 +188,7 @@ RayAnimationHandler Cache_GetNoteAnimations(void) {
     return defaultSkin;
 }
 
-void Cache_UnloadCustomNoteSkins(void) {
+static void Cache_UnloadCustomNoteSkins(void) {
     for (int i = 0; i < noteSkinCount; i++)
         if (noteSkins[i].isLoaded)
             AnimationSet_FreeAll(&noteSkins[i].animations);

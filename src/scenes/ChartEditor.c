@@ -50,11 +50,11 @@ typedef struct {
 
 typedef struct {
     char name[64];
-    char p1[32];
-    char p2[32];
-    char stage[32];
-    char gf[32]; // gfVersion (Girlfriend): "gf", "none"/"nogf" = sem girlfriend
-    char noteSkin[32]; // custom note skin (mod > global default)
+    char p1[SONG_NAME_MAX];
+    char p2[SONG_NAME_MAX];
+    char stage[SONG_NAME_MAX];
+    char gf[SONG_NAME_MAX]; // gfVersion (Girlfriend): "gf", "none"/"nogf" = sem girlfriend
+    char noteSkin[SONG_NAME_MAX]; // custom note skin (mod > global default)
     char dir[256]; // pasta da musica ("" = ainda nao salva)
     float bpm;
     float speed;
@@ -803,10 +803,10 @@ static void NumBox_Draw(NumBox* nb, Rectangle r) {
 }
 
 // lista de cantores (artes que existem): pro seletor Boyfriend/Opponent
-static char charNames[32][32];
+static char charNames[32][SONG_NAME_MAX];
 static int charCount = 0;
 // lista de girlfriends (so precisa de png + animset, nao tem icone)
-static char gfNames[32][32];
+static char gfNames[32][SONG_NAME_MAX];
 static int gfCount = 0;
 // qual lista suspensa esta aberta
 enum { DROP_NONE, DROP_BOYFRIEND, DROP_OPPONENT, DROP_GIRLFRIEND, DROP_STAGE, DROP_SKIN };
@@ -815,10 +815,10 @@ static char dropJustOpened = 0;
 static float dropX = 0, dropY = 0, dropW = 0;
 
 // stages que existem nas musicas (pro seletor de Stage)
-static char stageNames[32][32];
+static char stageNames[32][SONG_NAME_MAX];
 static int stageCount = 0;
 
-static char StageOfDir(const char* dir, char out[32]) {
+static char StageOfDir(const char* dir, char out[SONG_NAME_MAX]) {
     char p[300];
     snprintf(p, sizeof(p), "%s/data.json", dir);
     FILE* f = fopen(p, "rb");
@@ -841,8 +841,8 @@ static char StageOfDir(const char* dir, char out[32]) {
                             yyjson_val* jst = yyjson_obj_get(js, "stage");
                             if(yyjson_is_str(jst)) {
                                 const char* s = yyjson_get_str(jst);
-                                strncpy(out, s, 31);
-                                out[31] = 0;
+                                strncpy(out, s, SONG_NAME_MAX - 1);
+                                out[SONG_NAME_MAX - 1] = 0;
                                 yyjson_doc_free(doc);
                                 fclose(f);
                                 return 1;
@@ -864,19 +864,19 @@ static char StageOfDir(const char* dir, char out[32]) {
         return 0;
     for(int s = 0; s < 3; s++) {
         int len = 0;
-        if(fread(&len, sizeof(int), 1, f) != 1 || len < 1 || len > 31) {
+        if(fread(&len, sizeof(int), 1, f) != 1 || len < 1 || len > SONG_NAME_MAX - 1) {
             fclose(f);
             return 0;
         }
-        char tmp[32];
+        char tmp[SONG_NAME_MAX];
         if(fread(tmp, 1, (size_t)len, f) != (size_t)len) {
             fclose(f);
             return 0;
         }
         tmp[len] = 0;
         if(s == 2) {
-            strncpy(out, tmp, 31);
-            out[31] = 0;
+            strncpy(out, tmp, SONG_NAME_MAX - 1);
+            out[SONG_NAME_MAX - 1] = 0;
         }
     }
     fclose(f);
@@ -1056,7 +1056,7 @@ static char StageAsset_Exists(const char* name) {
 static void StageList_Scan(void) {
     stageCount = 0;
     for(int i = 0; i < pickerCount && stageCount < 32; i++) {
-        char st[32] = {0};
+        char st[SONG_NAME_MAX] = {0};
         if(!StageOfDir(pickerSongs[i].dir, st) || st[0] == 0)
             continue;
         if(!StageAsset_Exists(st) && !StageFileForSong_Exists(st, pickerSongs[i].dir))
@@ -1069,19 +1069,19 @@ static void StageList_Scan(void) {
             }
         }
         if(!dup) {
-            strncpy(stageNames[stageCount], st, 31);
-            stageNames[stageCount][31] = 0;
+            strncpy(stageNames[stageCount], st, SONG_NAME_MAX - 1);
+            stageNames[stageCount][SONG_NAME_MAX - 1] = 0;
             stageCount++;
         }
     }
     if(stageCount == 0 && StageAsset_Exists("stage") && stageCount < 32) {
-        strncpy(stageNames[0], "stage", 31);
-        stageNames[0][31] = 0;
+        strncpy(stageNames[0], "stage", SONG_NAME_MAX - 1);
+        stageNames[0][SONG_NAME_MAX - 1] = 0;
         stageCount = 1;
     }
 }
 /* Lista os personagens de uma pasta (png + animset). Com iconDir, exige tambem o icone. */
-static void NameList_ScanDir(char (*names)[32], int* count, const char* charDir, const char* iconDir) {
+static void NameList_ScanDir(char (*names)[SONG_NAME_MAX], int* count, const char* charDir, const char* iconDir) {
     if(!DirectoryExists(charDir))
         return;
     FilePathList list = LoadDirectoryFiles(charDir);
@@ -1095,7 +1095,7 @@ static void NameList_ScanDir(char (*names)[32], int* count, const char* charDir,
         const char* b = (s1 > s2) ? s1 : s2;
         b = (b != NULL) ? b + 1 : p;
         size_t nlen = L - (size_t)(b - p) - 4;
-        if(nlen < 1 || nlen > 31)
+        if(nlen < 1 || nlen > SONG_NAME_MAX - 1)
             continue;
         if(b[0] == '_' || strstr(b, "Title") != NULL)
             continue;
@@ -1144,7 +1144,7 @@ static void CharList_Scan(void) {
 }
 
 // note skin list (scan assets/images/notes/ e mod/images/notes/)
-static char skinNames[32][32];
+static char skinNames[32][SONG_NAME_MAX];
 static int skinCount = 0;
 static TxtBox skinBox;
 
@@ -1162,7 +1162,7 @@ static void NoteSkinList_ScanDir(const char* notesDir) {
         const char* b = (s1 > s2) ? s1 : s2;
         b = (b != NULL) ? b + 1 : p;
         size_t nlen = strlen(b);
-        if(nlen < 1 || nlen > 31)
+        if(nlen < 1 || nlen > SONG_NAME_MAX - 1)
             continue;
         // verifica se tem pelo menos as 4 sprites basicas
         char fp[300];
@@ -1203,10 +1203,10 @@ static void NoteSkinList_Scan(void) {
     for(int i = 0; i < skinCount; i++) {
         if(strcmp(skinNames[i], "default") == 0) {
             if(i != 0) {
-                char tmp[32];
-                memcpy(tmp, skinNames[i], 32);
-                memmove(skinNames[1], skinNames[0], i * 32);
-                memcpy(skinNames[0], tmp, 32);
+                char tmp[SONG_NAME_MAX];
+                memcpy(tmp, skinNames[i], sizeof(tmp));
+                memmove(skinNames[1], skinNames[0], i * sizeof(skinNames[0]));
+                memcpy(skinNames[0], tmp, sizeof(tmp));
             }
             break;
         }
@@ -1273,7 +1273,7 @@ static void Editor_UnloadIcons(void) {
 }
 
 // "healthicon" do characters/<nome>.json (mod da musica primeiro, depois global); "" = nao tem
-static void Editor_HealthIcon(const char* name, const char* modRoot, char out[32]) {
+static void Editor_HealthIcon(const char* name, const char* modRoot, char out[SONG_NAME_MAX]) {
     out[0] = 0;
     char p[300];
     for(int pass = 0; pass < 2; pass++) {
@@ -1289,7 +1289,7 @@ static void Editor_HealthIcon(const char* name, const char* modRoot, char out[32
         yyjson_val* v = yyjson_obj_get(yyjson_doc_get_root(doc), "healthicon");
         if(yyjson_is_str(v) && strchr(yyjson_get_str(v), '/') == NULL && strchr(yyjson_get_str(v), '\\') == NULL
             && strstr(yyjson_get_str(v), "..") == NULL)
-            snprintf(out, 32, "%s", yyjson_get_str(v));
+            snprintf(out, SONG_NAME_MAX, "%s", yyjson_get_str(v));
         yyjson_doc_free(doc);
         return;
     }
@@ -1313,7 +1313,7 @@ static Texture2D Editor_TryIcon(const char* name, const char* fallback, char* ok
     const char* want = (name != NULL && name[0] != 0) ? name : fallback;
     char modRoot[256];
     EdModRoot(chart.dir, modRoot);
-    char health[32];
+    char health[SONG_NAME_MAX];
     char p[300];
     Editor_HealthIcon(want, modRoot, health);
     if((health[0] != 0 && Editor_FindIconFile(health, modRoot, p)) || Editor_FindIconFile(want, modRoot, p)
@@ -1693,7 +1693,7 @@ static char Editor_SaveAs(const char* modName) {
 // camera centralizada COM zoom)
 static Vector2 MouseWorld(void) {
     Vector2 m = GetMousePosition();
-    if(game_options_fillScreen) {
+    if(gameOptions.fillScreen) {
         m.x = m.x * 1280 / GetScreenWidth();
         m.y = m.y * 720 / GetScreenHeight();
         return m;
@@ -1720,7 +1720,7 @@ static char Button(Rectangle r, const char* label, int fs) {
 
 // setinha que abre lista (desenha o triangulo na mao)
 static TxtBox* dropBox = NULL;
-static char (*dropNames)[32] = NULL;
+static char (*dropNames)[SONG_NAME_MAX] = NULL;
 static int dropCount = 0;
 
 static char DropBtn(Rectangle r, char open) {
@@ -2878,7 +2878,7 @@ static void Edit_DrawTabs(void) {
 
 /* Linha "Rotulo: [caixa] [v]" com lista suspensa. */
 static void DrawDropField(float x, float y, float boxW, const char* label, TxtBox* box, const char* hint,
-                          int dropId, char (*names)[32], int count, char blocked) {
+                          int dropId, char (*names)[SONG_NAME_MAX], int count, char blocked) {
     DrawTextEx(mainFont, label, (Vector2){x, y + 4}, 22, 1, WHITE);
 
     const Rectangle field = {x + SONG_FIELD_X, y, boxW, 32};

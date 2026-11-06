@@ -53,7 +53,7 @@ static void HitNote(Note* note, float songTime) {
 }
 
 void PlayStatePlayerInput_MissNote(Note* note) {
-    if (game_options_botplay) return; // BOTPLAY NUNCA DISPARA MISS
+    if (gameOptions.botplay) return; // BOTPLAY NUNCA DISPARA MISS
 
     note->missed = 1;
     PlayStateHealth_Add(-0.02f);
@@ -62,7 +62,7 @@ void PlayStatePlayerInput_MissNote(Note* note) {
 }
 
 static void GhostMiss(int lane) {
-    if (game_options_botplay) return; // BOTPLAY NUNCA DISPARA MISS
+    if (gameOptions.botplay) return; // BOTPLAY NUNCA DISPARA MISS
     if (lane < 0 || lane > 3) return;
 
     PlayStateHealth_Add(-0.02f);
@@ -77,7 +77,7 @@ char PlayStatePlayerInput_Update(float songTime, PlayStatePlayerKeys* keys) {
 
     // SE BOTPLAY ESTIVER ATIVO: O acerto agora ocorre diretamente no receptor (em PlayState_Draw)
     // exatamente como o oponente, deixando as notas 100% visíveis e imunes a morte!
-    if (game_options_botplay) {
+    if (gameOptions.botplay) {
         PlayStateHealth_Set(0.5f); // Mantém a vida travada e imortal no botplay
         return 0;
     }
@@ -90,14 +90,14 @@ char PlayStatePlayerInput_Update(float songTime, PlayStatePlayerKeys* keys) {
     char anyPressed = 0;
     for (int i = 0; i < 4; i++) {
         pressed[i] = 0;
-        int key = game_scheme_keys[game_options_scheme][i];
+        int key = game_scheme_keys[gameOptions.scheme][i];
         keyPressed[i] = IsKeyPressed(key);
         keyDown[i] = IsKeyDown(key);
         if (keyPressed[i])
             anyPressed = 1;
     }
 
-    if (game_options_ghost == 1 && anyPressed) {
+    if (gameOptions.ghost == 1 && anyPressed) {
         char hittable[4] = {0, 0, 0, 0};
         char anyHittable = 0;
         for (size_t i = firstNote; i < noteCount; i++) {
@@ -152,7 +152,7 @@ char PlayStatePlayerInput_Update(float songTime, PlayStatePlayerKeys* keys) {
     }
 
 BRUH:
-    if (game_options_ghost == 2) {
+    if (gameOptions.ghost == 2) {
         for (int i = 0; i < 4; i++) {
             if (keyPressed[i] && !pressed[i])
                 GhostMiss(i);

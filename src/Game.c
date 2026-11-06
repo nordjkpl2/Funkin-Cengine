@@ -58,7 +58,7 @@ static inline void RayGame_UpdateVolumeText(void)
 
 static void RayGame_UpdateViewport(bool force)
 {
-    const bool fillScreen = (game_options_fillScreen != 0);
+    const bool fillScreen = (gameOptions.fillScreen != 0);
     const bool resized = IsWindowResized();
 
     if (!force && viewportInitialized && !resized && fillScreen == lastFillScreen)
@@ -97,7 +97,7 @@ static inline void RayGame_UpdateOverlay(float frameDelta)
 
 static inline void RayGame_DrawOverlay(void)
 {
-    if (game_options_showFps)
+    if (gameOptions.showFps)
         DrawFPS(10, 3);
 
     if (volOsdTimer > 0.0f)
@@ -163,7 +163,7 @@ void RayGame_ResetMusic(void)
     playingMusic = true;
 }
 
-void RayGame_BumpMusicVolume(float delta)
+static void RayGame_BumpMusicVolume(float delta)
 {
     musicVolume = RayGame_Clamp01(musicVolume + delta);
 
@@ -190,12 +190,12 @@ float RayGame_ZoomFactor(void)
 
 int RayGame_CanvasWidth(void)
 {
-    return game_options_fillScreen ? RAYGAME_CANVAS_WIDTH : width;
+    return gameOptions.fillScreen ? RAYGAME_CANVAS_WIDTH : width;
 }
 
 int RayGame_CanvasHeight(void)
 {
-    return game_options_fillScreen ? RAYGAME_CANVAS_HEIGHT : height;
+    return gameOptions.fillScreen ? RAYGAME_CANVAS_HEIGHT : height;
 }
 
 void RayGame_SetFPS(int fps)
@@ -204,7 +204,7 @@ void RayGame_SetFPS(int fps)
     else if (fps > 0 && fps < 10) fps = 10;
 
     targetFps = fps;
-    game_options_fps = fps;
+    gameOptions.fps = fps;
 
     if (!vsyncEnabled)
         SetTargetFPS(targetFps);
@@ -213,7 +213,7 @@ void RayGame_SetFPS(int fps)
 void RayGame_SetVsync(char on)
 {
     vsyncEnabled = (on != 0);
-    game_options_vsync = vsyncEnabled;
+    gameOptions.vsync = vsyncEnabled;
 
     if (vsyncEnabled)
     {
@@ -255,9 +255,9 @@ void RayGame_Start(const char *gameTitle)
     GameData_Start();
     gameDataReady = true;
 
-    RayGame_SetVsync(game_options_vsync);
+    RayGame_SetVsync(gameOptions.vsync);
     if (!vsyncEnabled)
-        RayGame_SetFPS(game_options_fps);
+        RayGame_SetFPS(gameOptions.fps);
 
     stretchTarget = LoadRenderTexture(RAYGAME_CANVAS_WIDTH, RAYGAME_CANVAS_HEIGHT);
     stretchReady = (stretchTarget.id != 0);
@@ -315,7 +315,7 @@ void RayGame_GameLoop(void)
             continue;
         }
 
-        if (game_options_fillScreen && stretchReady)
+        if (gameOptions.fillScreen && stretchReady)
         {
             BeginTextureMode(stretchTarget);
             ClearBackground(BLACK);

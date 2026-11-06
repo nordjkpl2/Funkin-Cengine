@@ -154,11 +154,11 @@ static void ApplyNumValue(void) {
             if (o->value > 500 && o->value < 900) o->value = (o->value < 700) ? 900 : 500;
             RayGame_SetFPS((int)o->value);
             break;
-        case OPTION_KEYBOARD_SCHEME:   game_options_scheme = (int)o->value; break;
-        case OPTION_SCROLL_STYLE:      game_options_scroll = (char)(int)o->value; break;
-        case OPTION_GHOST:             game_options_ghost = (char)(int)o->value; break;
-        case OPTION_ZOOMFACTOR_GAME:   game_options_zoomFactorGAME = o->value; break;
-        case OPTION_ZOOMFACTOR_UI:     game_options_zoomFactorUI = o->value; break;
+        case OPTION_KEYBOARD_SCHEME:   gameOptions.scheme = (int)o->value; break;
+        case OPTION_SCROLL_STYLE:      gameOptions.scroll = (char)(int)o->value; break;
+        case OPTION_GHOST:             gameOptions.ghost = (char)(int)o->value; break;
+        case OPTION_ZOOMFACTOR_GAME:   gameOptions.zoomFactorGAME = o->value; break;
+        case OPTION_ZOOMFACTOR_UI:     gameOptions.zoomFactorUI = o->value; break;
     }
 
     Option_RebuildText(o);
@@ -186,12 +186,12 @@ static void ApplyBoolValue(void) {
             options[OPTION_UNCAPPED_FPS].dirty = true;
             options[OPTION_SHOW_FPS].dirty = true;
             break;
-        case OPTION_SHOW_FPS:      game_options_showFps = on; break;
-        case OPTION_SHOW_SCORE:    game_options_showScore = on; break;
-        case OPTION_BOPPING_ICONS: game_options_bopIcons = on; break;
-        case OPTION_FILL_SCREEN:   game_options_fillScreen = on; break;
-        case OPTION_BOTPLAY:       game_options_botplay = on; break;
-        case OPTION_HITSOUND:      game_options_hitSound = on; break;
+        case OPTION_SHOW_FPS:      gameOptions.showFps = on; break;
+        case OPTION_SHOW_SCORE:    gameOptions.showScore = on; break;
+        case OPTION_BOPPING_ICONS: gameOptions.bopIcons = on; break;
+        case OPTION_FILL_SCREEN:   gameOptions.fillScreen = on; break;
+        case OPTION_BOTPLAY:       gameOptions.botplay = on; break;
+        case OPTION_HITSOUND:      gameOptions.hitSound = on; break;
     }
 
     Option_RebuildText(o);
@@ -265,18 +265,18 @@ static void OptionsMenu_Create([[maybe_unused]] RayScene* scene) {
     }
 
     options[OPTION_UNCAPPED_FPS].value = targetFps == 0;
-    options[OPTION_SHOW_FPS].value = game_options_showFps;
-    options[OPTION_SHOW_SCORE].value = game_options_showScore;
-    options[OPTION_BOPPING_ICONS].value = game_options_bopIcons;
-    options[OPTION_VSYNC].value = game_options_vsync;
-    options[OPTION_KEYBOARD_SCHEME].value = game_options_scheme;
-    options[OPTION_SCROLL_STYLE].value = game_options_scroll;
-    options[OPTION_GHOST].value = game_options_ghost;
-    options[OPTION_HITSOUND].value = game_options_hitSound;
-    options[OPTION_ZOOMFACTOR_GAME].value = game_options_zoomFactorGAME;
-    options[OPTION_ZOOMFACTOR_UI].value = game_options_zoomFactorUI;
-    options[OPTION_FILL_SCREEN].value = game_options_fillScreen;
-    options[OPTION_BOTPLAY].value = game_options_botplay;
+    options[OPTION_SHOW_FPS].value = gameOptions.showFps;
+    options[OPTION_SHOW_SCORE].value = gameOptions.showScore;
+    options[OPTION_BOPPING_ICONS].value = gameOptions.bopIcons;
+    options[OPTION_VSYNC].value = gameOptions.vsync;
+    options[OPTION_KEYBOARD_SCHEME].value = gameOptions.scheme;
+    options[OPTION_SCROLL_STYLE].value = gameOptions.scroll;
+    options[OPTION_GHOST].value = gameOptions.ghost;
+    options[OPTION_HITSOUND].value = gameOptions.hitSound;
+    options[OPTION_ZOOMFACTOR_GAME].value = gameOptions.zoomFactorGAME;
+    options[OPTION_ZOOMFACTOR_UI].value = gameOptions.zoomFactorUI;
+    options[OPTION_FILL_SCREEN].value = gameOptions.fillScreen;
+    options[OPTION_BOTPLAY].value = gameOptions.botplay;
 
     for (int i = 0; i < OPTION_COUNT; i++)
         Option_RebuildText(options + i);
