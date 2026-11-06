@@ -13,6 +13,12 @@ compile_flags.txt
 Thumbs.db
 Desktop.ini
 
+# Backup
+src.rar
+lib.rar
+build-clang.rar
+headers.rar
+
 # Oth
 build/
 dist/
