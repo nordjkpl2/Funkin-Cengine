@@ -14,6 +14,9 @@ typedef struct {
     bool idled;
     struct { int idle; int notes[4]; } animations;
     struct { int notes[4]; } missAnimations;
+    float singDuration;      /* passos que segura a pose de cantar (Psych; padrao 4) */
+    bool hasHealthColor;     /* healthbar_colors do JSON do personagem */
+    Color healthColor;
 } Character; 
 
 typedef struct {

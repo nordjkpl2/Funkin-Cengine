@@ -137,8 +137,7 @@ static const char *Char_BaseName(const char *path)
     return last ? last + 1 : path;
 }
 
-static void Char_NormalizeSpriteName(const char *source,
-                                     char out[sizeof(((RayCharacterXMLData *)0)->sprite)])
+static void Char_NormalizeSpriteName(const char *source,char out[sizeof(((RayCharacterXMLData *)0)->sprite)])
 {
     if (!source || !source[0]) {
         out[0] = '\0';
@@ -576,6 +575,24 @@ static bool Char_TryLoadXMLCharacter(Character *character,
 /* Legacy JSON metadata                                                      */
 /* ------------------------------------------------------------------------- */
 
+/* yyjson_get_real devolve 0 para inteiros: aceita int e real. */
+static bool Char_JsonNumber(yyjson_val *value, double *out)
+{
+    if (yyjson_is_real(value)) *out = yyjson_get_real(value);
+    else if (yyjson_is_sint(value)) *out = (double)yyjson_get_sint(value);
+    else if (yyjson_is_uint(value)) *out = (double)yyjson_get_uint(value);
+    else return false;
+    return *out == *out; /* descarta NaN */
+}
+
+/* Campos extras do JSON de personagem (Psych). */
+typedef struct {
+    float posX, posY;        /* "position" */
+    float singDuration;      /* "sing_duration" (padrao 4) */
+    bool hasHealthColor;     /* "healthbar_colors" */
+    Color healthColor;
+} CharJsonExtra;
+
 static int Char_ReadJson(const char *jsonPath,
                          CharAnimDef *defs,
                          int capacity,
@@ -584,7 +601,8 @@ static int Char_ReadJson(const char *jsonPath,
                          float *cameraX,
                          float *cameraY,
                          char healthIcon[32],
-                         char imageBase[32])
+                         char imageBase[32],
+                         CharJsonExtra *extra)
 {
     *scale = 1.0f;
     *flipX = false;
@@ -592,6 +610,7 @@ static int Char_ReadJson(const char *jsonPath,
     *cameraY = 0.0f;
     healthIcon[0] = '\0';
     imageBase[0] = '\0';
+    *extra = (CharJsonExtra){0.0f, 0.0f, 4.0f, false, {255, 255, 255, 255}};
 
     FILE *file = fopen(jsonPath, "rb");
     if (!file)
@@ -635,8 +654,8 @@ static int Char_ReadJson(const char *jsonPath,
     }
 
     yyjson_val *value = yyjson_obj_get(root, "scale");
-    if (yyjson_is_num(value)) {
-        double parsed = yyjson_get_real(value);
+    double parsed;
+    if (Char_JsonNumber(value, &parsed)) {
         if (parsed > 0.05 && parsed < 8.0)
             *scale = (float)parsed;
     }
@@ -649,8 +668,36 @@ static int Char_ReadJson(const char *jsonPath,
     if (yyjson_is_arr(value) && yyjson_arr_size(value) >= 2u) {
         yyjson_val *x = yyjson_arr_get(value, 0);
         yyjson_val *y = yyjson_arr_get(value, 1);
-        if (yyjson_is_num(x)) *cameraX = (float)yyjson_get_real(x);
-        if (yyjson_is_num(y)) *cameraY = (float)yyjson_get_real(y);
+        double number;
+        if (Char_JsonNumber(x, &number)) *cameraX = (float)number;
+        if (Char_JsonNumber(y, &number)) *cameraY = (float)number;
+    }
+
+    value = yyjson_obj_get(root, "position");
+    if (yyjson_is_arr(value) && yyjson_arr_size(value) >= 2u) {
+        double number;
+        if (Char_JsonNumber(yyjson_arr_get(value, 0), &number)) extra->posX = (float)number;
+        if (Char_JsonNumber(yyjson_arr_get(value, 1), &number)) extra->posY = (float)number;
+    }
+
+    value = yyjson_obj_get(root, "sing_duration");
+    if (Char_JsonNumber(value, &parsed) && parsed > 0.0 && parsed < 100.0)
+        extra->singDuration = (float)parsed;
+
+    value = yyjson_obj_get(root, "healthbar_colors");
+    if (yyjson_is_arr(value) && yyjson_arr_size(value) >= 3u) {
+        double channel[3] = {0, 0, 0};
+        bool valid = true;
+        for (size_t i = 0; i < 3u; ++i) {
+            if (!Char_JsonNumber(yyjson_arr_get(value, i), &channel[i])) valid = false;
+            if (channel[i] < 0.0) channel[i] = 0.0;
+            if (channel[i] > 255.0) channel[i] = 255.0;
+        }
+        if (valid) {
+            extra->hasHealthColor = true;
+            extra->healthColor = (Color){(unsigned char)channel[0], (unsigned char)channel[1],
+                                         (unsigned char)channel[2], 255};
+        }
     }
 
     value = yyjson_obj_get(root, "healthicon");
@@ -705,8 +752,9 @@ static int Char_ReadJson(const char *jsonPath,
             definition->offsetY = 0.0f;
 
             yyjson_val *fps = yyjson_obj_get(entry, "fps");
-            if (yyjson_is_num(fps)) {
-                int parsedFPS = (int)yyjson_get_int(fps);
+            double fpsNumber;
+            if (Char_JsonNumber(fps, &fpsNumber)) {
+                int parsedFPS = (int)fpsNumber;
                 if (parsedFPS > 0 && parsedFPS <= 1000)
                     definition->fps = parsedFPS;
             }
@@ -719,8 +767,9 @@ static int Char_ReadJson(const char *jsonPath,
             if (yyjson_is_arr(offsets) && yyjson_arr_size(offsets) >= 2u) {
                 yyjson_val *x = yyjson_arr_get(offsets, 0);
                 yyjson_val *y = yyjson_arr_get(offsets, 1);
-                if (yyjson_is_num(x)) definition->offsetX = (float)yyjson_get_real(x);
-                if (yyjson_is_num(y)) definition->offsetY = (float)yyjson_get_real(y);
+                double number;
+                if (Char_JsonNumber(x, &number)) definition->offsetX = (float)number;
+                if (Char_JsonNumber(y, &number)) definition->offsetY = (float)number;
             }
 
             ++count;
@@ -777,12 +826,13 @@ static bool Char_LoadLegacyCustom(Character *character,
     bool flipX = false;
     char healthIcon[32] = {0};
     char imageBase[32] = {0};
+    CharJsonExtra extra = {0.0f, 0.0f, 4.0f, false, {255, 255, 255, 255}};
     CharAnimDef definitions[CHAR_MAX_DEFS];
     int definitionCount = 0;
 
     if (hasJSON) {
         definitionCount = Char_ReadJson(jsonPath, definitions, CHAR_MAX_DEFS,
-            &scale, &flipX, &cameraX, &cameraY, healthIcon, imageBase);
+            &scale, &flipX, &cameraX, &cameraY, healthIcon, imageBase, &extra);
     }
 
     const char *textureName = imageBase[0] ? imageBase : name;
@@ -844,6 +894,10 @@ static bool Char_LoadLegacyCustom(Character *character,
     character->object.scaleX = flipX ? -scale : scale;
     character->object.scaleY = scale;
     character->object.color = WHITE;
+    character->object.position = (Vector2){extra.posX, extra.posY};
+    character->singDuration = extra.singDuration;
+    character->hasHealthColor = extra.hasHealthColor;
+    character->healthColor = extra.healthColor;
     character->cameraOffset = (cameraX != 0.0f || cameraY != 0.0f)
         ? (Vector2){cameraX, cameraY}
         : (isDad ? (Vector2){400.0f, 300.0f} : (Vector2){50.0f, 50.0f});
@@ -942,6 +996,9 @@ void Character_Load(Character *restrict character,
     Render_DefaultAnimated(&character->object);
     character->idled = false;
     character->idleTimer = 0.0f;
+    character->singDuration = 4.0f;
+    character->hasHealthColor = false;
+    character->healthColor = (Color){255, 255, 255, 255};
     Char_InitAnimationSlots(character);
 
     if (!Char_IsSafeName(characterName))

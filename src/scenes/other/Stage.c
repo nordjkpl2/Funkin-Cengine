@@ -17,6 +17,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "yyjson.h"
+
 #define STAGE_PATH_MAX 300
 #define STAGE_MOD_ROOT_MAX 256
 #define STAGE_TAG_MAX 64
@@ -49,6 +51,18 @@ static void Stage_GetModRoot(const char *songDir, char out[STAGE_MOD_ROOT_MAX])
     const char *separator = strpbrk(modName, "/\\");
 
     size_t length = separator != NULL ? (size_t)(separator - songDir) : strlen(songDir);
+
+    /* Mod importado direto em assets/mods/ (songs, weeks, data... no topo). */
+    {
+        size_t nameLen = separator != NULL ? (size_t)(separator - modName) : strlen(modName);
+        if ((nameLen == 5 && strncmp(modName, "songs", 5) == 0) ||
+            (nameLen == 5 && strncmp(modName, "weeks", 5) == 0) ||
+            (nameLen == 4 && strncmp(modName, "data", 4) == 0) ||
+            (nameLen == 6 && strncmp(modName, "stages", 6) == 0) ||
+            (nameLen == 6 && strncmp(modName, "images", 6) == 0))
+            length = (size_t)(modName - songDir) - 1;
+    }
+
     if (length >= STAGE_MOD_ROOT_MAX)
         length = STAGE_MOD_ROOT_MAX - 1;
 
@@ -71,10 +85,14 @@ static inline bool Stage_TryPath(const char *candidate, char out[STAGE_PATH_MAX]
     return written > 0 && written < STAGE_PATH_MAX && Stage_FileExists(out);
 }
 
-char Stage_FindLua(const char *stageName, const char *songDir, char out[300])
+/* Ordem de busca: mod/stages, mod/data/stages, assets/stages,
+ * assets/data/stages, songDir. Serve para .lua e .json. */
+static char Stage_FindFile(const char *stageName, const char *songDir,
+                           const char *ext, char out[STAGE_PATH_MAX])
 {
     char modRoot[STAGE_MOD_ROOT_MAX];
     char candidate[STAGE_PATH_MAX];
+    int n;
 
     if (out == NULL)
         return 0;
@@ -87,30 +105,151 @@ char Stage_FindLua(const char *stageName, const char *songDir, char out[300])
     Stage_GetModRoot(songDir, modRoot);
 
     if (modRoot[0] != '\0') {
-        int n = snprintf(candidate, sizeof(candidate), "%s/stages/%s.lua", modRoot, stageName);
+        n = snprintf(candidate, sizeof(candidate), "%s/stages/%s.%s", modRoot, stageName, ext);
         if (n > 0 && n < (int)sizeof(candidate) && Stage_TryPath(candidate, out))
             return 1;
 
-        n = snprintf(candidate, sizeof(candidate), "%s/data/stages/%s.lua", modRoot, stageName);
+        n = snprintf(candidate, sizeof(candidate), "%s/data/stages/%s.%s", modRoot, stageName, ext);
         if (n > 0 && n < (int)sizeof(candidate) && Stage_TryPath(candidate, out))
             return 1;
     }
 
-    int n = snprintf(candidate, sizeof(candidate), "assets/stages/%s.lua", stageName);
+    n = snprintf(candidate, sizeof(candidate), "assets/stages/%s.%s", stageName, ext);
     if (n > 0 && n < (int)sizeof(candidate) && Stage_TryPath(candidate, out))
         return 1;
 
-    n = snprintf(candidate, sizeof(candidate), "assets/data/stages/%s.lua", stageName);
+    n = snprintf(candidate, sizeof(candidate), "assets/data/stages/%s.%s", stageName, ext);
     if (n > 0 && n < (int)sizeof(candidate) && Stage_TryPath(candidate, out))
         return 1;
 
     if (songDir != NULL && songDir[0] != '\0') {
-        n = snprintf(candidate, sizeof(candidate), "%s/%s.lua", songDir, stageName);
+        n = snprintf(candidate, sizeof(candidate), "%s/%s.%s", songDir, stageName, ext);
         if (n > 0 && n < (int)sizeof(candidate) && Stage_TryPath(candidate, out))
             return 1;
     }
 
     return 0;
+}
+
+char Stage_FindLua(const char *stageName, const char *songDir, char out[300])
+{
+    return Stage_FindFile(stageName, songDir, "lua", out);
+}
+
+char Stage_FindJson(const char *stageName, const char *songDir, char out[300])
+{
+    return Stage_FindFile(stageName, songDir, "json", out);
+}
+
+/* ------------------------------------------------------------------------- */
+/* Stage JSON (Psych): defaultZoom, isPixelStage, boyfriend/girlfriend/opponent */
+/* ------------------------------------------------------------------------- */
+
+#define STAGE_JSON_MAX (256L * 1024L)
+
+/* yyjson_get_real devolve 0 para inteiros; aqui aceitamos int e real. */
+static bool Stage_JsonNumber(yyjson_val *value, float *out)
+{
+    double number;
+
+    if (yyjson_is_real(value)) number = yyjson_get_real(value);
+    else if (yyjson_is_sint(value)) number = (double)yyjson_get_sint(value);
+    else if (yyjson_is_uint(value)) number = (double)yyjson_get_uint(value);
+    else return false;
+
+    if (!isfinite(number) || fabs(number) > 1.0e9)
+        return false;
+
+    *out = (float)number;
+    return true;
+}
+
+static void Stage_JsonPair(yyjson_val *root, const char *key, float out[2])
+{
+    yyjson_val *array = yyjson_obj_get(root, key);
+    float x, y;
+
+    if (!yyjson_is_arr(array) || yyjson_arr_size(array) < 2)
+        return;
+
+    if (Stage_JsonNumber(yyjson_arr_get(array, 0), &x) &&
+        Stage_JsonNumber(yyjson_arr_get(array, 1), &y)) {
+        out[0] = x;
+        out[1] = y;
+    }
+}
+
+char Stage_LoadJson(const char *path, StageMeta *out)
+{
+    FILE *file;
+    long size;
+    char *buffer;
+    yyjson_doc *doc;
+    yyjson_val *root;
+    yyjson_val *value;
+    float zoom;
+
+    if (out == NULL)
+        return 0;
+
+    memset(out, 0, sizeof(*out));
+    out->defaultZoom = 1.0f;
+    out->boyfriend[0] = 770.0f;  out->boyfriend[1] = 100.0f;
+    out->girlfriend[0] = 400.0f; out->girlfriend[1] = 130.0f;
+    out->opponent[0] = 100.0f;   out->opponent[1] = 100.0f;
+
+    if (path == NULL || path[0] == '\0')
+        return 0;
+
+    file = fopen(path, "rb");
+    if (file == NULL)
+        return 0;
+
+    if (fseek(file, 0, SEEK_END) != 0 ||
+        (size = ftell(file)) <= 0 || size > STAGE_JSON_MAX ||
+        fseek(file, 0, SEEK_SET) != 0) {
+        fclose(file);
+        return 0;
+    }
+
+    buffer = (char *)malloc((size_t)size + 1u);
+    if (buffer == NULL) {
+        fclose(file);
+        return 0;
+    }
+
+    if (fread(buffer, 1, (size_t)size, file) != (size_t)size) {
+        free(buffer);
+        fclose(file);
+        return 0;
+    }
+    fclose(file);
+    buffer[size] = '\0';
+
+    doc = yyjson_read(buffer, (size_t)size, 0);
+    free(buffer);
+    if (doc == NULL)
+        return 0;
+
+    root = yyjson_doc_get_root(doc);
+    if (!yyjson_is_obj(root)) {
+        yyjson_doc_free(doc);
+        return 0;
+    }
+
+    value = yyjson_obj_get(root, "defaultZoom");
+    if (Stage_JsonNumber(value, &zoom) && zoom > 0.05f && zoom < 10.0f)
+        out->defaultZoom = zoom;
+
+    value = yyjson_obj_get(root, "isPixelStage");
+    out->isPixelStage = (yyjson_is_bool(value) && yyjson_get_bool(value)) ? 1 : 0;
+
+    Stage_JsonPair(root, "boyfriend", out->boyfriend);
+    Stage_JsonPair(root, "girlfriend", out->girlfriend);
+    Stage_JsonPair(root, "opponent", out->opponent);
+
+    yyjson_doc_free(doc);
+    return 1;
 }
 
 typedef struct StageTagMap {
@@ -129,6 +268,7 @@ typedef enum StageLuaCall {
     LUA_CALL_SET_SCALE_LUA,
     LUA_CALL_ADD_SPRITE,
     LUA_CALL_SET_OBJECT_ORDER,
+    LUA_CALL_ADD_ANIM_PREFIX,
     LUA_CALL_GLITCH,
     LUA_CALL_IGNORED_ANIMATION,
     LUA_CALL_UPDATE
@@ -140,33 +280,28 @@ static inline bool Stage_TokenEquals(const char *token, size_t tokenLength, cons
     return tokenLength == literalLength && memcmp(token, literal, literalLength) == 0;
 }
 
+/* Tabela por nome: nao depende de contar letras. Roda so no load do stage. */
 static StageLuaCall Stage_GetCall(const char *token, size_t length)
 {
-    switch (length) {
-        case 4:
-            if (Stage_TokenEquals(token, length, "onUpdate")) return LUA_CALL_UPDATE;
-            break;
-        case 11:
-            if (Stage_TokenEquals(token, length, "makeGraphic")) return LUA_CALL_MAKE_GRAPHIC;
-            if (Stage_TokenEquals(token, length, "scaleObject")) return LUA_CALL_SET_SCALE;
-            break;
-        case 13:
-            if (Stage_TokenEquals(token, length, "addLuaSprite")) return LUA_CALL_ADD_SPRITE;
-            if (Stage_TokenEquals(token, length, "setObjectOrder")) return LUA_CALL_SET_OBJECT_ORDER;
-            if (Stage_TokenEquals(token, length, "setProperty")) return LUA_CALL_IGNORED_ANIMATION;
-            break;
-        case 14:
-            if (Stage_TokenEquals(token, length, "makeLuaSprite")) return LUA_CALL_MAKE_SPRITE;
-            if (Stage_TokenEquals(token, length, "setScrollFactor")) return LUA_CALL_SET_SCROLL_SHORT;
-            if (Stage_TokenEquals(token, length, "scaleLuaSprite")) return LUA_CALL_SET_SCALE_LUA;
-            if (Stage_TokenEquals(token, length, "addGlitchEffect")) return LUA_CALL_GLITCH;
-            break;
-        case 21:
-            if (Stage_TokenEquals(token, length, "makeAnimatedLuaSprite")) return LUA_CALL_MAKE_ANIMATED_SPRITE;
-            if (Stage_TokenEquals(token, length, "setLuaSpriteScrollFactor")) return LUA_CALL_SET_SCROLL;
-            break;
-        default:
-            break;
+    static const struct { const char *name; StageLuaCall call; } calls[] = {
+        { "makeLuaSprite",            LUA_CALL_MAKE_SPRITE },
+        { "makeAnimatedLuaSprite",    LUA_CALL_MAKE_ANIMATED_SPRITE },
+        { "makeGraphic",              LUA_CALL_MAKE_GRAPHIC },
+        { "setLuaSpriteScrollFactor", LUA_CALL_SET_SCROLL },
+        { "setScrollFactor",          LUA_CALL_SET_SCROLL_SHORT },
+        { "scaleObject",              LUA_CALL_SET_SCALE },
+        { "scaleLuaSprite",           LUA_CALL_SET_SCALE_LUA },
+        { "addLuaSprite",             LUA_CALL_ADD_SPRITE },
+        { "setObjectOrder",           LUA_CALL_SET_OBJECT_ORDER },
+        { "addAnimationByPrefix",     LUA_CALL_ADD_ANIM_PREFIX },
+        { "addGlitchEffect",          LUA_CALL_GLITCH },
+        { "setProperty",              LUA_CALL_IGNORED_ANIMATION },
+        { "onUpdate",                 LUA_CALL_UPDATE },
+    };
+
+    for (size_t i = 0; i < sizeof(calls) / sizeof(calls[0]); ++i) {
+        if (Stage_TokenEquals(token, length, calls[i].name))
+            return calls[i].call;
     }
     return LUA_CALL_NONE;
 }
@@ -515,6 +650,7 @@ int Stage_ParseLua(const char *luaText, StageSprite *out, int capacity, int *ign
                             out[index].x = x;
                             out[index].y = y;
                             out[index].isGraphic = 0;
+                            out[index].isAnimated = (call == LUA_CALL_MAKE_ANIMATED_SPRITE) ? 1 : 0;
                             out[index].graphicWidth = out[index].graphicHeight = 0.0f;
                         }
                     }
@@ -590,6 +726,28 @@ int Stage_ParseLua(const char *luaText, StageSprite *out, int capacity, int *ign
                         index = Stage_GetOrCreateSprite(maps, &mapCount, out, &objectCount, capacity, tag);
                         if (index >= 0) {
                             out[index].front = order > 0 ? 1 : 0;
+                        }
+                    }
+                } break;
+
+                case LUA_CALL_ADD_ANIM_PREFIX: {
+                    /* addAnimationByPrefix(tag, nome, prefixo, fps, loop): guarda so a primeira. */
+                    char animName[64] = {0};
+                    char prefix[64] = {0};
+                    float fps = 24.0f;
+                    bool loop = false;
+
+                    if (Stage_ParseTagArg(&args, argsEnd, tag) &&
+                        Stage_ParseStringArg(&args, argsEnd, animName, sizeof(animName)) &&
+                        Stage_ParseStringArg(&args, argsEnd, prefix, sizeof(prefix))) {
+                        (void)Stage_ParseFloatArg(&args, argsEnd, &fps);
+                        (void)Stage_ParseBoolArg(&args, argsEnd, &loop);
+
+                        index = Stage_GetOrCreateSprite(maps, &mapCount, out, &objectCount, capacity, tag);
+                        if (index >= 0 && out[index].animPrefix[0] == '\0') {
+                            snprintf(out[index].animPrefix, sizeof(out[index].animPrefix), "%s", prefix);
+                            out[index].animFps = fps > 0.0f ? fps : 24.0f;
+                            out[index].animLoop = loop ? 1 : 0;
                         }
                     }
                 } break;
