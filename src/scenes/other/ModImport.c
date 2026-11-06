@@ -296,6 +296,19 @@ static int MI_IsNameMods(const char *name)
     return MI_CaseEqual(name, "mods");
 }
 
+/* Pastas do layout do jogo: dentro de assets/mods elas NAO sao mods separados. */
+static int MI_IsLayoutDirName(const char *name)
+{
+    static const char *const folders[] = {
+        "songs", "weeks", "stages", "characters", "images", "data",
+        "sounds", "music", "scripts"
+    };
+    for (size_t i = 0; i < sizeof(folders) / sizeof(folders[0]); ++i) {
+        if (MI_CaseEqual(name, folders[i])) return 1;
+    }
+    return 0;
+}
+
 static void MI_StatsAdd(ModImportStats *dst, const ModImportStats *src)
 {
     if (dst == NULL || src == NULL) return;
@@ -684,7 +697,12 @@ static int MI_ParseCharacterJson(const char *jsonPath, const char *fallbackName,
             const char *prefix;
             MI_CharAnim *anim;
             yyjson_val *indices;
-            if (out->animCount >= MI_MAX_CHAR_ANIMS || !yyjson_is_obj(entry)) break;
+            if (out->animCount >= MI_MAX_CHAR_ANIMS) {
+                TraceLog(LOG_WARNING, "IMPORT: %s: mais de %d animacoes, o resto foi ignorado",
+                         jsonPath, MI_MAX_CHAR_ANIMS);
+                break;
+            }
+            if (!yyjson_is_obj(entry)) break;
             role = MI_JsonString(entry, "anim");
             prefix = MI_JsonString(entry, "name");
             if (role == NULL || role[0] == '\0' || prefix == NULL || prefix[0] == '\0') continue;
@@ -699,7 +717,11 @@ static int MI_ParseCharacterJson(const char *jsonPath, const char *fallbackName,
                 size_t k, kmax;
                 yyjson_val *indexValue;
                 yyjson_arr_foreach(indices, k, kmax, indexValue) {
-                    if (anim->indexCount >= MI_MAX_ANIM_FRAMES) break;
+                    if (anim->indexCount >= MI_MAX_ANIM_FRAMES) {
+                        TraceLog(LOG_WARNING, "IMPORT: %s: animacao '%s' cortada em %d indices",
+                                 jsonPath, role, MI_MAX_ANIM_FRAMES);
+                        break;
+                    }
                     if (yyjson_is_int(indexValue)) {
                         int64_t index = yyjson_get_int(indexValue);
                         if (index >= 0 && index <= INT_MAX)
@@ -889,6 +911,9 @@ static int MI_WriteAnimset(const MI_CharInfo *info, const char *xmlPath,
     if (frames == NULL) goto cleanup;
     frameCount = MI_ParseXmlFrames(xml, frames, MI_MAX_XML_FRAMES);
     if (frameCount <= 0) goto cleanup;
+    if (frameCount >= MI_MAX_XML_FRAMES)
+        TraceLog(LOG_WARNING, "IMPORT: %s: atlas com %d frames ou mais, o resto foi ignorado",
+                 xmlPath, MI_MAX_XML_FRAMES);
 
     candidates = (MI_FrameCandidate *)malloc(sizeof(*candidates) * (size_t)frameCount);
     selected = (int32_t *)malloc(sizeof(*selected) *
@@ -922,6 +947,9 @@ static int MI_WriteAnimset(const MI_CharInfo *info, const char *xmlPath,
             }
         } else {
             int take = candidateCount < MI_MAX_ANIM_FRAMES ? candidateCount : MI_MAX_ANIM_FRAMES;
+            if (candidateCount > take)
+                TraceLog(LOG_WARNING, "IMPORT: %s: animacao '%s' cortada em %d de %d frames",
+                         animsetPath, anim->role, take, candidateCount);
             for (int k = 0; k < take; ++k)
                 selected[(size_t)a * MI_MAX_ANIM_FRAMES + outputCount++] =
                     candidates[k].frameIndex;
@@ -1258,6 +1286,20 @@ static void MI_ImportLooseSongCharts(const char *sourceSongs, const char *destin
     UnloadDirectoryFiles(entries);
 }
 
+/* A pasta tem algum chart (.json que nao seja events.json)? */
+static int MI_DirHasChartJson(const char *dir)
+{
+    FilePathList entries = MI_ListEntries(dir);
+    int found = 0;
+    for (unsigned i = 0; i < entries.count && !found; ++i) {
+        const char *base = MI_BaseName(entries.paths[i]);
+        if (MI_IsDirectoryPath(entries.paths[i])) continue;
+        if (MI_EndsWithI(base, ".json") && !MI_CaseEqual(base, "events.json")) found = 1;
+    }
+    UnloadDirectoryFiles(entries);
+    return found;
+}
+
 static int MI_ImportSongs(const char *srcMod, const char *dstMod,
                           MI_ImportContext *context)
 {
@@ -1310,6 +1352,8 @@ static int MI_ImportSongs(const char *srcMod, const char *dstMod,
                 !MI_Join(destinationSong, sizeof(destinationSong), destinationSongs, songName)) continue;
             if (haveSongs && MI_Join(matchingSong, sizeof(matchingSong), sourceSongs, songName) &&
                 DirectoryExists(matchingSong)) continue;
+            /* data/ tambem guarda outras coisas (credits etc.): so e musica com chart. */
+            if (!MI_DirHasChartJson(dataDirs.paths[i])) continue;
             (void)MI_CopySongFolder(NULL, destinationSong, dataDirs.paths[i], context);
         }
         UnloadDirectoryFiles(dataDirs);
@@ -1463,6 +1507,24 @@ static char MI_ImportSingle(const char *srcMod, const char *destModPath,
         localStats.images += copiedImages;
     }
 
+    /* Audio e scripts do mod (o ModPath ja procura nestas pastas). */
+    {
+        static const char *const extraDirs[] = {"sounds", "music", "scripts"};
+        for (size_t i = 0; i < sizeof(extraDirs) / sizeof(extraDirs[0]); ++i) {
+            char extraSource[MI_PATH_MAX];
+            char extraDestination[MI_PATH_MAX];
+            int copiedExtra = 0;
+            if (!MI_Join(extraSource, sizeof(extraSource), srcMod, extraDirs[i]) ||
+                !MI_Join(extraDestination, sizeof(extraDestination), destModPath, extraDirs[i])) {
+                ok = 0;
+                continue;
+            }
+            if (!DirectoryExists(extraSource)) continue;
+            if (!MI_CopyTree(extraSource, extraDestination, &localStats.bytes, &copiedExtra, 0))
+                ok = 0;
+        }
+    }
+
     if (!MI_ImportCharacters(srcMod, destModPath, &context)) ok = 0;
     MI_CopyCollectedIcons(&context);
 
@@ -1542,9 +1604,10 @@ char ModImport_Run(const char *srcMod, const char *dstRoot, const char *modName,
         if (stats != NULL) *stats = total;
         if (msg != NULL && msgSize > 0) {
             (void)snprintf(msg, msgSize,
-                "import mods: %d mods, %d musicas, %d charts, %d weeks, %d stages, %d imagens (%ld KB)",
+                "import mods: %d mods, %d musicas, %d charts, %d weeks, %d stages, %d imagens, %d personagens, %d animsets, %d icones (%ld KB)",
                 imported, total.songs, total.charts, total.weeks, total.stages,
-                total.images, total.bytes / 1024L);
+                total.images, total.characters, total.animsets, total.icons,
+                total.bytes / 1024L);
         }
         return (char)(imported > 0 && ok);
     }
@@ -1568,6 +1631,21 @@ char ModImport_ScanMods(const char *dstRoot, ModImportUsage *out)
             usage.songs = (int)songs.count;
             UnloadDirectoryFiles(songs);
         }
+        /* Layout misturado: pastas fora do layout do jogo tambem sao mods
+         * (os bytes ja estao no total da raiz). */
+        mods = MI_ListDirectories(dstRoot);
+        for (unsigned i = 0; i < mods.count; ++i) {
+            const char *modBase = MI_BaseName(mods.paths[i]);
+            if (!MI_IsSafeComponent(modBase) || MI_IsLayoutDirName(modBase)) continue;
+            ++usage.mods;
+            if (MI_Join(songsPath, sizeof(songsPath), mods.paths[i], "songs") &&
+                DirectoryExists(songsPath)) {
+                songs = MI_ListDirectories(songsPath);
+                usage.songs += (int)songs.count;
+                UnloadDirectoryFiles(songs);
+            }
+        }
+        UnloadDirectoryFiles(mods);
     } else {
         mods = MI_ListDirectories(dstRoot);
         for (unsigned i = 0; i < mods.count; ++i) {
@@ -1597,6 +1675,7 @@ char ModImport_DeleteAll(const char *dstRoot, char *msg, size_t msgSize,
     FilePathList mods;
     FilePathList rootEntries;
     int modCount = 0;
+    int layoutFound = 0;
     int rootIsMod = 0;
     int removedFiles = 0;
     long bytes = 0;
@@ -1621,12 +1700,13 @@ char ModImport_DeleteAll(const char *dstRoot, char *msg, size_t msgSize,
     rootIsMod = MI_HasModLayout(dstRoot);
     mods = MI_ListDirectories(dstRoot);
     for (unsigned i = 0; i < mods.count; ++i) {
-        if (!rootIsMod) ++modCount;
+        if (rootIsMod && MI_IsLayoutDirName(MI_BaseName(mods.paths[i]))) layoutFound = 1;
+        else ++modCount;
         if (!MI_RemoveTree(mods.paths[i], 0, &removedFiles)) ok = 0;
         if (MI_RMDIR(mods.paths[i]) != 0 && DirectoryExists(mods.paths[i])) ok = 0;
     }
     UnloadDirectoryFiles(mods);
-    if (rootIsMod && bytes > 0) modCount = 1;
+    if (layoutFound) ++modCount; /* as pastas do layout direto contam como 1 mod */
 
     /* Remove arquivos soltos na raiz, mas preserva a pasta assets/mods. */
     rootEntries = MI_ListEntries(dstRoot);

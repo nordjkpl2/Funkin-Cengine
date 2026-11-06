@@ -24,6 +24,7 @@ typedef struct {
     float graphicWidth, graphicHeight;
     uint8_t colorR, colorG, colorB, colorA;
     uint8_t isGraphic;
+    uint8_t scaleCenter; /* 1 = escala via setProperty (Psych cresce do centro, sem updateHitbox) */
 
     int front;           /* 0 = atras, 1 = frente (addLuaSprite/setObjectOrder) */
 

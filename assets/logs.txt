@@ -51,3 +51,18 @@
 [WARN] Icone nao encontrado: 'none' (usando padrao)
 [WARN] Stage: imagem nao encontrada: background2
 [WARN] Stage: imagem nao encontrada: characters/corniexpunged
+
+--- SESSION LOG START ---
+[WARN] Personagem 'Chaser-D' nao encontrado: usando dad padrao
+[WARN] Personagem 'picochased' nao encontrado: usando bf padrao
+[WARN] Stage 'manhunt' nao encontrado: usando stage vazio
+[WARN] Personagem 'manipulation' nao encontrado: usando dad padrao
+[WARN] Personagem 'bf-flipped' nao encontrado: usando bf padrao
+[WARN] Stage 'manipulation' nao encontrado: usando stage vazio
+
+--- SESSION LOG START ---
+[WARN] Personagem 'bf_shityourself' nao encontrado: usando bf padrao
+[WARN] Stage 'CHEESEBURGER' nao encontrado: usando stage vazio
+[WARN] Stage 'void' nao encontrado: usando stage vazio
+[WARN] Personagem 'sonic.exe' nao encontrado: usando dad padrao
+[WARN] Stage 'sonicexeStage' nao encontrado: usando stage vazio

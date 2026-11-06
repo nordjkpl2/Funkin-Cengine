@@ -200,6 +200,10 @@ static char LoadModStage(PlayStateStage* stage, const char* name, const char* so
                     sp->x - 640.0f * (1.0f - sp->scrollX),
                     sp->y - 360.0f * (1.0f - sp->scrollY)
                 };
+                if (sp->scaleCenter) {
+                    o->position.x -= base.x * (sp->scaleX - 1.0f) * 0.5f;
+                    o->position.y -= base.y * (sp->scaleY - 1.0f) * 0.5f;
+                }
                 if (sp->scrollX == 0.0f && sp->scrollY == 0.0f && pass == 0) {
                     float fit = CoverScreen(base.x, base.y, sp->scaleX, meta.defaultZoom, &o->position);
                     o->scaleX = o->scaleY = fit;
@@ -219,6 +223,11 @@ static char LoadModStage(PlayStateStage* stage, const char* name, const char* so
                 g->scrollFactor = (Vector2) {sp->scrollX, sp->scrollY};
                 g->scaleX = sp->scaleX;
                 g->scaleY = sp->scaleY;
+                if (sp->scaleCenter) {
+                    // setProperty('x.scale.x'): sem updateHitbox, cresce do centro.
+                    g->position.x -= baseW * (sp->scaleX - 1.0f) * 0.5f;
+                    g->position.y -= baseH * (sp->scaleY - 1.0f) * 0.5f;
+                }
                 if (!sp->isGraphic && sp->scrollX == 0.0f && sp->scrollY == 0.0f && pass == 0) {
                     float fit = CoverScreen(baseW, baseH, sp->scaleX, meta.defaultZoom, &g->position);
                     g->scaleX = g->scaleY = fit;

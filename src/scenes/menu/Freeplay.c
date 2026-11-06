@@ -179,6 +179,15 @@ static void Freeplay_Update([[maybe_unused]] RayScene* scene) {
             if (--selectedSong < 0) selectedSong = shownCount - 1;
         }
 
+        // Roda do mouse: so faz algo quando rolada. Shift = 5 itens. Sem dar a volta.
+        const float wheel = GetMouseWheelMove();
+        if (wheel != 0.0f) {
+            const int step = (IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT)) ? 5 : 1;
+            selectedSong += wheel > 0.0f ? -step : step;
+            if (selectedSong < 0) selectedSong = 0;
+            if (selectedSong >= shownCount) selectedSong = shownCount - 1;
+        }
+
         if (selectedSong != previous)
             SelectSong();
 

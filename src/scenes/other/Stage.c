@@ -225,6 +225,7 @@ typedef enum StageLuaCall {
     LUA_CALL_ADD_ANIM_PREFIX,
     LUA_CALL_GLITCH,
     LUA_CALL_IGNORED_ANIMATION,
+    LUA_CALL_SET_PROPERTY,
     LUA_CALL_UPDATE
 } StageLuaCall;
 
@@ -249,7 +250,7 @@ static StageLuaCall Stage_GetCall(const char *token, size_t length)
         { "setObjectOrder",           LUA_CALL_SET_OBJECT_ORDER },
         { "addAnimationByPrefix",     LUA_CALL_ADD_ANIM_PREFIX },
         { "addGlitchEffect",          LUA_CALL_GLITCH },
-        { "setProperty",              LUA_CALL_IGNORED_ANIMATION },
+        { "setProperty",              LUA_CALL_SET_PROPERTY },
         { "onUpdate",                 LUA_CALL_UPDATE },
     };
 
@@ -713,6 +714,34 @@ int Stage_ParseLua(const char *luaText, StageSprite *out, int capacity, int *ign
                 case LUA_CALL_GLITCH:
                     ++glitchCount;
                     break;
+
+                case LUA_CALL_SET_PROPERTY: {
+                    /* setProperty('tag.scale.x', n) / ('tag.scale.y', n): so sprites ja criados. */
+                    char prop[STAGE_TAG_MAX + 16] = {0};
+                    float value = 1.0f;
+                    bool handled = false;
+
+                    if (Stage_ParseStringArg(&args, argsEnd, prop, sizeof(prop)) &&
+                        Stage_ParseFloatArg(&args, argsEnd, &value)) {
+                        char *dot = strchr(prop, '.');
+                        if (dot != NULL && (strcmp(dot, ".scale.x") == 0 || strcmp(dot, ".scale.y") == 0)) {
+                            const bool isX = dot[7] == 'x';
+                            *dot = '\0';
+                            for (int m = 0; m < mapCount; ++m) {
+                                if (strcmp(maps[m].tag, prop) != 0)
+                                    continue;
+                                StageSprite *sprite = &out[maps[m].index];
+                                if (isX) sprite->scaleX = value;
+                                else sprite->scaleY = value;
+                                sprite->scaleCenter = 1;
+                                handled = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (!handled)
+                        ++ignoredAnimCount;
+                } break;
 
                 case LUA_CALL_IGNORED_ANIMATION:
                 case LUA_CALL_UPDATE:

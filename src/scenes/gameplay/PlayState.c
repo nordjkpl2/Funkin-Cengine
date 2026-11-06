@@ -855,7 +855,7 @@ static void PlayState_Draw([[maybe_unused]] RayScene* scene) {
 
     const float dt = RayGame_DeltaTime();
 
-    ClearBackground(DARKGRAY);
+    ClearBackground(BLACK); // Psych: cor de fundo da camera e preta
 
     DrawWorld(dt);
 
