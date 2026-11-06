@@ -2,10 +2,13 @@
  * Friday Night Funkin' C Engine
  * (c) 2026 nordjkpl
  *
- * Character.c - Character loading (legacy .animset/JSON + XML)
+ * Character.c - carrega bf, dad (oponente) e gf.
  *
- * XML support uses AnimationSets_XML.h / AnimationSet_LoadCharacterXML().
- * The XML parser itself lives in AnimationSets.c and uses Yxml.
+ * Ordem de busca de cada personagem:
+ *   1. XML (Codename)         characters/<nome>.xml + atlas Sparrow
+ *   2. animset + JSON (Psych) images/characters/<nome>.animset, characters/<nome>.json
+ *   3. bf/dad padrao do jogo  (tabelas BUILTIN_*)
+ * Todo arquivo e procurado primeiro no mod da musica e depois em assets/.
  */
 
 #include "scenes/Character.h"
@@ -14,32 +17,28 @@
 #include "yyjson.h"
 #include "yxml.h"
 
+#include <stdarg.h>
 #include <stdbool.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #define CHAR_PATH_MAX       512
-#define CHAR_MOD_ROOT_MAX   512
 #define CHAR_MAX_DEFS       48
-#define CHAR_JSON_MAX_SIZE  (1024u * 1024u)
+#define CHAR_JSON_MAX_SIZE  (1024 * 1024)
 #define CHAR_XML_STACK_SIZE 2048u
 #define CHAR_XML_READ_SIZE  4096u
 
-static char charModRoot[CHAR_MOD_ROOT_MAX];
+/* Onde procurar: pasta do mod ("" = so assets/). Passado por parametro para
+   o carregamento poder rodar fora da thread principal no futuro. */
+typedef struct {
+    char root[CHAR_PATH_MAX];
+} CharCtx;
 
-typedef struct CharAnimDef {
-    char role[16];
-    char sprite[64];
-    int fps;
-    bool looped;
-    float offsetX;
-    float offsetY;
-} CharAnimDef;
+static CharCtx songCtx; /* mod da musica atual (Character_SetSongDir) */
 
 /* ------------------------------------------------------------------------- */
-/* Path helpers                                                              */
+/* Caminhos e textos                                                         */
 /* ------------------------------------------------------------------------- */
 
 static bool Char_IsSafeName(const char *name)
@@ -51,67 +50,13 @@ static bool Char_IsSafeName(const char *name)
         if (*p == '/' || *p == '\\' || *p == ':' || *p < 32)
             return false;
     }
-
     return true;
-}
-
-static bool Char_FileExists(const char *path)
-{
-    FILE *file = fopen(path, "rb");
-    if (!file)
-        return false;
-
-    fclose(file);
-    return true;
-}
-
-static bool Char_BuildPath(char *out, size_t capacity,
-                           const char *root, const char *relative)
-{
-    if (!out || !capacity || !root || !relative)
-        return false;
-
-    int length = snprintf(out, capacity, "%s/%s", root, relative);
-    return length > 0 && (size_t)length < capacity;
-}
-
-/* Search order: active mod first, then base-game assets. */
-static bool Char_FindFile(const char *relative, char out[CHAR_PATH_MAX])
-{
-    char candidate[CHAR_PATH_MAX];
-
-    if (charModRoot[0] &&
-        Char_BuildPath(candidate, sizeof(candidate), charModRoot, relative) &&
-        Char_FileExists(candidate)) {
-        memcpy(out, candidate, strlen(candidate) + 1u);
-        return true;
-    }
-
-    int length = snprintf(candidate, sizeof(candidate), "assets/%s", relative);
-    if (length <= 0 || (size_t)length >= sizeof(candidate) ||
-        !Char_FileExists(candidate)) {
-        return false;
-    }
-
-    memcpy(out, candidate, (size_t)length + 1u);
-    return true;
-}
-
-static bool Char_FindFirst(const char *const *relativePaths, size_t count,
-                           char out[CHAR_PATH_MAX])
-{
-    for (size_t i = 0; i < count; ++i) {
-        if (Char_FindFile(relativePaths[i], out))
-            return true;
-    }
-    return false;
 }
 
 static void Char_CopyString(char *out, size_t capacity, const char *source)
 {
     if (!out || !capacity)
         return;
-
     if (!source) {
         out[0] = '\0';
         return;
@@ -120,7 +65,6 @@ static void Char_CopyString(char *out, size_t capacity, const char *source)
     size_t length = strlen(source);
     if (length >= capacity)
         length = capacity - 1u;
-
     memcpy(out, source, length);
     out[length] = '\0';
 }
@@ -129,43 +73,59 @@ static const char *Char_BaseName(const char *path)
 {
     const char *forward = strrchr(path, '/');
     const char *backward = strrchr(path, '\\');
-    const char *last = forward;
-
-    if (!last || (backward && backward > last))
-        last = backward;
-
+    const char *last = (!forward || (backward && backward > forward)) ? backward : forward;
     return last ? last + 1 : path;
 }
 
-static void Char_NormalizeSpriteName(const char *source,char out[sizeof(((RayCharacterXMLData *)0)->sprite)])
+/* "pasta/nome.png" -> "nome" */
+static void Char_StemName(const char *source, char *out, size_t capacity)
 {
-    if (!source || !source[0]) {
-        out[0] = '\0';
-        return;
-    }
-
-    const char *base = Char_BaseName(source);
-    size_t length = strlen(base);
-    if (length >= sizeof(((RayCharacterXMLData *)0)->sprite))
-        length = sizeof(((RayCharacterXMLData *)0)->sprite) - 1u;
-
-    memcpy(out, base, length);
-    out[length] = '\0';
-
+    Char_CopyString(out, capacity, Char_BaseName(source));
     char *extension = strrchr(out, '.');
     if (extension)
         *extension = '\0';
 }
 
+/* Procura um arquivo no mod e depois em assets/. `fmt` monta o caminho relativo
+   (ex.: "images/characters/%s.png"). Devolve o caminho completo em `out`. */
+static bool Char_Find(const CharCtx *ctx, char out[CHAR_PATH_MAX],
+                      const char *fmt, ...) __attribute__((format(printf, 3, 4)));
+
+static bool Char_Find(const CharCtx *ctx, char out[CHAR_PATH_MAX],
+                      const char *fmt, ...)
+{
+    char relative[CHAR_PATH_MAX];
+    va_list args;
+    va_start(args, fmt);
+    int length = vsnprintf(relative, sizeof(relative), fmt, args);
+    va_end(args);
+    if (length <= 0 || (size_t)length >= sizeof(relative))
+        return false;
+
+    if (ctx->root[0]) {
+        length = snprintf(out, CHAR_PATH_MAX, "%s/%s", ctx->root, relative);
+        if (length > 0 && length < CHAR_PATH_MAX && FileExists(out))
+            return true;
+    }
+
+    length = snprintf(out, CHAR_PATH_MAX, "assets/%s", relative);
+    return length > 0 && length < CHAR_PATH_MAX && FileExists(out);
+}
+
+/* Em pares {sprite, nome}: pula vazio e repetido. */
+static bool Char_SkipName(const char *const names[2], int i)
+{
+    return !names[i] || !names[i][0] || (i == 1 && !strcmp(names[0], names[1]));
+}
+
 void Character_SetSongDir(const char *songDir)
 {
-    charModRoot[0] = '\0';
+    songCtx.root[0] = '\0';
     if (!songDir || !songDir[0])
         return;
 
-    char normalized[CHAR_PATH_MAX * 2];
+    char normalized[CHAR_PATH_MAX];
     Char_CopyString(normalized, sizeof(normalized), songDir);
-
     for (char *p = normalized; *p; ++p) {
         if (*p == '\\')
             *p = '/';
@@ -175,223 +135,19 @@ void Character_SetSongDir(const char *songDir)
     if (!mods)
         return;
 
-    const char *modContent = mods + sizeof("assets/mods/") - 1u;
-    const char *songs = strstr(modContent, "/songs/");
+    /* raiz = tudo antes de "/songs/"; sem isso, tira so o ultimo trecho */
+    const char *songs = strstr(mods + sizeof("assets/mods/") - 1u, "/songs/");
+    const char *end = songs ? songs : strrchr(normalized, '/');
+    size_t length = end ? (size_t)(end - normalized) : strlen(normalized);
 
-    size_t length;
-    if (songs) {
-        length = (size_t)(songs - normalized);
-    } else {
-        const char *lastSlash = strrchr(normalized, '/');
-        length = lastSlash ? (size_t)(lastSlash - normalized) : strlen(normalized);
+    if (length > 0 && length < sizeof(songCtx.root)) {
+        memcpy(songCtx.root, normalized, length);
+        songCtx.root[length] = '\0';
     }
-
-    if (length == 0 || length >= sizeof(charModRoot))
-        return;
-
-    memcpy(charModRoot, normalized, length);
-    charModRoot[length] = '\0';
 }
 
 /* ------------------------------------------------------------------------- */
-/* XML character metadata discovery                                          */
-/* ------------------------------------------------------------------------- */
-
-/*
- * Reads only the root <character sprite="..."> attribute. This small pass
- * lets Character.c locate the matching PNG and Sparrow atlas before calling
- * AnimationSet_LoadCharacterXML(), which performs the complete XML parse.
- */
-static bool Char_ReadXMLSprite(const char *path, char *sprite, size_t capacity)
-{
-    FILE *file = fopen(path, "rb");
-    if (!file)
-        return false;
-
-    yxml_t parser;
-    unsigned char stack[CHAR_XML_STACK_SIZE];
-    unsigned char input[CHAR_XML_READ_SIZE];
-    yxml_init(&parser, stack, sizeof(stack));
-
-    bool foundRoot = false;
-    bool inCharacterTag = false;
-    bool readingSprite = false;
-    bool ok = true;
-    size_t spriteLength = 0;
-    size_t bytesRead;
-
-    if (capacity)
-        sprite[0] = '\0';
-
-    while ((bytesRead = fread(input, 1, sizeof(input), file)) != 0 && ok) {
-        for (size_t i = 0; i < bytesRead; ++i) {
-            yxml_ret_t token = yxml_parse(&parser, input[i]);
-            if (token < 0) {
-                ok = false;
-                break;
-            }
-
-            switch (token) {
-                case YXML_ELEMSTART:
-                    if (!strcmp(parser.elem, "character")) {
-                        foundRoot = true;
-                        inCharacterTag = true;
-                    }
-                    break;
-
-                case YXML_ATTRSTART:
-                    readingSprite = inCharacterTag && !strcmp(parser.attr, "sprite");
-                    break;
-
-                case YXML_ATTRVAL:
-                    if (readingSprite && capacity) {
-                        size_t partLength = strlen(parser.data);
-                        if (partLength >= capacity - spriteLength) {
-                            ok = false;
-                            break;
-                        }
-                        memcpy(sprite + spriteLength, parser.data, partLength);
-                        spriteLength += partLength;
-                        sprite[spriteLength] = '\0';
-                    }
-                    break;
-
-                case YXML_ATTREND:
-                    readingSprite = false;
-                    break;
-
-                case YXML_ELEMEND:
-                    if (!strcmp(parser.elem, "character"))
-                        inCharacterTag = false;
-                    break;
-
-                default:
-                    break;
-            }
-
-            if (!ok)
-                break;
-        }
-    }
-
-    if (ok && ferror(file))
-        ok = false;
-    if (ok && yxml_eof(&parser) < 0)
-        ok = false;
-
-    fclose(file);
-    return ok && foundRoot;
-}
-
-static bool Char_FindCharacterXML(const char *name,
-                                  char xmlPath[CHAR_PATH_MAX],
-                                  char spriteName[128])
-{
-    char relative[CHAR_PATH_MAX];
-    static const char *const formats[] = {
-        "characters/%s.xml",
-        "data/characters/%s.xml",
-        "images/characters/%s.character.xml",
-        "images/characters/%s-char.xml",
-        "images/characters/%s_char.xml",
-        "images/characters/%s.xml"
-    };
-
-    for (size_t i = 0; i < sizeof(formats) / sizeof(formats[0]); ++i) {
-        int length = snprintf(relative, sizeof(relative), formats[i], name);
-        if (length <= 0 || (size_t)length >= sizeof(relative))
-            continue;
-
-        char candidate[CHAR_PATH_MAX];
-        if (!Char_FindFile(relative, candidate))
-            continue;
-
-        char rawSprite[128] = {0};
-        if (!Char_ReadXMLSprite(candidate, rawSprite, sizeof(rawSprite)))
-            continue;
-
-        Char_CopyString(xmlPath, CHAR_PATH_MAX, candidate);
-        Char_NormalizeSpriteName(rawSprite[0] ? rawSprite : name, spriteName);
-        if (!Char_IsSafeName(spriteName))
-            Char_CopyString(spriteName, 128, name);
-        if (!spriteName[0])
-            Char_CopyString(spriteName, 128, name);
-        return true;
-    }
-
-    return false;
-}
-
-static bool Char_FindAtlasXML(const char *sprite, const char *characterName,
-                              const char *characterXML,
-                              char atlasPath[CHAR_PATH_MAX])
-{
-    static const char *const suffixes[] = {
-        "%s.xml",
-        "%s.atlas.xml",
-        "%s-atlas.xml",
-        "%s_atlas.xml",
-        "%sAtlas.xml"
-    };
-
-    const char *names[2] = { sprite, characterName };
-
-    for (size_t n = 0; n < 2; ++n) {
-        if (!names[n] || !names[n][0] || (n == 1 && !strcmp(names[0], names[1])))
-            continue;
-
-        for (size_t i = 0; i < sizeof(suffixes) / sizeof(suffixes[0]); ++i) {
-            char relative[CHAR_PATH_MAX];
-            char candidate[CHAR_PATH_MAX];
-
-            int length = snprintf(relative, sizeof(relative),
-                "images/characters/");
-            if (length <= 0 || (size_t)length >= sizeof(relative))
-                continue;
-
-            size_t used = (size_t)length;
-            int suffixLength = snprintf(relative + used, sizeof(relative) - used,
-                suffixes[i], names[n]);
-            if (suffixLength <= 0 || (size_t)suffixLength >= sizeof(relative) - used)
-                continue;
-
-            if (!Char_FindFile(relative, candidate))
-                continue;
-            if (characterXML && !strcmp(candidate, characterXML))
-                continue;
-
-            Char_CopyString(atlasPath, CHAR_PATH_MAX, candidate);
-            return true;
-        }
-    }
-
-    return false;
-}
-
-static bool Char_FindCharacterPNG(const char *sprite, const char *name,
-                                  char pngPath[CHAR_PATH_MAX])
-{
-    char relative[CHAR_PATH_MAX];
-    const char *names[2] = { sprite, name };
-
-    for (size_t i = 0; i < 2; ++i) {
-        if (!names[i] || !names[i][0] || (i == 1 && !strcmp(names[0], names[1])))
-            continue;
-
-        int length = snprintf(relative, sizeof(relative),
-            "images/characters/%s.png", names[i]);
-        if (length <= 0 || (size_t)length >= sizeof(relative))
-            continue;
-
-        if (Char_FindFile(relative, pngPath))
-            return true;
-    }
-
-    return false;
-}
-
-/* ------------------------------------------------------------------------- */
-/* Animation helpers                                                         */
+/* Animacoes                                                                 */
 /* ------------------------------------------------------------------------- */
 
 static int Char_FindAnimationAny(const RayAnimationHandler *set,
@@ -405,16 +161,15 @@ static int Char_FindAnimationAny(const RayAnimationHandler *set,
     return -1;
 }
 
-static int Char_FindAnimation(const RayAnimationHandler *set, const char *name)
-{
-    return AnimationSet_FindAnimation(set, name);
-}
+#define CHAR_FIND_ANY(set, list) \
+    Char_FindAnimationAny((set), (list), sizeof(list) / sizeof((list)[0]))
 
+/* Ajusta fps/loop/offset de uma animacao pelo nome. -1 se nao existe. */
 static int Char_ConfigureAnimation(RayAnimationHandler *set, const char *name,
                                    float fps, bool looped,
                                    float offsetX, float offsetY)
 {
-    int index = Char_FindAnimation(set, name);
+    int index = name ? AnimationSet_FindAnimation(set, name) : -1;
     if (index < 0)
         return -1;
 
@@ -432,13 +187,20 @@ static int Char_ConfigureAnimation(RayAnimationHandler *set, const char *name,
 static void Char_InitAnimationSlots(Character *character)
 {
     character->animations.idle = -1;
-
     for (int i = 0; i < 4; ++i) {
         character->animations.notes[i] = -1;
         character->missAnimations.notes[i] = -1;
     }
 }
 
+/* Camera padrao quando o personagem nao define uma. */
+static Vector2 Char_DefaultCamera(CharRole role)
+{
+    return role == CHAR_DAD ? (Vector2){ 400.0f, 300.0f }
+                            : (Vector2){ 50.0f, 50.0f };
+}
+
+/* Nomes comuns de animacao (Codename / Psych) para cada pose. */
 static void Char_ApplyXMLAnimationSlots(Character *character,
                                         const RayAnimationHandler *set)
 {
@@ -456,53 +218,192 @@ static void Char_ApplyXMLAnimationSlots(Character *character,
         { "singRIGHTmiss", "singRightMiss", "missRIGHT", "singRIGHT_miss" }
     };
 
-    character->animations.idle = Char_FindAnimationAny(set,
-        idleNames, sizeof(idleNames) / sizeof(idleNames[0]));
-
+    character->animations.idle = CHAR_FIND_ANY(set, idleNames);
     for (int i = 0; i < 4; ++i) {
-        character->animations.notes[i] = Char_FindAnimationAny(set,
-            singNames[i], sizeof(singNames[i]) / sizeof(singNames[i][0]));
-        character->missAnimations.notes[i] = Char_FindAnimationAny(set,
-            missNames[i], sizeof(missNames[i]) / sizeof(missNames[i][0]));
+        character->animations.notes[i] = CHAR_FIND_ANY(set, singNames[i]);
+        character->missAnimations.notes[i] = CHAR_FIND_ANY(set, missNames[i]);
     }
 
     if (character->animations.idle < 0 && set->animationCount > 0)
         character->animations.idle = 0;
 }
 
-static void Char_LoadIcon(Character *character, const char *name,
-                          const char *healthIcon, bool isDad)
+/* ------------------------------------------------------------------------- */
+/* Icone da barra de vida                                                    */
+/* ------------------------------------------------------------------------- */
+
+/* healthIcon (do JSON) -> nome do personagem -> icone padrao (bf ou dad). */
+static void Char_LoadIcon(const CharCtx *ctx, Character *character,
+                          const char *name, const char *healthIcon, CharRole role)
 {
-    char relative[CHAR_PATH_MAX];
+    const char *iconName = (healthIcon && healthIcon[0] && Char_IsSafeName(healthIcon))
+                               ? healthIcon : name;
     char path[CHAR_PATH_MAX];
-    const char *iconName = (healthIcon && healthIcon[0]) ? healthIcon : name;
 
-    if (!Char_IsSafeName(iconName))
-        iconName = name;
+    bool found = Char_Find(ctx, path, "images/icons/%s.png", iconName);
+    if (!found && strcmp(iconName, name) != 0)
+        found = Char_Find(ctx, path, "images/icons/%s.png", name);
 
-    int length = snprintf(relative, sizeof(relative), "images/icons/%s.png", iconName);
-    bool found = length > 0 && (size_t)length < sizeof(relative) &&
-                 Char_FindFile(relative, path);
-
-    if (!found && strcmp(iconName, name) != 0) {
-        length = snprintf(relative, sizeof(relative), "images/icons/%s.png", name);
-        found = length > 0 && (size_t)length < sizeof(relative) &&
-                Char_FindFile(relative, path);
+    if (!found) {
+        Char_CopyString(path, sizeof(path),
+            role == CHAR_DAD ? "assets/images/icons/dad.png"
+                             : "assets/images/icons/bf.png");
     }
-
-    if (found) {
-        character->icon = Render_LoadTexture(path);
-    } else {
-        character->icon = Render_LoadTexture(isDad
-            ? "assets/images/icons/dad.png"
-            : "assets/images/icons/bf.png");
-    }
+    character->icon = Render_LoadTexture(path);
 }
 
-static void Char_ApplyXMLMetadata(Character *character,
+/* ------------------------------------------------------------------------- */
+/* Personagem em XML (Codename)                                              */
+/* ------------------------------------------------------------------------- */
+
+/* Le so o atributo sprite="..." da tag <character>; o parse completo fica
+   em AnimationSet_LoadCharacterXML(). */
+static bool Char_ReadXMLSprite(const char *path, char *sprite, size_t capacity)
+{
+    FILE *file = fopen(path, "rb");
+    if (!file)
+        return false;
+
+    yxml_t parser;
+    unsigned char stack[CHAR_XML_STACK_SIZE];
+    unsigned char input[CHAR_XML_READ_SIZE];
+    yxml_init(&parser, stack, sizeof(stack));
+
+    bool foundRoot = false;
+    bool inCharacterTag = false;
+    bool readingSprite = false;
+    bool ok = true;
+    size_t length = 0;
+    size_t bytesRead;
+
+    sprite[0] = '\0';
+
+    while (ok && (bytesRead = fread(input, 1, sizeof(input), file)) != 0) {
+        for (size_t i = 0; i < bytesRead && ok; ++i) {
+            yxml_ret_t token = yxml_parse(&parser, input[i]);
+            if (token < 0) {
+                ok = false;
+                break;
+            }
+
+            switch (token) {
+                case YXML_ELEMSTART:
+                    if (!strcmp(parser.elem, "character"))
+                        foundRoot = inCharacterTag = true;
+                    break;
+
+                case YXML_ATTRSTART:
+                    readingSprite = inCharacterTag && !strcmp(parser.attr, "sprite");
+                    break;
+
+                case YXML_ATTRVAL:
+                    if (readingSprite) {
+                        size_t part = strlen(parser.data);
+                        if (part >= capacity - length) {
+                            ok = false;
+                            break;
+                        }
+                        memcpy(sprite + length, parser.data, part + 1u);
+                        length += part;
+                    }
+                    break;
+
+                case YXML_ATTREND:
+                    readingSprite = false;
+                    break;
+
+                case YXML_ELEMEND:
+                    if (!strcmp(parser.elem, "character"))
+                        inCharacterTag = false;
+                    break;
+
+                default:
+                    break;
+            }
+        }
+    }
+
+    ok = ok && !ferror(file) && yxml_eof(&parser) >= 0;
+    fclose(file);
+    return ok && foundRoot;
+}
+
+static bool Char_FindCharacterXML(const CharCtx *ctx, const char *name,
+                                  char xmlPath[CHAR_PATH_MAX], char spriteName[128])
+{
+    static const char *const formats[] = {
+        "characters/%s.xml",
+        "data/characters/%s.xml",
+        "images/characters/%s.character.xml",
+        "images/characters/%s-char.xml",
+        "images/characters/%s_char.xml",
+        "images/characters/%s.xml"
+    };
+
+    for (size_t i = 0; i < sizeof(formats) / sizeof(formats[0]); ++i) {
+        char candidate[CHAR_PATH_MAX];
+        char rawSprite[128];
+
+        if (!Char_Find(ctx, candidate, formats[i], name) ||
+            !Char_ReadXMLSprite(candidate, rawSprite, sizeof(rawSprite))) {
+            continue;
+        }
+
+        Char_CopyString(xmlPath, CHAR_PATH_MAX, candidate);
+        Char_StemName(rawSprite[0] ? rawSprite : name, spriteName, 128);
+        if (!Char_IsSafeName(spriteName))
+            Char_CopyString(spriteName, 128, name);
+        return true;
+    }
+    return false;
+}
+
+static bool Char_FindAtlasXML(const CharCtx *ctx, const char *sprite, const char *name,
+                              const char *characterXML, char atlasPath[CHAR_PATH_MAX])
+{
+    static const char *const formats[] = {
+        "images/characters/%s.xml",
+        "images/characters/%s.atlas.xml",
+        "images/characters/%s-atlas.xml",
+        "images/characters/%s_atlas.xml",
+        "images/characters/%sAtlas.xml"
+    };
+    const char *const names[2] = { sprite, name };
+
+    for (int n = 0; n < 2; ++n) {
+        if (Char_SkipName(names, n))
+            continue;
+
+        for (size_t i = 0; i < sizeof(formats) / sizeof(formats[0]); ++i) {
+            char candidate[CHAR_PATH_MAX];
+            /* o proprio XML do personagem nao serve de atlas */
+            if (Char_Find(ctx, candidate, formats[i], names[n]) &&
+                strcmp(candidate, characterXML) != 0) {
+                Char_CopyString(atlasPath, CHAR_PATH_MAX, candidate);
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+static bool Char_FindCharacterPNG(const CharCtx *ctx, const char *sprite, const char *name,
+                                  char pngPath[CHAR_PATH_MAX])
+{
+    const char *const names[2] = { sprite, name };
+
+    for (int i = 0; i < 2; ++i) {
+        if (!Char_SkipName(names, i) &&
+            Char_Find(ctx, pngPath, "images/characters/%s.png", names[i])) {
+            return true;
+        }
+    }
+    return false;
+}
+
+static void Char_ApplyXMLMetadata(const CharCtx *ctx, Character *character,
                                   RayCharacterXMLData *data,
-                                  const char *name,
-                                  bool isDad)
+                                  const char *name, CharRole role)
 {
     character->object.animationSet = data->animations;
     data->animations = (RayAnimationHandler){0};
@@ -515,42 +416,36 @@ static void Char_ApplyXMLMetadata(Character *character,
         character->object.position.x = data->x;
     if (data->hasY)
         character->object.position.y = data->y;
+    if (data->hasColor)
+        character->object.color = data->color;
+    if (data->holdTime > 0.0f)
+        character->singDuration = data->holdTime;
 
-    Vector2 camera = isDad ? (Vector2){400.0f, 300.0f}
-                           : (Vector2){50.0f, 50.0f};
+    Vector2 camera = Char_DefaultCamera(role);
     if (data->hasCameraX)
         camera.x = data->cameraX;
     if (data->hasCameraY)
         camera.y = data->cameraY;
     character->cameraOffset = camera;
 
-    if (data->hasColor)
-        character->object.color = data->color;
-
     Char_ApplyXMLAnimationSlots(character, &character->object.animationSet);
     AnimatedObject_SetAnimation(&character->object, character->animations.idle);
 
-    Char_LoadIcon(character, name, NULL, isDad);
+    if (role != CHAR_GF)
+        Char_LoadIcon(ctx, character, name, NULL, role);
 }
 
-/* ------------------------------------------------------------------------- */
-/* XML character loading                                                     */
-/* ------------------------------------------------------------------------- */
-
-static bool Char_TryLoadXMLCharacter(Character *character,
-                                     const char *name,
-                                     bool isDad)
+static bool Char_TryLoadXMLCharacter(const CharCtx *ctx, Character *character,
+                                     const char *name, CharRole role)
 {
     char characterXML[CHAR_PATH_MAX];
     char atlasXML[CHAR_PATH_MAX];
     char pngPath[CHAR_PATH_MAX];
     char spriteName[128];
 
-    if (!Char_FindCharacterXML(name, characterXML, spriteName))
-        return false;
-
-    if (!Char_FindAtlasXML(spriteName, name, characterXML, atlasXML) ||
-        !Char_FindCharacterPNG(spriteName, name, pngPath)) {
+    if (!Char_FindCharacterXML(ctx, name, characterXML, spriteName) ||
+        !Char_FindAtlasXML(ctx, spriteName, name, characterXML, atlasXML) ||
+        !Char_FindCharacterPNG(ctx, spriteName, name, pngPath)) {
         return false;
     }
 
@@ -567,13 +462,37 @@ static bool Char_TryLoadXMLCharacter(Character *character,
     if (!data.antialiasing)
         SetTextureFilter(data.animations.texture, TEXTURE_FILTER_POINT);
 
-    Char_ApplyXMLMetadata(character, &data, name, isDad);
+    Char_ApplyXMLMetadata(ctx, character, &data, name, role);
     return true;
 }
 
 /* ------------------------------------------------------------------------- */
-/* Legacy JSON metadata                                                      */
+/* Personagem animset + JSON (Psych)                                         */
 /* ------------------------------------------------------------------------- */
+
+/* Papel de uma animacao no jogo ("idle", "singLEFT"...) ligado ao nome dela no atlas. */
+typedef struct {
+    char role[16];
+    char sprite[64];
+    int fps;
+    bool looped;
+    float offsetX;
+    float offsetY;
+} CharAnimDef;
+
+typedef struct {
+    float scale;
+    bool flipX;
+    Vector2 camera;          /* camera_position (0,0 = nao definida) */
+    Vector2 position;        /* position */
+    float singDuration;      /* sing_duration */
+    bool hasHealthColor;     /* healthbar_colors */
+    Color healthColor;
+    char healthIcon[32];     /* healthicon */
+    char imageBase[32];      /* image (nome do png, sem pasta/extensao) */
+    CharAnimDef defs[CHAR_MAX_DEFS];
+    int defCount;
+} CharJson;
 
 /* yyjson_get_real devolve 0 para inteiros: aceita int e real. */
 static bool Char_JsonNumber(yyjson_val *value, double *out)
@@ -585,349 +504,259 @@ static bool Char_JsonNumber(yyjson_val *value, double *out)
     return *out == *out; /* descarta NaN */
 }
 
-/* Campos extras do JSON de personagem (Psych). */
-typedef struct {
-    float posX, posY;        /* "position" */
-    float singDuration;      /* "sing_duration" (padrao 4) */
-    bool hasHealthColor;     /* "healthbar_colors" */
-    Color healthColor;
-} CharJsonExtra;
-
-static int Char_ReadJson(const char *jsonPath,
-                         CharAnimDef *defs,
-                         int capacity,
-                         float *scale,
-                         bool *flipX,
-                         float *cameraX,
-                         float *cameraY,
-                         char healthIcon[32],
-                         char imageBase[32],
-                         CharJsonExtra *extra)
+/* Le [x, y]; so mexe no que for numero. */
+static void Char_JsonVec2(yyjson_val *array, float *x, float *y)
 {
-    *scale = 1.0f;
-    *flipX = false;
-    *cameraX = 0.0f;
-    *cameraY = 0.0f;
-    healthIcon[0] = '\0';
-    imageBase[0] = '\0';
-    *extra = (CharJsonExtra){0.0f, 0.0f, 4.0f, false, {255, 255, 255, 255}};
+    double number;
+    if (!yyjson_is_arr(array) || yyjson_arr_size(array) < 2u)
+        return;
+    if (Char_JsonNumber(yyjson_arr_get(array, 0), &number)) *x = (float)number;
+    if (Char_JsonNumber(yyjson_arr_get(array, 1), &number)) *y = (float)number;
+}
 
-    FILE *file = fopen(jsonPath, "rb");
-    if (!file)
-        return 0;
+static void Char_JsonReadColor(yyjson_val *array, CharJson *json)
+{
+    if (!yyjson_is_arr(array) || yyjson_arr_size(array) < 3u)
+        return;
 
-    if (fseek(file, 0, SEEK_END) != 0) {
-        fclose(file);
-        return 0;
+    double channel[3];
+    for (size_t i = 0; i < 3u; ++i) {
+        if (!Char_JsonNumber(yyjson_arr_get(array, i), &channel[i]))
+            return;
+        if (channel[i] < 0.0) channel[i] = 0.0;
+        if (channel[i] > 255.0) channel[i] = 255.0;
+    }
+    json->hasHealthColor = true;
+    json->healthColor = (Color){ (unsigned char)channel[0], (unsigned char)channel[1],
+                                 (unsigned char)channel[2], 255 };
+}
+
+static bool Char_JsonReadDef(yyjson_val *entry, CharAnimDef *def)
+{
+    if (!yyjson_is_obj(entry))
+        return false;
+
+    yyjson_val *role = yyjson_obj_get(entry, "anim");
+    yyjson_val *sprite = yyjson_obj_get(entry, "name");
+    if (!yyjson_is_str(role) || !yyjson_is_str(sprite) ||
+        !yyjson_get_str(role)[0] || !yyjson_get_str(sprite)[0]) {
+        return false;
     }
 
-    long fileSize = ftell(file);
-    if (fileSize <= 0 || (unsigned long)fileSize > CHAR_JSON_MAX_SIZE ||
-        fseek(file, 0, SEEK_SET) != 0) {
-        fclose(file);
-        return 0;
-    }
+    Char_CopyString(def->role, sizeof(def->role), yyjson_get_str(role));
+    Char_CopyString(def->sprite, sizeof(def->sprite), yyjson_get_str(sprite));
+    def->fps = 24;
+    def->looped = false;
+    def->offsetX = 0.0f;
+    def->offsetY = 0.0f;
 
-    char *buffer = malloc((size_t)fileSize + 1u);
-    if (!buffer) {
-        fclose(file);
-        return 0;
-    }
+    double fps;
+    if (Char_JsonNumber(yyjson_obj_get(entry, "fps"), &fps) && fps >= 1.0 && fps <= 1000.0)
+        def->fps = (int)fps;
 
-    size_t readCount = fread(buffer, 1, (size_t)fileSize, file);
-    fclose(file);
-    if (readCount != (size_t)fileSize) {
-        free(buffer);
-        return 0;
-    }
-    buffer[fileSize] = '\0';
+    yyjson_val *loop = yyjson_obj_get(entry, "loop");
+    if (yyjson_is_bool(loop))
+        def->looped = yyjson_get_bool(loop);
 
-    yyjson_doc *document = yyjson_read(buffer, (size_t)fileSize, 0);
-    free(buffer);
+    Char_JsonVec2(yyjson_obj_get(entry, "offsets"), &def->offsetX, &def->offsetY);
+    return true;
+}
+
+static void Char_JsonInit(CharJson *json)
+{
+    *json = (CharJson){ .scale = 1.0f, .singDuration = 4.0f,
+                        .healthColor = { 255, 255, 255, 255 } };
+}
+
+/* Preenche so o que o JSON define; json deve ter passado por Char_JsonInit. */
+static bool Char_ReadJson(const char *path, CharJson *json)
+{
+    int size = GetFileLength(path);
+    if (size <= 0 || size > CHAR_JSON_MAX_SIZE)
+        return false;
+
+    yyjson_doc *document = yyjson_read_file(path, 0, NULL, NULL);
     if (!document)
-        return 0;
+        return false;
 
     yyjson_val *root = yyjson_doc_get_root(document);
     if (!yyjson_is_obj(root)) {
         yyjson_doc_free(document);
-        return 0;
+        return false;
     }
 
-    yyjson_val *value = yyjson_obj_get(root, "scale");
-    double parsed;
-    if (Char_JsonNumber(value, &parsed)) {
-        if (parsed > 0.05 && parsed < 8.0)
-            *scale = (float)parsed;
+    double number;
+    if (Char_JsonNumber(yyjson_obj_get(root, "scale"), &number) && number > 0.05 && number < 8.0)
+        json->scale = (float)number;
+    if (Char_JsonNumber(yyjson_obj_get(root, "sing_duration"), &number) && number > 0.0 && number < 100.0)
+        json->singDuration = (float)number;
+
+    yyjson_val *flip = yyjson_obj_get(root, "flip_x");
+    if (yyjson_is_bool(flip))
+        json->flipX = yyjson_get_bool(flip);
+
+    Char_JsonVec2(yyjson_obj_get(root, "camera_position"), &json->camera.x, &json->camera.y);
+    Char_JsonVec2(yyjson_obj_get(root, "position"), &json->position.x, &json->position.y);
+    Char_JsonReadColor(yyjson_obj_get(root, "healthbar_colors"), json);
+
+    yyjson_val *icon = yyjson_obj_get(root, "healthicon");
+    if (yyjson_is_str(icon) && Char_IsSafeName(yyjson_get_str(icon)))
+        Char_CopyString(json->healthIcon, sizeof(json->healthIcon), yyjson_get_str(icon));
+
+    yyjson_val *image = yyjson_obj_get(root, "image");
+    if (yyjson_is_str(image) && yyjson_get_str(image)[0]) {
+        char stem[128];
+        Char_StemName(yyjson_get_str(image), stem, sizeof(stem));
+        if (Char_IsSafeName(stem))
+            Char_CopyString(json->imageBase, sizeof(json->imageBase), stem);
     }
 
-    value = yyjson_obj_get(root, "flip_x");
-    if (yyjson_is_bool(value))
-        *flipX = yyjson_get_bool(value);
-
-    value = yyjson_obj_get(root, "camera_position");
-    if (yyjson_is_arr(value) && yyjson_arr_size(value) >= 2u) {
-        yyjson_val *x = yyjson_arr_get(value, 0);
-        yyjson_val *y = yyjson_arr_get(value, 1);
-        double number;
-        if (Char_JsonNumber(x, &number)) *cameraX = (float)number;
-        if (Char_JsonNumber(y, &number)) *cameraY = (float)number;
-    }
-
-    value = yyjson_obj_get(root, "position");
-    if (yyjson_is_arr(value) && yyjson_arr_size(value) >= 2u) {
-        double number;
-        if (Char_JsonNumber(yyjson_arr_get(value, 0), &number)) extra->posX = (float)number;
-        if (Char_JsonNumber(yyjson_arr_get(value, 1), &number)) extra->posY = (float)number;
-    }
-
-    value = yyjson_obj_get(root, "sing_duration");
-    if (Char_JsonNumber(value, &parsed) && parsed > 0.0 && parsed < 100.0)
-        extra->singDuration = (float)parsed;
-
-    value = yyjson_obj_get(root, "healthbar_colors");
-    if (yyjson_is_arr(value) && yyjson_arr_size(value) >= 3u) {
-        double channel[3] = {0, 0, 0};
-        bool valid = true;
-        for (size_t i = 0; i < 3u; ++i) {
-            if (!Char_JsonNumber(yyjson_arr_get(value, i), &channel[i])) valid = false;
-            if (channel[i] < 0.0) channel[i] = 0.0;
-            if (channel[i] > 255.0) channel[i] = 255.0;
-        }
-        if (valid) {
-            extra->hasHealthColor = true;
-            extra->healthColor = (Color){(unsigned char)channel[0], (unsigned char)channel[1],
-                                         (unsigned char)channel[2], 255};
-        }
-    }
-
-    value = yyjson_obj_get(root, "healthicon");
-    if (yyjson_is_str(value)) {
-        const char *text = yyjson_get_str(value);
-        if (Char_IsSafeName(text))
-            Char_CopyString(healthIcon, 32, text);
-    }
-
-    value = yyjson_obj_get(root, "image");
-    if (yyjson_is_str(value)) {
-        const char *text = yyjson_get_str(value);
-        if (text && text[0]) {
-            char base[128];
-            Char_CopyString(base, sizeof(base), Char_BaseName(text));
-            char *extension = strrchr(base, '.');
-            if (extension)
-                *extension = '\0';
-            if (Char_IsSafeName(base))
-                Char_CopyString(imageBase, 32, base);
-        }
-    }
-
-    int count = 0;
-    value = yyjson_obj_get(root, "animations");
-    if (yyjson_is_arr(value)) {
-        size_t index, max;
-        yyjson_val *entry;
-
-        yyjson_arr_foreach(value, index, max, entry) {
-            if (count >= capacity)
-                break;
-            if (!yyjson_is_obj(entry))
-                continue;
-
-            yyjson_val *animValue = yyjson_obj_get(entry, "anim");
-            yyjson_val *nameValue = yyjson_obj_get(entry, "name");
-            if (!yyjson_is_str(animValue) || !yyjson_is_str(nameValue))
-                continue;
-
-            const char *animName = yyjson_get_str(animValue);
-            const char *roleName = yyjson_get_str(nameValue);
-            if (!animName || !animName[0] || !roleName || !roleName[0])
-                continue;
-
-            CharAnimDef *definition = &defs[count];
-            Char_CopyString(definition->role, sizeof(definition->role), animName);
-            Char_CopyString(definition->sprite, sizeof(definition->sprite), roleName);
-            definition->fps = 24;
-            definition->looped = false;
-            definition->offsetX = 0.0f;
-            definition->offsetY = 0.0f;
-
-            yyjson_val *fps = yyjson_obj_get(entry, "fps");
-            double fpsNumber;
-            if (Char_JsonNumber(fps, &fpsNumber)) {
-                int parsedFPS = (int)fpsNumber;
-                if (parsedFPS > 0 && parsedFPS <= 1000)
-                    definition->fps = parsedFPS;
-            }
-
-            yyjson_val *loop = yyjson_obj_get(entry, "loop");
-            if (yyjson_is_bool(loop))
-                definition->looped = yyjson_get_bool(loop);
-
-            yyjson_val *offsets = yyjson_obj_get(entry, "offsets");
-            if (yyjson_is_arr(offsets) && yyjson_arr_size(offsets) >= 2u) {
-                yyjson_val *x = yyjson_arr_get(offsets, 0);
-                yyjson_val *y = yyjson_arr_get(offsets, 1);
-                double number;
-                if (Char_JsonNumber(x, &number)) definition->offsetX = (float)number;
-                if (Char_JsonNumber(y, &number)) definition->offsetY = (float)number;
-            }
-
-            ++count;
-        }
+    size_t index, max;
+    yyjson_val *entry;
+    yyjson_arr_foreach(yyjson_obj_get(root, "animations"), index, max, entry) {
+        if (json->defCount >= CHAR_MAX_DEFS)
+            break;
+        if (Char_JsonReadDef(entry, &json->defs[json->defCount]))
+            ++json->defCount;
     }
 
     yyjson_doc_free(document);
-    return count;
+    return true;
 }
 
-static void Char_SetRole(RayAnimationHandler *set,
-                         const CharAnimDef *defs,
-                         int count,
-                         const char *role,
-                         int *slot)
+/* Sem JSON (ou sem animacoes nele): o atlas usa os proprios nomes dos papeis. */
+static void Char_AddDefaultDefs(CharJson *json)
 {
-    *slot = -1;
+    static const char *const roles[] = { "idle", "singLEFT", "singDOWN", "singUP", "singRIGHT" };
 
-    for (int i = 0; i < count; ++i) {
-        const CharAnimDef *definition = &defs[i];
-        if (strcmp(definition->role, role) != 0)
-            continue;
-
-        *slot = Char_ConfigureAnimation(set, definition->sprite,
-            (float)definition->fps, definition->looped,
-            definition->offsetX, definition->offsetY);
-        return;
+    for (size_t i = 0; i < sizeof(roles) / sizeof(roles[0]); ++i) {
+        CharAnimDef *def = &json->defs[json->defCount++];
+        Char_CopyString(def->role, sizeof(def->role), roles[i]);
+        Char_CopyString(def->sprite, sizeof(def->sprite), roles[i]);
+        def->fps = 24;
+        def->looped = false;
+        def->offsetX = 0.0f;
+        def->offsetY = 0.0f;
     }
 }
 
-static bool Char_LoadLegacyCustom(Character *character,
-                                  const char *name,
-                                  bool isDad)
+/* Liga o papel (ex.: "idle") a animacao do atlas; -1 se o JSON nao define. */
+static int Char_BindRole(RayAnimationHandler *set, const CharJson *json, const char *role)
 {
-    char relative[CHAR_PATH_MAX];
+    for (int i = 0; i < json->defCount; ++i) {
+        const CharAnimDef *def = &json->defs[i];
+        if (!strcmp(def->role, role)) {
+            return Char_ConfigureAnimation(set, def->sprite, (float)def->fps,
+                                           def->looped, def->offsetX, def->offsetY);
+        }
+    }
+    return -1;
+}
+
+static bool Char_LoadLegacyCustom(const CharCtx *ctx, Character *character,
+                                  const char *name, CharRole role)
+{
     char setPath[CHAR_PATH_MAX];
     char jsonPath[CHAR_PATH_MAX];
     char pngPath[CHAR_PATH_MAX];
 
-    int length = snprintf(relative, sizeof(relative),
-        "images/characters/%s.animset", name);
-    if (length <= 0 || (size_t)length >= sizeof(relative) ||
-        !Char_FindFile(relative, setPath)) {
+    if (!Char_Find(ctx, setPath, "images/characters/%s.animset", name))
+        return false;
+
+    CharJson json;
+    Char_JsonInit(&json);
+    if (Char_Find(ctx, jsonPath, "characters/%s.json", name))
+        Char_ReadJson(jsonPath, &json);
+
+    const char *textureName = json.imageBase[0] ? json.imageBase : name;
+    if (!Char_Find(ctx, pngPath, "images/characters/%s.png", textureName) &&
+        (!strcmp(textureName, name) ||
+         !Char_Find(ctx, pngPath, "images/characters/%s.png", name))) {
         return false;
     }
-
-    length = snprintf(relative, sizeof(relative), "characters/%s.json", name);
-    bool hasJSON = length > 0 && (size_t)length < sizeof(relative) &&
-                   Char_FindFile(relative, jsonPath);
-
-    float scale = 1.0f;
-    float cameraX = 0.0f;
-    float cameraY = 0.0f;
-    bool flipX = false;
-    char healthIcon[32] = {0};
-    char imageBase[32] = {0};
-    CharJsonExtra extra = {0.0f, 0.0f, 4.0f, false, {255, 255, 255, 255}};
-    CharAnimDef definitions[CHAR_MAX_DEFS];
-    int definitionCount = 0;
-
-    if (hasJSON) {
-        definitionCount = Char_ReadJson(jsonPath, definitions, CHAR_MAX_DEFS,
-            &scale, &flipX, &cameraX, &cameraY, healthIcon, imageBase, &extra);
-    }
-
-    const char *textureName = imageBase[0] ? imageBase : name;
-    length = snprintf(relative, sizeof(relative),
-        "images/characters/%s.png", textureName);
-    bool hasPNG = length > 0 && (size_t)length < sizeof(relative) &&
-                  Char_FindFile(relative, pngPath);
-
-    if (!hasPNG && strcmp(textureName, name) != 0) {
-        length = snprintf(relative, sizeof(relative),
-            "images/characters/%s.png", name);
-        hasPNG = length > 0 && (size_t)length < sizeof(relative) &&
-                 Char_FindFile(relative, pngPath);
-    }
-
-    if (!hasPNG)
-        return false;
 
     Texture2D texture = Render_LoadTexture(pngPath);
     if (!texture.id)
         return false;
 
     RayAnimationHandler set = AnimationSet_LoadAnimations(setPath, texture);
+    if (json.defCount == 0)
+        Char_AddDefaultDefs(&json);
 
-    if (!hasJSON || definitionCount == 0) {
-        static const char *const roles[] = {
-            "idle", "singLEFT", "singDOWN", "singUP", "singRIGHT"
-        };
-
-        for (size_t i = 0; i < sizeof(roles) / sizeof(roles[0]) &&
-             definitionCount < CHAR_MAX_DEFS; ++i) {
-            CharAnimDef *definition = &definitions[definitionCount++];
-            Char_CopyString(definition->role, sizeof(definition->role), roles[i]);
-            Char_CopyString(definition->sprite, sizeof(definition->sprite), roles[i]);
-            definition->fps = 24;
-            definition->looped = false;
-            definition->offsetX = 0.0f;
-            definition->offsetY = 0.0f;
-        }
-    }
+    static const char *const singRoles[4] = { "singLEFT", "singDOWN", "singUP", "singRIGHT" };
 
     Char_InitAnimationSlots(character);
-    Char_SetRole(&set, definitions, definitionCount, "idle", &character->animations.idle);
-
-    static const char *const singRoles[4] = {
-        "singLEFT", "singDOWN", "singUP", "singRIGHT"
-    };
-
+    character->animations.idle = Char_BindRole(&set, &json, "idle");
     for (int i = 0; i < 4; ++i) {
-        Char_SetRole(&set, definitions, definitionCount,
-            singRoles[i], &character->animations.notes[i]);
+        character->animations.notes[i] = Char_BindRole(&set, &json, singRoles[i]);
         character->missAnimations.notes[i] = character->animations.notes[i];
     }
-
     if (character->animations.idle < 0 && set.animationCount > 0)
         character->animations.idle = 0;
 
     character->object.animationSet = set;
-    character->object.scaleX = flipX ? -scale : scale;
-    character->object.scaleY = scale;
+    character->object.scaleX = json.flipX ? -json.scale : json.scale;
+    character->object.scaleY = json.scale;
     character->object.color = WHITE;
-    character->object.position = (Vector2){extra.posX, extra.posY};
-    character->singDuration = extra.singDuration;
-    character->hasHealthColor = extra.hasHealthColor;
-    character->healthColor = extra.healthColor;
-    character->cameraOffset = (cameraX != 0.0f || cameraY != 0.0f)
-        ? (Vector2){cameraX, cameraY}
-        : (isDad ? (Vector2){400.0f, 300.0f} : (Vector2){50.0f, 50.0f});
+    character->object.position = json.position;
+    character->singDuration = json.singDuration;
+    character->hasHealthColor = json.hasHealthColor;
+    character->healthColor = json.healthColor;
+    character->cameraOffset = (json.camera.x != 0.0f || json.camera.y != 0.0f)
+                                  ? json.camera : Char_DefaultCamera(role);
 
     AnimatedObject_SetAnimation(&character->object, character->animations.idle);
-    Char_LoadIcon(character, name, healthIcon, isDad);
+    Char_LoadIcon(ctx, character, name, json.healthIcon, role);
     return true;
 }
 
 /* ------------------------------------------------------------------------- */
-/* Built-in character loading                                                */
+/* bf e dad padrao do jogo                                                   */
 /* ------------------------------------------------------------------------- */
 
-static bool Char_LoadBuiltin(Character *character, bool isDad)
+typedef struct {
+    const char *anim;        /* nome no atlas; NULL = sem animacao */
+    float offsetX;
+    float offsetY;
+} BuiltinAnim;
+
+typedef struct {
+    const char *name;        /* arquivos: images/characters/<name>.animset/.png */
+    BuiltinAnim idle;
+    BuiltinAnim sing[4];     /* esquerda, baixo, cima, direita */
+    BuiltinAnim miss[4];
+} BuiltinDef;
+
+static const BuiltinDef BUILTIN_BF = {
+    "bf",
+    { "BF idle dance", -5.0f, 0.0f },
+    { { "BF NOTE LEFT", 5.0f, -6.0f },   { "BF NOTE DOWN", -20.0f, -51.0f },
+      { "BF NOTE UP", -46.0f, 27.0f },   { "BF NOTE RIGHT", -48.0f, -7.0f } },
+    { { "BF NOTE LEFT MISS", 7.0f, 19.0f },  { "BF NOTE DOWN MISS", -15.0f, -19.0f },
+      { "BF NOTE UP MISS", -46.0f, 27.0f },  { "BF NOTE RIGHT MISS", -48.0f, 19.0f } }
+};
+
+static const BuiltinDef BUILTIN_DAD = {
+    "dad",
+    { "Dad idle dance", 0.0f, 0.0f },
+    { { "Dad Sing Note LEFT", -9.0f, 10.0f }, { "Dad Sing Note DOWN", 0.0f, -30.0f },
+      { "Dad Sing Note UP", -6.0f, 50.0f },   { "Dad Sing Note RIGHT", 0.0f, 27.0f } },
+    { { NULL, 0.0f, 0.0f }, { NULL, 0.0f, 0.0f }, { NULL, 0.0f, 0.0f }, { NULL, 0.0f, 0.0f } }
+};
+
+static int Char_BindBuiltin(RayAnimationHandler *set, BuiltinAnim anim)
 {
-    const char *name = isDad ? "dad" : "bf";
-    char relative[CHAR_PATH_MAX];
+    return Char_ConfigureAnimation(set, anim.anim, 24.0f, false, anim.offsetX, anim.offsetY);
+}
+
+static bool Char_LoadBuiltin(const CharCtx *ctx, Character *character, CharRole role)
+{
+    const BuiltinDef *def = (role == CHAR_DAD) ? &BUILTIN_DAD : &BUILTIN_BF;
     char setPath[CHAR_PATH_MAX];
     char pngPath[CHAR_PATH_MAX];
 
-    int length = snprintf(relative, sizeof(relative),
-        "images/characters/%s.animset", name);
-    if (length <= 0 || (size_t)length >= sizeof(relative) ||
-        !Char_FindFile(relative, setPath)) {
-        return false;
-    }
-
-    length = snprintf(relative, sizeof(relative), "images/characters/%s.png", name);
-    if (length <= 0 || (size_t)length >= sizeof(relative) ||
-        !Char_FindFile(relative, pngPath)) {
+    if (!Char_Find(ctx, setPath, "images/characters/%s.animset", def->name) ||
+        !Char_Find(ctx, pngPath, "images/characters/%s.png", def->name)) {
         return false;
     }
 
@@ -936,132 +765,90 @@ static bool Char_LoadBuiltin(Character *character, bool isDad)
         return false;
 
     RayAnimationHandler set = AnimationSet_LoadAnimations(setPath, texture);
+
     Char_InitAnimationSlots(character);
-
-    if (isDad) {
-        character->animations.idle = Char_ConfigureAnimation(
-            &set, "Dad idle dance", 24.0f, false, 0.0f, 0.0f);
-        character->animations.notes[0] = Char_ConfigureAnimation(
-            &set, "Dad Sing Note LEFT", 24.0f, false, -9.0f, 10.0f);
-        character->animations.notes[1] = Char_ConfigureAnimation(
-            &set, "Dad Sing Note DOWN", 24.0f, false, 0.0f, -30.0f);
-        character->animations.notes[2] = Char_ConfigureAnimation(
-            &set, "Dad Sing Note UP", 24.0f, false, -6.0f, 50.0f);
-        character->animations.notes[3] = Char_ConfigureAnimation(
-            &set, "Dad Sing Note RIGHT", 24.0f, false, 0.0f, 27.0f);
-        character->cameraOffset = (Vector2){400.0f, 300.0f};
-    } else {
-        character->animations.idle = Char_ConfigureAnimation(
-            &set, "BF idle dance", 24.0f, false, -5.0f, 0.0f);
-        character->animations.notes[0] = Char_ConfigureAnimation(
-            &set, "BF NOTE LEFT", 24.0f, false, 5.0f, -6.0f);
-        character->animations.notes[1] = Char_ConfigureAnimation(
-            &set, "BF NOTE DOWN", 24.0f, false, -20.0f, -51.0f);
-        character->animations.notes[2] = Char_ConfigureAnimation(
-            &set, "BF NOTE UP", 24.0f, false, -46.0f, 27.0f);
-        character->animations.notes[3] = Char_ConfigureAnimation(
-            &set, "BF NOTE RIGHT", 24.0f, false, -48.0f, -7.0f);
-
-        character->missAnimations.notes[0] = Char_ConfigureAnimation(
-            &set, "BF NOTE LEFT MISS", 24.0f, false, 7.0f, 19.0f);
-        character->missAnimations.notes[1] = Char_ConfigureAnimation(
-            &set, "BF NOTE DOWN MISS", 24.0f, false, -15.0f, -19.0f);
-        character->missAnimations.notes[2] = Char_ConfigureAnimation(
-            &set, "BF NOTE UP MISS", 24.0f, false, -46.0f, 27.0f);
-        character->missAnimations.notes[3] = Char_ConfigureAnimation(
-            &set, "BF NOTE RIGHT MISS", 24.0f, false, -48.0f, 19.0f);
-        character->cameraOffset = (Vector2){50.0f, 50.0f};
+    character->animations.idle = Char_BindBuiltin(&set, def->idle);
+    for (int i = 0; i < 4; ++i) {
+        character->animations.notes[i] = Char_BindBuiltin(&set, def->sing[i]);
+        character->missAnimations.notes[i] = Char_BindBuiltin(&set, def->miss[i]);
     }
-
     if (character->animations.idle < 0 && set.animationCount > 0)
         character->animations.idle = 0;
 
+    character->cameraOffset = Char_DefaultCamera(role);
     character->object.animationSet = set;
     character->object.scaleX = 1.0f;
     character->object.scaleY = 1.0f;
     character->object.color = WHITE;
 
     AnimatedObject_SetAnimation(&character->object, character->animations.idle);
-    Char_LoadIcon(character, name, NULL, isDad);
+    Char_LoadIcon(ctx, character, def->name, NULL, role);
     return true;
 }
 
+/* ------------------------------------------------------------------------- */
+/* API: bf / dad                                                             */
+/* ------------------------------------------------------------------------- */
+
 void Character_Load(Character *restrict character,
                     const char *restrict characterName,
-                    bool isDad)
+                    CharRole role)
 {
     if (!character)
         return;
+
+    const CharCtx *ctx = &songCtx;
 
     Render_DefaultAnimated(&character->object);
     character->idled = false;
     character->idleTimer = 0.0f;
     character->singDuration = 4.0f;
     character->hasHealthColor = false;
-    character->healthColor = (Color){255, 255, 255, 255};
+    character->healthColor = (Color){ 255, 255, 255, 255 };
     Char_InitAnimationSlots(character);
 
     if (!Char_IsSafeName(characterName))
-        characterName = isDad ? "dad" : "bf";
+        characterName = (role == CHAR_DAD) ? "dad" : "bf";
 
-    /* XML definitions take priority, including mod overrides of dad/bf. */
-    if (Char_TryLoadXMLCharacter(character, characterName, isDad))
+    /* XML tem prioridade, inclusive para mods que trocam o dad/bf. */
+    if (Char_TryLoadXMLCharacter(ctx, character, characterName, role))
         return;
 
-    const bool nameIsDad = strcmp(characterName, "dad") == 0;
-    const bool nameIsBF = strcmp(characterName, "bf") == 0;
-    const bool nameIsGF = strcmp(characterName, "gf") == 0;
-    const bool useDadFallback = isDad || nameIsDad;
+    const bool isDadName = !strcmp(characterName, "dad");
+    const bool isBfName = !strcmp(characterName, "bf");
+    const bool isGfName = !strcmp(characterName, "gf");
 
-    if (!nameIsDad && !nameIsBF && !nameIsGF &&
-        Char_LoadLegacyCustom(character, characterName, isDad)) {
+    if (!isDadName && !isBfName && !isGfName &&
+        Char_LoadLegacyCustom(ctx, character, characterName, role)) {
         return;
     }
 
-    if (Char_LoadBuiltin(character, useDadFallback))
+    /* Nome desconhecido: usa o padrao do lado (dad) ou o bf. */
+    const CharRole builtin = (role == CHAR_DAD || isDadName) ? CHAR_DAD : CHAR_BF;
+    if (Char_LoadBuiltin(ctx, character, builtin))
         return;
-
-    /* Last-resort fallback: try the base-game BF assets. */
-    if (!nameIsBF && Char_LoadBuiltin(character, false))
+    if (!isBfName && Char_LoadBuiltin(ctx, character, CHAR_BF))
         return;
 
     Log_Fatal("Character_Load: could not load character assets");
 }
 
-/* ------------------------------------------------------------------------- */
-/* Death animations                                                          */
-/* ------------------------------------------------------------------------- */
-
-void Character_LoadDeathAnimations(Character *restrict character,
-                                   const char *restrict characterName,
-                                   int *restrict anims)
+void Character_LoadDeathAnimations(Character *restrict character, int *restrict anims)
 {
-    (void)characterName;
     if (!character || !anims)
         return;
 
     RayAnimationHandler *set = &character->object.animationSet;
 
-    static const char *const deathStartNames[] = {
-        "firstDeath", "deathStart", "BF dies"
-    };
-    static const char *const deathLoopNames[] = {
-        "deathLoop", "BF Dead Loop"
-    };
-    static const char *const deathConfirmNames[] = {
-        "deathConfirm", "BF Dead confirm"
-    };
+    static const char *const startNames[] = { "firstDeath", "deathStart", "BF dies" };
+    static const char *const loopNames[] = { "deathLoop", "BF Dead Loop" };
+    static const char *const confirmNames[] = { "deathConfirm", "BF Dead confirm" };
 
-    anims[0] = Char_FindAnimationAny(set, deathStartNames,
-        sizeof(deathStartNames) / sizeof(deathStartNames[0]));
-    anims[1] = Char_FindAnimationAny(set, deathLoopNames,
-        sizeof(deathLoopNames) / sizeof(deathLoopNames[0]));
-    anims[2] = Char_FindAnimationAny(set, deathConfirmNames,
-        sizeof(deathConfirmNames) / sizeof(deathConfirmNames[0]));
+    anims[0] = CHAR_FIND_ANY(set, startNames);
+    anims[1] = CHAR_FIND_ANY(set, loopNames);
+    anims[2] = CHAR_FIND_ANY(set, confirmNames);
 
-    const int fallback = character->animations.idle >= 0
-        ? character->animations.idle : 0;
-
+    const int fallback = character->animations.idle >= 0 ? character->animations.idle : 0;
     for (int i = 0; i < 3; ++i) {
         if (anims[i] < 0)
             anims[i] = fallback;
@@ -1072,7 +859,7 @@ void Character_LoadDeathAnimations(Character *restrict character,
 }
 
 /* ------------------------------------------------------------------------- */
-/* Girlfriend                                                                */
+/* API: girlfriend                                                           */
 /* ------------------------------------------------------------------------- */
 
 void Girlfriend_Load(Girlfriend *restrict gf, const char *restrict name)
@@ -1080,30 +867,24 @@ void Girlfriend_Load(Girlfriend *restrict gf, const char *restrict name)
     if (!gf)
         return;
 
+    const CharCtx *ctx = &songCtx;
     const char *characterName = (name && Char_IsSafeName(name)) ? name : "gf";
+
     Render_DefaultAnimated(&gf->object);
     gf->f = 0;
 
-    /* Reuse the same XML/mod discovery logic as regular characters. */
+    /* XML: mesma descoberta dos outros personagens, sem carregar icone. */
     Character temporary = {0};
     Render_DefaultAnimated(&temporary.object);
     Char_InitAnimationSlots(&temporary);
 
-    if (Char_TryLoadXMLCharacter(&temporary, characterName, false)) {
+    if (Char_TryLoadXMLCharacter(ctx, &temporary, characterName, CHAR_GF)) {
+        static const char *const leftNames[] = { "danceLeft", "danceLEFT", "idle", "GF Dancing Beat0" };
+        static const char *const rightNames[] = { "danceRight", "danceRIGHT", "idle", "GF Dancing Beat1" };
+
         gf->object = temporary.object;
-        UnloadTexture(temporary.icon);
-
-        static const char *const leftNames[] = {
-            "danceLeft", "danceLEFT", "idle", "GF Dancing Beat0"
-        };
-        static const char *const rightNames[] = {
-            "danceRight", "danceRIGHT", "idle", "GF Dancing Beat1"
-        };
-
-        gf->anims[0] = Char_FindAnimationAny(&gf->object.animationSet,
-            leftNames, sizeof(leftNames) / sizeof(leftNames[0]));
-        gf->anims[1] = Char_FindAnimationAny(&gf->object.animationSet,
-            rightNames, sizeof(rightNames) / sizeof(rightNames[0]));
+        gf->anims[0] = CHAR_FIND_ANY(&gf->object.animationSet, leftNames);
+        gf->anims[1] = CHAR_FIND_ANY(&gf->object.animationSet, rightNames);
 
         if (gf->anims[0] < 0 && gf->object.animationSet.animationCount > 0)
             gf->anims[0] = 0;
@@ -1114,32 +895,17 @@ void Girlfriend_Load(Girlfriend *restrict gf, const char *restrict name)
         return;
     }
 
+    /* animset + png; sem eles, cai na gf padrao */
     char setPath[CHAR_PATH_MAX];
     char pngPath[CHAR_PATH_MAX];
-    char relative[CHAR_PATH_MAX];
 
-    int length = snprintf(relative, sizeof(relative),
-        "images/characters/%s.animset", characterName);
-    bool hasSet = length > 0 && (size_t)length < sizeof(relative) &&
-                  Char_FindFile(relative, setPath);
-
-    length = snprintf(relative, sizeof(relative),
-        "images/characters/%s.png", characterName);
-    bool hasPNG = length > 0 && (size_t)length < sizeof(relative) &&
-                  Char_FindFile(relative, pngPath);
-
-    if (!hasSet || !hasPNG) {
-        if (strcmp(characterName, "gf") != 0) {
-            length = snprintf(relative, sizeof(relative), "images/characters/gf.animset");
-            hasSet = length > 0 && (size_t)length < sizeof(relative) &&
-                     Char_FindFile(relative, setPath);
-            length = snprintf(relative, sizeof(relative), "images/characters/gf.png");
-            hasPNG = length > 0 && (size_t)length < sizeof(relative) &&
-                     Char_FindFile(relative, pngPath);
-        }
+    bool found = Char_Find(ctx, setPath, "images/characters/%s.animset", characterName) &&
+                 Char_Find(ctx, pngPath, "images/characters/%s.png", characterName);
+    if (!found && strcmp(characterName, "gf") != 0) {
+        found = Char_Find(ctx, setPath, "images/characters/gf.animset") &&
+                Char_Find(ctx, pngPath, "images/characters/gf.png");
     }
-
-    if (!hasSet || !hasPNG)
+    if (!found)
         Log_Fatal("Girlfriend_Load: could not locate girlfriend assets");
 
     Texture2D texture = Render_LoadTexture(pngPath);

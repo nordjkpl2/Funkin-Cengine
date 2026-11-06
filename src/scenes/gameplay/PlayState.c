@@ -421,10 +421,11 @@ static void LoadCharacters(void) {
     for (size_t i = 0; i < sizeof(noGf) / sizeof(noGf[0]); i++)
         if (strcmp(song.gfVersion, noGf[i]) == 0) gfHidden = 1;
 
+    Character_SetSongDir(songDir); // personagens do mod da musica
     Girlfriend_Load(&gf, gfHidden ? NULL : song.gfVersion);
-    Character_Load(&dad, overrideP2[0] != 0 ? overrideP2 : song.player2, 1);
-    Character_Load(&bf, song.player1, 0);
-    Character_LoadDeathAnimations(&bf, song.player1, deathAnimations);
+    Character_Load(&dad, overrideP2[0] != 0 ? overrideP2 : song.player2, CHAR_DAD);
+    Character_Load(&bf, song.player1, CHAR_BF);
+    Character_LoadDeathAnimations(&bf, deathAnimations);
     PlayStateHealth_SetCharacterColors(&dad, &bf);
 }
 
