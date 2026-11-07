@@ -11,6 +11,9 @@
  * Barras invertidas sao normalizadas. Devolve false se nao for um mod. */
 bool ModPath_Root(const char* restrict songDir, char* restrict out, size_t capacity);
 
+/* true se `name` e uma pasta de topo do layout (songs, images, stages...), nao um mod. */
+bool ModPath_IsLayoutFolder(const char* name);
+
 /* Procura <root>/<relative> numa unica raiz (sem fallback). Para ordens de busca
  * proprias. root vazio ou NULL = false. Devolve true com o caminho em out. */
 bool ModPath_FindIn(const char* restrict root, const char* restrict relative,

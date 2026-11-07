@@ -24,6 +24,11 @@ static bool IsTopLevelFolder(const char* name, size_t length)
     return false;
 }
 
+bool ModPath_IsLayoutFolder(const char* name)
+{
+    return name != NULL && IsTopLevelFolder(name, strlen(name));
+}
+
 bool ModPath_Root(const char* restrict songDir, char* restrict out, size_t capacity)
 {
     if (out == NULL || capacity == 0u) return false;

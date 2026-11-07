@@ -428,7 +428,7 @@ static void LoadSong(void) {
 // (a parte lenta) enquanto sons etc. carregam. Os Load abaixo so enviam a imagem pronta para a GPU.
 static void PrefetchAssets(void) {
     // GF escondida (gfVersion "empty"/"none"... no chart, ou hide_girlfriend no stage): nao carrega nada dela.
-    static const char* const noGf[] = {"empty", "none", "nogf", "no-gf", "nogirlfriend", "no_gf", ""};
+    static const char* const noGf[] = {"empty", "none", "nogf", "no-gf", "nogirlfriend", "no_gf", "__not_have_a_gf", ""};
     gfHidden = 0;
     for (size_t i = 0; i < sizeof(noGf) / sizeof(noGf[0]); i++)
         if (strcmp(song.gfVersion, noGf[i]) == 0) gfHidden = 1;

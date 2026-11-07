@@ -13,6 +13,7 @@
 
 #include "logic/Character.h"
 #include "core/ModPath.h"
+#include "core/ModList.h"
 #include "logic/AnimationSets_XML.h"
 #include "Log.h"
 #include "rendering/cpu/ImagePrefetch.h"
@@ -127,6 +128,25 @@ static bool Char_FindPair(const CharCtx *ctx, char setOut[CHAR_PATH_MAX], char p
             return true;
     }
     return false;
+}
+
+/* Contexto de busca para um personagem. Vale o mod da musica (e assets/); se o personagem nao
+   existe ali, usa o 1o mod ativo que o tem (ModList), senao o contexto da musica. */
+static void Char_ResolveCtx(CharCtx *out, const char *name)
+{
+    *out = songCtx;
+    if (!name || !Char_IsSafeName(name))
+        return;
+
+    char path[CHAR_PATH_MAX];
+    if (Char_Find(&songCtx, path, "images/characters/%s.animset", name) ||
+        Char_Find(&songCtx, path, "images/characters/%s.xml", name) ||
+        Char_Find(&songCtx, path, "characters/%s.json", name))
+        return;
+
+    char root[CHAR_PATH_MAX];
+    if (ModList_FindCharacterRoot(name, root, sizeof(root)))
+        snprintf(out->root, sizeof(out->root), "%s", root);
 }
 
 /* Psych: width/height = frameWidth/Height do atlas * escala, e a escala cresce a
@@ -847,7 +867,9 @@ void Character_Load(Character *restrict character,
     if (!character)
         return;
 
-    const CharCtx *ctx = &songCtx;
+    CharCtx resolvedCtx;
+    Char_ResolveCtx(&resolvedCtx, characterName);
+    const CharCtx *ctx = &resolvedCtx;
 
     Render_DefaultAnimated(&character->object);
     character->idled = false;
@@ -936,8 +958,10 @@ void Girlfriend_Load(Girlfriend *restrict gf, const char *restrict name)
     if (!gf)
         return;
 
-    const CharCtx *ctx = &songCtx;
     const char *characterName = (name && Char_IsSafeName(name)) ? name : "gf";
+    CharCtx resolvedCtx;
+    Char_ResolveCtx(&resolvedCtx, characterName);
+    const CharCtx *ctx = &resolvedCtx;
 
     Render_DefaultAnimated(&gf->object);
     gf->f = 0;
@@ -1028,12 +1052,15 @@ void Girlfriend_Load(Girlfriend *restrict gf, const char *restrict name)
 
 void Character_PrefetchTexture(const char *name, CharRole role)
 {
-    const CharCtx *ctx = &songCtx;
     char pngPath[CHAR_PATH_MAX], setPath[CHAR_PATH_MAX];
     char xmlPath[CHAR_PATH_MAX], atlasPath[CHAR_PATH_MAX], spriteName[128];
 
     if (!Char_IsSafeName(name))
         name = (role == CHAR_GF) ? "gf" : (role == CHAR_DAD) ? "dad" : "bf";
+
+    CharCtx resolvedCtx;
+    Char_ResolveCtx(&resolvedCtx, name);
+    const CharCtx *ctx = &resolvedCtx;
 
     /* 1) XML (Codename) */
     if (Char_FindCharacterXML(ctx, name, xmlPath, spriteName) &&

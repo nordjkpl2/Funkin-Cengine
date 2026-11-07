@@ -11,6 +11,8 @@
 #define SWRITE(type, source) WRITE(type, 1, source)
 
 GameOptions gameOptions;
+char gameDisabledMods[MOD_DISABLED_MAX][MOD_NAME_MAX];
+int  gameDisabledModCount;
 
 const char* game_available_schemes[SCHEME_COUNT] = {"Arrows", "WASD", "DFJK", "ASKL", "Custom"};
 int game_scheme_keys[SCHEME_COUNT][4] = {
@@ -23,13 +25,14 @@ int game_scheme_keys[SCHEME_COUNT][4] = {
 
 static FILE* saveFile;
 
-#define SAVE_VERSION 7   /* 7: + threadLimit (no fim); 6: + hitSound e as 4 teclas do esquema Custom */
+#define SAVE_VERSION 8   /* 8: + lista de mods desativados (v7 ainda e lido); 7: + threadLimit (no fim); 6: + hitSound e as 4 teclas do esquema Custom */
 
 static void GameData_Defaults(void) {
     game_scheme_keys[SCHEME_CUSTOM][0] = KEY_LEFT;
     game_scheme_keys[SCHEME_CUSTOM][1] = KEY_DOWN;
     game_scheme_keys[SCHEME_CUSTOM][2] = KEY_UP;
     game_scheme_keys[SCHEME_CUSTOM][3] = KEY_RIGHT;
+    gameDisabledModCount = 0;
     gameOptions = (GameOptions) {
         .showScore = 1, .bopIcons = 1, .showFps = 1,
         .fps = 120,
@@ -41,6 +44,7 @@ static void GameData_Checks(void) {
     if(gameOptions.scheme < 0 || gameOptions.scheme >= SCHEME_COUNT) IERR
     if(gameOptions.fps < 0) IERR
     if(gameOptions.threadLimit < 0 || gameOptions.threadLimit > 64) IERR
+    if(gameDisabledModCount < 0 || gameDisabledModCount > MOD_DISABLED_MAX) IERR
     if(gameOptions.ghost < 0 || gameOptions.ghost > 2) IERR
     if(gameOptions.scroll < 0 || gameOptions.scroll > 2) IERR
     if(gameOptions.hitSound < 0 || gameOptions.hitSound > 1) IERR
@@ -61,7 +65,7 @@ void GameData_Start(void) {
     char version = 0;
     SREAD(char, version)
 
-    if(version != SAVE_VERSION) {
+    if(version != SAVE_VERSION && version != 7) {
         GameData_Defaults();
         GameData_Flush();
         return;
@@ -82,6 +86,13 @@ void GameData_Start(void) {
     SREAD(float,gameOptions.zoomFactorGAME) 
     READ(int, 4, game_scheme_keys[SCHEME_CUSTOM][0])
     SREAD(int,  gameOptions.threadLimit)
+    gameDisabledModCount = 0;
+    if(version >= 8) {
+        SREAD(int, gameDisabledModCount)
+        if(gameDisabledModCount < 0 || gameDisabledModCount > MOD_DISABLED_MAX) IERR
+        READ(char, gameDisabledModCount * MOD_NAME_MAX, gameDisabledMods[0][0])
+        for(int i = 0; i < gameDisabledModCount; i++) gameDisabledMods[i][MOD_NAME_MAX - 1] = 0;
+    }
 
     GameData_Checks();
 }
@@ -106,6 +117,8 @@ void GameData_Flush(void) {
     SWRITE(float,gameOptions.zoomFactorGAME) 
     WRITE(int, 4, game_scheme_keys[SCHEME_CUSTOM][0])
     SWRITE(int,  gameOptions.threadLimit)
+    SWRITE(int,  gameDisabledModCount)
+    WRITE(char, gameDisabledModCount * MOD_NAME_MAX, gameDisabledMods[0][0])
 }
 
 void GameData_Stop(void) {

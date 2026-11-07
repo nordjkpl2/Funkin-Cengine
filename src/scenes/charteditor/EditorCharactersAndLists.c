@@ -4,6 +4,7 @@
 #include"data/Song.h"
 #include"data/SongList.h"
 #include "core/ModPath.h"
+#include "core/ModList.h"
 #include "logic/Character.h"
 #include"logic/Stage.h"
 #include"logic/Note.h"
@@ -133,8 +134,11 @@ char CharacterAssetForSong_Exists(const char* name, const char* songDir) {
         return 0;
     char modRoot[256];
     EdModRoot(songDir, modRoot);
-    if(modRoot[0] == 0)
-        return 0;
+    if(modRoot[0] == 0) {
+        // musica normal: vale personagem de qualquer mod ativo
+        char other[256];
+        return ModList_FindCharacterRoot(name, other, sizeof(other));
+    }
     char p[300];
     snprintf(p, sizeof(p), "%s/images/characters/%s.png", modRoot, name);
     FILE* f = fopen(p, "rb");
@@ -153,7 +157,7 @@ char CharacterAssetForSong_Exists(const char* name, const char* songDir) {
 char GirlfriendAsset_Exists(const char* name, const char* songDir) {
     if(name == NULL || name[0] == 0)
         return 0;
-    if(strcmp(name, "none") == 0 || strcmp(name, "nogf") == 0)
+    if(strcmp(name, "none") == 0 || strcmp(name, "nogf") == 0 || strcmp(name, "__not_have_a_gf") == 0)
         return 1;
     if(strchr(name, '/') != NULL || strchr(name, '\\') != NULL || strstr(name, "..") != NULL)
         return 0;
@@ -169,7 +173,8 @@ char GirlfriendAsset_Exists(const char* name, const char* songDir) {
         if(FileExists(png) && FileExists(animset))
             return 1;
     }
-    return 0;
+    char other[256];
+    return ModList_FindCharacterRoot(name, other, sizeof(other));
 }
 
 // json: assets/stages/<nome>.json, assets/data/stages/<nome>.json.
@@ -217,6 +222,7 @@ char StageFileForSong_Exists(const char* name, const char* songDir) {
 char StageAsset_Exists(const char* name) {
     if(name == NULL || name[0] == 0) return 0;
     if(strchr(name, '/') != NULL || strchr(name, '\\') != NULL || strstr(name, "..") != NULL) return 0;
+    if(strcmp(name, "__not_have_a_stage") == 0) return 1;   // teste de render: sem stage
     if(strcmp(name, "stage") == 0) {
         FILE* a = fopen("assets/images/stage/stageback.png", "rb");
         FILE* b = fopen("assets/images/stage/stagefront.png", "rb");
@@ -251,6 +257,7 @@ char StageAsset_Exists(const char* name) {
 
 void StageList_Scan(void) {
     stageCount = 0;
+    strcpy(stageNames[stageCount++], "__not_have_a_stage"); // primeira opcao: sem stage
     for(int i = 0; i < pickerCount && stageCount < 32; i++) {
         char st[SONG_NAME_MAX] = {0};
         if(!StageOfDir(pickerSongs[i].dir, st) || st[0] == 0)
@@ -270,10 +277,10 @@ void StageList_Scan(void) {
             stageCount++;
         }
     }
-    if(stageCount == 0 && StageAsset_Exists("stage") && stageCount < 32) {
-        strncpy(stageNames[0], "stage", SONG_NAME_MAX - 1);
-        stageNames[0][SONG_NAME_MAX - 1] = 0;
-        stageCount = 1;
+    if(stageCount == 1 && StageAsset_Exists("stage")) {
+        strncpy(stageNames[1], "stage", SONG_NAME_MAX - 1);
+        stageNames[1][SONG_NAME_MAX - 1] = 0;
+        stageCount = 2;
     }
 }
 
@@ -318,7 +325,9 @@ static void NameList_ScanDir(char (*names)[SONG_NAME_MAX], int* count, const cha
 void CharList_Scan(void) {
     charCount = 0;
     gfCount = 0;
-    strcpy(gfNames[gfCount++], "none"); // primeira opcao: sem girlfriend
+    ModList_Rescan();
+    strcpy(gfNames[gfCount++], "none"); // sem girlfriend
+    strcpy(gfNames[gfCount++], "__not_have_a_gf"); // teste de render: sem girlfriend
 
     NameList_ScanDir(charNames, &charCount, "assets/images/characters");
     NameList_ScanDir(gfNames, &gfCount, "assets/images/characters");
@@ -329,6 +338,16 @@ void CharList_Scan(void) {
     if(modRoot[0] != 0) {
         char cd[300];
         snprintf(cd, sizeof(cd), "%s/images/characters", modRoot);
+        NameList_ScanDir(charNames, &charCount, cd);
+        NameList_ScanDir(gfNames, &gfCount, cd);
+    }
+
+    // demais mods ativos (o do chart ja foi; repetidos sao ignorados)
+    for(int i = 0; i < ModList_Count(); i++) {
+        if(!ModList_Enabled(i))
+            continue;
+        char cd[300];
+        snprintf(cd, sizeof(cd), "%s/images/characters", ModList_Root(i));
         NameList_ScanDir(charNames, &charCount, cd);
         NameList_ScanDir(gfNames, &gfCount, cd);
     }

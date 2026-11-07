@@ -89,6 +89,7 @@ set(OLD_GLOB
   "D:/dev/funkin c/src/GameData.c"
   "D:/dev/funkin c/src/Render.c"
   "D:/dev/funkin c/src/core/Log.c"
+  "D:/dev/funkin c/src/core/ModList.c"
   "D:/dev/funkin c/src/core/ModPath.c"
   "D:/dev/funkin c/src/data/ModImport.c"
   "D:/dev/funkin c/src/data/Song.c"

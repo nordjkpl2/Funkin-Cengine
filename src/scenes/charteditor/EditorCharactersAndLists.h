@@ -14,7 +14,7 @@
 #include "EditorGrid.h"
 
 // lista de cantores (artes que existem): pro seletor Boyfriend/Opponent
-#define NAME_LIST_MAX 256   /* mods grandes tem centenas de personagens */
+#define NAME_LIST_MAX 1024  /* mods grandes tem centenas de personagens */
 
 extern SongEntry* pickerSongs;
 extern int pickerCount;

@@ -68,3 +68,6 @@ LOAD [spatial-abyss] init: 0.4 ms, chart: 5.8 ms, sounds: 68.9 ms, characters: 3
 [WARN] Icone nao encontrado: 'bfsad' (usando padrao)
 LOAD [spatial-abyss] init: 0.6 ms, chart: 0.5 ms, sounds: 58.0 ms, characters: 32.6 ms, stage: 1.4 ms, song audio: 1.7 ms, notes: 0.1 ms, ui: 7.9 ms, warmup: 0.4 ms, (textures on main thread: 39.8 ms) total: 103.2 ms
 LOAD [eons-koooled] init: 0.7 ms, chart: 64.4 ms, sounds: 291.5 ms, characters: 487.2 ms, stage: 9.5 ms, song audio: 2.2 ms, notes: 0.9 ms, ui: 8.4 ms, warmup: 0.2 ms, (textures on main thread: 488.1 ms) total: 865.0 ms
+
+--- SESSION LOG START ---
+LOAD [black-n-white] init: 31.4 ms, chart: 15.2 ms, sounds: 184.6 ms, characters: 168.1 ms, stage: 4.8 ms, song audio: 2.1 ms, notes: 0.1 ms, ui: 12.1 ms, warmup: 0.1 ms, (textures on main thread: 179.3 ms) total: 418.6 ms

@@ -23,6 +23,12 @@ extern GameOptions gameOptions;
 extern const char* game_available_schemes[SCHEME_COUNT];
 extern int         game_scheme_keys[SCHEME_COUNT][4];   /* a linha SCHEME_CUSTOM e editavel */
 
+/* Mods desativados pelo jogador (salvos no save v8). Mod novo ja nasce ativo. */
+#define MOD_NAME_MAX 64
+#define MOD_DISABLED_MAX 128
+extern char gameDisabledMods[MOD_DISABLED_MAX][MOD_NAME_MAX];
+extern int  gameDisabledModCount;
+
 void GameData_Start(void);
 void GameData_Flush(void);
 void GameData_Stop(void);

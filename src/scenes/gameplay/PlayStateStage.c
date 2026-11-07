@@ -309,6 +309,16 @@ void PlayStateStage_Load(PlayStateStage* stage, const char* stageName, const cha
     stage->cameraSpeed = 1.0f;
     cameraOffsetBf = NULL;
     cameraOffsetDad = NULL;
+    // Teste de render: sem stage nenhum (so as notas). Posicoes e zoom do stage padrao, nada carregado.
+    if (strcmp(stageName, "__not_have_a_stage") == 0) {
+        stage->defaultCameraZoom = 0.9f;
+        gf->object.position = (Vector2) {400, 100};
+        dad->object.position = (Vector2) {200, 150};
+        bf->object.position = (Vector2) {820, 500};
+        FinalizeCamera(dad, 1, NULL);
+        FinalizeCamera(bf, 0, NULL);
+        return;
+    }
     if (!LoadModStage(stage, stageName, songDir, gf, dad, bf)) {
         free(stage->objects);
         free(stage->animObjects);
