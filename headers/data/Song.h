@@ -26,6 +26,7 @@ typedef struct {
     char stage[SONG_NAME_MAX];
     char gfVersion[SONG_NAME_MAX];
     char noteSkin[SONG_NAME_MAX];
+    char arrowSkin[SONG_NAME_MAX];   /* Psych: imagem da skin relativa a images/, sem extensao */
     Section* sections;
     int sectionCount; 
     float bpm;

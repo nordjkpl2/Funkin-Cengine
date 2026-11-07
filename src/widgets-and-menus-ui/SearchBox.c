@@ -4,7 +4,7 @@
  * So trabalha quando ha entrada; o filtro compara texto curto, sem alocar.
  */
 
-#include "scenes/menu/SearchBox.h"
+#include "widgets-and-menus-ui/SearchBox.h"
 #include "Game.h"
 
 #include <string.h>

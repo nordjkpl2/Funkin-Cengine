@@ -49,7 +49,10 @@ Note* PlayStateNoteSpawn_Notes(void);
 size_t PlayStateNoteSpawn_Count(void);
 size_t PlayStateNoteSpawn_First(void);
 
-/* Culling + hits automaticos + desenho. Chamar dentro da camera do HUD. */
+/* Logica: culling, hits do oponente/botplay, hold e miss. Chamar no Update, depois do input. */
+void PlayStateNoteSpawn_Update(const PlayStateNoteView* view);
+
+/* So desenho (le o estado). Chamar dentro da camera do HUD. */
 void PlayStateNoteSpawn_Draw(const PlayStateNoteView* view);
 
 #endif /* PLAYSTATE_NOTESPAWN_H */

@@ -462,7 +462,13 @@ static void LoadCharacters(void) {
     PlayStateHealth_SetCharacterColors(&dad, &bf);
 }
 
+// Sons e musicas de morte ficam carregados entre as musicas (so o audio da musica troca).
+static char commonSoundsLoaded;
+
 static void LoadSounds(void) {
+    if (commonSoundsLoaded) return;
+    commonSoundsLoaded = 1;
+
     static const char* const missFiles[3] = {
         "assets/sounds/missnote1.ogg", "assets/sounds/missnote2.ogg", "assets/sounds/missnote3.ogg"
     };
@@ -490,13 +496,18 @@ static void LoadSounds(void) {
     deathMusicEnd.looping = 0;
 }
 
-static void LoadUiAssets(void) {
-    uiAssets = AnimationSet_LoadAnimations("assets/images/ui.animset", Render_LoadTexture("assets/images/ui.png"));
+static char uiAssetsLoaded; // ui.png/ui.animset ficam carregados entre as musicas
 
-    ratingAnim[PLAYER_RATING_SICK] = AnimationSet_FindAnimation(&uiAssets, "sick");
-    ratingAnim[PLAYER_RATING_GOOD] = AnimationSet_FindAnimation(&uiAssets, "good");
-    ratingAnim[PLAYER_RATING_BAD] = AnimationSet_FindAnimation(&uiAssets, "bad");
-    ratingAnim[PLAYER_RATING_SHIT] = AnimationSet_FindAnimation(&uiAssets, "shit");
+static void LoadUiAssets(void) {
+    if (!uiAssetsLoaded) {
+        uiAssets = AnimationSet_LoadAnimations("assets/images/ui.animset", Render_LoadTexture("assets/images/ui.png"));
+
+        ratingAnim[PLAYER_RATING_SICK] = AnimationSet_FindAnimation(&uiAssets, "sick");
+        ratingAnim[PLAYER_RATING_GOOD] = AnimationSet_FindAnimation(&uiAssets, "good");
+        ratingAnim[PLAYER_RATING_BAD] = AnimationSet_FindAnimation(&uiAssets, "bad");
+        ratingAnim[PLAYER_RATING_SHIT] = AnimationSet_FindAnimation(&uiAssets, "shit");
+        uiAssetsLoaded = 1;
+    }
 
     Render_DefaultAnimated(&introText);
     introText.animationSet = uiAssets;
@@ -564,7 +575,13 @@ static void PlayState_Create([[maybe_unused]] RayScene* scene) {
 
     LoadSong();
     // Skin de notas desta musica (vazia = padrao). Sempre definida, para nao herdar a da anterior.
-    Note_SetCurrentSkin(song.noteSkin[0] != 0 ? Cache_GetNoteSkinPtr(song.noteSkin, songDir) : NULL);
+    // noteSkin (nosso) tem prioridade; senao o arrowSkin do Psych ("@" = imagem em images/).
+    char skinName[SONG_NAME_MAX + 2] = "";
+    if (song.noteSkin[0] != 0)
+        snprintf(skinName, sizeof(skinName), "%s", song.noteSkin);
+    else if (song.arrowSkin[0] != 0)
+        snprintf(skinName, sizeof(skinName), "@%s", song.arrowSkin);
+    Note_SetCurrentSkin(skinName[0] != 0 ? Cache_GetNoteSkinPtr(skinName, songDir) : NULL);
     Strumlines_Load();   // depois da skin: os receptores usam as animacoes dela
     LoadMark("chart");
     PrefetchAssets();
@@ -769,6 +786,17 @@ static char UpdateSong(void) {
     PlayStatePlayerKeys keys;
     if (PlayStatePlayerInput_Update(songBeat.time, &keys))
         Strumlines_ApplyInput(&keys);
+
+    // Hits automaticos, hold e miss das notas (antes ficava no Draw).
+    const PlayStateNoteView view = {
+        .time = songBeat.time,
+        .songSpeed = song.speed,
+        .scrollVelocity = NoteVelocity(),
+        .paused = isPaused,
+        .dadStrums = dadStrumline,
+        .bfStrums = bfStrumline,
+    };
+    PlayStateNoteSpawn_Update(&view);
 
     return 0;
 }
@@ -1008,17 +1036,10 @@ static void PlayState_Destroy([[maybe_unused]] RayScene* scene) {
     PlayStateAudio_Unload();
     if (restarted) return; // restart reaproveita tudo
 
-    for (int i = 0; i < 3; i++)
-        UnloadSound(missSFX[i]);
-
-    UnloadSound(hitSFX);
-
-    UnloadSound(deathSounds);
-    UnloadMusicStream(deathMusic);
-    UnloadMusicStream(deathMusicEnd);
-
-    for (int i = 0; i < 4; i++)
-        UnloadSound(introSounds[i]);
+    // Sons comuns e ui continuam carregados (reuso na proxima musica); so garante que nada toca.
+    StopMusicStream(deathMusic);
+    StopMusicStream(deathMusicEnd);
+    StopSound(deathSounds);
 
     PlayStateNoteSpawn_Unload();
     Song_Free(&song);
@@ -1026,7 +1047,6 @@ static void PlayState_Destroy([[maybe_unused]] RayScene* scene) {
     UnloadTexture(dad.icon);
     UnloadTexture(bf.icon);
 
-    AnimationSet_FreeAll(&uiAssets);
     AnimationSet_FreeAll(&dad.object.animationSet);
     AnimationSet_FreeAll(&bf.object.animationSet);
     if (gfLoaded) AnimationSet_FreeAll(&gf.object.animationSet);

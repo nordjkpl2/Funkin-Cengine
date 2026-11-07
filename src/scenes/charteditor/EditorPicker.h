@@ -29,6 +29,7 @@ extern EdSec copyBuf;
 extern char copyValid;
 extern RayGraphicObject bgEd;
 void Picker_Refresh(void);
+void Picker_Free(void);
 void Editor_EnterDir(const char* dir);
 void Editor_Save(void);
 char ImportJSON(const char* jsonPath, const char* modName);

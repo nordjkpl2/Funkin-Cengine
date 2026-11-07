@@ -2,7 +2,7 @@
 
 # 👒 Friday Night Funkin´ — Cengine
 
-> Performance focus, All Friday Night Funkin' assets belong to their respective owners.
+> Made for Make all Your 2d game or mods need, All Friday Night Funkin' assets belong to their respective owners.
 
 <details>
 <summary><b>——Libs</b></summary>
@@ -55,7 +55,7 @@ It’s being developed by me, and I’m writing the code from scratch, so it mig
 <summary><b>——Idea</b></summary>
 
 ```text
-All Things your 2d (or semi 3d) game / mod needs
+All Things your 2d (or semi 3d) game/mod needs, Made for Make
 ```
 
 ⚙️ Backend, performance focus, and be all your need
@@ -68,11 +68,13 @@ All Things your 2d (or semi 3d) game / mod needs
 <div align="left">
 
 Created by (c)2026 nordjkpl
+View License file for View Copyright
 
 ```text
 All Friday Night Funkin' assets belong to their respective owners
 ```
 
-View License file for View Copyright
+> nord in @nordjkpl 2 github
+>> [...] I would like to thank Shadow Mario in (https://github.com/ShadowMario/FNF-PsychEngine) and Jordan SantiagoYT in (https://github.com/JordanSantiagoYT/FNF-JS-Engine) and the open-source community for the logic; without it, we wouldn't have been able to achieve the best result
 
 </details>

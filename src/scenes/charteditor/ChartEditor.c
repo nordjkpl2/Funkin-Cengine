@@ -339,6 +339,14 @@ static void Edit_UpdateKeys(void) {
 static void Edit_Update(void) {
     if(ceDlg != DLG_NONE)
         return;
+    // previa da skin segue a caixa Note Skin (so reaplica se mudou)
+    {
+        static char skinApplied[SONG_NAME_MAX];
+        if(strcmp(skinApplied, skinBox.buf) != 0) {
+            snprintf(skinApplied, sizeof(skinApplied), "%s", skinBox.buf);
+            Editor_ApplyNoteSkin(skinApplied, chart.dir);
+        }
+    }
     // volume global (+/-) vale pro OUVIR tambem (so reaplica se mudou)
     {
         float v = RayGame_MusicVolumeLevel();
@@ -493,6 +501,7 @@ static void ChartEditor_Draw([[maybe_unused]] RayScene* scene) {
 static void ChartEditor_Destroy([[maybe_unused]] RayScene* scene) {
     UnloadTexture(bgEd.image);
     SecTimes_Drop();
+    Picker_Free();
     SongList_Free(pickerSongs);
     pickerSongs = NULL;
     pickerCount = 0;

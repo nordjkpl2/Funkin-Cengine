@@ -7,7 +7,7 @@
 #include "scenes/AllScenes.h"
 #include "data/SongList.h"
 #include "scenes/menu/FreeplayIcon.h"
-#include "scenes/menu/SearchBox.h"
+#include "widgets-and-menus-ui/SearchBox.h"
 #include <stdlib.h>
 
 #include <math.h>

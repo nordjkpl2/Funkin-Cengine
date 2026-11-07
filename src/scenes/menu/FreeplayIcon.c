@@ -330,27 +330,21 @@ void FreeplayIcon_Unload(void) {
     opponentName[0] = '\0';
 }
 
-static void SetIconFromFile(const char* path) {
-    icon = Render_LoadTexture(path);
-    iconLoaded = icon.id != 0;
-}
-
-void FreeplayIcon_Load(SongEntry* song) {
-    FreeplayIcon_Unload();
-    if (!song) return;
-
+/* Resolve e carrega o icone da musica sem tocar no icone unico do Freeplay.
+ * Devolve textura com id 0 se nada foi achado. Quem chama descarrega. */
+static Texture2D ResolveIcon(SongEntry* song, char opponent[NAME_MAX_LEN]) {
+    Texture2D result = {0};
     char modRoot[PATH_MAX_LEN] = {0};
     (void)GetModRoot(song->dir, modRoot, sizeof(modRoot));
 
     // O SongList ja leu o chart no scan: nao le data.json de novo (player2 pode estar generico).
-    char opponent[NAME_MAX_LEN] = {0};
+    opponent[0] = '\0';
     if (song->opp[0] && IsSafeAssetName(song->opp)) {
-        CopyString(opponent, sizeof(opponent), song->opp);
+        CopyString(opponent, NAME_MAX_LEN, song->opp);
     } else if (SongList_Opponent(song->dir, opponent) && IsSafeAssetName(opponent)) {
         CopyString(song->opp, sizeof(song->opp), opponent);
     }
-    if (!opponent[0]) CopyString(opponent, sizeof(opponent), "unknown");
-    CopyString(opponentName, sizeof(opponentName), opponent);
+    if (!opponent[0]) CopyString(opponent, NAME_MAX_LEN, "unknown");
 
     char iconPath[PATH_MAX_LEN];
 
@@ -358,21 +352,36 @@ void FreeplayIcon_Load(SongEntry* song) {
     // pois alguns charts de mod ainda declaram player2="dad".
     if (song->weekIcon[0] && IsSafeAssetName(song->weekIcon) &&
         FindIconPath(song->dir, modRoot, song->weekIcon, NULL, iconPath))
-        SetIconFromFile(iconPath);
+        result = Render_LoadTexture(iconPath);
 
     // Depois, o healthicon do personagem.
-    if (!iconLoaded) {
+    if (result.id == 0) {
         char healthIcon[NAME_MAX_LEN] = {0};
         (void)FindHealthIconKey(song->dir, modRoot, opponent, healthIcon);
         if (!healthIcon[0]) CopyString(healthIcon, sizeof(healthIcon), opponent);
 
         if (FindIconPath(song->dir, modRoot, healthIcon, opponent, iconPath))
-            SetIconFromFile(iconPath);
+            result = Render_LoadTexture(iconPath);
     }
 
     // Ultimo recurso: icone do BF.
-    if (!iconLoaded && FileExists("assets/images/icons/bf.png"))
-        SetIconFromFile("assets/images/icons/bf.png");
+    if (result.id == 0 && FileExists("assets/images/icons/bf.png"))
+        result = Render_LoadTexture("assets/images/icons/bf.png");
+
+    return result;
+}
+
+void FreeplayIcon_Load(SongEntry* song) {
+    FreeplayIcon_Unload();
+    if (!song) return;
+
+    icon = ResolveIcon(song, opponentName);
+    iconLoaded = icon.id != 0;
+}
+
+Texture2D FreeplayIcon_Resolve(SongEntry* song) {
+    char opponent[NAME_MAX_LEN];
+    return song ? ResolveIcon(song, opponent) : (Texture2D){0};
 }
 
 char FreeplayIcon_IsLoaded(void) { return iconLoaded; }

@@ -28,6 +28,7 @@ extern Texture2D edIconP;
 extern char edIconOOk;
 extern char edIconPOk;
 void EdArrows_Init(void);
+void EdArrows_Reset(void);   // refaz os sprites das notas a partir da skin atual (Note_GetCurrentSkin)
 float EdPxPerMs(void);
 void Edit_DrawGrid(void);
 

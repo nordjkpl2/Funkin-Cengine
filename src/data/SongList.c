@@ -484,8 +484,8 @@ static void Scan_Add(const char *dirPath, const char *displayName)
     snprintf(entry->name, sizeof(entry->name), "%s", base);
     snprintf(entry->dir, sizeof(entry->dir), "%s", normalized);
 
-    /* Resolve chart opponent and week icon once during the scan. */
-    (void)SongList_Opponent(normalized, entry->opp);
+    /* O oponente NAO e lido aqui (parsearia o chart inteiro de cada musica):
+       quem precisa (FreeplayIcon) chama SongList_Opponent sob demanda e grava em entry->opp. */
     SongList_FindWeekIcon(Dir_BaseName(normalized), entry->weekIcon);
 }
 

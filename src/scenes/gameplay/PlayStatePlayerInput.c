@@ -27,7 +27,7 @@ int PlayStatePlayerInput_Misses(void) { return misses; }
 void PlayStatePlayerInput_AddScore(int amount) { score += amount; }
 
 static void HitNote(Note* note, float songTime) {
-    float diff = fabs(note->time - songTime);
+    float diff = fabsf(note->time - songTime);
     PlayerRating rating;
 
     if (diff > 0.1503f) {

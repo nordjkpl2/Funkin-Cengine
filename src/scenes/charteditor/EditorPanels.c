@@ -347,6 +347,13 @@ static void Edit_DrawPanel_Charting(float x, float y) {
     y += 50;
     if(EdButton((Rectangle){x, y, 190, 40}, "play (F5)", 22)) Edit_DoTestPlay();
     y += 50;
+    // arquivos de audio achados (flags ja existem, custo zero)
+    DrawTextEx(mainFont, edHasAudio ? "inst.ogg: yes" : "inst.ogg: no", (Vector2){x, y}, 18, 1,
+        edHasAudio ? GREEN : RED);
+    y += 24;
+    const char* vocTxt = edHasSplit ? "vocals.ogg: split" : (edHasVoices ? "vocals.ogg: yes" : "vocals.ogg: no");
+    DrawTextEx(mainFont, vocTxt, (Vector2){x, y}, 18, 1, (edHasSplit || edHasVoices) ? GREEN : RED);
+    y += 30;
     DrawTextEx(mainFont, "space = play/stop", (Vector2){x, y}, 18, 1, YELLOW);
     y += 24;
     DrawTextEx(mainFont, "drag red bar = seek", (Vector2){x, y}, 18, 1, YELLOW);

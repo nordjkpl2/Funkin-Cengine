@@ -18,6 +18,8 @@
 #include "EditorPicker.h"
 #include "EditorCharactersAndLists.h"
 #include "EditorIcons.h"
+#include "scenes/menu/FreeplayIcon.h"
+#include "widgets-and-menus-ui/SearchBox.h"
 
 const char* ChartTab_Name(int t) {
     switch(t) {
@@ -50,12 +52,93 @@ char copyValid = 0;
 
 RayGraphicObject bgEd;
 
+// ---- busca + icones da lista (so linhas perto da selecao ficam na GPU)
+#define PICK_ICON_SIZE 56.0f
+#define PICK_ICON_KEEP 10
+
+static SearchBox pickSearch;
+static bool pickSearchInit;
+static int* pickShown;        // indices de pickerSongs que passam no filtro
+static int pickShownCount;
+static Texture2D* pickIcons;  // um por musica (id 0 = ainda nao carregou / sem icone)
+static unsigned char* pickTried;
+
+static void Picker_FreeIcons(void) {
+    if(pickIcons) {
+        for(int i = 0; i < pickerCount; i++)
+            if(pickIcons[i].id != 0) UnloadTexture(pickIcons[i]);
+    }
+    free(pickIcons);
+    free(pickTried);
+    pickIcons = NULL;
+    pickTried = NULL;
+}
+
+void Picker_Free(void) {
+    StageList_Invalidate();
+    Picker_FreeIcons();
+    free(pickShown);
+    pickShown = NULL;
+    pickShownCount = 0;
+}
+
+static void Picker_ApplyFilter(void) {
+    pickShownCount = 0;
+    for(int i = 0; i < pickerCount; i++)
+        if(SearchBox_Match(&pickSearch, pickerSongs[i].name))
+            pickShown[pickShownCount++] = i;
+    pickerSel = 0;
+    pickerOffset = 0;
+}
+
 void Picker_Refresh(void) {
+    Picker_Free();
     SongList_Free(pickerSongs);
     pickerSongs = NULL;
     pickerCount = SongList_Scan(&pickerSongs);
-    pickerSel = 0;
-    pickerOffset = 0;
+    if(!pickSearchInit) {
+        SearchBox_Init(&pickSearch, (Rectangle) {640.0f, 52.0f, 460.0f, 44.0f});
+        pickSearchInit = true;
+    }
+    if(pickerCount > 0) {
+        pickShown = malloc(sizeof(int) * (size_t)pickerCount);
+        pickIcons = calloc((size_t)pickerCount, sizeof(Texture2D));
+        pickTried = calloc((size_t)pickerCount, 1);
+        if(!pickShown || !pickIcons || !pickTried) {
+            Picker_Free();
+            SongList_Free(pickerSongs);
+            pickerSongs = NULL;
+            pickerCount = 0;
+        }
+    }
+    Picker_ApplyFilter();
+}
+
+// carrega no maximo 1 icone por frame (le disco) e solta os que ficaram longe
+static void Picker_StreamIcons(void) {
+    if(!pickIcons) return;
+    const int center = pickerSel - 1; // posicao na lista filtrada
+    bool loadedOne = false;
+    for(int k = 0; k < pickShownCount; k++) {
+        const int idx = pickShown[k];
+        const int dist = abs(k - center);
+        if(dist > PICK_ICON_KEEP) {
+            if(pickIcons[idx].id != 0) {
+                UnloadTexture(pickIcons[idx]);
+                pickIcons[idx] = (Texture2D) {0};
+            }
+            pickTried[idx] = 0;
+        } else if(!loadedOne && !pickTried[idx]) {
+            pickTried[idx] = 1;
+            pickIcons[idx] = FreeplayIcon_Resolve(&pickerSongs[idx]);
+            loadedOne = true;
+        }
+    }
+}
+
+static Rectangle Picker_SquareCrop(Texture2D t) {
+    const float side = (float)(t.height < t.width ? t.height : t.width);
+    return (Rectangle) {0.0f, 0.0f, side, side};
 }
 
 void Editor_EnterDir(const char* dir) {
@@ -63,6 +146,7 @@ void Editor_EnterDir(const char* dir) {
         EdStatusMsg("NAO ABRIU ESSA MUSICA");
         return;
     }
+    Picker_FreeIcons();
     chartLoaded = 1;
     chart.dirty = 0;
     Undo_Clear();
@@ -143,11 +227,7 @@ void Editor_EnterDir(const char* dir) {
     focusBox = NULL;
 
     // set custom note skin for editor preview
-    if(chart.noteSkin[0] != 0) {
-        Note_SetCurrentSkin(Cache_GetNoteSkinPtr(chart.noteSkin, dir));
-    } else {
-        Note_SetCurrentSkin(NULL);
-    }
+    Editor_ApplyNoteSkin(chart.noteSkin, dir);
 
     EdStatusMsg("opened :)");
 }
@@ -349,14 +429,15 @@ static void Picker_OpenSelected(void) {
         openBox.buf[0] = 0;
         ceDlg = DLG_OPEN;
         focusBox = &openBox;
-    } else if(pickerSel >= 1 && pickerSel <= pickerCount) {
-        Editor_EnterDir(pickerSongs[pickerSel - 1].dir);
+    } else if(pickerSel >= 1 && pickerSel <= pickShownCount) {
+        Editor_EnterDir(pickerSongs[pickShown[pickerSel - 1]].dir);
     }
 }
 
 static void Picker_NewSong(void) {
     EdChart_Default(&chart, "new-song");
     chart.dir[0] = 0;
+    Picker_FreeIcons();
     chartLoaded = 1;
     chart.dirty = 1;
     Undo_Clear();
@@ -392,7 +473,7 @@ void Picker_Draw(void) {
 
     DrawTextEx(mainFont, "song selector", (Vector2) {150, 60}, 48, 4, WHITE);
 
-    int rows = 1 + pickerCount;
+    int rows = 1 + pickShownCount;
     for(int i = 0; i < rows; i++) {
         const int fontSize = (i == 0) ? 40 : 56;
         float y = 720 / 2 + ((float)i - pickerOffset) * (10 + fontSize);
@@ -403,23 +484,44 @@ void Picker_Draw(void) {
             strncpy(name, "open file directory...", sizeof(name) - 1);
             name[sizeof(name) - 1] = 0;
         } else {
-            strncpy(name, pickerSongs[i - 1].name, sizeof(name) - 1);
+            const SongEntry* se = &pickerSongs[pickShown[i - 1]];
+            strncpy(name, se->name, sizeof(name) - 1);
             name[sizeof(name) - 1] = 0;
-            if(strstr(pickerSongs[i - 1].dir, "mods") != NULL)
+            if(strstr(se->dir, "mods") != NULL)
                 strncat(name, "  [mod]", sizeof(name) - strlen(name) - 1);
         }
         float d = fabsf((float)i - pickerOffset);
-        Vector2 pos = {(float)(5 + 150 + d * -30), y + 5};
+        const float iconX = 150.0f + d * -30.0f;
+        Vector2 pos = {(float)(5 + 150 + d * -30) + (i == 0 ? 0.0f : PICK_ICON_SIZE + 20.0f), y + 5};
         Color fill = WHITE, out = BLACK;
         fill.a = (pickerSel == i) ? 255 : 150;
         out.a = (pickerSel == i) ? 255 : 100;
         if(i == 0) fill = (pickerSel == 0) ? GREEN : (Color) {150, 255, 150, 150};
+        if(i > 0) {
+            // quadradinho com o icone do oponente no centro
+            const unsigned char a = (pickerSel == i) ? 255 : 150;
+            const Rectangle fr = {iconX - 6.0f, y - 4.0f, PICK_ICON_SIZE + 12.0f, PICK_ICON_SIZE + 12.0f};
+            const Rectangle box = {iconX, y + 2.0f, PICK_ICON_SIZE, PICK_ICON_SIZE};
+            DrawRectangleRec(fr, (Color) {20, 20, 30, (unsigned char)(a * 200 / 255)});
+            DrawRectangleLinesEx(fr, 2.0f, (Color) {255, 255, 255, a});
+            const Texture2D t = pickIcons ? pickIcons[pickShown[i - 1]] : (Texture2D) {0};
+            if(t.id != 0) {
+                DrawTexturePro(t, Picker_SquareCrop(t), box, (Vector2) {0, 0}, 0.0f, (Color) {255, 255, 255, a});
+            } else {
+                const Vector2 q = MeasureTextEx(mainFont, "?", 32, 2);
+                DrawTextEx(mainFont, "?", (Vector2) {box.x + (box.width - q.x) * 0.5f, box.y + (box.height - q.y) * 0.5f},
+                    32, 2, (Color) {200, 200, 200, a});
+            }
+        }
         DrawTextEx(mainFont, name, pos, fontSize, 4, out);
         pos.x -= 5;
         pos.y -= 5;
         DrawTextEx(mainFont, name, pos, fontSize, 4, fill);
     }
 
+    if(pickShownCount == 0 && pickerCount > 0)
+        DrawTextEx(mainFont, "nenhuma musica encontrada", (Vector2) {260, 400}, 32, 2, (Color) {255, 200, 120, 255});
+    SearchBox_Draw(&pickSearch, mainFont);
     DrawTextEx(mainFont, "ENTER open   R update   N new   arraste um .json pra ca   ESC return",
         (Vector2) {150, 690}, 20, 1, (Color) {200, 200, 200, 255});
     if(EdButton((Rectangle) {150, 630, 200, 40}, "OPEN", 22)) Picker_OpenSelected();
@@ -455,36 +557,48 @@ void Picker_Update(void) {
     if(ceDlg != DLG_NONE)
         return;
 
-    int rows = 1 + pickerCount;
-    if(IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S)) {
+    // letras/Enter/Esc/Backspace pertencem ao campo enquanto ele esta focado
+    const bool typing = SearchBox_Focused(&pickSearch);
+    if(SearchBox_Update(&pickSearch)) Picker_ApplyFilter();
+
+    int rows = 1 + pickShownCount;
+    if(IsKeyPressed(KEY_DOWN) || (!typing && IsKeyPressed(KEY_S))) {
         pickerSel++;
         if(pickerSel >= rows) pickerSel = 0;
     }
-    if(IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W)) {
+    if(IsKeyPressed(KEY_UP) || (!typing && IsKeyPressed(KEY_W))) {
         pickerSel--;
         if(pickerSel < 0) pickerSel = rows - 1;
     }
-    if(IsKeyPressed(KEY_R))
+    const float wheel = GetMouseWheelMove();
+    if(wheel != 0.0f) {
+        pickerSel += wheel > 0.0f ? -1 : 1;
+        if(pickerSel < 0) pickerSel = 0;
+        if(pickerSel >= rows) pickerSel = rows - 1;
+    }
+    if(!typing && IsKeyPressed(KEY_R))
         Picker_Refresh();
-    if(IsKeyPressed(KEY_N))
+    if(!typing && IsKeyPressed(KEY_N))
         Picker_NewSong();
-    if(IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_BACKSPACE)) {
+    Picker_StreamIcons();
+    if(!typing && (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_BACKSPACE))) {
         RayGame_ResetMusic();
         RayGame_ToggleMusic(1);
         MenuState_SetScene();
         return;
     }
-    if(IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_ENTER)) {
+    if(!typing && (IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_ENTER))) {
         Picker_OpenSelected();
         return;
     }
     // clique: 1o seleciona, 2o abre (OPEN ao lado da musica)
-    if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && ceDlg == DLG_NONE) {
+    if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && ceDlg == DLG_NONE &&
+       !CheckCollisionPointRec(EdMouseWorld(), pickSearch.bounds)) {
         Vector2 m = EdMouseWorld();
         for(int i = 0; i < rows; i++) {
             int fs = (i == 0) ? 40 : 56;
             float y = 720 / 2 + ((float)i - pickerOffset) * (10 + fs);
-            if(m.x >= 150 && m.x <= 1100 && m.y >= y - 5 && m.y <= y + fs) {
+            if(m.x >= 60 && m.x <= 1100 && m.y >= y - 5 && m.y <= y + fs) {
                 if(pickerSel == i)
                     Picker_OpenSelected();
                 else

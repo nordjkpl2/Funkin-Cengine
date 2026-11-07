@@ -225,13 +225,49 @@ char StageAsset_Exists(const char* name) {
     return 0;
 }
 
+// Stage de cada musica, lido do disco uma vez por Picker_Refresh (0 = nao lido, 1 = tem, 2 = sem).
+static char (*songStage)[SONG_NAME_MAX];
+static unsigned char* songStageState;
+static int songStageCap;
+
+void StageList_Invalidate(void) {
+    free(songStage);
+    free(songStageState);
+    songStage = NULL;
+    songStageState = NULL;
+    songStageCap = 0;
+}
+
 void StageList_Scan(void) {
     stageCount = 0;
     strcpy(stageNames[stageCount++], "__not_have_a_stage"); // primeira opcao: sem stage
+    if(songStageCap != pickerCount) {
+        StageList_Invalidate();
+        if(pickerCount > 0) {
+            songStage = calloc((size_t)pickerCount, sizeof(*songStage));
+            songStageState = calloc((size_t)pickerCount, 1);
+            if(songStage != NULL && songStageState != NULL)
+                songStageCap = pickerCount;
+            else
+                StageList_Invalidate();
+        }
+    }
     for(int i = 0; i < pickerCount && stageCount < 32; i++) {
-        char st[SONG_NAME_MAX] = {0};
-        if(!StageOfDir(pickerSongs[i].dir, st) || st[0] == 0)
+        char stLocal[SONG_NAME_MAX] = {0};
+        char* st = stLocal;
+        if(songStageCap == pickerCount) {
+            if(songStageState[i] == 0) {
+                char tmp[SONG_NAME_MAX] = {0};
+                const char ok = StageOfDir(pickerSongs[i].dir, tmp) && tmp[0] != 0;
+                if(ok) memcpy(songStage[i], tmp, SONG_NAME_MAX);
+                songStageState[i] = ok ? 1 : 2;
+            }
+            if(songStageState[i] != 1)
+                continue;
+            st = songStage[i];
+        } else if(!StageOfDir(pickerSongs[i].dir, stLocal) || stLocal[0] == 0) {
             continue;
+        }
         if(!StageAsset_Exists(st) && !StageFileForSong_Exists(st, pickerSongs[i].dir))
             continue;
         char dup = 0;
@@ -373,7 +409,8 @@ static void NoteSkinList_ScanDir(const char* notesDir) {
     UnloadDirectoryFiles(list);
 }
 
-/* Skins no formato do jogo: <pasta>/NOTE_<nome>_assets.png + .xml (ou .animset). */
+/* Skins em <pasta>/: "NOTE_<nome>_assets" (nome = <nome>) ou, no formato Psych (arrowSkin), qualquer
+   "<X>_assets" (nome = "@<X>_assets"), sempre .png + .xml (ou .animset). */
 static void NoteSkinList_ScanAssets(const char* imagesDir) {
     if(!DirectoryExists(imagesDir))
         return;
@@ -385,21 +422,31 @@ static void NoteSkinList_ScanAssets(const char* imagesDir) {
         const char* b = (s1 > s2) ? s1 : s2;
         b = (b != NULL) ? b + 1 : p;
         const size_t len = strlen(b);
-        static const char pre[] = "NOTE_", suf[] = "_assets.png";
-        if(len <= sizeof(pre) - 1 + sizeof(suf) - 1 || strncmp(b, pre, sizeof(pre) - 1) != 0 ||
-           strcmp(b + len - (sizeof(suf) - 1), suf) != 0)
+        static const char suf[] = "_assets.png", pre[] = "NOTE";
+        const size_t sl = sizeof(suf) - 1;
+        if(len <= sl || strcmp(b + len - sl, suf) != 0)
             continue;
-        const size_t nlen = len - (sizeof(pre) - 1) - (sizeof(suf) - 1);
-        if(nlen > SONG_NAME_MAX - 1)
+        const size_t baseLen = len - 4;   // sem ".png"
+        char base[SONG_NAME_MAX];
+        if(baseLen > SONG_NAME_MAX - 2)
             continue;
+        memcpy(base, b, baseLen);
+        base[baseLen] = 0;
         char name[SONG_NAME_MAX];
-        memcpy(name, b + sizeof(pre) - 1, nlen);
-        name[nlen] = 0;
+        if(strncmp(base, "NOTE_", 5) == 0) {
+            if(baseLen <= 5 + 7)   // "NOTE_assets" (skin padrao) nao entra
+                continue;
+            snprintf(name, sizeof(name), "%.*s", (int)(baseLen - 5 - 7), base + 5);
+        } else if(strncmp(base, pre, sizeof(pre) - 1) == 0 && baseLen == sizeof(pre) - 1 + 7) {
+            continue;
+        } else {
+            snprintf(name, sizeof(name), "@%s", base);
+        }
         char fp[300];
-        snprintf(fp, sizeof(fp), "%s/NOTE_%s_assets.xml", imagesDir, name);
+        snprintf(fp, sizeof(fp), "%s/%s.xml", imagesDir, base);
         char ok = FileExists(fp);
         if(!ok) {
-            snprintf(fp, sizeof(fp), "%s/NOTE_%s_assets.animset", imagesDir, name);
+            snprintf(fp, sizeof(fp), "%s/%s.animset", imagesDir, base);
             ok = FileExists(fp);
         }
         if(!ok)
@@ -408,11 +455,17 @@ static void NoteSkinList_ScanAssets(const char* imagesDir) {
         for(int k = 0; k < skinCount && !dup; k++)
             dup = strcmp(skinNames[k], name) == 0;
         if(!dup) {
-            memcpy(skinNames[skinCount], name, nlen + 1);
+            snprintf(skinNames[skinCount], SONG_NAME_MAX, "%s", name);
             skinCount++;
         }
     }
     UnloadDirectoryFiles(list);
+}
+
+/* Skin das notas na previa do editor (vazio = padrao). "@x" = arrowSkin do Psych. */
+void Editor_ApplyNoteSkin(const char* name, const char* songDir) {
+    Note_SetCurrentSkin((name != NULL && name[0] != 0) ? Cache_GetNoteSkinPtr(name, songDir) : NULL);
+    EdArrows_Reset();   // as notas da grade copiam a skin: refaz com a nova
 }
 
 void NoteSkinList_Scan(void) {

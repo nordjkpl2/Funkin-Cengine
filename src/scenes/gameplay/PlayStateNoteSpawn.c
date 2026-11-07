@@ -62,7 +62,14 @@ void PlayStateNoteSpawn_Load(const Song* song) {
     for (size_t i = 0; i < song->sectionCount; i++)
         noteCount += song->sections[i].noteCount;
 
+    notes = NULL;
+    if (noteCount == 0) return;
+
     notes = malloc(sizeof(Note) * noteCount);
+    if (notes == NULL) {
+        noteCount = 0;
+        return;
+    }
     size_t noteIndex = 0;
 
     for (size_t i = 0; i < song->sectionCount; i++) {
@@ -136,9 +143,33 @@ static void DrawSustainClipped(const StrumNote* strum, float k) {
         Render_DrawAnimatedObject(&end);
 }
 
-/* Posiciona, anima, processa hold/miss e desenha o sustain da nota. */
-static void DrawSustain(Note* note, const StrumNote* strum, const PlayStateNoteView* view,
-                        const char* holdDown, float scrollSpeed, float endHeight, char fullyAbove) {
+/* Logica do sustain (hold/miss). Sem desenho: roda no Update. */
+static void UpdateSustain(Note* note, const PlayStateNoteView* view, const char* holdDown) {
+    if (note->missed) return;
+
+    const char shouldHold = Note_ShouldHold(note, view->time);
+
+    if (!note->mustHit) {
+        if (shouldHold) events.opponentHold();
+    }
+    else if (gameOptions.botplay) {
+        if (shouldHold) events.botHold();
+    }
+    else if (!note->pressed) {
+        return;
+    }
+    else if (!view->paused && shouldHold) {
+        const float tailLeft = (note->time + note->length) - view->time;
+        if (!holdDown[note->id] && tailLeft > 0.12f)
+            events.miss(note);
+        else
+            events.playerHold();
+    }
+}
+
+/* Posiciona, anima e desenha o sustain da nota (so le o estado). */
+static void DrawSustain(const Note* note, const StrumNote* strum, float endHeight,
+                        float scrollSpeed, char fullyAbove) {
     // Middlescroll: sustain do oponente acompanha a escala menor do receptor.
     const float k = (gameOptions.scroll == 2 && !note->mustHit) ? (0.4f / NOTE_SCALE) : 1.0f;
 
@@ -161,26 +192,10 @@ static void DrawSustain(Note* note, const StrumNote* strum, const PlayStateNoteV
         return;
     }
 
-    const char shouldHold = Note_ShouldHold(note, view->time);
-
-    if (!note->mustHit) {
-        if (shouldHold) events.opponentHold();
-    }
-    else if (gameOptions.botplay) {
-        if (shouldHold) events.botHold();
-    }
-    else if (!note->pressed) {
+    // Jogador ainda nao acertou a cabeca: sustain inteiro, sem corte.
+    if (note->mustHit && !gameOptions.botplay && !note->pressed) {
         DrawSustainFull(fullyAbove);
         return;
-    }
-    else if (!view->paused && shouldHold) {
-        const float tailLeft = (note->time + note->length) - view->time;
-        if (!holdDown[note->id] && tailLeft > 0.12f) {
-            events.miss(note);
-            DrawSustainFull(fullyAbove);
-            return;
-        }
-        events.playerHold();
     }
 
     DrawSustainClipped(strum, k);
@@ -197,6 +212,47 @@ static void CullPassedNotes(float time, float cullTimeThreshold) {
     }
 }
 
+/* Culling + hits automaticos + hold/miss. Sem desenho; roda no Update, depois do input. */
+void PlayStateNoteSpawn_Update(const PlayStateNoteView* view) {
+    const float time = view->time;
+    const float scrollSpeed = 450.0f * view->songSpeed;
+    const float cutoffTime = time + (900.0f / scrollSpeed);
+
+    char holdDown[4];
+    for (int k = 0; k < 4; k++)
+        holdDown[k] = gameOptions.botplay || IsKeyDown(game_scheme_keys[gameOptions.scheme][k]);
+
+    CullPassedNotes(time, 400.0f / scrollSpeed);
+
+    for (size_t i = firstNote; i < noteCount; i++) {
+        Note* note = notes + i;
+
+        if (note->id < 0 || note->id > 3)
+            continue;
+
+        if (note->time > cutoffTime)
+            break;
+
+        // Oponente e botplay acertam exatamente no tempo da nota.
+        if (!note->pressed && time >= note->time) {
+            if (!note->mustHit) {
+                note->pressed = 1;
+                events.opponentHit(note);
+            } else if (gameOptions.botplay) {
+                note->pressed = 1;
+                events.botHit(note);
+            }
+        }
+
+        if (note->length > 0)
+            UpdateSustain(note, view, holdDown);
+
+        if (!note->pressed && !note->missed && Note_TooLate(note, time))
+            events.miss(note);
+    }
+}
+
+/* So desenha o estado atual das notas (cabeca, sustain e ponta). Dentro da camera do HUD. */
 void PlayStateNoteSpawn_Draw(const PlayStateNoteView* view) {
     rlSetBlendFactorsSeparate(0x0302, 0x0303, 1, 0x0303, 0x8006, 0x8006);
     BeginBlendMode(BLEND_CUSTOM_SEPARATE);
@@ -207,14 +263,8 @@ void PlayStateNoteSpawn_Draw(const PlayStateNoteView* view) {
     const float cutoffTime = time + (900.0f / scrollSpeed);
     const float endHeight = fmaxf(END_SEGMENT_H, 18.0f * view->songSpeed);
 
-    char holdDown[4];
-    for (int k = 0; k < 4; k++)
-        holdDown[k] = gameOptions.botplay || IsKeyDown(game_scheme_keys[gameOptions.scheme][k]);
-
-    CullPassedNotes(time, 400.0f / scrollSpeed);
-
     for (size_t i = firstNote; i < noteCount; i++) {
-        Note* note = notes + i;
+        const Note* note = notes + i;
 
         if (note->id < 0 || note->id > 3)
             continue;
@@ -235,24 +285,10 @@ void PlayStateNoteSpawn_Draw(const PlayStateNoteView* view) {
 
         SetAnimIfChanged(&renderNote, Note_Animation(note->id));
 
-        // Oponente e botplay acertam exatamente no tempo da nota.
-        if (!note->pressed && time >= note->time) {
-            if (!note->mustHit) {
-                note->pressed = 1;
-                events.opponentHit(note);
-            } else if (gameOptions.botplay) {
-                note->pressed = 1;
-                events.botHit(note);
-            }
-        }
-
         if (note->length > 0)
-            DrawSustain(note, strum, view, holdDown, scrollSpeed, endHeight, fullyAbove);
+            DrawSustain(note, strum, endHeight, scrollSpeed, fullyAbove);
 
         if (!note->pressed) {
-            if (!note->missed && Note_TooLate(note, time))
-                events.miss(note);
-
             renderNote.scaleX = renderNote.scaleY = HeadScale(note);
             Render_DrawAnimatedObject(&renderNote);
         }

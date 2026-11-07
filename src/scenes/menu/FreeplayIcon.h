@@ -14,6 +14,10 @@
 void FreeplayIcon_Load(SongEntry* song);
 void FreeplayIcon_Unload(void);
 
+/* Carrega o icone de uma musica sem mexer no icone unico (uso: lista do Chart Editor).
+ * id 0 = nada achado. Quem chama faz UnloadTexture. */
+Texture2D FreeplayIcon_Resolve(SongEntry* song);
+
 char FreeplayIcon_IsLoaded(void);
 Texture2D FreeplayIcon_Texture(void);
 

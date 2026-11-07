@@ -78,8 +78,11 @@ static void UpdateSongDisplayName(const char* songDir) {
 }
 
 void PlayStateText_Init(const char* songDir) {
-    vcrFont = LoadFontEx("assets/fonts/vcr.ttf", 32, 0, 0);
-    SetTextureFilter(vcrFont.texture, TEXTURE_FILTER_BILINEAR);
+    // A fonte fica carregada entre as musicas (rasterizar o TTF a cada musica era desperdicio).
+    if (vcrFont.texture.id == 0) {
+        vcrFont = LoadFontEx("assets/fonts/vcr.ttf", 32, 0, 0);
+        SetTextureFilter(vcrFont.texture, TEXTURE_FILTER_BILINEAR);
+    }
 
     snprintf(scoreBuf, sizeof(scoreBuf), "Score: 0");
     Vector2 ss = MeasureTextEx(vcrFont, scoreBuf, 16, 1);
@@ -97,7 +100,7 @@ void PlayStateText_Init(const char* songDir) {
 }
 
 void PlayStateText_Unload(void) {
-    UnloadFont(vcrFont);
+    // Mantida: reaproveitada pela proxima musica; o SO libera ao fechar o jogo.
 }
 
 void PlayStateText_Reset(void) {

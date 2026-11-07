@@ -30,12 +30,14 @@ char GirlfriendAsset_Exists(const char* name, const char* songDir);
 char StageFileForSong_Exists(const char* name, const char* songDir);
 char StageAsset_Exists(const char* name);
 void StageList_Scan(void);
+void StageList_Invalidate(void); /* chamar quando pickerSongs mudar */
 void CharList_Scan(void);
 #define SKIN_LIST_MAX 128
 extern char skinNames[SKIN_LIST_MAX][SONG_NAME_MAX];
 extern int skinCount;
 extern TxtBox skinBox;
 void NoteSkinList_Scan(void);
+void Editor_ApplyNoteSkin(const char* name, const char* songDir);
 extern TxtBox p1Box;
 extern TxtBox p2Box;
 extern TxtBox gfBox;

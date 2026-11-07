@@ -359,6 +359,9 @@ static char Song_ParseJSON(Song *song, const char *jsonPath)
     Song_CopyString(parsed.noteSkin,
         yyjson_is_str(yyjson_obj_get(songObject, "noteSkin")) ?
         yyjson_get_str(yyjson_obj_get(songObject, "noteSkin")) : NULL, "");
+    Song_CopyString(parsed.arrowSkin,
+        yyjson_is_str(yyjson_obj_get(songObject, "arrowSkin")) ?
+        yyjson_get_str(yyjson_obj_get(songObject, "arrowSkin")) : NULL, "");
 
     parsed.bpm = topBpm;
     parsed.speed = speed;

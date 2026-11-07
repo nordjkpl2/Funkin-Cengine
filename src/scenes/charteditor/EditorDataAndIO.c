@@ -312,6 +312,13 @@ char EdChart_LoadJSON(EdChart* c, const char* jsonPath, const char* dir, const c
     if(yyjson_is_str(j)) strncpy(tmp.noteSkin, yyjson_get_str(j), sizeof(tmp.noteSkin) - 1);
     else
         tmp.noteSkin[0] = 0;
+    // Psych: arrowSkin (imagem em images/) vira "@<imagem>" no nosso noteSkin
+    if(tmp.noteSkin[0] == 0) {
+        j = yyjson_obj_get(js, "arrowSkin");
+        if(yyjson_is_str(j) && yyjson_get_str(j)[0] != 0 && strcmp(yyjson_get_str(j), "NOTE_assets") != 0 &&
+           strlen(yyjson_get_str(j)) + 1 < sizeof(tmp.noteSkin))
+            snprintf(tmp.noteSkin, sizeof(tmp.noteSkin), "@%s", yyjson_get_str(j));
+    }
 
     int nsec = (int)yyjson_arr_size(jnotes);
     if(nsec > 0) {
@@ -404,6 +411,9 @@ static char EdChart_LoadBinary(EdChart* c, const char* binPath, const char* dir,
     strncpy(tmp.stage, s.stage, sizeof(tmp.stage) - 1);
     strncpy(tmp.gf, s.gfVersion, sizeof(tmp.gf) - 1);
     strncpy(tmp.noteSkin, s.noteSkin, sizeof(tmp.noteSkin) - 1);
+    if(tmp.noteSkin[0] == 0 && s.arrowSkin[0] != 0 && strcmp(s.arrowSkin, "NOTE_assets") != 0 &&
+       strlen(s.arrowSkin) + 1 < sizeof(tmp.noteSkin))
+        snprintf(tmp.noteSkin, sizeof(tmp.noteSkin), "@%s", s.arrowSkin);
     tmp.speed = (s.speed > 0) ? s.speed : 1.0f;
     tmp.bpm = (s.sectionCount > 0) ? s.sections[0].bpm : 100.0f;
 
@@ -547,6 +557,8 @@ static char EdChart_SaveEx(const EdChart* c, char compressed) {
         yyjson_mut_obj_add_str(doc, js, "gfVersion", c->gf[0] != 0 ? c->gf : "gf");
     if(!compressed || c->noteSkin[0] != 0)
         yyjson_mut_obj_add_str(doc, js, "noteSkin", c->noteSkin);
+    if(c->noteSkin[0] == '@')   // devolve ao formato Psych para nao perder o arrowSkin
+        yyjson_mut_obj_add_str(doc, js, "arrowSkin", c->noteSkin + 1);
 
     yyjson_mut_val* jnotes = yyjson_mut_arr(doc);
     yyjson_mut_obj_add_val(doc, js, "notes", jnotes);

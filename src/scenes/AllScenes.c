@@ -103,31 +103,39 @@ static bool ExtractModRoot(const char* songDir, char* out, size_t capacity) {
     return ModPath_Root(songDir, out, capacity);
 }
 
-/* Procura NOTE_<skin>_assets.(xml|animset) + .png: mod primeiro, depois assets base. */
-static bool NoteSkin_FindFiles(const char* skinName, const char* songDir, CachedNoteSkin* skin) {
+/* Nome-base do arquivo (sem extensao, relativo a images/): "NOTE_<skin>_assets" ou, com "@" na
+   frente, o caminho do arrowSkin do Psych. false = nome invalido. */
+static bool SkinBaseName(const char* skinName, char* out, size_t capacity) {
+    if (skinName[0] == '@') {
+        const char* rel = skinName + 1;
+        if (rel[0] == 0 || rel[0] == '/' || rel[0] == '\\' || strstr(rel, "..") || strchr(rel, ':')) return false;
+        return snprintf(out, capacity, "%s", rel) < (int)capacity;
+    }
+    return snprintf(out, capacity, "NOTE_%s_assets", skinName) < (int)capacity;
+}
+
+/* <raiz>/images/<base>.(xml|animset) + .png */
+static bool TrySkinRoot(const char* root, const char* base, CachedNoteSkin* skin) {
     char animationPath[SKIN_PATH_MAX], texturePath[SKIN_PATH_MAX];
+    (void)snprintf(texturePath, sizeof(texturePath), "%s/images/%s.png", root, base);
+    (void)snprintf(animationPath, sizeof(animationPath), "%s/images/%s.xml", root, base);
+    if (TrySkinPaths(animationPath, texturePath, skin)) return true;
+    (void)snprintf(animationPath, sizeof(animationPath), "%s/images/%s.animset", root, base);
+    return TrySkinPaths(animationPath, texturePath, skin);
+}
+
+/* Procura a skin: mod da musica, depois assets base, depois qualquer mod ativo. */
+static bool NoteSkin_FindFiles(const char* skinName, const char* songDir, CachedNoteSkin* skin) {
+    char base[SKIN_PATH_MAX];
     char modRoot[SKIN_PATH_MAX] = {0};
 
-    if (ExtractModRoot(songDir, modRoot, sizeof(modRoot))) {
-        (void)snprintf(animationPath, sizeof(animationPath), "%s/images/NOTE_%s_assets.xml", modRoot, skinName);
-        (void)snprintf(texturePath, sizeof(texturePath), "%s/images/NOTE_%s_assets.png", modRoot, skinName);
-        if (TrySkinPaths(animationPath, texturePath, skin)) return true;
-    }
+    if (!SkinBaseName(skinName, base, sizeof(base))) return false;
 
-    (void)snprintf(animationPath, sizeof(animationPath), "assets/images/NOTE_%s_assets.xml", skinName);
-    (void)snprintf(texturePath, sizeof(texturePath), "assets/images/NOTE_%s_assets.png", skinName);
-    if (TrySkinPaths(animationPath, texturePath, skin)) return true;
+    if (ExtractModRoot(songDir, modRoot, sizeof(modRoot)) && TrySkinRoot(modRoot, base, skin)) return true;
+    if (TrySkinRoot("assets", base, skin)) return true;
 
-    (void)snprintf(animationPath, sizeof(animationPath), "assets/images/NOTE_%s_assets.animset", skinName);
-    if (TrySkinPaths(animationPath, texturePath, skin)) return true;
-
-    /* Por ultimo: qualquer mod ativo que tenha a skin (musica normal ou de outro mod). */
-    for (int i = 0; i < ModList_Count(); i++) {
-        if (!ModList_Enabled(i)) continue;
-        (void)snprintf(animationPath, sizeof(animationPath), "%s/images/NOTE_%s_assets.xml", ModList_Root(i), skinName);
-        (void)snprintf(texturePath, sizeof(texturePath), "%s/images/NOTE_%s_assets.png", ModList_Root(i), skinName);
-        if (TrySkinPaths(animationPath, texturePath, skin)) return true;
-    }
+    for (int i = 0; i < ModList_Count(); i++)
+        if (ModList_Enabled(i) && TrySkinRoot(ModList_Root(i), base, skin)) return true;
     return false;
 }
 

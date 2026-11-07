@@ -63,6 +63,11 @@ void EdArrows_Init(void) {
     edArrowsReady = 1;
 }
 
+void EdArrows_Reset(void) {
+    edArrowsReady = 0;
+    EdArrows_Init();
+}
+
 float EdPxPerMs(void) {
     return (GRID_Y1 - GRID_Y0) / (float)VIEW_MS;
 }
