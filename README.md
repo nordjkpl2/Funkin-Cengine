@@ -9,12 +9,12 @@
 
 ```text
 Graphic
-📐 Raylib v5.5 (include rlgl55) - 📐 Raymath v2.0 - ⚙️ OpenGl 3.30
+📐 Raylib v5.5 (include rlgl55) - 📐 Raymath v2.0 by Ramon Santamaria - ⚙️ OpenGl 3.30
 ```
 
 ```text
 Read Files
-📦 2020 yyjson - 📦 2014 yxml
+📦 2020 yyjson by YaoYuan - 📦 2014 yxml by Yoran Heling
 ```
 
 ```text
