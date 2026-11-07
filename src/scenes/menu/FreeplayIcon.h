@@ -7,7 +7,7 @@
 #define FREEPLAYICON_H
 
 #include "raylib.h"
-#include "scenes/SongList.h"
+#include "data/SongList.h"
 
 /* Resolve e carrega o icone da musica (descarrega o anterior). NULL so descarrega.
  * Chame apenas quando a selecao mudar: a busca le disco. Falhas tambem ficam em cache. */

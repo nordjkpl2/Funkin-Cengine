@@ -5,8 +5,8 @@
  */
 
 #include "std.h"
-#include "scenes/Song.h"
-#include "scenes/SongList.h"
+#include "data/Song.h"
+#include "data/SongList.h"
 #include "yyjson.h"
 
 #include <stdint.h>

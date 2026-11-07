@@ -10,8 +10,8 @@
 #include <string.h>
 #include <stdbool.h>
 #include "Game.h"
-#include "scenes/Song.h"
-#include "scenes/ModPath.h"
+#include "data/Song.h"
+#include "core/ModPath.h"
 
 #define NOTE_SKIN_MAX 16
 #define NOTE_SKIN_NAME_MAX (SONG_NAME_MAX - 1)

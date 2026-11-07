@@ -10,7 +10,7 @@
  */
 
 #include "std.h"
-#include "scenes/Song.h"
+#include "data/Song.h"
 #include "yyjson.h"
 #include "Log.h"
 

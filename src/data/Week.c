@@ -1,7 +1,7 @@
 /* // * Friday Night Funkin´ c engine (c) 2026 nordjkpl - Oct 19 2026 */
 #include "std.h"
-#include "scenes/Week.h"
-#include "scenes/SongList.h"
+#include "data/Week.h"
+#include "data/SongList.h"
 #include "yyjson.h"
 
 static const char* DIFFS[3] = {"easy","normal","hard"};

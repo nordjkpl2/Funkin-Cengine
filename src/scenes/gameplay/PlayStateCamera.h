@@ -6,7 +6,7 @@
 #ifndef PLAYSTATE_CAMERA_H
 #define PLAYSTATE_CAMERA_H
 
-#include "scenes/Character.h"
+#include "logic/Character.h"
 
 /* Estado inicial das duas cameras. Chamar em todo Create. */
 void PlayStateCamera_Reset(Character* initialTarget);

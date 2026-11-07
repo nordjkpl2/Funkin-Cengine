@@ -6,9 +6,9 @@
  * entre os modulos por callbacks.
  */
 #include "scenes/AllScenes.h"
-#include "scenes/Character.h"
-#include "scenes/Note.h"
-#include "scenes/Song.h"
+#include "logic/Character.h"
+#include "logic/Note.h"
+#include "data/Song.h"
 #include "scenes/gameplay/PlayStateStage.h"
 #include "scenes/gameplay/PlayStateHealth.h"
 #include "scenes/gameplay/PlayStateAudio.h"
@@ -23,8 +23,8 @@
 #include <math.h>
 #include "Game.h"
 #include "GameData.h"
-#include "scenes/BeatManager.h"
-#include "scenes/Week.h"
+#include "logic/BeatManager.h"
+#include "data/Week.h"
 #include "raymath.h"
 
 #define SCREEN_W 1280.0f

@@ -9,7 +9,7 @@
 #include <math.h>
 #include <stdbool.h>
 #include "Game.h"
-#include "scenes/BeatManager.h"
+#include "logic/BeatManager.h"
 
 #define TITLE_FADE_DURATION 2.0f
 #define TITLE_TRANSITION_TIME 3.0f

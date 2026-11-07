@@ -10,7 +10,7 @@
  */
 
 #include "std.h"
-#include "scenes/ModImport.h"
+#include "data/ModImport.h"
 #include "yyjson.h"
 
 #include <ctype.h>

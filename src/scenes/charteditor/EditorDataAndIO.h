@@ -6,7 +6,7 @@
 
 #include "std.h"
 #include "Render.h"
-#include "scenes/Song.h"
+#include "data/Song.h"
 
 typedef struct {
     float time; // ms

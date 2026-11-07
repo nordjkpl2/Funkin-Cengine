@@ -6,7 +6,7 @@
 
 #include "std.h"
 #include "Render.h"
-#include "scenes/Song.h"
+#include "data/Song.h"
 
 // ---------- grade ----------
 #define GRID_X0 40.0f

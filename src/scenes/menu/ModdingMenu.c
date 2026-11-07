@@ -7,7 +7,7 @@
  */
 
 #include "scenes/AllScenes.h"
-#include "scenes/ModImport.h"
+#include "data/ModImport.h"
 
 #include <stdio.h>
 #include <string.h>

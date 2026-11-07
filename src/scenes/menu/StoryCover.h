@@ -11,7 +11,7 @@
 #define STORYCOVER_H
 
 #include "raylib.h"
-#include "scenes/Week.h"
+#include "data/Week.h"
 
 /* Nova lista de weeks: descarrega a capa e zera o cache de caminhos. */
 void StoryCover_Reset(int weekCount);

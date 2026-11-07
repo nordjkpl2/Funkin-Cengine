@@ -11,9 +11,9 @@
  * Todo arquivo e procurado primeiro no mod da musica e depois em assets/.
  */
 
-#include "scenes/Character.h"
-#include "scenes/ModPath.h"
-#include "scenes/AnimationSets_XML.h"
+#include "logic/Character.h"
+#include "core/ModPath.h"
+#include "logic/AnimationSets_XML.h"
 #include "Log.h"
 #include "yyjson.h"
 #include "yxml.h"

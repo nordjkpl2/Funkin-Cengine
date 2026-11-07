@@ -8,7 +8,7 @@
  */
 
 #include "scenes/AllScenes.h"
-#include "scenes/SongList.h"
+#include "data/SongList.h"
 #include "scenes/menu/StoryCover.h"
 
 #include <math.h>
@@ -16,7 +16,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "Game.h"
-#include "scenes/Week.h"
+#include "data/Week.h"
 
 #define SCREEN_W 1280
 #define SCREEN_H 720

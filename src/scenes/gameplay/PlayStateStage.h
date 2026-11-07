@@ -6,7 +6,7 @@
 #ifndef PLAYSTATE_STAGE_H
 #define PLAYSTATE_STAGE_H
 
-#include "scenes/Character.h"
+#include "logic/Character.h"
 
 typedef struct {
     RayGraphicObject* objects;

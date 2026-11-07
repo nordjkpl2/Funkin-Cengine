@@ -4,7 +4,7 @@
 #define NOTE_H
 
 #include "Render.h"
-#include "scenes/Song.h"
+#include "data/Song.h"
 
 typedef struct {
     RayAnimatedObject object;  

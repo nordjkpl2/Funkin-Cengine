@@ -6,8 +6,8 @@
  */
 
 #include "std.h"
-#include "scenes/Stage.h"
-#include "scenes/ModPath.h"
+#include "logic/Stage.h"
+#include "core/ModPath.h"
 
 #include <ctype.h>
 #include <errno.h>

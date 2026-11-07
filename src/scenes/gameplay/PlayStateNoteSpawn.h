@@ -10,8 +10,8 @@
 #define PLAYSTATE_NOTESPAWN_H
 
 #include "scenes/AllScenes.h"
-#include "scenes/Note.h"
-#include "scenes/Song.h"
+#include "logic/Note.h"
+#include "data/Song.h"
 
 typedef struct {
     void (*opponentHit)(Note* note);            /* oponente acertou a nota */

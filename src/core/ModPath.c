@@ -4,7 +4,7 @@
  * Sem estado global e sem raylib: seguro para usar em outra thread.
  */
 
-#include "scenes/ModPath.h"
+#include "core/ModPath.h"
 #include <stdio.h>
 #include <string.h>
 

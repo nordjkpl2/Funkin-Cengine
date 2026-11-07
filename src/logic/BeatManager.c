@@ -1,5 +1,5 @@
 /* //p Friday Night Funkin' C Engine (c) 2026 nordjkpl outd day30 of10 2026*/
-#include "scenes/BeatManager.h"
+#include "logic/BeatManager.h"
 #include <math.h>
 #include <stddef.h>
 

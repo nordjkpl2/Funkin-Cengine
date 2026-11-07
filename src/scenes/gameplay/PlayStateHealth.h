@@ -6,7 +6,7 @@
 #ifndef PLAYSTATE_HEALTH_H
 #define PLAYSTATE_HEALTH_H
 
-#include "scenes/Character.h"
+#include "logic/Character.h"
 
 /* Posicao e cores padrao da barra. Chamar uma vez ao criar a cena. */
 /* top = 1 no downscroll: barra no topo, com o mesmo espacamento da base. */

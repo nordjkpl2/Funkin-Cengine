@@ -1,12 +1,12 @@
 /* // * Friday Night Funkin´ c engine (c) 2026 nordjkpl */
 /* Chart Editor: carrega e solta os icones de vida do oponente e do jogador. */
 #include"scenes/AllScenes.h"
-#include"scenes/Song.h"
-#include"scenes/SongList.h"
-#include "scenes/ModPath.h"
-#include "scenes/Character.h"
-#include"scenes/Stage.h"
-#include"scenes/Note.h"
+#include"data/Song.h"
+#include"data/SongList.h"
+#include "core/ModPath.h"
+#include "logic/Character.h"
+#include"logic/Stage.h"
+#include"logic/Note.h"
 #include"yyjson.h"
 #include "Game.h"
 #include "GameData.h"

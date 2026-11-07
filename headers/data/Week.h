@@ -3,7 +3,7 @@
 #ifndef WEEK_H
 #define WEEK_H
 
-#include "scenes/Song.h"
+#include "data/Song.h"
 #define WEEK_MAX_SONGS 30
 
 typedef struct {

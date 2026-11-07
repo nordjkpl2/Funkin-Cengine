@@ -5,8 +5,8 @@
  */
 
 #include "scenes/gameplay/PlayStateStage.h"
-#include "scenes/Stage.h"
-#include "scenes/ModPath.h"
+#include "logic/Stage.h"
+#include "core/ModPath.h"
 #include "Log.h"
 #include <math.h>
 #include <stdlib.h>

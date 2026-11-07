@@ -2,7 +2,7 @@
 #ifndef SONGLIST_H
 #define SONGLIST_H
 
-#include "scenes/Song.h"
+#include "data/Song.h"
 
 typedef struct {
     char name[64];

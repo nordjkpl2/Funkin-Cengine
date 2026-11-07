@@ -6,7 +6,7 @@
  * The parser is kept separate from this translation unit on purpose.
  */
 
-#include "scenes/AnimationSets_XML.h"
+#include "logic/AnimationSets_XML.h"
 #include "Log.h"
 #include "yxml.h"
 
