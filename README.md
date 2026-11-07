@@ -2,7 +2,7 @@
 
 # 👒 Friday Night Funkin´ — Cengine
 
-> Made for Make all Your 2d game or mods need, All Friday Night Funkin' assets belong to their respective owners.
+> Performance, All Friday Night Funkin' assets belong to their respective owners.
 
 <details>
 <summary><b>——Libs</b></summary>
