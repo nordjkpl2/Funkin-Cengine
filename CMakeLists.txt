@@ -94,9 +94,11 @@ target_include_directories(FNF_C_ENGINE PRIVATE
 target_compile_options(FNF_C_ENGINE PRIVATE
     ${FNF_COMPILE_FLAGS}
 )
-# (Wuffs) sem lto
+# (Wuffs) sem lto (fito)
 set_source_files_properties("${CMAKE_CURRENT_SOURCE_DIR}/src/rendering/cpu/PngDecode.c"
-    PROPERTIES COMPILE_OPTIONS "-O3;-fno-lto;-fuse-ld=lld;-ffunction-sections;-fdata-sections;-funroll-loops;-fomit-frame-pointer;-fno-math-errno;-fno-common;-DNDEBUG")
+    PROPERTIES COMPILE_OPTIONS "-O3;-fno-lto;-fuse-ld=lld;-ffunction-sections;-fdata-sections;-funroll-loops;-fomit-frame-pointer;-fno-math-errno;-fno-stack-protector;-fno-common;-DNDEBUG")
+set_source_files_properties("${CMAKE_CURRENT_SOURCE_DIR}/lib/wuffs-unsupported-snapshot.c"
+    PROPERTIES COMPILE_OPTIONS "-Os;-fno-lto;-fuse-ld=lld;-ffunction-sections;-fdata-sections;-funroll-loops;-fomit-frame-pointer;-fno-math-errno;-fno-stack-protector;-fno-common;-DNDEBUG")
 # LINKER
 target_link_options(FNF_C_ENGINE PRIVATE
     -Os

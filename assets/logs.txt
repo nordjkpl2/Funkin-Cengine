@@ -45,7 +45,26 @@ LOAD [disregard] init: 0.6 ms, chart: 1.4 ms, sounds: 110.3 ms, characters: 1021
 LOAD [obfuscation] init: 18.7 ms, chart: 23.5 ms, sounds: 108.3 ms, characters: 425.0 ms, stage: 10.0 ms, song audio: 4.3 ms, notes: 0.7 ms, ui: 7.9 ms, warmup: 0.2 ms, (textures on main thread: 458.1 ms) total: 598.6 ms
 [WARN] Stage: imagem nao encontrada: characters/corniexpunged
 LOAD [hydromania-kooled] init: 0.8 ms, chart: 21.2 ms, sounds: 106.6 ms, characters: 444.0 ms, stage: 14.2 ms, song audio: 5.2 ms, notes: 0.9 ms, ui: 7.8 ms, warmup: 0.1 ms, (textures on main thread: 458.3 ms) total: 600.7 ms
-
---- SESSION LOG START ---
 [WARN] Stage: imagem nao encontrada: characters/corniexpunged
 LOAD [hydromania-kooled] init: 18.4 ms, chart: 22.5 ms, sounds: 93.8 ms, characters: 436.1 ms, stage: 13.7 ms, song audio: 1.7 ms, notes: 0.9 ms, ui: 7.9 ms, warmup: 0.2 ms, (textures on main thread: 473.0 ms) total: 595.2 ms
+[WARN] Stage: imagem nao encontrada: characters/corniexpunged
+LOAD [hydromania-kooled] init: 17.4 ms, chart: 22.5 ms, sounds: 104.6 ms, characters: 339.7 ms, stage: 13.8 ms, song audio: 1.8 ms, notes: 0.9 ms, ui: 7.8 ms, warmup: 0.2 ms, (textures on main thread: 375.5 ms) total: 508.7 ms
+LOAD [triklizo-koooled] init: 38.8 ms, chart: 18.3 ms, sounds: 257.0 ms, characters: 301.6 ms, stage: 3.0 ms, song audio: 2.1 ms, notes: 0.5 ms, ui: 21.6 ms, warmup: 0.2 ms, (textures on main thread: 335.4 ms) total: 643.0 ms
+LOAD [macrosm] init: 5.6 ms, chart: 15.6 ms, sounds: 228.2 ms, characters: 361.3 ms, stage: 5.1 ms, song audio: 2.5 ms, notes: 0.2 ms, ui: 12.9 ms, warmup: 0.2 ms, (textures on main thread: 368.0 ms) total: 631.6 ms
+LOAD [apostrophe] init: 31.7 ms, chart: 25.8 ms, sounds: 233.3 ms, characters: 368.6 ms, stage: 3.3 ms, song audio: 2.0 ms, notes: 0.9 ms, ui: 16.7 ms, warmup: 0.2 ms, (textures on main thread: 388.8 ms) total: 682.5 ms
+LOAD [disregard] init: 17.7 ms, chart: 2.0 ms, sounds: 246.4 ms, characters: 522.8 ms, stage: 2.4 ms, song audio: 9.7 ms, notes: 0.2 ms, ui: 8.1 ms, warmup: 0.4 ms, (textures on main thread: 518.9 ms) total: 809.6 ms
+LOAD [astrophobia] init: 0.6 ms, chart: 175.4 ms, sounds: 160.5 ms, characters: 393.4 ms, stage: 9.2 ms, song audio: 1.9 ms, notes: 1.8 ms, ui: 8.0 ms, warmup: 0.1 ms, (textures on main thread: 382.0 ms) total: 751.0 ms
+LOAD [remorse] init: 0.6 ms, chart: 10.6 ms, sounds: 122.7 ms, characters: 376.8 ms, stage: 2.4 ms, song audio: 3.9 ms, notes: 0.1 ms, ui: 7.9 ms, warmup: 0.1 ms, (textures on main thread: 384.8 ms) total: 525.2 ms
+LOAD [no-more] init: 0.6 ms, chart: 7.2 ms, sounds: 120.8 ms, characters: 365.3 ms, stage: 2.4 ms, song audio: 3.9 ms, notes: 0.3 ms, ui: 7.4 ms, warmup: 0.2 ms, (textures on main thread: 372.5 ms) total: 508.1 ms
+LOAD [spatial-abyss] init: 0.6 ms, chart: 14.5 ms, sounds: 119.5 ms, characters: 95.8 ms, stage: 1.9 ms, song audio: 3.9 ms, notes: 0.1 ms, ui: 7.8 ms, warmup: 0.2 ms, (textures on main thread: 103.7 ms) total: 244.2 ms
+[WARN] Icone nao encontrado: 'bf-scared' (usando padrao)
+LOAD [spatial-abyss] init: 0.5 ms, chart: 16.8 ms, sounds: 68.2 ms, characters: 42.9 ms, stage: 1.5 ms, song audio: 1.6 ms, notes: 0.1 ms, ui: 8.9 ms, warmup: 0.2 ms, (textures on main thread: 51.0 ms) total: 140.8 ms
+LOAD [spatial-abyss] init: 0.7 ms, chart: 7.7 ms, sounds: 67.5 ms, characters: 66.2 ms, stage: 1.6 ms, song audio: 1.7 ms, notes: 0.1 ms, ui: 7.9 ms, warmup: 0.2 ms, (textures on main thread: 73.6 ms) total: 153.4 ms
+LOAD [spatial-abyss] init: 0.4 ms, chart: 15.6 ms, sounds: 68.4 ms, characters: 121.2 ms, stage: 2.1 ms, song audio: 1.5 ms, notes: 0.1 ms, ui: 7.8 ms, warmup: 0.2 ms, (textures on main thread: 129.0 ms) total: 217.3 ms
+[WARN] Icone nao encontrado: 'bf-scared' (usando padrao)
+LOAD [spatial-abyss] init: 0.4 ms, chart: 9.5 ms, sounds: 67.6 ms, characters: 28.9 ms, stage: 1.6 ms, song audio: 1.5 ms, notes: 0.1 ms, ui: 8.2 ms, warmup: 0.2 ms, (textures on main thread: 36.6 ms) total: 118.0 ms
+[WARN] Icone nao encontrado: 'bfsad' (usando padrao)
+LOAD [spatial-abyss] init: 0.4 ms, chart: 5.8 ms, sounds: 68.9 ms, characters: 38.5 ms, stage: 1.5 ms, song audio: 1.6 ms, notes: 0.1 ms, ui: 7.8 ms, warmup: 0.2 ms, (textures on main thread: 45.7 ms) total: 124.9 ms
+[WARN] Icone nao encontrado: 'bfsad' (usando padrao)
+LOAD [spatial-abyss] init: 0.6 ms, chart: 0.5 ms, sounds: 58.0 ms, characters: 32.6 ms, stage: 1.4 ms, song audio: 1.7 ms, notes: 0.1 ms, ui: 7.9 ms, warmup: 0.4 ms, (textures on main thread: 39.8 ms) total: 103.2 ms
+LOAD [eons-koooled] init: 0.7 ms, chart: 64.4 ms, sounds: 291.5 ms, characters: 487.2 ms, stage: 9.5 ms, song audio: 2.2 ms, notes: 0.9 ms, ui: 8.4 ms, warmup: 0.2 ms, (textures on main thread: 488.1 ms) total: 865.0 ms

@@ -284,7 +284,7 @@ build CMakeFiles/FNF_C_ENGINE.dir/src/rendering/cpu/ImagePrefetch.c.obj: C_COMPI
 build CMakeFiles/FNF_C_ENGINE.dir/src/rendering/cpu/PngDecode.c.obj: C_COMPILER__FNF_C_ENGINE_unscanned_Release D$:/dev/funkin$ c/src/rendering/cpu/PngDecode.c || cmake_object_order_depends_target_FNF_C_ENGINE
   CONFIG = Release
   DEP_FILE = CMakeFiles\FNF_C_ENGINE.dir\src\rendering\cpu\PngDecode.c.obj.d
-  FLAGS = -Os -DNDEBUG -std=c23 -Os -flto=thin -ffunction-sections -fdata-sections -fmerge-all-constants -funroll-loops -fomit-frame-pointer -fno-math-errno -fno-common -DNDEBUG -DPLATFORM_DESKTOP -DGRAPHICS_API_OPENGL_33 -O3 -fno-lto -fuse-ld=lld -ffunction-sections -fdata-sections -funroll-loops -fomit-frame-pointer -fno-math-errno -fno-common -DNDEBUG
+  FLAGS = -Os -DNDEBUG -std=c23 -Os -flto=thin -ffunction-sections -fdata-sections -fmerge-all-constants -funroll-loops -fomit-frame-pointer -fno-math-errno -fno-common -DNDEBUG -DPLATFORM_DESKTOP -DGRAPHICS_API_OPENGL_33 -O3 -fno-lto -fuse-ld=lld -ffunction-sections -fdata-sections -funroll-loops -fomit-frame-pointer -fno-math-errno -fno-stack-protector -fno-common -DNDEBUG
   INCLUDES = -I"D:/dev/funkin c/headers" -I"D:/dev/funkin c/src" -I"D:/dev/funkin c/lib" -I"D:/dev/funkin c/lib/raylib55/src" -I"D:/dev/funkin c/lib/raylib55/src/external/glfw/include"
   OBJECT_DIR = CMakeFiles\FNF_C_ENGINE.dir
   OBJECT_FILE_DIR = CMakeFiles\FNF_C_ENGINE.dir\src\rendering\cpu

@@ -148,6 +148,13 @@ void PlayStateStage_Prefetch(const char* name, const char* songDir) {
     }
 }
 
+char PlayStateStage_HidesGirlfriend(const char* name, const char* songDir) {
+    char jsonPath[300];
+    StageMeta meta;
+    if (!Stage_FindJson(name, songDir, jsonPath)) return 0;
+    return Stage_LoadJson(jsonPath, &meta) && meta.hideGirlfriend;
+}
+
 // Carrega o stage do mod. Retorna 0 se nao existe (usa o padrao).
 static char LoadModStage(PlayStateStage* stage, const char* name, const char* songDir,
                          Girlfriend* gf, Character* dad, Character* bf) {

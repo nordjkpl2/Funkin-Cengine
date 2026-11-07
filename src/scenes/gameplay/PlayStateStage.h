@@ -30,6 +30,9 @@ void PlayStateStage_Load(PlayStateStage* stage, const char* stageName, const cha
 /* Comeca a decodificar em fundo as imagens do stage (so uma dica; PlayStateStage_Load funciona sem). */
 void PlayStateStage_Prefetch(const char* stageName, const char* songDir);
 
+/* 1 se o stage tem hide_girlfriend (consulta o .json; permite nem carregar a GF). */
+char PlayStateStage_HidesGirlfriend(const char* stageName, const char* songDir);
+
 /* Camadas atras e na frente dos personagens. paused = nao avanca animacoes. */
 void PlayStateStage_DrawBack(PlayStateStage* stage, char paused);
 void PlayStateStage_DrawFront(PlayStateStage* stage, char paused);

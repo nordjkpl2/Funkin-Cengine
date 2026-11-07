@@ -69,6 +69,7 @@ static float popupVelocity;
 // personagens e cenario
 static Girlfriend gf;
 static char gfHidden;
+static char gfLoaded;   // GF carregada nesta musica (descarregar so se sim)
 static Character bf;
 static Character dad;
 static PlayStateStage stage;
@@ -334,8 +335,10 @@ static void BeatIdle(Character* character) {
 }
 
 static void BeatHit(void) {
-    gf.f = !gf.f;
-    AnimatedObject_SetAnimation(&gf.object, gf.anims[gf.f]);
+    if (gfLoaded) {
+        gf.f = !gf.f;
+        AnimatedObject_SetAnimation(&gf.object, gf.anims[gf.f]);
+    }
 
     if (gameOptions.bopIcons)
         PlayStateHealth_Bop();
@@ -390,7 +393,7 @@ static void ResetState(void) {
 static void Restart(void) {
     AnimatedObject_SetAnimation(&dad.object, dad.animations.idle);
     AnimatedObject_SetAnimation(&bf.object, bf.animations.idle);
-    AnimatedObject_SetAnimation(&gf.object, gf.anims[gf.f]);
+    if (gfLoaded) AnimatedObject_SetAnimation(&gf.object, gf.anims[gf.f]);
 
     bf.object.color.a = 255;
     PlayStateNoteSpawn_Reset();
@@ -424,17 +427,18 @@ static void LoadSong(void) {
 // Logo depois do chart (que diz quais personagens/stage): decodifica os PNG em threads de fundo
 // (a parte lenta) enquanto sons etc. carregam. Os Load abaixo so enviam a imagem pronta para a GPU.
 static void PrefetchAssets(void) {
-    // gfVersion do chart: "empty"/"none"... = sem GF (carrega a padrao so por seguranca, sem desenhar).
+    // GF escondida (gfVersion "empty"/"none"... no chart, ou hide_girlfriend no stage): nao carrega nada dela.
     static const char* const noGf[] = {"empty", "none", "nogf", "no-gf", "nogirlfriend", "no_gf", ""};
     gfHidden = 0;
     for (size_t i = 0; i < sizeof(noGf) / sizeof(noGf[0]); i++)
         if (strcmp(song.gfVersion, noGf[i]) == 0) gfHidden = 1;
+    if (!gfHidden && PlayStateStage_HidesGirlfriend(song.stage, songDir)) gfHidden = 1;
 
     Character_SetSongDir(songDir); // personagens do mod da musica
 
     // Personagens primeiro (PNGs maiores), depois o stage.
     const char* dadName = overrideP2[0] != 0 ? overrideP2 : song.player2;
-    Character_PrefetchTexture(gfHidden ? NULL : song.gfVersion, CHAR_GF);
+    if (!gfHidden) Character_PrefetchTexture(song.gfVersion, CHAR_GF);
     Character_PrefetchTexture(dadName, CHAR_DAD);
     Character_PrefetchTexture(song.player1, CHAR_BF);
     PlayStateStage_Prefetch(song.stage, songDir);
@@ -442,7 +446,16 @@ static void PrefetchAssets(void) {
 
 static void LoadCharacters(void) {
     const char* dadName = overrideP2[0] != 0 ? overrideP2 : song.player2;
-    Girlfriend_Load(&gf, gfHidden ? NULL : song.gfVersion);
+    if (gfHidden) {
+        // Sem GF: objeto vazio (o stage so soma posicao nele; nada e desenhado nem animado).
+        Render_DefaultAnimated(&gf.object);
+        gf.f = 0;
+        gf.anims[0] = gf.anims[1] = 0;
+        gfLoaded = 0;
+    } else {
+        Girlfriend_Load(&gf, song.gfVersion);
+        gfLoaded = 1;
+    }
     Character_Load(&dad, dadName, CHAR_DAD);
     Character_Load(&bf, song.player1, CHAR_BF);
     Character_LoadDeathAnimations(&bf, deathAnimations);
@@ -715,8 +728,10 @@ static void UpdateIntro(float dt) {
             PlaySound(introSounds[introHit]);
         }
 
-        gf.f = !gf.f;
-        AnimatedObject_SetAnimation(&gf.object, gf.anims[gf.f]);
+        if (gfLoaded) {
+            gf.f = !gf.f;
+            AnimatedObject_SetAnimation(&gf.object, gf.anims[gf.f]);
+        }
 
         introHit++;
         introTime -= introStep;
@@ -1003,7 +1018,8 @@ static void PlayState_Destroy([[maybe_unused]] RayScene* scene) {
     AnimationSet_FreeAll(&uiAssets);
     AnimationSet_FreeAll(&dad.object.animationSet);
     AnimationSet_FreeAll(&bf.object.animationSet);
-    AnimationSet_FreeAll(&gf.object.animationSet);
+    if (gfLoaded) AnimationSet_FreeAll(&gf.object.animationSet);
+    gfLoaded = 0;
 
     PlayStateStage_Unload(&stage);
     PlayStateText_Unload();
