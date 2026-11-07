@@ -127,6 +127,9 @@ set(OLD_GLOB
   "D:/dev/funkin c/src/scenes/menu/SearchBox.c"
   "D:/dev/funkin c/src/scenes/menu/StoryCover.c"
   "D:/dev/funkin c/src/scenes/menu/StoryMode.c"
+  "D:/dev/funkin c/src/threads/Sync.c"
+  "D:/dev/funkin c/src/threads/Thread.c"
+  "D:/dev/funkin c/src/threads/cpu/Jobs.c"
   )
 if(NOT "${NEW_GLOB}" STREQUAL "${OLD_GLOB}")
   message("-- GLOB mismatch!")

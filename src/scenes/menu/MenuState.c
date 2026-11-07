@@ -42,7 +42,7 @@ static Camera2D cam;
 
 static const Vector2 versionPos = {12.0f, 694.0f};
 // # VERSION
-static const char* const versionText = "v0030";
+static const char* const versionText = "v0031";
 static const char* const moddingText = "Modding";
 static Vector2 moddingPos; // calculado uma vez no Create
 

@@ -4,12 +4,31 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <stdatomic.h>
 #include <unistd.h>
 #include <sys/stat.h>
 
 #if defined(_WIN32) || defined(_WIN64)
   #include <windows.h>
 #endif
+
+// Trava simples (spin) para o log poder ser usado por threads de fundo.
+// Todas as funcoes publicas travam; as internas (Emit, EmitF, WriteToFile) nao.
+static atomic_flag logBusy;
+
+static void LogLock(void) {
+    while(atomic_flag_test_and_set_explicit(&logBusy, memory_order_acquire)) {
+#if defined(_WIN32) || defined(_WIN64)
+        SwitchToThread();
+#else
+        sched_yield();
+#endif
+    }
+}
+
+static void LogUnlock(void) {
+    atomic_flag_clear_explicit(&logBusy, memory_order_release);
+}
 
 static FILE* logFile = NULL;
 static int fileInitAttempted = 0;
@@ -103,10 +122,11 @@ static void EmitF(int fd, int fatal, const char* fmt, va_list ap) {
     }
 }
 
-void Log_Info(const char* msg)  { Emit(STDOUT_FILENO, msg); }
-void Log_Error(const char* msg) { Emit(STDERR_FILENO, msg); }
+void Log_Info(const char* msg)  { LogLock(); Emit(STDOUT_FILENO, msg); LogUnlock(); }
+void Log_Error(const char* msg) { LogLock(); Emit(STDERR_FILENO, msg); LogUnlock(); }
 
 void Log_Fatal(const char* msg) { 
+    LogLock(); // nao destrava: o processo vai sair
     Emit(STDERR_FILENO, msg); 
     ShowFatalPopup(msg);
     if (logFile) {
@@ -119,7 +139,9 @@ void Log_Fatal(const char* msg) {
 void Log_ErrorF(const char* fmt, ...) {
     va_list ap; 
     va_start(ap, fmt);
+    LogLock();
     EmitF(STDERR_FILENO, 0, fmt, ap);
+    LogUnlock();
     va_end(ap);
 }
 
@@ -135,6 +157,7 @@ void Log_WarnF(const char* fmt, ...) {
 
     char line[LOG_WARN_LEN * 2 + 8];
     snprintf(line, sizeof(line), "[WARN] %s", text);
+    LogLock();
     Emit(STDERR_FILENO, line);
 
     if (warnTotal < LOG_WARN_MAX) {
@@ -142,10 +165,11 @@ void Log_WarnF(const char* fmt, ...) {
         warnText[warnTotal][LOG_WARN_LEN - 1] = '\0';
     }
     warnTotal++;
+    LogUnlock();
 }
 
-void Log_WarnClear(void) { warnTotal = 0; }
-int Log_WarnCount(void) { return warnTotal; }
+void Log_WarnClear(void) { LogLock(); warnTotal = 0; LogUnlock(); }
+int Log_WarnCount(void) { LogLock(); int n = warnTotal; LogUnlock(); return n; }
 const char* Log_WarnAt(int index) {
     if (index < 0 || index >= warnTotal || index >= LOG_WARN_MAX) return "";
     return warnText[index];
@@ -154,6 +178,7 @@ const char* Log_WarnAt(int index) {
 void Log_FatalF(const char* fmt, ...) {
     va_list ap; 
     va_start(ap, fmt);
+    LogLock(); // nao destrava: o processo vai sair
     EmitF(STDERR_FILENO, 1, fmt, ap);
     va_end(ap);
 }
