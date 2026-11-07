@@ -71,3 +71,13 @@ LOAD [eons-koooled] init: 0.7 ms, chart: 64.4 ms, sounds: 291.5 ms, characters: 
 
 --- SESSION LOG START ---
 LOAD [black-n-white] init: 31.4 ms, chart: 15.2 ms, sounds: 184.6 ms, characters: 168.1 ms, stage: 4.8 ms, song audio: 2.1 ms, notes: 0.1 ms, ui: 12.1 ms, warmup: 0.1 ms, (textures on main thread: 179.3 ms) total: 418.6 ms
+
+--- SESSION LOG START ---
+LOAD [b] init: 0.6 ms, chart: 4.1 ms, sounds: 55.4 ms, characters: 96.1 ms, stage: 0.0 ms, song audio: 3.0 ms, notes: 0.0 ms, ui: 9.4 ms, warmup: 0.2 ms, (textures on main thread: 104.5 ms) total: 168.9 ms
+
+--- SESSION LOG START ---
+LOAD [triklizo-koooled] init: 0.6 ms, chart: 9.5 ms, sounds: 86.3 ms, characters: 369.7 ms, stage: 2.9 ms, song audio: 1.6 ms, notes: 0.4 ms, ui: 7.8 ms, warmup: 0.2 ms, (textures on main thread: 378.6 ms) total: 479.1 ms
+
+--- SESSION LOG START ---
+LOAD [triklizo-koooled] init: 0.6 ms, chart: 14.9 ms, sounds: 58.6 ms, characters: 374.3 ms, stage: 3.1 ms, song audio: 1.7 ms, notes: 0.5 ms, ui: 7.6 ms, warmup: 0.3 ms, (textures on main thread: 383.2 ms) total: 461.5 ms
+LOAD [triklizo-koooled] init: 0.4 ms, chart: 13.4 ms, sounds: 55.9 ms, characters: 377.8 ms, stage: 3.3 ms, song audio: 1.7 ms, notes: 0.5 ms, ui: 7.7 ms, warmup: 0.2 ms, (textures on main thread: 386.9 ms) total: 461.0 ms

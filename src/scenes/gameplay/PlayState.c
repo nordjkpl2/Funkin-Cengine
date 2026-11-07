@@ -627,6 +627,11 @@ static void WarnScreen_Draw(void) {
 /* Saida de cena                                                       */
 /* ------------------------------------------------------------------ */
 
+// Volta ao Chart Editor (nao ao menu): o editor tem o proprio som, a musica do menu nao toca.
+static char LeavesToEditor(char allowEditor) {
+    return !returnToWeek && allowEditor && returnToEditor;
+}
+
 // Volta para a tela de origem: semana > editor (se permitido) > freeplay.
 static void LeaveGameplay(char allowEditor) {
     if (returnToWeek) {
@@ -747,8 +752,10 @@ static char UpdateSong(void) {
     BeatManager_Update(&songBeat, StepHit, BeatHit);
 
     if (!PlayStateAudio_IsPlaying()) {
-        RayGame_ResetMusic();
-        RayGame_ToggleMusic(1);
+        if (!LeavesToEditor(1)) {
+            RayGame_ResetMusic();
+            RayGame_ToggleMusic(1);
+        }
 
         if (returnToWeek)
             FinishWeekSong();
@@ -810,7 +817,7 @@ static void PlayState_Update([[maybe_unused]] RayScene* scene) {
 /* ------------------------------------------------------------------ */
 
 static void PauseMenu_Update(void) {
-    static const char* const options[3] = {"Resume", "Restart", "Exit to Menu"};
+    const char* const options[3] = {"Resume", "Restart", LeavesToEditor(1) ? "Exit to Chart Editor" : "Exit to Menu"};
     const float dt = RayGame_DeltaTime();
 
     DrawRectangle(0, 0, (int)SCREEN_W, (int)SCREEN_H, (Color) {0, 0, 0, 100});
@@ -834,8 +841,10 @@ static void PauseMenu_Update(void) {
             return;
         }
         else {
-            RayGame_ResetMusic();
-            RayGame_ToggleMusic(1);
+            if (!LeavesToEditor(1)) {
+                RayGame_ResetMusic();
+                RayGame_ToggleMusic(1);
+            }
             LeaveGameplay(1);
             return;
         }
