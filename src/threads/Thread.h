@@ -13,5 +13,7 @@ Thread* Thread_Start(ThreadFn fn, void* arg);
 void Thread_Join(Thread* t);
 // Nucleos logicos da maquina (minimo 1).
 int Thread_CoreCount(void);
+// Dorme a thread atual (sem gastar CPU).
+void Thread_SleepMs(int ms);
 
 #endif

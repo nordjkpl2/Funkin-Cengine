@@ -9,6 +9,7 @@
 #include "Game.h"
 #include "GameData.h"
 #include "Log.h"
+#include "threads/cpu/Jobs.h"
 
 #include <stdbool.h>
 #include <stdio.h>
@@ -268,6 +269,7 @@ void RayGame_Start(const char *gameTitle)
 
     GameData_Start();
     gameDataReady = true;
+    Jobs_Init(gameOptions.threadLimit);   // 0 = Auto (nucleos - 1)
 
     RayGame_SetVsync(gameOptions.vsync);
     if (!vsyncEnabled)

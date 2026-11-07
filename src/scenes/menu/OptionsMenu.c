@@ -6,6 +6,8 @@
 #include "Game.h"
 #include "GameData.h"
 #include "raymath.h"
+#include "threads/Thread.h"
+#include "threads/cpu/Jobs.h"
 #include <stdio.h>
 
 #define SCREEN_H 720.0f
@@ -71,6 +73,7 @@ typedef enum {
     OPTION_UNCAPPED_FPS,
     OPTION_SHOW_FPS,
     OPTION_VSYNC,
+    OPTION_THREADS,
     OPTION_HEADER_GAMEPLAY,
     OPTION_KEYBOARD_SCHEME,
     OPTION_SCROLL_STYLE,
@@ -88,6 +91,17 @@ typedef enum {
 
 static const char* ghost_names[3] = {"On", "50/50", "Off"};
 static const char* scroll_names[3] = {"Normal", "Downscroll", "Middlescroll"};
+static const char* thread_names[2] = {"Auto", "Limited"};
+
+#define THREADS_MAX JOBS_MAX_THREADS
+static int limitedThreads = 2; // ultimo numero usado no modo Limited (volta ao alternar)
+
+/* Threads do modo Auto: nucleos - 1 (minimo 1), igual ao Jobs. */
+static int AutoThreads(void) {
+    int n = Thread_CoreCount() - 1;
+    if (n < 1) n = 1;
+    return n > THREADS_MAX ? THREADS_MAX : n;
+}
 
 static Option options[OPTION_COUNT] = {
     [OPTION_HEADER_WINDOW] = {.text = "[ Window Options ]", .type = OPTION_VALUE_HEADER},
@@ -95,6 +109,7 @@ static Option options[OPTION_COUNT] = {
     [OPTION_UNCAPPED_FPS] = {.text = "Uncapped FPS", .type = OPTION_VALUE_BOOL},
     [OPTION_SHOW_FPS] = {.text = "Show FPS", .type = OPTION_VALUE_BOOL},
     [OPTION_VSYNC] = {.text = "V-SYNC", .type = OPTION_VALUE_BOOL},
+    [OPTION_THREADS] = {.text = "Threads", .type = OPTION_VALUE_LIST, .options = thread_names, .step = 1, .max = 1, .min = 0},
     [OPTION_HEADER_GAMEPLAY] = {.text = "[ Gameplay Options ]", .type = OPTION_VALUE_HEADER},
     [OPTION_KEYBOARD_SCHEME] = {.text = "Scheme", .type = OPTION_VALUE_LIST, .options = game_available_schemes, .step = 1, .max = SCHEME_COUNT - 1, .min = 0},
     [OPTION_SCROLL_STYLE] = {.text = "Scroll Style", .type = OPTION_VALUE_LIST, .options = scroll_names, .step = 1, .max = 2, .min = 0},
@@ -133,7 +148,13 @@ static void Option_RebuildText(Option* o) {
         case OPTION_VALUE_INT:   (void)snprintf(out, size, "%s: < %d >", o->text, (int)o->value); break;
         case OPTION_VALUE_FLOAT: (void)snprintf(out, size, "%s: < %.2f >", o->text, (double)o->value); break;
         case OPTION_VALUE_BOOL:  (void)snprintf(out, size, "%s: [ %s ]", o->text, o->value ? "ON" : "OFF"); break;
-        case OPTION_VALUE_LIST:  (void)snprintf(out, size, "%s: << %s >>", o->text, o->options[(int)o->value]); break;
+        case OPTION_VALUE_LIST:
+            if (o == options + OPTION_THREADS)   // mostra quantas threads estao valendo
+                (void)snprintf(out, size, "%s: << %s (%d) >>", o->text, o->options[(int)o->value],
+                               gameOptions.threadLimit > 0 ? gameOptions.threadLimit : AutoThreads());
+            else
+                (void)snprintf(out, size, "%s: << %s >>", o->text, o->options[(int)o->value]);
+            break;
         default: break;
     }
 
@@ -155,8 +176,12 @@ static void ApplyNumValue(void) {
             if (o->value > 500 && o->value < 900) o->value = (o->value < 700) ? 900 : 500;
             RayGame_SetFPS((int)o->value);
             break;
+        case OPTION_THREADS:
+            gameOptions.threadLimit = (int)o->value == 1 ? limitedThreads : 0;
+            Jobs_SetThreads(gameOptions.threadLimit);
+            break;
         case OPTION_KEYBOARD_SCHEME:   gameOptions.scheme = (int)o->value; break;
-        case OPTION_SCROLL_STYLE:      gameOptions.scroll = (char)(int)o->value; break;
+        case OPTION_SCROLL_STYLE:     gameOptions.scroll = (char)(int)o->value; break;
         case OPTION_GHOST:             gameOptions.ghost = (char)(int)o->value; break;
         case OPTION_ZOOMFACTOR_GAME:   gameOptions.zoomFactorGAME = o->value; break;
         case OPTION_ZOOMFACTOR_UI:     gameOptions.zoomFactorUI = o->value; break;
@@ -340,6 +365,67 @@ static void Capture_Draw(void) {
 }
 
 /* ------------------------------------------------------------------ */
+/* Tela do numero de threads (modo "Limited")                          */
+/* ------------------------------------------------------------------ */
+
+static bool threadsScreen;   // tela preta aberta
+static int threadsInput;     // numero sendo digitado (0 = vazio)
+
+static int ClampInt(int v, int lo, int hi) { return v < lo ? lo : (v > hi ? hi : v); }
+
+static void ThreadsScreen_Begin(void) {
+    threadsScreen = true;
+    threadsInput = limitedThreads;
+    while (GetKeyPressed() != 0) {}   // descarta o Enter que abriu a tela
+}
+
+static void ThreadsScreen_Update(void) {
+    if (IsKeyPressed(KEY_ESCAPE)) {   // cancela e mantem o numero antigo
+        threadsScreen = false;
+        return;
+    }
+
+    if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER)) {
+        const int n = ClampInt(threadsInput, 1, THREADS_MAX);
+        limitedThreads = n;
+        gameOptions.threadLimit = n;
+        Jobs_SetThreads(n);
+        options[OPTION_THREADS].dirty = true;
+        GameData_Flush();
+        threadsScreen = false;
+        return;
+    }
+
+    if (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_RIGHT)) threadsInput = ClampInt(threadsInput + 1, 1, THREADS_MAX);
+    else if (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_LEFT)) threadsInput = ClampInt(threadsInput - 1, 1, THREADS_MAX);
+    else if (IsKeyPressed(KEY_BACKSPACE)) threadsInput /= 10;
+
+    for (int d = 0; d <= 9; d++) {
+        if (IsKeyPressed(KEY_ZERO + d) || IsKeyPressed(KEY_KP_0 + d)) {
+            threadsInput = threadsInput * 10 + d;
+            if (threadsInput > THREADS_MAX) threadsInput = d;   // 3o digito recomeca
+        }
+    }
+}
+
+static void ThreadsScreen_Draw(void) {
+    DrawRectangle(0, 0, 1280, 720, BLACK);
+    DrawTextEx(mainFont, "THREADS", (Vector2) {80, 50}, 70, TEXT_SPACING, YELLOW);
+
+    char line[64];
+    (void)snprintf(line, sizeof(line), "CPU threads: %d     Auto: %d", Thread_CoreCount(), AutoThreads());
+    DrawTextEx(mainFont, line, (Vector2) {120, 190}, 40, 3, GRAY);
+
+    if (threadsInput > 0) (void)snprintf(line, sizeof(line), "Limit: %d", threadsInput);
+    else (void)snprintf(line, sizeof(line), "Limit: _");
+    DrawTextEx(mainFont, line, (Vector2) {120, 290}, 80, TEXT_SPACING, WHITE);
+
+    DrawTextEx(mainFont, "Type a number (1-64)  or  UP / DOWN", (Vector2) {80, 480}, 32, 3, WHITE);
+    DrawTextEx(mainFont, "ENTER confirm", (Vector2) {80, 540}, 36, 3, threadsInput > 0 ? GREEN : GRAY);
+    DrawTextEx(mainFont, "BACKSPACE erase     ESC cancel", (Vector2) {80, 650}, 24, 2, GRAY);
+}
+
+/* ------------------------------------------------------------------ */
 /* Cena                                                                */
 /* ------------------------------------------------------------------ */
 
@@ -380,6 +466,8 @@ static void OptionsMenu_Create([[maybe_unused]] RayScene* scene) {
     options[OPTION_SHOW_SCORE].value = gameOptions.showScore;
     options[OPTION_BOPPING_ICONS].value = gameOptions.bopIcons;
     options[OPTION_VSYNC].value = gameOptions.vsync;
+    if (gameOptions.threadLimit > 0) limitedThreads = gameOptions.threadLimit;
+    options[OPTION_THREADS].value = gameOptions.threadLimit > 0;
     options[OPTION_KEYBOARD_SCHEME].value = gameOptions.scheme;
     options[OPTION_SCROLL_STYLE].value = gameOptions.scroll;
     options[OPTION_GHOST].value = gameOptions.ghost;
@@ -399,6 +487,10 @@ static void OptionsMenu_Create([[maybe_unused]] RayScene* scene) {
 static void OptionsMenu_Update([[maybe_unused]] RayScene* scene) {
     if (capturing) {
         Capture_Update();
+        return;
+    }
+    if (threadsScreen) {
+        ThreadsScreen_Update();
         return;
     }
 
@@ -425,6 +517,9 @@ static void OptionsMenu_Update([[maybe_unused]] RayScene* scene) {
         }
         else if (currentOption == OPTION_KEYBOARD_SCHEME && (int)cur->value == SCHEME_CUSTOM) {
             Capture_Begin();
+        }
+        else if (currentOption == OPTION_THREADS && (int)cur->value == 1) {
+            ThreadsScreen_Begin();
         }
     }
     else if (cur->type != OPTION_VALUE_BOOL && cur->type != OPTION_VALUE_HEADER) {
@@ -599,8 +694,13 @@ static void OptionsMenu_Draw([[maybe_unused]] RayScene* scene) {
     if (currentOption == OPTION_KEYBOARD_SCHEME && (int)options[OPTION_KEYBOARD_SCHEME].value == SCHEME_CUSTOM)
         DrawTextEx(mainFont, "ENTER: edit custom keys", (Vector2) {ROW_X, SCREEN_H - 50.0f}, 24, 2, (Color) {245, 220, 120, 255});
 
+    if (currentOption == OPTION_THREADS && (int)options[OPTION_THREADS].value == 1)
+        DrawTextEx(mainFont, "ENTER: set thread count", (Vector2) {ROW_X, SCREEN_H - 50.0f}, 24, 2, (Color) {245, 220, 120, 255});
+
     if (capturing)
         Capture_Draw();
+    else if (threadsScreen)
+        ThreadsScreen_Draw();
 
     Render_StopCamera();
 }

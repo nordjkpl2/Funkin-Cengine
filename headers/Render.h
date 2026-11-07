@@ -84,6 +84,7 @@ static inline void Render_DefaultAnimated(RayAnimatedObject* restrict obj) {
 }
 
 Texture2D Render_LoadTexture(const char* path);
+double Render_TextureTime(void); // segundos acumulados carregando texturas na thread principal (medicao)
 
 // --- AnimationSet ---
 RayAnimationHandler AnimationSet_LoadAnimations(const char* animset, Texture2D image);

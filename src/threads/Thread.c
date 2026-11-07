@@ -49,8 +49,13 @@ int Thread_CoreCount(void) {
     return (n > 0) ? (int)n : 1;
 }
 
+void Thread_SleepMs(int ms) {
+    Sleep((DWORD)(ms > 0 ? ms : 0));
+}
+
 #else
 #include <pthread.h>
+#include <time.h>
 #include <unistd.h>
 
 struct Thread {
@@ -88,5 +93,12 @@ void Thread_Join(Thread* t) {
 int Thread_CoreCount(void) {
     long n = sysconf(_SC_NPROCESSORS_ONLN);
     return (n > 0) ? (int)n : 1;
+}
+
+void Thread_SleepMs(int ms) {
+    struct timespec ts;
+    ts.tv_sec = (ms > 0 ? ms : 0) / 1000;
+    ts.tv_nsec = (long)((ms > 0 ? ms : 0) % 1000) * 1000000L;
+    nanosleep(&ts, NULL);
 }
 #endif

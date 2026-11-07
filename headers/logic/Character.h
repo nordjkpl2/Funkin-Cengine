@@ -43,6 +43,11 @@ void Character_SetSongDir(const char* restrict songDir);
 void Character_Load(Character* restrict character, const char* restrict characterName, CharRole role);
 void Girlfriend_Load(Girlfriend* restrict gf, const char* restrict name);
 
+/* Dica de desempenho: acha o png que Character_Load/Girlfriend_Load vao usar e manda decodificar em
+   fundo (rendering/cpu/ImagePrefetch). Chamar depois de Character_SetSongDir e antes de carregar.
+   Se o palpite errar, o carregamento normal continua correto. role CHAR_GF = Girlfriend_Load. */
+void Character_PrefetchTexture(const char* name, CharRole role);
+
 /* Primeiro frame (normal) do icone. Frames sao quadrados da altura da imagem:
    150x150 padrao, 300x300 em icone hi-res; 450x150 = 3 frames (com vitoria). */
 Rectangle Character_IconFrame(Texture2D icon);

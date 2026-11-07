@@ -8,6 +8,7 @@
 #include "logic/Stage.h"
 #include "core/ModPath.h"
 #include "Log.h"
+#include "rendering/cpu/ImagePrefetch.h"
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
@@ -116,10 +117,40 @@ static void FinalizeCamera(Character* c, char isDad, const float* stageOffset) {
     c->psychCamera = false;   // ja convertido
 }
 
+static StageSprite sprites[STAGE_MAX_SPRITES]; // compartilhado por Prefetch e LoadModStage
+
+// Inicia a decodificacao das imagens do stage em fundo. Mesma busca do Load; erros ficam para ele.
+void PlayStateStage_Prefetch(const char* name, const char* songDir) {
+    char luaPath[300], jsonPath[300];
+    char hasLua = Stage_FindLua(name, songDir, luaPath);
+    char hasJson = Stage_FindJson(name, songDir, jsonPath);
+
+    if (!hasLua) {
+        if (!hasJson && (name[0] == '\0' || strcmp(name, "stage") == 0)) {
+            ImagePrefetch_Start("assets/images/stage/stageback.png");
+            ImagePrefetch_Start("assets/images/stage/stagefront.png");
+            ImagePrefetch_Start("assets/images/stage/stagecurtains.png");
+        }
+        return;
+    }
+
+    char* text = LoadFileText(luaPath);
+    if (text == NULL) return;
+    int count = Stage_ParseLua(text, sprites, STAGE_MAX_SPRITES, NULL, NULL);
+    UnloadFileText(text);
+
+    char root[256];
+    ModRoot(songDir, root);
+    for (int i = 0; i < count; i++) {
+        char png[512];
+        if (!sprites[i].isGraphic && FindImage(root, sprites[i].image, "png", png))
+            ImagePrefetch_Start(png);
+    }
+}
+
 // Carrega o stage do mod. Retorna 0 se nao existe (usa o padrao).
 static char LoadModStage(PlayStateStage* stage, const char* name, const char* songDir,
                          Girlfriend* gf, Character* dad, Character* bf) {
-    static StageSprite sprites[STAGE_MAX_SPRITES];
     char luaPath[300], jsonPath[300];
 
     char hasLua = Stage_FindLua(name, songDir, luaPath);

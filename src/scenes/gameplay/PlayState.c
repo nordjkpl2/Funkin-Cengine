@@ -17,6 +17,7 @@
 #include "scenes/gameplay/PlayStatePlayerInput.h"
 #include "scenes/gameplay/PlayStateCamera.h"
 #include "Log.h"
+#include "rendering/cpu/ImagePrefetch.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -420,7 +421,9 @@ static void LoadSong(void) {
         Note_SetWindow(0.200f);
 }
 
-static void LoadCharacters(void) {
+// Logo depois do chart (que diz quais personagens/stage): decodifica os PNG em threads de fundo
+// (a parte lenta) enquanto sons etc. carregam. Os Load abaixo so enviam a imagem pronta para a GPU.
+static void PrefetchAssets(void) {
     // gfVersion do chart: "empty"/"none"... = sem GF (carrega a padrao so por seguranca, sem desenhar).
     static const char* const noGf[] = {"empty", "none", "nogf", "no-gf", "nogirlfriend", "no_gf", ""};
     gfHidden = 0;
@@ -428,8 +431,19 @@ static void LoadCharacters(void) {
         if (strcmp(song.gfVersion, noGf[i]) == 0) gfHidden = 1;
 
     Character_SetSongDir(songDir); // personagens do mod da musica
+
+    // Personagens primeiro (PNGs maiores), depois o stage.
+    const char* dadName = overrideP2[0] != 0 ? overrideP2 : song.player2;
+    Character_PrefetchTexture(gfHidden ? NULL : song.gfVersion, CHAR_GF);
+    Character_PrefetchTexture(dadName, CHAR_DAD);
+    Character_PrefetchTexture(song.player1, CHAR_BF);
+    PlayStateStage_Prefetch(song.stage, songDir);
+}
+
+static void LoadCharacters(void) {
+    const char* dadName = overrideP2[0] != 0 ? overrideP2 : song.player2;
     Girlfriend_Load(&gf, gfHidden ? NULL : song.gfVersion);
-    Character_Load(&dad, overrideP2[0] != 0 ? overrideP2 : song.player2, CHAR_DAD);
+    Character_Load(&dad, dadName, CHAR_DAD);
     Character_Load(&bf, song.player1, CHAR_BF);
     Character_LoadDeathAnimations(&bf, deathAnimations);
     PlayStateHealth_SetCharacterColors(&dad, &bf);
@@ -480,6 +494,42 @@ static void LoadUiAssets(void) {
     popupObj.scaleX = popupObj.scaleY = 0.6f;
 }
 
+// Medicao do carregamento: cada etapa soma o tempo desde a anterior; o resumo sai no log.
+static double loadLast;
+static double loadTexStart;
+static char loadReport[400];
+static int loadLen;
+
+static void LoadMark_Begin(void) {
+    loadLast = GetTime();
+    loadTexStart = Render_TextureTime();
+
+    // Nome da musica = ultima pasta de songDir (para comparar os logs).
+    const char* name = songDir;
+    size_t n = strlen(songDir);
+    while (n > 0 && (songDir[n - 1] == '/' || songDir[n - 1] == '\\')) n--;
+    for (size_t i = 0; i < n; i++)
+        if (songDir[i] == '/' || songDir[i] == '\\') name = songDir + i + 1;
+    n -= (size_t)(name - songDir);
+    loadLen = snprintf(loadReport, sizeof(loadReport), "LOAD [%.*s]", (int)n, name);
+}
+
+static void LoadMark(const char* step) {
+    double now = GetTime();
+    if (loadLen > 0 && loadLen < (int)sizeof(loadReport))
+        loadLen += snprintf(loadReport + loadLen, sizeof(loadReport) - (size_t)loadLen, " %s: %.1f ms,", step, (now - loadLast) * 1000.0);
+    loadLast = now;
+}
+
+static void LoadMark_End(double start) {
+    char tail[96];
+    snprintf(tail, sizeof(tail), " (textures on main thread: %.1f ms) total: %.1f ms",
+             (Render_TextureTime() - loadTexStart) * 1000.0, (GetTime() - start) * 1000.0);
+    if (loadLen > 0 && loadLen + (int)strlen(tail) < (int)sizeof(loadReport))
+        memcpy(loadReport + loadLen, tail, strlen(tail) + 1);
+    Log_Info(loadReport);
+}
+
 static void PlayState_Create([[maybe_unused]] RayScene* scene) {
     ResetState();
 
@@ -489,6 +539,8 @@ static void PlayState_Create([[maybe_unused]] RayScene* scene) {
         return;
     }
 
+    const double loadStart = GetTime();
+    LoadMark_Begin();
     Log_WarnClear();
     PlayStateHealth_Init(gameOptions.scroll == 1);
     PlayStateText_Init(songDir);
@@ -496,23 +548,33 @@ static void PlayState_Create([[maybe_unused]] RayScene* scene) {
     Strumlines_Load();
     PlayStateNoteSpawn_Init();
     SetupEvents();
+    LoadMark("init");
 
     LoadSong();
+    LoadMark("chart");
+    PrefetchAssets();
+    LoadSounds();               // roda enquanto o prefetch decodifica
+    LoadMark("sounds");
     LoadCharacters();
-    LoadSounds();
+    LoadMark("characters");
 
     PlayStateStage_Load(&stage, song.stage, songDir, &gf, &dad, &bf);
+    ImagePrefetch_Clear();      // descarta o que ninguem usou
     if (stage.hideGirlfriend) gfHidden = 1;
+    LoadMark("stage");
 
     PlayStateAudio_Load(songDir);
+    LoadMark("song audio");
     PlayStateNoteSpawn_Load(&song);
     PlayStateAudio_StartPaused();
+    LoadMark("notes");
 
     StartBeat();
     PlayStateCamera_SetPosition(dad.object.position.x, dad.object.position.y);
     UpdateSection();
 
     LoadUiAssets();
+    LoadMark("ui");
 
     PlayStateCamera_SetGameZoom(stage.defaultCameraZoom);
     PlayStateCamera_SetSpeed(stage.cameraSpeed);
@@ -521,6 +583,8 @@ static void PlayState_Create([[maybe_unused]] RayScene* scene) {
     ClearBackground(BLACK);
     for (int i = 0; i < 10; i++)
         PlayStateAudio_UpdateStreams();
+    LoadMark("warmup");
+    LoadMark_End(loadStart);
 
     warnScreen = Log_WarnCount() > 0;
 }

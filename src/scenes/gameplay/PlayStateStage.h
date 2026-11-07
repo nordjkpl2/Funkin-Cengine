@@ -27,6 +27,9 @@ typedef struct {
 void PlayStateStage_Load(PlayStateStage* stage, const char* stageName, const char* songDir,
                          Girlfriend* gf, Character* dad, Character* bf);
 
+/* Comeca a decodificar em fundo as imagens do stage (so uma dica; PlayStateStage_Load funciona sem). */
+void PlayStateStage_Prefetch(const char* stageName, const char* songDir);
+
 /* Camadas atras e na frente dos personagens. paused = nao avanca animacoes. */
 void PlayStateStage_DrawBack(PlayStateStage* stage, char paused);
 void PlayStateStage_DrawFront(PlayStateStage* stage, char paused);

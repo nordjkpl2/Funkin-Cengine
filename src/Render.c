@@ -7,6 +7,8 @@
 
 #include "Render.h"
 #include "Game.h"
+#include "rendering/cpu/ImagePrefetch.h"
+#include "rendering/cpu/PngDecode.h"
 
 #include <math.h>
 #include <stdbool.h>
@@ -84,9 +86,41 @@ void Render_DefaultCamera(Camera2D *cam)
    TEXTURES
    ========================================================= */
 
+/* Tempo total (s) que a thread principal gastou carregando texturas (decodificar + GPU, ou so GPU
+   quando a imagem veio pre-decodificada). So para medir. */
+static double s_textureTime = 0.0;
+
+double Render_TextureTime(void)
+{
+    return s_textureTime;
+}
+
 Texture2D Render_LoadTexture(const char *path)
 {
-    Texture2D texture = LoadTexture(path);
+    const double t0 = GetTime();
+    Texture2D texture;
+    Image prefetched;
+
+    /* Imagem ja decodificada em outra thread? Entao so envia para a GPU. */
+    if (ImagePrefetch_Take(path, &prefetched))
+    {
+        texture = LoadTextureFromImage(prefetched);
+        UnloadImage(prefetched);
+    }
+    else
+    {
+        /* Wuffs (rapido) com fallback pro stb dentro do PngDecode_Load */
+        Image img = PngDecode_Load(path);
+        if (img.data != NULL)
+        {
+            texture = LoadTextureFromImage(img);
+            UnloadImage(img);
+        }
+        else
+        {
+            texture = (Texture2D){0};
+        }
+    }
 
     if (texture.id != 0)
     {
@@ -94,6 +128,7 @@ Texture2D Render_LoadTexture(const char *path)
         SetTextureWrap(texture, TEXTURE_WRAP_CLAMP);
     }
 
+    s_textureTime += GetTime() - t0;
     return texture;
 }
 

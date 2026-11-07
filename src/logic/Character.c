@@ -15,6 +15,7 @@
 #include "core/ModPath.h"
 #include "logic/AnimationSets_XML.h"
 #include "Log.h"
+#include "rendering/cpu/ImagePrefetch.h"
 #include "yyjson.h"
 #include "yxml.h"
 
@@ -1019,4 +1020,56 @@ void Girlfriend_Load(Girlfriend *restrict gf, const char *restrict name)
     Char_PsychBox(pngPath, json.scale, &gfBox, &gfShift);
     gf->object.position = (Vector2){ json.position.x + gfShift.x, json.position.y + gfShift.y };
     AnimatedObject_SetAnimation(&gf->object, gf->anims[0]);
+}
+
+/* ------------------------------------------------------------------------- */
+/* Pre-decodificacao do png (mesma ordem de busca de Character_Load/Girlfriend_Load) */
+/* ------------------------------------------------------------------------- */
+
+void Character_PrefetchTexture(const char *name, CharRole role)
+{
+    const CharCtx *ctx = &songCtx;
+    char pngPath[CHAR_PATH_MAX], setPath[CHAR_PATH_MAX];
+    char xmlPath[CHAR_PATH_MAX], atlasPath[CHAR_PATH_MAX], spriteName[128];
+
+    if (!Char_IsSafeName(name))
+        name = (role == CHAR_GF) ? "gf" : (role == CHAR_DAD) ? "dad" : "bf";
+
+    /* 1) XML (Codename) */
+    if (Char_FindCharacterXML(ctx, name, xmlPath, spriteName) &&
+        Char_FindAtlasXML(ctx, spriteName, name, xmlPath, atlasPath) &&
+        Char_FindCharacterPNG(ctx, spriteName, name, pngPath)) {
+        ImagePrefetch_Start(pngPath);
+        return;
+    }
+
+    const bool isDad = !strcmp(name, "dad");
+    const bool isBf = !strcmp(name, "bf");
+    const bool isGf = !strcmp(name, "gf");
+
+    /* 2) animset + png (+ characters/<nome>.json); a gf sempre tenta, bf/dad so com nome custom */
+    if (role == CHAR_GF || (!isDad && !isBf && !isGf)) {
+        CharJson json;
+        char jsonPath[CHAR_PATH_MAX];
+        Char_JsonInit(&json);
+        if (Char_Find(ctx, jsonPath, "characters/%s.json", name))
+            Char_ReadJson(jsonPath, &json);
+
+        const char *textureName = json.imageBase[0] ? json.imageBase : name;
+        if (Char_FindPair(ctx, setPath, pngPath, name, textureName) ||
+            (strcmp(textureName, name) != 0 && Char_FindPair(ctx, setPath, pngPath, name, name))) {
+            ImagePrefetch_Start(pngPath);
+            return;
+        }
+        if (role == CHAR_GF) {
+            if (!isGf && Char_FindPair(ctx, setPath, pngPath, "gf", "gf"))
+                ImagePrefetch_Start(pngPath);
+            return;
+        }
+    }
+
+    /* 3) padrao (bf/dad) */
+    const BuiltinDef *def = (role == CHAR_DAD || isDad) ? &BUILTIN_DAD : &BUILTIN_BF;
+    if (Char_FindPair(ctx, setPath, pngPath, def->name, def->name))
+        ImagePrefetch_Start(pngPath);
 }

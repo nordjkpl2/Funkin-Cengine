@@ -11,6 +11,7 @@ typedef struct GameOptions {
     char showScore, bopIcons, vsync, fillScreen;
     char botplay, ghost, scroll, hitSound, showFps;
     int scheme, fps;
+    int threadLimit; /* 0 = Auto (nucleos - 1); >0 = limite de threads de fundo (1..64) */
     float zoomFactorUI, zoomFactorGAME;
 } GameOptions;
 

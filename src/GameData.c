@@ -23,7 +23,7 @@ int game_scheme_keys[SCHEME_COUNT][4] = {
 
 static FILE* saveFile;
 
-#define SAVE_VERSION 6   /* 6: + hitSound e as 4 teclas do esquema Custom */
+#define SAVE_VERSION 7   /* 7: + threadLimit (no fim); 6: + hitSound e as 4 teclas do esquema Custom */
 
 static void GameData_Defaults(void) {
     game_scheme_keys[SCHEME_CUSTOM][0] = KEY_LEFT;
@@ -40,6 +40,7 @@ static void GameData_Defaults(void) {
 static void GameData_Checks(void) {
     if(gameOptions.scheme < 0 || gameOptions.scheme >= SCHEME_COUNT) IERR
     if(gameOptions.fps < 0) IERR
+    if(gameOptions.threadLimit < 0 || gameOptions.threadLimit > 64) IERR
     if(gameOptions.ghost < 0 || gameOptions.ghost > 2) IERR
     if(gameOptions.scroll < 0 || gameOptions.scroll > 2) IERR
     if(gameOptions.hitSound < 0 || gameOptions.hitSound > 1) IERR
@@ -80,6 +81,7 @@ void GameData_Start(void) {
     SREAD(float,gameOptions.zoomFactorUI) 
     SREAD(float,gameOptions.zoomFactorGAME) 
     READ(int, 4, game_scheme_keys[SCHEME_CUSTOM][0])
+    SREAD(int,  gameOptions.threadLimit)
 
     GameData_Checks();
 }
@@ -103,6 +105,7 @@ void GameData_Flush(void) {
     SWRITE(float,gameOptions.zoomFactorUI) 
     SWRITE(float,gameOptions.zoomFactorGAME) 
     WRITE(int, 4, game_scheme_keys[SCHEME_CUSTOM][0])
+    SWRITE(int,  gameOptions.threadLimit)
 }
 
 void GameData_Stop(void) {
