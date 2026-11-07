@@ -9,7 +9,7 @@
 
 ```text
 Graphic
-📐 Raylib v5.5 - 📐 Raymath v2.0 - ⚙️ OpenGl 3.30
+📐 Raylib v5.5 (include rlgl55) - 📐 Raymath v2.0 - ⚙️ OpenGl 3.30
 ```
 
 ```text
@@ -17,13 +17,22 @@ Read Files
 📦 2020 yyjson - 📦 2014 yxml
 ```
 
+```text
+Image Render
+📔 Wuffs image decoder by Google
+```
+
+```text
+Multi threading(cpu) manager for Windows
+💻 WindowsApi (windows.h)
+```
 </details>
 
 <details>
 <summary><b>——Development</b></summary>
 
 ```text
-(30%) ██████░░░░░░░░░░░░░░ / 0.3.121212 of 1
+(40%) ████████░░░░░░░░░░ 04 of 1
 ```
 <!---</div align="center">-->
 <div align="left">
@@ -31,7 +40,7 @@ Read Files
 - [x] v0.1 — Basis
 - [x] v0.2 — Basis functions
 - [x] v0.3 — Music Editor and Additional
-- [ ] v0.4 — Additional features (WeekEditor, better grafics, pending)
+- [x] v0.4 — Additional features (WeekEditor, better grafics, pending)
 - [ ] v0.5 — Tests and tuning
 - [ ] v0.6 - full visual and events working
 - [ ] v0.7 - completed performance and visual
