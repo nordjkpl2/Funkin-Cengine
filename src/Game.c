@@ -102,7 +102,18 @@ static inline void RayGame_DrawOverlay(void)
         DrawFPS(10, 3);
 
     if (volOsdTimer > 0.0f)
+    {
         DrawText(volumeText, 10, 26, 20, WHITE);
+
+        /* Barra de volume em rampa: so as barras do volume atual (4 a 18 px, crescendo para a direita),
+           coladas embaixo do texto, uma por 10%. Sem fundo nem barras vazias. */
+        const int filled = (int)(musicVolume * 10.0f + 0.5f);
+        for (int i = 0; i < filled; i++)
+        {
+            const int h = 4 + (i * 14) / 9;
+            DrawRectangle(10 + i * 12, 66 - h, 8, h, WHITE);
+        }
+    }
 }
 
 /* ================================================================

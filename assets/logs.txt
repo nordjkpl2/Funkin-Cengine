@@ -27,3 +27,25 @@ LOAD init: 0.7 ms, chart: 142.0 ms, characters: 534.7 ms, sounds: 53.1 ms, stage
 
 mais coisas
 LOAD [triklizo-koooled] init: 19.4 ms, chart: 19.9 ms, sounds: 57.7 ms, characters: 469.7 ms, stage: 2.9 ms, song audio: 1.7 ms, notes: 0.5 ms, ui: 8.5 ms, warmup: 0.2 ms, (textures on main thread: 497.2 ms) total: 580.4 ms
+
+--- SESSION LOG START ---
+LOAD [triklizo-koooled] init: 19.2 ms, chart: 13.0 ms, sounds: 58.8 ms, characters: 451.2 ms, stage: 3.0 ms, song audio: 1.7 ms, notes: 0.5 ms, ui: 7.7 ms, warmup: 0.2 ms, (textures on main thread: 477.9 ms) total: 555.2 ms
+LOAD [agony] init: 0.7 ms, chart: 18.3 ms, sounds: 56.6 ms, characters: 802.6 ms, stage: 11.0 ms, song audio: 1.8 ms, notes: 0.5 ms, ui: 7.7 ms, warmup: 0.2 ms, (textures on main thread: 818.9 ms) total: 899.3 ms
+LOAD [moribund-3] init: 0.6 ms, chart: 161.2 ms, sounds: 59.8 ms, characters: 474.2 ms, stage: 4.4 ms, song audio: 1.8 ms, notes: 3.6 ms, ui: 8.0 ms, warmup: 0.2 ms, (textures on main thread: 484.6 ms) total: 713.8 ms
+
+--- SESSION LOG START ---
+LOAD [realisticful] init: 18.2 ms, chart: 176.1 ms, sounds: 60.5 ms, characters: 443.8 ms, stage: 12.7 ms, song audio: 1.8 ms, notes: 3.4 ms, ui: 8.5 ms, warmup: 0.2 ms, (textures on main thread: 480.5 ms) total: 725.2 ms
+LOAD [Astray] init: 0.7 ms, chart: 4.1 ms, sounds: 59.8 ms, characters: 431.8 ms, stage: 7.9 ms, song audio: 1.8 ms, notes: 0.3 ms, ui: 7.8 ms, warmup: 0.2 ms, (textures on main thread: 445.1 ms) total: 514.3 ms
+LOAD [absolute-zero] init: 0.6 ms, chart: 968.3 ms, sounds: 121.9 ms, characters: 576.8 ms, stage: 1433.3 ms, song audio: 3.9 ms, notes: 0.7 ms, ui: 9.1 ms, warmup: 0.2 ms, (textures on main thread: 1999.6 ms) total: 3114.7 ms
+LOAD [absolute-zero-2] init: 0.6 ms, chart: 0.1 ms, sounds: 62.4 ms, characters: 532.9 ms, stage: 1199.2 ms, song audio: 3.7 ms, notes: 0.0 ms, ui: 8.8 ms, warmup: 0.1 ms, (textures on main thread: 1738.5 ms) total: 1807.9 ms
+[WARN] Icone nao encontrado: 'exosphereinsanity' (usando padrao)
+LOAD [disregard] init: 0.6 ms, chart: 1.4 ms, sounds: 110.3 ms, characters: 1021.4 ms, stage: 2.8 ms, song audio: 11.4 ms, notes: 0.1 ms, ui: 7.6 ms, warmup: 0.4 ms, (textures on main thread: 1022.5 ms) total: 1156.1 ms
+
+--- SESSION LOG START ---
+LOAD [obfuscation] init: 18.7 ms, chart: 23.5 ms, sounds: 108.3 ms, characters: 425.0 ms, stage: 10.0 ms, song audio: 4.3 ms, notes: 0.7 ms, ui: 7.9 ms, warmup: 0.2 ms, (textures on main thread: 458.1 ms) total: 598.6 ms
+[WARN] Stage: imagem nao encontrada: characters/corniexpunged
+LOAD [hydromania-kooled] init: 0.8 ms, chart: 21.2 ms, sounds: 106.6 ms, characters: 444.0 ms, stage: 14.2 ms, song audio: 5.2 ms, notes: 0.9 ms, ui: 7.8 ms, warmup: 0.1 ms, (textures on main thread: 458.3 ms) total: 600.7 ms
+
+--- SESSION LOG START ---
+[WARN] Stage: imagem nao encontrada: characters/corniexpunged
+LOAD [hydromania-kooled] init: 18.4 ms, chart: 22.5 ms, sounds: 93.8 ms, characters: 436.1 ms, stage: 13.7 ms, song audio: 1.7 ms, notes: 0.9 ms, ui: 7.9 ms, warmup: 0.2 ms, (textures on main thread: 473.0 ms) total: 595.2 ms

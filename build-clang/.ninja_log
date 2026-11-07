@@ -117,3 +117,23 @@
 361	561	8157293630614191	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/menu/OptionsMenu.c.obj	7f49eb7aa1cbbf7c
 89	585	8157293627889696	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/charteditor/EditorDataAndIO.c.obj	3b697d77e2c96570
 585	3083	8157293632839603	D:/dev/funkin c/FNF_C_ENGINE.exe	f7ac1423b5deabda
+19	51	8157309083992530	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+55	151	8157309084434578	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/menu/MenuState.c.obj	2276787c78838bb6
+151	2600	8157309085282398	D:/dev/funkin c/FNF_C_ENGINE.exe	f7ac1423b5deabda
+20	52	8157329099253036	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+56	152	8157329099615160	CMakeFiles/FNF_C_ENGINE.dir/src/Game.c.obj	46953d48f5e8acc6
+152	2606	8157329100569770	D:/dev/funkin c/FNF_C_ENGINE.exe	f7ac1423b5deabda
+19	51	8157329641089727	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+55	139	8157329641459771	CMakeFiles/FNF_C_ENGINE.dir/src/Game.c.obj	46953d48f5e8acc6
+139	2608	8157329642290904	D:/dev/funkin c/FNF_C_ENGINE.exe	f7ac1423b5deabda
+18	48	8157331011623821	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+52	137	8157331011953628	CMakeFiles/FNF_C_ENGINE.dir/src/Game.c.obj	46953d48f5e8acc6
+137	2566	8157331012815610	D:/dev/funkin c/FNF_C_ENGINE.exe	f7ac1423b5deabda
+19	51	8157332071404747	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+55	172	8157332071774884	CMakeFiles/FNF_C_ENGINE.dir/src/Game.c.obj	46953d48f5e8acc6
+66	176	8157332071876647	CMakeFiles/FNF_C_ENGINE.dir/src/rendering/cpu/ImagePrefetch.c.obj	29e9a0ca8c63a6af
+59	185	8157332071814732	CMakeFiles/FNF_C_ENGINE.dir/src/Render.c.obj	4643b63720049f9f
+74	215	8157332071969013	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayStateStage.c.obj	895e295cba88cc62
+70	241	8157332071916652	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayState.c.obj	6cb6e51baac2993
+62	285	8157332071846647	CMakeFiles/FNF_C_ENGINE.dir/src/logic/Character.c.obj	16d07519ce5c8425
+285	2724	8157332074072113	D:/dev/funkin c/FNF_C_ENGINE.exe	f7ac1423b5deabda

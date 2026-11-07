@@ -23,6 +23,6 @@ bool ImagePrefetch_Take(const char* path, Image* out);
 // Descarta pedidos que ninguem usou (libera a memoria).
 void ImagePrefetch_Clear(void);
 
-#define IMAGE_PREFETCH_CAP_MB 216
+#define IMAGE_PREFETCH_CAP_MB 664
 
 #endif
