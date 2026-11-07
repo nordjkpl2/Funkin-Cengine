@@ -12,6 +12,7 @@
 #include "Game.h"
 #include "data/Song.h"
 #include "core/ModPath.h"
+#include "core/ModList.h"
 
 #define NOTE_SKIN_MAX 16
 #define NOTE_SKIN_NAME_MAX (SONG_NAME_MAX - 1)
@@ -118,7 +119,16 @@ static bool NoteSkin_FindFiles(const char* skinName, const char* songDir, Cached
     if (TrySkinPaths(animationPath, texturePath, skin)) return true;
 
     (void)snprintf(animationPath, sizeof(animationPath), "assets/images/NOTE_%s_assets.animset", skinName);
-    return TrySkinPaths(animationPath, texturePath, skin);
+    if (TrySkinPaths(animationPath, texturePath, skin)) return true;
+
+    /* Por ultimo: qualquer mod ativo que tenha a skin (musica normal ou de outro mod). */
+    for (int i = 0; i < ModList_Count(); i++) {
+        if (!ModList_Enabled(i)) continue;
+        (void)snprintf(animationPath, sizeof(animationPath), "%s/images/NOTE_%s_assets.xml", ModList_Root(i), skinName);
+        (void)snprintf(texturePath, sizeof(texturePath), "%s/images/NOTE_%s_assets.png", ModList_Root(i), skinName);
+        if (TrySkinPaths(animationPath, texturePath, skin)) return true;
+    }
+    return false;
 }
 
 /* Devolve a skin em cache (carregando se preciso) ou NULL se nao existir. */
@@ -162,6 +172,11 @@ RayAnimationHandler Cache_GetNoteSkin(const char* skinName, const char* songDir)
 
     EnsureDefaultLoaded();
     return defaultSkin;
+}
+
+RayAnimationHandler* Cache_GetNoteSkinPtr(const char* skinName, const char* songDir) {
+    CachedNoteSkin* skin = ResolveNoteSkin(skinName, songDir);
+    return skin ? &skin->animations : Cache_GetDefaultNoteSkinPtr();
 }
 
 RayAnimationHandler* Cache_GetDefaultNoteSkinPtr(void) {

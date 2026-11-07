@@ -107,74 +107,44 @@ void EdModRoot(const char* songDir, char out[256]) {
     (void)ModPath_Root(songDir, out, 256);
 }
 
-// so entra na lista quem tem png + animset + icone (sem fantasma).
-// fallback de preview/load continua bf/dad via Editor_TryIcon e Character_Load.
-static char CharacterAsset_Exists(const char* name) {
-    if(name == NULL || name[0] == 0) return 0;
-    if(strchr(name, '/') != NULL || strchr(name, '\\') != NULL || strstr(name, "..") != NULL) return 0;
+// Personagem valido numa raiz: .animset + (png do mesmo nome OU characters/<nome>.json, que aponta
+// para outra imagem, como "fatigue dave2"). Sem fantasma; icone nao e exigido (cai no bf/dad).
+static char CharFilesOk(const char* root, const char* name) {
     char p[300];
-    snprintf(p, sizeof(p), "assets/images/characters/%s.png", name);
-    FILE* f = fopen(p, "rb");
-    if(f == NULL) return 0;
-    fclose(f);
-    snprintf(p, sizeof(p), "assets/images/characters/%s.animset", name);
-    f = fopen(p, "rb");
-    if(f == NULL) return 0;
-    fclose(f);
-    return 1;   // icone nao e exigido: sem ele o jogo usa o do bf/dad
+    snprintf(p, sizeof(p), "%s/images/characters/%s.animset", root, name);
+    if(!FileExists(p)) return 0;
+    snprintf(p, sizeof(p), "%s/images/characters/%s.png", root, name);
+    if(FileExists(p)) return 1;
+    snprintf(p, sizeof(p), "%s/characters/%s.json", root, name);
+    return FileExists(p);
 }
 
-// vale no mod da musica (png+animset no mod) ou no global
+static char SafeName(const char* name) {
+    return name != NULL && name[0] != 0 && strchr(name, '/') == NULL && strchr(name, '\\') == NULL &&
+           strstr(name, "..") == NULL;
+}
+
+// vale no mod da musica, no global ou em qualquer mod ativo
 char CharacterAssetForSong_Exists(const char* name, const char* songDir) {
-    if(CharacterAsset_Exists(name))
+    if(!SafeName(name))
+        return 0;
+    if(CharFilesOk("assets", name))
         return 1;
-    if(name == NULL || name[0] == 0)
-        return 0;
-    if(strchr(name, '/') != NULL || strchr(name, '\\') != NULL || strstr(name, "..") != NULL)
-        return 0;
     char modRoot[256];
     EdModRoot(songDir, modRoot);
-    if(modRoot[0] == 0) {
-        // musica normal: vale personagem de qualquer mod ativo
-        char other[256];
-        return ModList_FindCharacterRoot(name, other, sizeof(other));
-    }
-    char p[300];
-    snprintf(p, sizeof(p), "%s/images/characters/%s.png", modRoot, name);
-    FILE* f = fopen(p, "rb");
-    if(f == NULL)
-        return 0;
-    fclose(f);
-    snprintf(p, sizeof(p), "%s/images/characters/%s.animset", modRoot, name);
-    f = fopen(p, "rb");
-    if(f == NULL)
-        return 0;
-    fclose(f);
-    return 1;
+    if(modRoot[0] != 0 && CharFilesOk(modRoot, name))
+        return 1;
+    char other[256];
+    return ModList_FindCharacterRoot(name, other, sizeof(other));
 }
 
-// girlfriend vale se tem png + animset (global ou no mod da musica); "none"/"nogf" = sem girlfriend
+// girlfriend vale se tem animset + imagem (global, mod da musica ou mod ativo); "none"/"nogf" = sem girlfriend
 char GirlfriendAsset_Exists(const char* name, const char* songDir) {
     if(name == NULL || name[0] == 0)
         return 0;
     if(strcmp(name, "none") == 0 || strcmp(name, "nogf") == 0 || strcmp(name, "__not_have_a_gf") == 0)
         return 1;
-    if(strchr(name, '/') != NULL || strchr(name, '\\') != NULL || strstr(name, "..") != NULL)
-        return 0;
-    char modRoot[256];
-    EdModRoot(songDir, modRoot);
-    const char* roots[2] = {"assets", modRoot};
-    for(int i = 0; i < 2; i++) {
-        if(roots[i][0] == 0)
-            continue;
-        char png[300], animset[300];
-        snprintf(png, sizeof(png), "%s/images/characters/%s.png", roots[i], name);
-        snprintf(animset, sizeof(animset), "%s/images/characters/%s.animset", roots[i], name);
-        if(FileExists(png) && FileExists(animset))
-            return 1;
-    }
-    char other[256];
-    return ModList_FindCharacterRoot(name, other, sizeof(other));
+    return CharacterAssetForSong_Exists(name, songDir);
 }
 
 // json: assets/stages/<nome>.json, assets/data/stages/<nome>.json.
@@ -284,38 +254,41 @@ void StageList_Scan(void) {
     }
 }
 
-/* Lista os personagens de uma pasta (png + animset). O icone nao e exigido: sem ele o jogo usa o do bf/dad. */
+/* Lista os personagens de uma pasta (<raiz>/images/characters): cada .animset com imagem propria
+   (png do mesmo nome) ou com characters/<nome>.json. O icone nao e exigido. */
 static void NameList_ScanDir(char (*names)[SONG_NAME_MAX], int* count, const char* charDir) {
     const int capacity = NAME_LIST_MAX;
     if(!DirectoryExists(charDir))
         return;
-    FilePathList list = LoadDirectoryFiles(charDir);
+    // raiz = charDir sem o sufixo "/images/characters"
+    char root[300];
+    snprintf(root, sizeof(root), "%s", charDir);
+    const size_t rl = strlen(root);
+    static const char tail[] = "/images/characters";
+    if(rl > sizeof(tail) - 1 && strcmp(root + rl - (sizeof(tail) - 1), tail) == 0)
+        root[rl - (sizeof(tail) - 1)] = 0;
+    FilePathList list = LoadDirectoryFilesEx(charDir, ".animset", false);
     for(unsigned int i = 0; i < list.count && *count < capacity; i++) {
         const char* p = list.paths[i];
         size_t L = strlen(p);
-        if(L < 5 || strcmp(p + L - 4, ".png") != 0)
-            continue;
         const char* s1 = strrchr(p, '/');
         const char* s2 = strrchr(p, '\\');
         const char* b = (s1 > s2) ? s1 : s2;
         b = (b != NULL) ? b + 1 : p;
-        size_t nlen = L - (size_t)(b - p) - 4;
+        size_t nlen = L - (size_t)(b - p) - 8;   // ".animset"
         if(nlen < 1 || nlen > SONG_NAME_MAX - 1)
             continue;
         if(b[0] == '_' || strstr(b, "Title") != NULL)
             continue;
+        char name[SONG_NAME_MAX];
+        memcpy(name, b, nlen);
+        name[nlen] = 0;
         char dup = 0;
         for(int k = 0; k < *count && !dup; k++)
-            dup = strncmp(names[k], b, nlen) == 0 && names[k][nlen] == 0;
-        if(dup)
+            dup = strcmp(names[k], name) == 0;
+        if(dup || !CharFilesOk(root, name))
             continue;
-        // sem fantasma: precisa do .animset (e do icone, quando pedido)
-        char ap[300];
-        snprintf(ap, sizeof(ap), "%s/%.*s.animset", charDir, (int)nlen, b);
-        if(!FileExists(ap))
-            continue;
-        memcpy(names[*count], b, nlen);
-        names[*count][nlen] = 0;
+        memcpy(names[*count], name, nlen + 1);
         (*count)++;
     }
     UnloadDirectoryFiles(list);
@@ -354,7 +327,7 @@ void CharList_Scan(void) {
 }
 
 // note skin list (scan assets/images/notes/ e mod/images/notes/)
-char skinNames[32][SONG_NAME_MAX];
+char skinNames[SKIN_LIST_MAX][SONG_NAME_MAX];
 
 int skinCount = 0;
 
@@ -364,7 +337,7 @@ static void NoteSkinList_ScanDir(const char* notesDir) {
     if(!DirectoryExists(notesDir))
         return;
     FilePathList list = LoadDirectoryFiles(notesDir);
-    for(unsigned int i = 0; i < list.count && skinCount < 32; i++) {
+    for(unsigned int i = 0; i < list.count && skinCount < SKIN_LIST_MAX; i++) {
         const char* p = list.paths[i];
         // so considera diretorios (pastas de skin)
         if(!DirectoryExists(p))
@@ -400,9 +373,52 @@ static void NoteSkinList_ScanDir(const char* notesDir) {
     UnloadDirectoryFiles(list);
 }
 
+/* Skins no formato do jogo: <pasta>/NOTE_<nome>_assets.png + .xml (ou .animset). */
+static void NoteSkinList_ScanAssets(const char* imagesDir) {
+    if(!DirectoryExists(imagesDir))
+        return;
+    FilePathList list = LoadDirectoryFiles(imagesDir);
+    for(unsigned int i = 0; i < list.count && skinCount < SKIN_LIST_MAX; i++) {
+        const char* p = list.paths[i];
+        const char* s1 = strrchr(p, '/');
+        const char* s2 = strrchr(p, '\\');
+        const char* b = (s1 > s2) ? s1 : s2;
+        b = (b != NULL) ? b + 1 : p;
+        const size_t len = strlen(b);
+        static const char pre[] = "NOTE_", suf[] = "_assets.png";
+        if(len <= sizeof(pre) - 1 + sizeof(suf) - 1 || strncmp(b, pre, sizeof(pre) - 1) != 0 ||
+           strcmp(b + len - (sizeof(suf) - 1), suf) != 0)
+            continue;
+        const size_t nlen = len - (sizeof(pre) - 1) - (sizeof(suf) - 1);
+        if(nlen > SONG_NAME_MAX - 1)
+            continue;
+        char name[SONG_NAME_MAX];
+        memcpy(name, b + sizeof(pre) - 1, nlen);
+        name[nlen] = 0;
+        char fp[300];
+        snprintf(fp, sizeof(fp), "%s/NOTE_%s_assets.xml", imagesDir, name);
+        char ok = FileExists(fp);
+        if(!ok) {
+            snprintf(fp, sizeof(fp), "%s/NOTE_%s_assets.animset", imagesDir, name);
+            ok = FileExists(fp);
+        }
+        if(!ok)
+            continue;
+        char dup = 0;
+        for(int k = 0; k < skinCount && !dup; k++)
+            dup = strcmp(skinNames[k], name) == 0;
+        if(!dup) {
+            memcpy(skinNames[skinCount], name, nlen + 1);
+            skinCount++;
+        }
+    }
+    UnloadDirectoryFiles(list);
+}
+
 void NoteSkinList_Scan(void) {
     skinCount = 0;
     NoteSkinList_ScanDir("assets/images/notes");
+    NoteSkinList_ScanAssets("assets/images");
     // skins do mod da musica
     char modRoot[256];
     EdModRoot(chart.dir, modRoot);
@@ -410,6 +426,16 @@ void NoteSkinList_Scan(void) {
         char nd[300];
         snprintf(nd, sizeof(nd), "%s/images/notes", modRoot);
         NoteSkinList_ScanDir(nd);
+        snprintf(nd, sizeof(nd), "%s/images", modRoot);
+        NoteSkinList_ScanAssets(nd);
+    }
+    // demais mods ativos (o jogo tambem acha a skin neles)
+    for(int i = 0; i < ModList_Count(); i++) {
+        if(!ModList_Enabled(i))
+            continue;
+        char nd[300];
+        snprintf(nd, sizeof(nd), "%s/images", ModList_Root(i));
+        NoteSkinList_ScanAssets(nd);
     }
     // garante "default" no topo se existir
     for(int i = 0; i < skinCount; i++) {

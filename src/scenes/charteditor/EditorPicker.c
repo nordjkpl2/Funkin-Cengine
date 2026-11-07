@@ -144,8 +144,7 @@ void Editor_EnterDir(const char* dir) {
 
     // set custom note skin for editor preview
     if(chart.noteSkin[0] != 0) {
-        RayAnimationHandler skin = Cache_GetNoteSkin(chart.noteSkin, dir);
-        Note_SetCurrentSkin(&skin);
+        Note_SetCurrentSkin(Cache_GetNoteSkinPtr(chart.noteSkin, dir));
     } else {
         Note_SetCurrentSkin(NULL);
     }

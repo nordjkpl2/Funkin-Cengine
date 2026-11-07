@@ -31,7 +31,8 @@ char StageFileForSong_Exists(const char* name, const char* songDir);
 char StageAsset_Exists(const char* name);
 void StageList_Scan(void);
 void CharList_Scan(void);
-extern char skinNames[32][SONG_NAME_MAX];
+#define SKIN_LIST_MAX 128
+extern char skinNames[SKIN_LIST_MAX][SONG_NAME_MAX];
 extern int skinCount;
 extern TxtBox skinBox;
 void NoteSkinList_Scan(void);

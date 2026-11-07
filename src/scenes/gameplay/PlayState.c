@@ -558,12 +558,14 @@ static void PlayState_Create([[maybe_unused]] RayScene* scene) {
     PlayStateHealth_Init(gameOptions.scroll == 1);
     PlayStateText_Init(songDir);
 
-    Strumlines_Load();
     PlayStateNoteSpawn_Init();
     SetupEvents();
     LoadMark("init");
 
     LoadSong();
+    // Skin de notas desta musica (vazia = padrao). Sempre definida, para nao herdar a da anterior.
+    Note_SetCurrentSkin(song.noteSkin[0] != 0 ? Cache_GetNoteSkinPtr(song.noteSkin, songDir) : NULL);
+    Strumlines_Load();   // depois da skin: os receptores usam as animacoes dela
     LoadMark("chart");
     PrefetchAssets();
     LoadSounds();               // roda enquanto o prefetch decodifica

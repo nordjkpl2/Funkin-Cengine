@@ -81,3 +81,9 @@ LOAD [triklizo-koooled] init: 0.6 ms, chart: 9.5 ms, sounds: 86.3 ms, characters
 --- SESSION LOG START ---
 LOAD [triklizo-koooled] init: 0.6 ms, chart: 14.9 ms, sounds: 58.6 ms, characters: 374.3 ms, stage: 3.1 ms, song audio: 1.7 ms, notes: 0.5 ms, ui: 7.6 ms, warmup: 0.3 ms, (textures on main thread: 383.2 ms) total: 461.5 ms
 LOAD [triklizo-koooled] init: 0.4 ms, chart: 13.4 ms, sounds: 55.9 ms, characters: 377.8 ms, stage: 3.3 ms, song audio: 1.7 ms, notes: 0.5 ms, ui: 7.7 ms, warmup: 0.2 ms, (textures on main thread: 386.9 ms) total: 461.0 ms
+
+--- SESSION LOG START ---
+LOAD [Fatigue] init: 17.2 ms, chart: 15.6 ms, sounds: 96.8 ms, characters: 352.1 ms, stage: 4.6 ms, song audio: 1.8 ms, notes: 0.3 ms, ui: 7.8 ms, warmup: 2.5 ms, (textures on main thread: 378.7 ms) total: 498.7 ms
+
+--- SESSION LOG START ---
+LOAD [Fatigue] init: 0.7 ms, chart: 23.8 ms, sounds: 55.8 ms, characters: 386.7 ms, stage: 4.0 ms, song audio: 1.8 ms, notes: 0.3 ms, ui: 8.2 ms, warmup: 0.2 ms, (textures on main thread: 412.8 ms) total: 481.6 ms

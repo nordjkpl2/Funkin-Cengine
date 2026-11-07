@@ -33,5 +33,7 @@ void AllScenes_DestroyGame(void);
 RayAnimationHandler Cache_GetNoteAnimations(void);
 RayAnimationHandler Cache_GetNoteSkin(const char* skinName, const char* songDir);
 RayAnimationHandler* Cache_GetDefaultNoteSkinPtr(void);
+/* Ponteiro estavel (slot do cache) da skin; skin vazia/inexistente = skin padrao. Use com Note_SetCurrentSkin. */
+RayAnimationHandler* Cache_GetNoteSkinPtr(const char* skinName, const char* songDir);
 
 #endif
