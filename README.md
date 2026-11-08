@@ -68,6 +68,7 @@ All Things your 2d (or semi 3d) game/mod needs, Made for Make
 <div align="left">
 
 Created by (c)2026 nordjkpl
+
 View License file for View Copyright
 
 ```text
@@ -75,6 +76,11 @@ All Friday Night Funkin' assets belong to their respective owners
 ```
 
 > nord in @nordjkpl 2 github
+
+```text
+
 >> [...] I would like to thank Shadow Mario in (https://github.com/ShadowMario/FNF-PsychEngine) and Jordan SantiagoYT in (https://github.com/JordanSantiagoYT/FNF-JS-Engine) and the open-source community for the logic; without it, we wouldn't have been able to achieve the best result
+
+```
 
 </details>
