@@ -10,6 +10,8 @@
 #include "GameData.h"
 #include "Log.h"
 #include "threads/cpu/Jobs.h"
+#include "data/ModImport.h"
+#include "threads/Thread.h"
 
 #include <stdbool.h>
 #include <stdio.h>
@@ -422,6 +424,43 @@ void RayGame_ClearScene(void)
 void RayGame_Destroy(void)
 {
     RayGame_ClearScene();
+
+    /* Workers param ANTES de fechar a janela (CloseWindow/WM_DESTROY); senao eles seguem
+     * segurando arquivos e a pasta nao pode ser apagada. Espera no maximo ~2,5 s; se algum
+     * worker nao acabar (ex.: recompressao de PNG enorme), salva e encerra o processo na hora. */
+    {
+        const double t0 = GetTime();
+        char clean = 0;
+
+        ModImport_Cancel();
+        while (GetTime() - t0 < 2.5)
+        {
+            const char importDone = (char)(!ModImport_Busy() ||
+                                           ModImport_Poll(NULL, NULL, 0, NULL, NULL));
+            Jobs_Poll();
+            if (importDone && Jobs_Pending() == 0)
+            {
+                clean = 1;
+                break;
+            }
+            Thread_SleepMs(5);
+        }
+
+        if (!clean)
+        {
+            Log_Info("[ INFO ] workers did not stop in time, exiting");
+            if (gameDataReady)
+            {
+                GameData_Stop();
+                gameDataReady = false;
+            }
+            fflush(stdout);
+            fflush(stderr);
+            _Exit(0);
+        }
+        ModImport_Shutdown();
+        Jobs_Shutdown();
+    }
 
     if (musicLoaded && audioReady)
     {

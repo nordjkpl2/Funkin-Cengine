@@ -394,6 +394,8 @@ void CharDrop_Draw(void) {
         if(canPick && hov && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             strncpy(box->buf, dropNames[i], sizeof(box->buf) - 1);
             box->buf[sizeof(box->buf) - 1] = 0;
+            // "default" na lista de skins = vazio (notas normais)
+            if(activeDrop == DROP_SKIN && strcmp(box->buf, "default") == 0) box->buf[0] = 0;
             chart.dirty = 1;
             if(activeDrop == DROP_BOYFRIEND || activeDrop == DROP_OPPONENT) {
                 // icones do topo da grade seguem o personagem escolhido

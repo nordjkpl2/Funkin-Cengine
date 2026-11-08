@@ -9,6 +9,7 @@
 #include "scenes/AllScenes.h"
 #include "data/ModImport.h"
 
+#include <math.h>
 #include <stdio.h>
 #include <string.h>
 #include "Game.h"
@@ -47,8 +48,12 @@ static char impPath[MODDING_PATH_CAP];
 static char impMsg[MODDING_MSG_CAP];
 static int impMods;
 static int impSongs;
-static long impKB;
+static long long impKB;
 static char impConfirmDel;
+static ModImportStats impLast;
+static int impLastDup;
+static char impLastValid;
+static ModImportProgress impProg;
 
 static Color outlineColor = {0, 0, 0, 0};
 static Color fontColor = {255, 255, 255, 255};
@@ -58,14 +63,21 @@ static const Color selectedColor = {42, 209, 86, 255};
 /* Small utilities                                                           */
 /* ------------------------------------------------------------------------- */
 
+/* Varredura em thread de fundo: a tela nao trava; o resultado chega em Imp_PollUsage. */
 static void Imp_RefreshUsage(void)
+{
+    ModImport_ScanStart("assets/mods");
+}
+
+static void Imp_PollUsage(void)
 {
     ModImportUsage usage = {0};
 
-    ModImport_ScanMods("assets/mods", &usage);
-    impMods = usage.mods;
-    impSongs = usage.songs;
-    impKB = usage.bytes / 1024;
+    if (ModImport_ScanPoll(&usage)) {
+        impMods = usage.mods;
+        impSongs = usage.songs;
+        impKB = usage.bytes / 1024;
+    }
 }
 
 static void Imp_SetMessage(const char *message)
@@ -185,7 +197,6 @@ static void Imp_RunImport(void)
 {
     char sourcePath[MODDING_PATH_CAP];
     const char *modName;
-    ModImportStats stats = {0};
 
     memcpy(sourcePath, impPath, sizeof(sourcePath));
     sourcePath[sizeof(sourcePath) - 1] = '\0';
@@ -196,13 +207,11 @@ static void Imp_RunImport(void)
         return;
     }
 
-    if (!ModImport_Run(sourcePath, "assets/mods", modName,
-                       impMsg, sizeof(impMsg), &stats)) {
-        impMsg[sizeof(impMsg) - 1] = '\0';
-    }
-
     impConfirmDel = 0;
-    Imp_RefreshUsage();
+    impMsg[0] = '\0';
+    memset(&impProg, 0, sizeof(impProg));
+    if (!ModImport_Start(sourcePath, "assets/mods", modName))
+        Imp_SetMessage("import: could not start");
 }
 
 static void Imp_UpdateInput(void)
@@ -227,6 +236,27 @@ static void Imp_UpdateInput(void)
 static void ModdingMenu_Update([[maybe_unused]] RayScene *scene)
 {
     if (mode == MOD_IMPORT) {
+        Imp_PollUsage();
+
+        /* import em andamento: sem digitar; ESC cancela */
+        if (ModImport_Busy()) {
+            char ok = 0;
+            ModImportStats done = {0};
+
+            while (GetCharPressed() > 0) {}
+            if (IsKeyPressed(KEY_ESCAPE)) ModImport_Cancel();
+            if (ModImport_Poll(&impProg, impMsg, sizeof(impMsg), &done, &ok)) {
+                impMsg[sizeof(impMsg) - 1] = '\0';
+                if (ok || done.songs || done.stages || done.images || done.characters) {
+                    impLast = done;
+                    impLastDup = impProg.duplicates;
+                    impLastValid = 1;
+                }
+                Imp_RefreshUsage();
+            }
+            return;
+        }
+
         Imp_UpdateInput();
 
         if (IsKeyPressed(KEY_ESCAPE)) {
@@ -239,11 +269,11 @@ static void ModdingMenu_Update([[maybe_unused]] RayScene *scene)
             if (!impConfirmDel && impMods > 0) {
                 impConfirmDel = 1;
                 snprintf(impMsg, sizeof(impMsg),
-                         "DELETE again to remove %d mods (%ld KB). ESC cancels.",
+                         "DELETE again to remove %d mods (%lld KB). ESC cancels.",
                          impMods, impKB);
             } else if (impConfirmDel) {
                 int removed = 0;
-                long freed = 0;
+                long long freed = 0;
 
                 ModImport_DeleteAll("assets/mods", impMsg, sizeof(impMsg),
                                     &removed, &freed);
@@ -337,43 +367,255 @@ static void Modding_DrawBackground(void)
     Render_DrawGraphicObject(&bg);
 }
 
+/* Icones desenhados mais abaixo. */
+static void Modding_DrawMusicNote(float x, float y, float size, Color c);
+static void Modding_DrawPerson(float x, float y, float size, Color c);
+static void Modding_DrawDownload(float x, float y, float size, Color c);
+
+static void Imp_FormatSize(long long bytes, char *out, size_t cap)
+{
+    const double b = (double)bytes;
+    if (bytes >= (1LL << 30))      snprintf(out, cap, "%.2f GB", b / 1073741824.0);
+    else if (bytes >= (1LL << 20)) snprintf(out, cap, "%.1f MB", b / 1048576.0);
+    else if (bytes >= (1LL << 10)) snprintf(out, cap, "%.0f KB", b / 1024.0);
+    else                           snprintf(out, cap, "%lld B", bytes);
+}
+
+/* Fim do texto que cabe em maxW (caminhos longos mostram o final). */
+static const char *Imp_FitTail(const char *text, float maxW, float size)
+{
+    const char *p = text;
+    while (*p && MeasureTextEx(mainFont, p, size, 1).x > maxW) {
+        ++p;
+        while ((*p & 0xC0) == 0x80) ++p;
+    }
+    return p;
+}
+
+/* Quebra por palavras; devolve o y logo abaixo do texto. */
+static float Imp_DrawWrapped(const char *text, float x, float y, float maxW,
+                             float size, Color c)
+{
+    char line[MODDING_MSG_CAP] = "";
+    char test[MODDING_MSG_CAP];
+    size_t len = 0;
+    const char *p = text;
+
+    while (*p) {
+        const char *e = p;
+        size_t wl, tl;
+        while (*e && *e != ' ' && *e != '\n') ++e;
+        wl = (size_t)(e - p);
+        if (wl + len + 2 >= sizeof(test)) break;
+        memcpy(test, line, len);
+        tl = len;
+        if (len) test[tl++] = ' ';
+        memcpy(test + tl, p, wl);
+        tl += wl;
+        test[tl] = '\0';
+        if (len && MeasureTextEx(mainFont, test, size, 1).x > maxW) {
+            DrawTextEx(mainFont, line, (Vector2){x, y}, size, 1, c);
+            y += size + 6;
+            memcpy(line, p, wl);
+            line[wl] = '\0';
+            len = wl;
+        } else {
+            memcpy(line, test, tl + 1);
+            len = tl;
+        }
+        p = e;
+        while (*p == ' ' || *p == '\n') ++p;
+    }
+    if (len) {
+        DrawTextEx(mainFont, line, (Vector2){x, y}, size, 1, c);
+        y += size + 6;
+    }
+    return y;
+}
+
+static void Imp_Panel(Rectangle r, const char *title)
+{
+    DrawRectangleRec(r, (Color){10, 10, 16, 215});
+    DrawRectangleLinesEx(r, 2, (Color){42, 209, 86, 150});
+    DrawTextEx(mainFont, title, (Vector2){r.x + 20, r.y + 14}, 22, 2, selectedColor);
+    DrawRectangle((int)r.x + 20, (int)r.y + 46, (int)r.width - 40, 1, (Color){255, 255, 255, 40});
+}
+
+/* Tecla + rotulo; devolve o x onde termina. */
+static float Imp_Chip(float x, float y, const char *key, const char *label,
+                      Color accent, char active)
+{
+    const float kw = MeasureTextEx(mainFont, key, 17, 1).x + 20;
+    const Color text = active ? fontColor : (Color){130, 130, 140, 255};
+
+    DrawRectangle((int)x, (int)y, (int)kw, 30, active ? (Color){accent.r, accent.g, accent.b, 70} : (Color){40, 40, 48, 255});
+    DrawRectangleLinesEx((Rectangle){x, y, kw, 30}, 1, active ? accent : (Color){70, 70, 80, 255});
+    DrawTextEx(mainFont, key, (Vector2){x + 10, y + 6}, 17, 1, text);
+    DrawTextEx(mainFont, label, (Vector2){x + kw + 8, y + 5}, 19, 1, text);
+    return x + kw + 8 + MeasureTextEx(mainFont, label, 19, 1).x + 22;
+}
+
+static void Imp_StatCard(float x, float y, int kind, const char *value, const char *label)
+{
+    const Rectangle card = {x, y, 410, 68};
+    const Color icon = selectedColor;
+
+    DrawRectangleRec(card, (Color){255, 255, 255, 14});
+    DrawRectangle((int)x + 10, (int)y + 10, 48, 48, (Color){42, 209, 86, 45});
+    if (kind == 0)      Modding_DrawPerson(x + 22, y + 18, 24, icon);
+    else if (kind == 1) Modding_DrawMusicNote(x + 22, y + 20, 24, icon);
+    else                Modding_DrawDownload(x + 22, y + 20, 24, icon);
+    DrawTextEx(mainFont, value, (Vector2){x + 72, y + 6}, 30, 2, fontColor);
+    DrawTextEx(mainFont, label, (Vector2){x + 72, y + 40}, 19, 1, (Color){150, 150, 160, 255});
+}
+
 static void Modding_DrawImport(void)
 {
-    char usageText[160];
-    const Color muted = {120, 120, 120, 255};
+    const Color muted = {150, 150, 160, 255};
     const Color warning = impConfirmDel ? RED : YELLOW;
+    const Rectangle left = {50, 130, 700, 430};
+    const Rectangle right = {780, 130, 450, 430};
+    const char busy = ModImport_ScanBusy();
+    const char importing = ModImport_Busy();
+    char a[96], b[96], msg[MODDING_MSG_CAP];
+    float y, x;
 
     Modding_DrawBackground();
+    DrawRectangle(0, 0, 1280, 720, (Color){0, 0, 0, 120});
 
-    DrawTextEx(mainFont, "IMPORT MOD", (Vector2){150, 120}, 40, 4, fontColor);
-    DrawTextEx(mainFont,
-               "Mod folder (the directory containing songs/, data/ or weeks/)",
-               (Vector2){150, 190}, 20, 1, fontColor);
+    /* topo: seta de voltar + titulo */
+    DrawTriangle((Vector2){76, 52}, (Vector2){76, 88}, (Vector2){50, 70}, fontColor);
+    DrawRectangle(76, 64, 24, 12, fontColor);
+    DrawTextEx(mainFont, "IMPORT MODS", (Vector2){120, 46}, 44, 4, fontColor);
 
-    DrawRectangle(150, 220, 980, 42, (Color){20, 20, 20, 255});
-    DrawRectangleLines(150, 220, 980, 42, GREEN);
-    DrawTextEx(mainFont,
-               impPath[0] ? impPath : "C:/.../mod-folder",
-               (Vector2){160, 231}, 20, 1,
-               impPath[0] ? WHITE : muted);
+    /* esquerda: origem */
+    Imp_Panel(left, "SOURCE FOLDER");
+    DrawTextEx(mainFont, "Directory containing songs/, data/ or weeks/",
+               (Vector2){left.x + 20, left.y + 60}, 19, 1, muted);
+    {
+        const Rectangle box = {left.x + 20, left.y + 92, left.width - 40, 46};
+        const float textW = box.width - 24;
+        const char *shown = Imp_FitTail(impPath, textW - 24, 20);
+        float tx = box.x + 12;
 
-    DrawTextEx(mainFont,
-               "ENTER: import   CTRL+V: paste path   BACKSPACE: erase   ESC: back",
-               (Vector2){150, 280}, 19, 1, YELLOW);
-    DrawTextEx(mainFont,
-               "Imports charts, music, weeks, stages, images, characters and icons.",
-               (Vector2){150, 314}, 19, 1, fontColor);
-    DrawTextEx(mainFont,
-               "Destination: assets/mods/<mod-name>/",
-               (Vector2){150, 344}, 19, 1, fontColor);
+        DrawRectangleRec(box, (Color){20, 20, 20, 255});
+        DrawRectangleLinesEx(box, 2, GREEN);
+        if (impPath[0]) {
+            if (shown != impPath) {
+                DrawTextEx(mainFont, "...", (Vector2){tx, box.y + 12}, 20, 1, muted);
+                tx += MeasureTextEx(mainFont, "...", 20, 1).x + 4;
+            }
+            DrawTextEx(mainFont, shown, (Vector2){tx, box.y + 12}, 20, 1, WHITE);
+            tx += MeasureTextEx(mainFont, shown, 20, 1).x + 3;
+        } else {
+            DrawTextEx(mainFont, "C:/.../mod-folder", (Vector2){tx, box.y + 12}, 20, 1, (Color){110, 110, 120, 255});
+        }
+        if (((int)(GetTime() * 2.0)) & 1)
+            DrawRectangle((int)tx, (int)box.y + 10, 2, 26, fontColor);
+    }
+    x = left.x + 20;
+    y = left.y + 156;
+    x = Imp_Chip(x, y, "ENTER", "Import", selectedColor, impPath[0] != '\0' && !importing);
+    x = Imp_Chip(x, y, "CTRL+V", "Paste path", selectedColor, 1);
+    (void)Imp_Chip(x, y, "BKSP", "Erase", selectedColor, impPath[0] != '\0');
 
-    snprintf(usageText, sizeof(usageText),
-             "Mods: %d    Songs: %d    Disk usage: %ld KB    (DELETE twice removes all mods)",
-             impMods, impSongs, impKB);
-    DrawTextEx(mainFont, usageText, (Vector2){150, 390}, 19, 1, warning);
+    DrawRectangle((int)left.x + 20, (int)left.y + 206, (int)left.width - 40, 1, (Color){255, 255, 255, 30});
+    y = Imp_DrawWrapped("Imports charts, music, weeks, stages, images, characters and icons.",
+                        left.x + 20, left.y + 222, left.width - 40, 19, fontColor);
+    y = Imp_DrawWrapped("Destination: assets/mods/<mod-name>/",
+                        left.x + 20, y + 2, left.width - 40, 19, muted);
 
-    if (impMsg[0])
-        DrawTextEx(mainFont, impMsg, (Vector2){150, 430}, 19, 1, warning);
+    if (importing) {
+        const float top = left.y + 322;
+        char c[96];
+        Imp_FormatSize(impProg.bytesDone, c, sizeof(c));
+        snprintf(msg, sizeof(msg), "%s... %d / %d files, %s copied%s",
+                 impProg.cancelling ? "Cancelling" : "Importing",
+                 impProg.filesDone, impProg.filesTotal, c,
+                 impProg.failed ? " (some files failed)" : "");
+        DrawRectangle((int)left.x + 20, (int)top, 4, 90, selectedColor);
+        (void)Imp_DrawWrapped(msg, left.x + 36, top + 2, left.width - 60, 19, selectedColor);
+    } else if (impMsg[0]) {
+        const float top = left.y + 322;
+        snprintf(msg, sizeof(msg), "%s", impMsg);
+        DrawRectangle((int)left.x + 20, (int)top, 4, 90, warning);
+        (void)Imp_DrawWrapped(msg, left.x + 36, top + 2, left.width - 60, 19, warning);
+    }
+
+    /* direita: dados que ja existem */
+    Imp_Panel(right, "INSTALLED");
+    if (busy) {
+        snprintf(a, sizeof(a), "...");
+        snprintf(b, sizeof(b), "...");
+        snprintf(msg, sizeof(msg), "...");
+    } else {
+        snprintf(a, sizeof(a), "%d", impMods);
+        snprintf(b, sizeof(b), "%d", impSongs);
+        Imp_FormatSize(impKB * 1024, msg, sizeof(msg));
+    }
+    Imp_StatCard(right.x + 20, right.y + 60, 0, a, "Mods");
+    Imp_StatCard(right.x + 20, right.y + 138, 1, b, "Songs");
+    Imp_StatCard(right.x + 20, right.y + 216, 2, msg, "Disk usage");
+
+    DrawTextEx(mainFont, "LAST IMPORT", (Vector2){right.x + 20, right.y + 298}, 19, 2, selectedColor);
+    if (impLastValid) {
+        char c[96];
+        y = right.y + 326;
+        snprintf(a, sizeof(a), "Songs %d   Charts %d   Weeks %d   Stages %d",
+                 impLast.songs, impLast.charts, impLast.weeks, impLast.stages);
+        snprintf(b, sizeof(b), "Images %d   Characters %d   Icons %d",
+                 impLast.images, impLast.characters, impLast.icons);
+        Imp_FormatSize(impLast.bytes, msg, sizeof(msg));
+        snprintf(c, sizeof(c), "Copied %s, %d same files skipped", msg, impLastDup);
+        DrawTextEx(mainFont, a, (Vector2){right.x + 20, y}, 19, 1, fontColor);
+        DrawTextEx(mainFont, b, (Vector2){right.x + 20, y + 28}, 19, 1, fontColor);
+        DrawTextEx(mainFont, c, (Vector2){right.x + 20, y + 62}, 19, 1, muted);
+    } else {
+        DrawTextEx(mainFont, "Nothing imported in this session.",
+                   (Vector2){right.x + 20, right.y + 326}, 19, 1, muted);
+    }
+
+    /* rodape: barra de uso de disco (parte do ultimo import) + atalhos */
+    Imp_FormatSize(impKB * 1024, a, sizeof(a));
+    if (importing) snprintf(msg, sizeof(msg), "Importing: %d / %d files", impProg.filesDone, impProg.filesTotal);
+    else if (busy) snprintf(msg, sizeof(msg), "Scanning mods...");
+    else           snprintf(msg, sizeof(msg), "Disk usage: %s", a);
+    DrawTextEx(mainFont, msg, (Vector2){50, 586}, 19, 1, fontColor);
+    if (importing) {
+        Imp_FormatSize(impProg.bytesDone, a, sizeof(a));
+        snprintf(msg, sizeof(msg), "%s copied", a);
+        DrawTextEx(mainFont, msg,
+                   (Vector2){1230 - MeasureTextEx(mainFont, msg, 19, 1).x, 586}, 19, 1, muted);
+    } else if (impLastValid && !busy) {
+        Imp_FormatSize(impLast.bytes, a, sizeof(a));
+        snprintf(msg, sizeof(msg), "Last import: %s", a);
+        DrawTextEx(mainFont, msg,
+                   (Vector2){1230 - MeasureTextEx(mainFont, msg, 19, 1).x, 586}, 19, 1, muted);
+    }
+    {
+        const Rectangle bar = {50, 616, 1180, 14};
+        DrawRectangleRec(bar, (Color){255, 255, 255, 30});
+        if (importing && impProg.filesTotal > 0) {
+            float f = (float)impProg.filesDone / (float)impProg.filesTotal;
+            if (f > 0.99f) f = 0.99f;
+            DrawRectangle((int)bar.x, (int)bar.y, (int)(bar.width * f) + 3, 14, selectedColor);
+        } else if (busy || importing) {
+            const float t = (float)fmod(GetTime() * 0.8, 1.0);
+            const float segW = 220;
+            const float sx = bar.x + t * (bar.width + segW) - segW;
+            const float x0 = sx < bar.x ? bar.x : sx;
+            const float x1 = sx + segW > bar.x + bar.width ? bar.x + bar.width : sx + segW;
+            if (x1 > x0) DrawRectangle((int)x0, (int)bar.y, (int)(x1 - x0), 14, selectedColor);
+        } else if (impKB > 0 && impLastValid && impLast.bytes > 0) {
+            float f = (float)((double)impLast.bytes / ((double)impKB * 1024.0));
+            if (f > 1.0f) f = 1.0f;
+            DrawRectangle((int)bar.x, (int)bar.y, (int)(bar.width * f) + 3, 14, selectedColor);
+        }
+        DrawRectangleLinesEx(bar, 1, (Color){255, 255, 255, 60});
+    }
+    x = Imp_Chip(50, 650, "ESC", importing ? "Cancel import" : "Back", selectedColor, 1);
+    (void)Imp_Chip(x, 650, "DELETE x2", impConfirmDel ? "Press again to remove all mods" : "Remove all mods",
+                   warning, impMods > 0 && impPath[0] == '\0' && !importing);
 
     Render_StopCamera();
 }

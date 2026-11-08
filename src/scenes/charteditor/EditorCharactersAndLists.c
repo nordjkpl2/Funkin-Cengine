@@ -490,17 +490,20 @@ void NoteSkinList_Scan(void) {
         snprintf(nd, sizeof(nd), "%s/images", ModList_Root(i));
         NoteSkinList_ScanAssets(nd);
     }
-    // garante "default" no topo se existir
-    for(int i = 0; i < skinCount; i++) {
-        if(strcmp(skinNames[i], "default") == 0) {
-            if(i != 0) {
-                char tmp[SONG_NAME_MAX];
-                memcpy(tmp, skinNames[i], sizeof(tmp));
-                memmove(skinNames[1], skinNames[0], i * sizeof(skinNames[0]));
-                memcpy(skinNames[0], tmp, sizeof(tmp));
+    // "default" sempre no topo (escolher = volta pras notas normais)
+    {
+        int w = 0;
+        for(int i = 0; i < skinCount; i++) {
+            if(strcmp(skinNames[i], "default") != 0) {
+                if(w != i) memcpy(skinNames[w], skinNames[i], sizeof(skinNames[0]));
+                w++;
             }
-            break;
         }
+        skinCount = w;
+        if(skinCount >= SKIN_LIST_MAX) skinCount = SKIN_LIST_MAX - 1;
+        memmove(skinNames[1], skinNames[0], (size_t)skinCount * sizeof(skinNames[0]));
+        snprintf(skinNames[0], SONG_NAME_MAX, "default");
+        skinCount++;
     }
 }
 

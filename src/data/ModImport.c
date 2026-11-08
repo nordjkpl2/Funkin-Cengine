@@ -12,11 +12,16 @@
 #include "std.h"
 #include "data/ModImport.h"
 #include "yyjson.h"
+#include "core/DirWalk.h"
+#include "threads/cpu/Jobs.h"
+#include "threads/Thread.h"
 
 #include <ctype.h>
 #include <errno.h>
 #include <limits.h>
 #include <stdint.h>
+#include <stdatomic.h>
+#include <sys/stat.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -320,7 +325,7 @@ static void MI_StatsAdd(ModImportStats *dst, const ModImportStats *src)
     dst->characters += src->characters;
     dst->animsets += src->animsets;
     dst->icons += src->icons;
-    if (src->bytes > 0 && dst->bytes <= LONG_MAX - src->bytes)
+    if (src->bytes > 0 && dst->bytes <= LLONG_MAX - src->bytes)
         dst->bytes += src->bytes;
     dst->skippedEvents += src->skippedEvents;
     dst->skippedLua += src->skippedLua;
@@ -393,18 +398,122 @@ static char *MI_ReadFile(const char *path, long *outSize, long maxSize)
     return buffer;
 }
 
-static char MI_CopyFile(const char *source, const char *destination, long *bytes)
+#ifdef _WIN32
+#define MI_STAT _stati64
+#define MI_STAT_T struct _stat64
+#else
+#define MI_STAT stat
+#define MI_STAT_T struct stat
+#endif
+
+static atomic_int mi_dupSkipped;
+static atomic_int mi_cancel;          /* 1 = cancelar o import em andamento */
+static atomic_int mi_useDefer;        /* 1 = arquivos grandes vao para o Jobs */
+static atomic_int mi_inflight;        /* copias grandes em andamento */
+static atomic_int mi_failed;          /* copias que falharam em worker */
+static atomic_int mi_filesDone;       /* arquivos tratados (progresso) */
+static atomic_llong mi_bytesDone;     /* bytes escritos (progresso) */
+static atomic_llong mi_deferredBytes; /* bytes dos workers ainda nao somados nas estatisticas */
+
+#define MI_DEFER_MIN       (2LL * 1024 * 1024)
+
+int ModImport_SkippedDuplicates(void)
+{
+    return atomic_load(&mi_dupSkipped);
+}
+
+/* destino ja existe com mesmo tamanho: considera o mesmo arquivo */
+/* Destino ja existe com o mesmo tamanho: considera o mesmo arquivo. */
+static int MI_SameSizeAtDest(const char *source, const char *destination)
+{
+    MI_STAT_T a, b;
+    if (MI_STAT(destination, &b) != 0) return 0;
+    if (MI_STAT(source, &a) != 0) return 0;
+    return a.st_size == b.st_size;
+}
+
+#ifdef _WIN32
+/* Copia nativa do Windows (CopyFileExW). Prototipos declarados aqui para
+ * nao incluir windows.h junto com o raylib (conflito de nomes). */
+#define MI_NATIVE_MIN        (1LL * 1024 * 1024)   /* abaixo disso usa fopen */
+#define MI_NATIVE_UNBUF_MIN  (64LL * 1024 * 1024)  /* COPY_FILE_NO_BUFFERING */
+
+typedef unsigned long MI_DWORD;
+typedef unsigned long (__stdcall *MI_CopyProgressFn)(long long total, long long transferred,
+    long long streamSize, long long streamTransferred, MI_DWORD streamNo, MI_DWORD reason,
+    void *src, void *dst, void *data);
+
+__declspec(dllimport) int __stdcall CopyFileExW(const wchar_t *src, const wchar_t *dst,
+    MI_CopyProgressFn progress, void *data, int *cancel, MI_DWORD flags);
+__declspec(dllimport) int __stdcall MultiByteToWideChar(unsigned cp, MI_DWORD flags,
+    const char *str, int len, wchar_t *out, int outLen);
+__declspec(dllimport) int __stdcall SetFileAttributesW(const wchar_t *path, MI_DWORD attrs);
+
+typedef struct MiNativeState { long long last; } MiNativeState;
+
+static unsigned long __stdcall MI_NativeProgress(long long total, long long transferred,
+    long long streamSize, long long streamTransferred, MI_DWORD streamNo, MI_DWORD reason,
+    void *src, void *dst, void *data)
+{
+    MiNativeState *st = (MiNativeState *)data;
+    (void)total; (void)streamSize; (void)streamTransferred; (void)streamNo; (void)reason;
+    (void)src; (void)dst;
+    atomic_fetch_add(&mi_bytesDone, transferred - st->last);
+    st->last = transferred;
+    return atomic_load(&mi_cancel) ? 1u /* PROGRESS_CANCEL */ : 0u /* PROGRESS_CONTINUE */;
+}
+
+/* 1 = copiou, 0 = falhou/cancelou (progresso desfeito; chamador cai no fopen). */
+static char MI_CopyFileNative(const char *source, const char *destination, long long size)
+{
+    wchar_t ws[MI_PATH_MAX];
+    wchar_t wd[MI_PATH_MAX];
+    MiNativeState st = {0};
+    MI_DWORD flags = (size >= MI_NATIVE_UNBUF_MIN) ? 0x1000u /* NO_BUFFERING */ : 0u;
+
+    if (MultiByteToWideChar(65001, 0, source, -1, ws, MI_PATH_MAX) <= 0) return 0;
+    if (MultiByteToWideChar(65001, 0, destination, -1, wd, MI_PATH_MAX) <= 0) return 0;
+
+    if (!CopyFileExW(ws, wd, MI_NativeProgress, &st, NULL, flags)) {
+        atomic_fetch_sub(&mi_bytesDone, st.last);
+        (void)remove(destination);
+        return 0;
+    }
+    SetFileAttributesW(wd, 0x80u /* NORMAL: tira somente-leitura herdado */);
+    return 1;
+}
+#endif
+
+static char MI_CopyFileNow(const char *source, const char *destination, long long *bytes)
 {
     FILE *in;
     FILE *out;
     unsigned char buffer[MI_COPY_BUFFER];
     size_t count;
-    long total = 0;
+    long long total = 0;
     int ok = 1;
 
     if (source == NULL || destination == NULL || !FileExists(source)) return 0;
     if (strcmp(source, destination) == 0) return 1;
+    if (MI_SameSizeAtDest(source, destination)) {
+        atomic_fetch_add(&mi_dupSkipped, 1);
+        return 1;
+    }
     if (!MI_EnsureParent(destination)) return 0;
+
+#ifdef _WIN32
+    {
+        MI_STAT_T sst;
+        if (MI_STAT(source, &sst) == 0 && (long long)sst.st_size >= MI_NATIVE_MIN) {
+            if (MI_CopyFileNative(source, destination, (long long)sst.st_size)) {
+                if (bytes != NULL) *bytes += (long long)sst.st_size;
+                return 1;
+            }
+            if (atomic_load(&mi_cancel)) return 0;
+            /* senao: cai no caminho fopen abaixo */
+        }
+    }
+#endif
 
     in = fopen(source, "rb");
     if (in == NULL) return 0;
@@ -415,15 +524,15 @@ static char MI_CopyFile(const char *source, const char *destination, long *bytes
     }
 
     while ((count = fread(buffer, 1, sizeof(buffer), in)) > 0) {
+        if (atomic_load(&mi_cancel)) {
+            ok = 0;
+            break;
+        }
         if (fwrite(buffer, 1, count, out) != count) {
             ok = 0;
             break;
         }
-        if (total <= LONG_MAX - (long)count) total += (long)count;
-        else {
-            ok = 0;
-            break;
-        }
+        total += (long long)count;
     }
     if (ferror(in)) ok = 0;
     if (fclose(in) != 0) ok = 0;
@@ -434,7 +543,80 @@ static char MI_CopyFile(const char *source, const char *destination, long *bytes
         return 0;
     }
     if (bytes != NULL) *bytes += total;
+    atomic_fetch_add(&mi_bytesDone, total);
     return 1;
+}
+
+typedef struct MiCopyTask {
+    char src[MI_PATH_MAX];
+    char dst[MI_PATH_MAX];
+} MiCopyTask;
+
+static void MI_CopyTaskFn(void *data)
+{
+    MiCopyTask *t = (MiCopyTask *)data;
+    long long b = 0;
+
+    if (!atomic_load(&mi_cancel) && !MI_CopyFileNow(t->src, t->dst, &b))
+        atomic_fetch_add(&mi_failed, 1);
+    atomic_fetch_add(&mi_deferredBytes, b);
+    atomic_fetch_add(&mi_filesDone, 1);
+    atomic_fetch_sub(&mi_inflight, 1);
+    free(t);
+}
+
+/* 1 = a copia foi para um worker; 0 = copiar aqui mesmo. */
+static int MI_Defer(const char *source, const char *destination)
+{
+    MiCopyTask *t;
+    const int cap = Jobs_ThreadCount() * 2 > 2 ? Jobs_ThreadCount() * 2 : 2;
+
+    /* limita quantas copias ficam na fila do Jobs */
+    while (!atomic_load(&mi_cancel) && atomic_load(&mi_inflight) >= cap)
+        Thread_SleepMs(2);
+    if (atomic_load(&mi_cancel)) return 0;
+
+    t = (MiCopyTask *)malloc(sizeof(*t));
+    if (t == NULL) return 0;
+    snprintf(t->src, sizeof(t->src), "%s", source);
+    snprintf(t->dst, sizeof(t->dst), "%s", destination);
+    atomic_fetch_add(&mi_inflight, 1);
+    if (!Jobs_Submit(MI_CopyTaskFn, t, NULL)) {
+        atomic_fetch_sub(&mi_inflight, 1);
+        free(t);
+        return 0;
+    }
+    return 1;
+}
+
+/* Espera as copias em worker e soma os bytes delas. */
+static void MI_Drain(long long *bytes)
+{
+    while (atomic_load(&mi_inflight) > 0) Thread_SleepMs(2);
+    if (bytes != NULL) *bytes += atomic_exchange(&mi_deferredBytes, 0);
+    else (void)atomic_exchange(&mi_deferredBytes, 0);
+}
+
+static char MI_CopyFile(const char *source, const char *destination, long long *bytes)
+{
+    char r;
+    MI_STAT_T st;
+
+    if (atomic_load(&mi_cancel)) return 0;
+    if (atomic_load(&mi_useDefer) && source != NULL && destination != NULL &&
+        strcmp(source, destination) != 0 && MI_STAT(source, &st) == 0 &&
+        (long long)st.st_size >= MI_DEFER_MIN) {
+        if (MI_SameSizeAtDest(source, destination)) {
+            atomic_fetch_add(&mi_dupSkipped, 1);
+            atomic_fetch_add(&mi_filesDone, 1);
+            return 1;
+        }
+        if (MI_EnsureParent(destination) && MI_Defer(source, destination))
+            return 1;
+    }
+    r = MI_CopyFileNow(source, destination, bytes);
+    atomic_fetch_add(&mi_filesDone, 1);
+    return r;
 }
 
 static int MI_IsDirectoryPath(const char *path)
@@ -453,7 +635,7 @@ static FilePathList MI_ListEntries(const char *path)
 }
 
 static int MI_CopyTree(const char *source, const char *destination,
-                       long *bytes, int *copiedFiles, int depth)
+                       long long *bytes, int *copiedFiles, int depth)
 {
     FilePathList dirs;
     FilePathList entries;
@@ -490,29 +672,12 @@ static int MI_CopyTree(const char *source, const char *destination,
     return ok;
 }
 
-static long MI_CountTreeBytes(const char *path, int depth)
+/* Uma passada so (DirWalk): o tamanho vem da propria listagem, sem abrir cada arquivo. */
+static long long MI_CountTreeBytes(const char *path)
 {
-    FilePathList dirs;
-    FilePathList entries;
-    long total = 0;
-    if (depth > MI_MAX_DEPTH) return 0;
-
-    entries = MI_ListEntries(path);
-    for (unsigned i = 0; i < entries.count; ++i) {
-        if (!MI_IsDirectoryPath(entries.paths[i])) {
-            long size = MI_FileSize(entries.paths[i]);
-            if (size > 0 && total <= LONG_MAX - size) total += size;
-        }
-    }
-    UnloadDirectoryFiles(entries);
-
-    dirs = MI_ListDirectories(path);
-    for (unsigned i = 0; i < dirs.count; ++i) {
-        long size = MI_CountTreeBytes(dirs.paths[i], depth + 1);
-        if (size > 0 && total <= LONG_MAX - size) total += size;
-    }
-    UnloadDirectoryFiles(dirs);
-    return total;
+    DirWalkTotals totals;
+    if (!DirWalk_Totals(path, MI_MAX_DEPTH, &totals)) return 0;
+    return totals.bytes;
 }
 
 static int MI_RemoveTree(const char *path, int depth, int *removedFiles)
@@ -1019,7 +1184,7 @@ cleanup:
 /* ------------------------------------------------------------------------- */
 
 static int MI_CopyIconAlias(const char *srcMod, const char *dstMod,
-                            const char *iconKey, long *bytes)
+                            const char *iconKey, long long *bytes)
 {
     char srcIcons[MI_PATH_MAX];
     char dstIcons[MI_PATH_MAX];
@@ -1361,6 +1526,64 @@ static int MI_ImportSongs(const char *srcMod, const char *dstMod,
     return 1;
 }
 
+/* Um personagem: copia o .json, le o JSON e gera o .animset. Roda em worker
+ * ou na thread do import; so usa dados proprios (resultado em MiCharTask). */
+typedef struct MiCharTask {
+    char jsonPath[MI_PATH_MAX];
+    char destJson[MI_PATH_MAX];
+    char stem[MI_NAME_MAX];
+    const char *sourceImageRoot;
+    const char *destImageChars;
+    long long bytes;
+    long long animBytes;
+    char healthicon[64];
+    char copyOk;
+    char parsed;
+    char animset;
+} MiCharTask;
+
+static atomic_int mi_charInflight;
+
+static void MI_CharTaskFn(void *data)
+{
+    MiCharTask *t = (MiCharTask *)data;
+    MI_CharInfo *info;
+
+    if (!atomic_load(&mi_cancel)) {
+        /* sem MI_CopyFile: dentro de worker nao pode esperar vaga no Jobs */
+        t->copyOk = MI_CopyFileNow(t->jsonPath, t->destJson, &t->bytes);
+        atomic_fetch_add(&mi_filesDone, 1);
+    }
+    info = t->copyOk ? (MI_CharInfo *)malloc(sizeof(*info)) : NULL;
+    if (info != NULL && MI_ParseCharacterJson(t->jsonPath, t->stem, info)) {
+        char atlasXml[MI_PATH_MAX];
+        char animsetPath[MI_PATH_MAX];
+        const char *imagePath = info->imagePath[0] ? info->imagePath : "characters";
+        int xmlFound = 0;
+
+        t->parsed = 1;
+        snprintf(t->healthicon, sizeof(t->healthicon), "%s", info->healthicon);
+        if (snprintf(atlasXml, sizeof(atlasXml), "%s/%s.xml", t->sourceImageRoot, imagePath) <
+            (int)sizeof(atlasXml) && FileExists(atlasXml)) {
+            xmlFound = 1;
+        } else {
+            const char *imageBase = MI_BaseName(imagePath);
+            if (snprintf(atlasXml, sizeof(atlasXml), "%s/characters/%s.xml",
+                         t->sourceImageRoot, imageBase) < (int)sizeof(atlasXml) &&
+                FileExists(atlasXml)) xmlFound = 1;
+        }
+        if (xmlFound && !atomic_load(&mi_cancel) &&
+            snprintf(animsetPath, sizeof(animsetPath), "%s/%s.animset",
+                     t->destImageChars, t->stem) < (int)sizeof(animsetPath) &&
+            MI_WriteAnimset(info, atlasXml, animsetPath) > 0) {
+            t->animset = 1;
+            t->animBytes = MI_FileSize(animsetPath);
+        }
+    }
+    free(info);
+    atomic_fetch_sub(&mi_charInflight, 1);
+}
+
 static int MI_ImportCharacters(const char *srcMod, const char *dstMod,
                                MI_ImportContext *context)
 {
@@ -1380,55 +1603,65 @@ static int MI_ImportCharacters(const char *srcMod, const char *dstMod,
     if (!MI_EnsureDirectory(destinationChars)) return 0;
 
     entries = MI_ListEntries(sourceChars);
-    for (unsigned i = 0; i < entries.count; ++i) {
-        char destinationJson[MI_PATH_MAX];
-        char stem[MI_NAME_MAX];
-        MI_CharInfo info;
-        const char *base = MI_BaseName(entries.paths[i]);
+    {
+        MiCharTask *tasks = (MiCharTask *)calloc(entries.count > 0 ? entries.count : 1, sizeof(*tasks));
+        const int cap = Jobs_ThreadCount() > 1 ? Jobs_ThreadCount() : 1;
+        unsigned used = 0;
 
-        if (MI_IsDirectoryPath(entries.paths[i]) || !MI_EndsWithI(base, ".json") ||
-            !MI_IsSafeComponent(base)) continue;
-        if (!MI_Join(destinationJson, sizeof(destinationJson), destinationChars, base)) {
-            ok = 0;
-            continue;
+        if (tasks == NULL) {
+            UnloadDirectoryFiles(entries);
+            return 0;
         }
-        if (!MI_CopyFile(entries.paths[i], destinationJson, &context->stats->bytes)) {
-            ok = 0;
-            continue;
-        }
-        ++context->stats->characters;
-        MI_GetStem(base, stem, sizeof(stem));
-        MI_AddName(&context->iconNames, stem);
+        for (unsigned i = 0; i < entries.count; ++i) {
+            MiCharTask *t = &tasks[used];
+            const char *base = MI_BaseName(entries.paths[i]);
 
-        if (MI_ParseCharacterJson(entries.paths[i], stem, &info)) {
-            char atlasXml[MI_PATH_MAX];
-            char animsetPath[MI_PATH_MAX];
-            const char *imagePath = info.imagePath[0] ? info.imagePath : "characters";
-            int xmlFound = 0;
-
-            if (snprintf(atlasXml, sizeof(atlasXml), "%s/%s.xml", sourceImageRoot, imagePath) <
-                (int)sizeof(atlasXml) && FileExists(atlasXml)) {
-                xmlFound = 1;
-            } else {
-                const char *imageBase = MI_BaseName(imagePath);
-                if (snprintf(atlasXml, sizeof(atlasXml), "%s/characters/%s.xml",
-                             sourceImageRoot, imageBase) < (int)sizeof(atlasXml) &&
-                    FileExists(atlasXml)) xmlFound = 1;
+            if (MI_IsDirectoryPath(entries.paths[i]) || !MI_EndsWithI(base, ".json") ||
+                !MI_IsSafeComponent(base)) continue;
+            if (!MI_Join(t->destJson, sizeof(t->destJson), destinationChars, base)) {
+                ok = 0;
+                continue;
             }
+            snprintf(t->jsonPath, sizeof(t->jsonPath), "%s", entries.paths[i]);
+            MI_GetStem(base, t->stem, sizeof(t->stem));
+            t->sourceImageRoot = sourceImageRoot;
+            t->destImageChars = destinationImageChars;
+            ++used;
 
-            if (xmlFound &&
-                snprintf(animsetPath, sizeof(animsetPath), "%s/%s.animset",
-                         destinationImageChars, stem) < (int)sizeof(animsetPath)) {
-                int generated = MI_WriteAnimset(&info, atlasXml, animsetPath);
-                if (generated > 0) {
+            /* um personagem por worker (limitado); sem Jobs, roda aqui mesmo */
+            if (atomic_load(&mi_useDefer) && !atomic_load(&mi_cancel)) {
+                while (!atomic_load(&mi_cancel) && atomic_load(&mi_charInflight) >= cap)
+                    Thread_SleepMs(1);
+                atomic_fetch_add(&mi_charInflight, 1);
+                if (Jobs_Submit(MI_CharTaskFn, t, NULL)) continue;
+                atomic_fetch_sub(&mi_charInflight, 1);
+            }
+            atomic_fetch_add(&mi_charInflight, 1);
+            MI_CharTaskFn(t);
+        }
+        while (atomic_load(&mi_charInflight) > 0) Thread_SleepMs(1);
+
+        /* junta os resultados na ordem original */
+        for (unsigned i = 0; i < used; ++i) {
+            const MiCharTask *t = &tasks[i];
+
+            context->stats->bytes += t->bytes;
+            if (!t->copyOk) {
+                ok = 0;
+                continue;
+            }
+            ++context->stats->characters;
+            MI_AddName(&context->iconNames, t->stem);
+            if (t->parsed) {
+                if (t->animset) {
                     ++context->stats->animsets;
-                    context->stats->bytes += MI_FileSize(animsetPath);
+                    context->stats->bytes += t->animBytes;
                 }
+                MI_AddName(&context->iconNames, t->healthicon);
             }
-
-            MI_AddName(&context->iconNames, info.healthicon);
+            MI_AddName(&context->iconNames, t->stem);
         }
-        MI_AddName(&context->iconNames, stem);
+        free(tasks);
     }
     UnloadDirectoryFiles(entries);
     return ok;
@@ -1437,6 +1670,9 @@ static int MI_ImportCharacters(const char *srcMod, const char *dstMod,
 /* ------------------------------------------------------------------------- */
 /* API publica                                                               */
 /* ------------------------------------------------------------------------- */
+
+#define MI_TICK(name) do { const double now_ = GetTime(); \
+    printf("[import] %-14s %7.0f ms\n", name, (now_ - tickT) * 1000.0); fflush(stdout); tickT = now_; } while (0)
 
 static char MI_ImportSingle(const char *srcMod, const char *destModPath,
                             const char *modName, char *msg, size_t msgSize,
@@ -1492,7 +1728,9 @@ static char MI_ImportSingle(const char *srcMod, const char *destModPath,
         return 0;
     }
 
+    double tickT = GetTime();
     if (!MI_ImportSongs(srcMod, destModPath, &context)) ok = 0;
+    MI_TICK("songs");
 
     if (DirectoryExists(sourceWeeks) &&
         !MI_CopyWeeksRecursive(sourceWeeks, destinationWeeks, &context, 0)) ok = 0;
@@ -1501,12 +1739,14 @@ static char MI_ImportSingle(const char *srcMod, const char *destModPath,
     if (DirectoryExists(sourceDataStages) &&
         !MI_CopyStagesRecursive(sourceDataStages, destinationDataStages, &localStats, 0)) ok = 0;
 
+    MI_TICK("weeks+stages");
     if (DirectoryExists(sourceImages)) {
         if (!MI_CopyTree(sourceImages, destinationImages, &localStats.bytes,
                          &copiedImages, 0)) ok = 0;
         localStats.images += copiedImages;
     }
 
+    MI_TICK("images (queue)");
     /* Audio e scripts do mod (o ModPath ja procura nestas pastas). */
     {
         static const char *const extraDirs[] = {"sounds", "music", "scripts"};
@@ -1525,16 +1765,21 @@ static char MI_ImportSingle(const char *srcMod, const char *destModPath,
         }
     }
 
+    MI_TICK("audio+scripts");
     if (!MI_ImportCharacters(srcMod, destModPath, &context)) ok = 0;
+    MI_TICK("characters");
     MI_CopyCollectedIcons(&context);
 
+    MI_TICK("icons");
+    MI_Drain(&localStats.bytes);
+    MI_TICK("wait workers");
     if (stats != NULL) *stats = localStats;
     if (msg != NULL && msgSize > 0) {
         (void)snprintf(msg, msgSize,
-            "import %s: %d musicas, %d charts, %d weeks, %d stages, %d arquivos de imagem, %d personagens, %d animsets, %d icones (%ld KB)",
+            "import %s: %d musicas, %d charts, %d weeks, %d stages, %d arquivos de imagem, %d personagens, %d animsets, %d icones (%lld KB)",
             modNameSafe, localStats.songs, localStats.charts, localStats.weeks,
             localStats.stages, localStats.images, localStats.characters,
-            localStats.animsets, localStats.icons, localStats.bytes / 1024L);
+            localStats.animsets, localStats.icons, localStats.bytes / 1024LL);
     }
 
     /* Mods sem songs tambem podem conter stages/personagens/imagens validos. */
@@ -1543,7 +1788,7 @@ static char MI_ImportSingle(const char *srcMod, const char *destModPath,
     return (char)(ok != 0);
 }
 
-char ModImport_Run(const char *srcMod, const char *dstRoot, const char *modName,
+static char MI_RunImpl(const char *srcMod, const char *dstRoot, const char *modName,
                    char *msg, size_t msgSize, ModImportStats *stats)
 {
     ModImportStats total;
@@ -1604,73 +1849,287 @@ char ModImport_Run(const char *srcMod, const char *dstRoot, const char *modName,
         if (stats != NULL) *stats = total;
         if (msg != NULL && msgSize > 0) {
             (void)snprintf(msg, msgSize,
-                "import mods: %d mods, %d musicas, %d charts, %d weeks, %d stages, %d imagens, %d personagens, %d animsets, %d icones (%ld KB)",
+                "import mods: %d mods, %d musicas, %d charts, %d weeks, %d stages, %d imagens, %d personagens, %d animsets, %d icones (%lld KB)",
                 imported, total.songs, total.charts, total.weeks, total.stages,
                 total.images, total.characters, total.animsets, total.icons,
-                total.bytes / 1024L);
+                total.bytes / 1024LL);
         }
         return (char)(imported > 0 && ok);
     }
 }
 
+static void MI_ResetCounters(void)
+{
+    atomic_store(&mi_cancel, 0);
+    atomic_store(&mi_failed, 0);
+    atomic_store(&mi_filesDone, 0);
+    atomic_store(&mi_bytesDone, 0);
+    atomic_store(&mi_deferredBytes, 0);
+    atomic_store(&mi_dupSkipped, 0);
+}
+
+/* Versao bloqueante (sem workers). */
+char ModImport_Run(const char *srcMod, const char *dstRoot, const char *modName,
+                   char *msg, size_t msgSize, ModImportStats *stats)
+{
+    MI_ResetCounters();
+    atomic_store(&mi_useDefer, 0);
+    return MI_RunImpl(srcMod, dstRoot, modName, msg, msgSize, stats);
+}
+
+/* ---- import em segundo plano ---- */
+enum { MI_RUN_IDLE = 0, MI_RUN_RUNNING = 1, MI_RUN_DONE = 2 };
+
+static struct {
+    char src[MI_PATH_MAX];
+    char dst[MI_PATH_MAX];
+    char name[128];
+    Thread *thread;
+    atomic_int state;
+    atomic_int filesTotal;
+    atomic_llong bytesTotal;
+    char msg[256];
+    ModImportStats stats;
+    char ok;
+} mi_run;
+
+static void MI_RunThread(void *arg)
+{
+    DirWalkTotals totals = {0};
+    (void)arg;
+
+    if (DirWalk_Totals(mi_run.src, 64, &totals)) {
+        atomic_store(&mi_run.filesTotal, totals.files);
+        atomic_store(&mi_run.bytesTotal, totals.bytes);
+    }
+    mi_run.ok = MI_RunImpl(mi_run.src, mi_run.dst, mi_run.name,
+                           mi_run.msg, sizeof(mi_run.msg), &mi_run.stats);
+    MI_Drain(NULL);
+    atomic_store(&mi_useDefer, 0);
+
+    if (atomic_load(&mi_cancel)) {
+        mi_run.ok = 0;
+        snprintf(mi_run.msg, sizeof(mi_run.msg),
+                 "import cancelled (%d files copied; re-importing skips them)",
+                 atomic_load(&mi_filesDone));
+    } else if (atomic_load(&mi_failed) > 0) {
+        char tail[64];
+        snprintf(tail, sizeof(tail), " [%d files failed]", atomic_load(&mi_failed));
+        size_t n = strlen(mi_run.msg);
+        if (n + strlen(tail) < sizeof(mi_run.msg)) strcat(mi_run.msg, tail);
+        mi_run.ok = 0;
+    }
+    atomic_store(&mi_run.state, MI_RUN_DONE);
+}
+
+char ModImport_Start(const char *srcMod, const char *dstRoot, const char *modName)
+{
+    if (srcMod == NULL || dstRoot == NULL || modName == NULL) return 0;
+    if (atomic_load(&mi_run.state) != MI_RUN_IDLE) return 0;
+
+    snprintf(mi_run.src, sizeof(mi_run.src), "%s", srcMod);
+    snprintf(mi_run.dst, sizeof(mi_run.dst), "%s", dstRoot);
+    snprintf(mi_run.name, sizeof(mi_run.name), "%s", modName);
+    mi_run.msg[0] = '\0';
+    mi_run.ok = 0;
+    memset(&mi_run.stats, 0, sizeof(mi_run.stats));
+    atomic_store(&mi_run.filesTotal, 0);
+    atomic_store(&mi_run.bytesTotal, 0);
+    MI_ResetCounters();
+    atomic_store(&mi_useDefer, 1);
+    atomic_store(&mi_run.state, MI_RUN_RUNNING);
+
+    mi_run.thread = Thread_Start(MI_RunThread, NULL);
+    if (mi_run.thread == NULL) {
+        atomic_store(&mi_useDefer, 0);
+        atomic_store(&mi_run.state, MI_RUN_IDLE);
+        return 0;
+    }
+    return 1;
+}
+
+/* Chamar antes de Jobs_Shutdown: cancela e espera a thread do import. */
+void ModImport_Shutdown(void)
+{
+    if (atomic_load(&mi_run.state) == MI_RUN_IDLE) return;
+    atomic_store(&mi_cancel, 1);
+    if (mi_run.thread != NULL) {
+        Thread_Join(mi_run.thread);
+        mi_run.thread = NULL;
+    }
+    atomic_store(&mi_useDefer, 0);
+    atomic_store(&mi_run.state, MI_RUN_IDLE);
+}
+
+char ModImport_Busy(void)
+{
+    return atomic_load(&mi_run.state) != MI_RUN_IDLE;
+}
+
+void ModImport_Cancel(void)
+{
+    if (atomic_load(&mi_run.state) == MI_RUN_RUNNING) {
+        atomic_store(&mi_cancel, 1);
+    }
+}
+
+char ModImport_Poll(ModImportProgress *prog, char *msg, size_t msgSize,
+                    ModImportStats *stats, char *ok)
+{
+    Jobs_Poll();
+    if (prog != NULL) {
+        prog->filesDone = atomic_load(&mi_filesDone);
+        prog->filesTotal = atomic_load(&mi_run.filesTotal);
+        prog->bytesDone = atomic_load(&mi_bytesDone);
+        prog->bytesTotal = atomic_load(&mi_run.bytesTotal);
+        prog->failed = atomic_load(&mi_failed);
+        prog->duplicates = atomic_load(&mi_dupSkipped);
+        prog->cancelling = (char)atomic_load(&mi_cancel);
+    }
+    if (atomic_load(&mi_run.state) != MI_RUN_DONE) return 0;
+
+    Thread_Join(mi_run.thread);
+    mi_run.thread = NULL;
+    if (msg != NULL && msgSize > 0) snprintf(msg, msgSize, "%s", mi_run.msg);
+    if (stats != NULL) *stats = mi_run.stats;
+    if (ok != NULL) *ok = mi_run.ok;
+    atomic_store(&mi_run.state, MI_RUN_IDLE);
+    return 1;
+}
+
+/* Conta so as subpastas diretas (usado para contar musicas em <mod>/songs). */
+static int MI_CountDirCb(const char *name, void *user)
+{
+    (void)name;
+    ++*(int *)user;
+    return 0;
+}
+
+static int MI_CountSubdirs(const char *modPath)
+{
+    char songsPath[MI_PATH_MAX];
+    int count = 0;
+    if (!MI_Join(songsPath, sizeof(songsPath), modPath, "songs")) return 0;
+    (void)DirWalk_ForEachDir(songsPath, MI_CountDirCb, &count);
+    return count;
+}
+
+typedef struct MI_ScanCtx {
+    const char *root;
+    ModImportUsage *usage;
+    int mixedLayout; /* 1 = a raiz ja e um mod; so pastas fora do layout contam como mods extras */
+} MI_ScanCtx;
+
+static int MI_ScanChildCb(const char *name, void *user)
+{
+    MI_ScanCtx *ctx = (MI_ScanCtx *)user;
+    char child[MI_PATH_MAX];
+
+    if (!MI_IsSafeComponent(name)) return 0;
+    if (ctx->mixedLayout && MI_IsLayoutDirName(name)) return 0;
+    if (!MI_Join(child, sizeof(child), ctx->root, name)) return 0;
+
+    ++ctx->usage->mods;
+    ctx->usage->songs += MI_CountSubdirs(child);
+    if (!ctx->mixedLayout) { /* no layout misturado os bytes ja estao no total da raiz */
+        const long long bytes = MI_CountTreeBytes(child);
+        if (bytes > 0 && ctx->usage->bytes <= LLONG_MAX - bytes) ctx->usage->bytes += bytes;
+    }
+    return 0;
+}
+
+/* Sem raylib alem de DirectoryExists (so stat): seguro para rodar numa thread do Jobs. */
 char ModImport_ScanMods(const char *dstRoot, ModImportUsage *out)
 {
     ModImportUsage usage;
-    FilePathList mods;
+    MI_ScanCtx ctx;
     memset(&usage, 0, sizeof(usage));
     if (out != NULL) *out = usage;
     if (!MI_IsModsRoot(dstRoot) || !DirectoryExists(dstRoot)) return 0;
 
+    ctx.root = dstRoot;
+    ctx.usage = &usage;
+
     if (MI_HasModLayout(dstRoot)) {
-        char songsPath[MI_PATH_MAX];
-        FilePathList songs;
         usage.mods = 1;
-        usage.bytes = MI_CountTreeBytes(dstRoot, 0);
-        if (MI_Join(songsPath, sizeof(songsPath), dstRoot, "songs") && DirectoryExists(songsPath)) {
-            songs = MI_ListDirectories(songsPath);
-            usage.songs = (int)songs.count;
-            UnloadDirectoryFiles(songs);
-        }
-        /* Layout misturado: pastas fora do layout do jogo tambem sao mods
-         * (os bytes ja estao no total da raiz). */
-        mods = MI_ListDirectories(dstRoot);
-        for (unsigned i = 0; i < mods.count; ++i) {
-            const char *modBase = MI_BaseName(mods.paths[i]);
-            if (!MI_IsSafeComponent(modBase) || MI_IsLayoutDirName(modBase)) continue;
-            ++usage.mods;
-            if (MI_Join(songsPath, sizeof(songsPath), mods.paths[i], "songs") &&
-                DirectoryExists(songsPath)) {
-                songs = MI_ListDirectories(songsPath);
-                usage.songs += (int)songs.count;
-                UnloadDirectoryFiles(songs);
-            }
-        }
-        UnloadDirectoryFiles(mods);
+        usage.bytes = MI_CountTreeBytes(dstRoot);
+        usage.songs = MI_CountSubdirs(dstRoot);
+        ctx.mixedLayout = 1;
     } else {
-        mods = MI_ListDirectories(dstRoot);
-        for (unsigned i = 0; i < mods.count; ++i) {
-            char songsPath[MI_PATH_MAX];
-            FilePathList songs;
-            if (!MI_IsSafeComponent(MI_BaseName(mods.paths[i]))) continue;
-            ++usage.mods;
-            {
-                long bytes = MI_CountTreeBytes(mods.paths[i], 0);
-                if (bytes > 0 && usage.bytes <= LONG_MAX - bytes) usage.bytes += bytes;
-            }
-            if (!MI_Join(songsPath, sizeof(songsPath), mods.paths[i], "songs") ||
-                !DirectoryExists(songsPath)) continue;
-            songs = MI_ListDirectories(songsPath);
-            usage.songs += (int)songs.count;
-            UnloadDirectoryFiles(songs);
-        }
-        UnloadDirectoryFiles(mods);
+        ctx.mixedLayout = 0;
     }
+    (void)DirWalk_ForEachDir(dstRoot, MI_ScanChildCb, &ctx);
+
     if (out != NULL) *out = usage;
     return 1;
 }
 
+/* ------------------------------------------------------------------------- */
+/* Varredura em thread de fundo                                              */
+/* ------------------------------------------------------------------------- */
+
+enum { MI_SCAN_IDLE = 0, MI_SCAN_RUNNING = 1, MI_SCAN_READY = 2 };
+
+static struct {
+    char root[MI_PATH_MAX];
+    ModImportUsage usage;   /* escrito pelo worker; lido so depois do JobDone */
+    atomic_int state;
+    atomic_int dirty;       /* pediram outra varredura enquanto esta rodava */
+} mi_scan;
+
+static void MI_ScanJob(void *data)
+{
+    ModImportUsage usage;
+    (void)data;
+    memset(&usage, 0, sizeof(usage));
+    (void)ModImport_ScanMods(mi_scan.root, &usage);
+    mi_scan.usage = usage;
+}
+
+static void MI_ScanDone(void *data)
+{
+    (void)data;
+    atomic_store(&mi_scan.state, MI_SCAN_READY);
+}
+
+char ModImport_ScanStart(const char *dstRoot)
+{
+    if (!MI_IsModsRoot(dstRoot)) return 0;
+    if (atomic_load(&mi_scan.state) != MI_SCAN_IDLE) {
+        atomic_store(&mi_scan.dirty, 1); /* refaz quando esta terminar */
+        return 1;
+    }
+    MI_CopyString(mi_scan.root, sizeof(mi_scan.root), dstRoot);
+    atomic_store(&mi_scan.state, MI_SCAN_RUNNING);
+    if (!Jobs_Submit(MI_ScanJob, NULL, MI_ScanDone)) { /* sem threads: faz aqui mesmo */
+        MI_ScanJob(NULL);
+        atomic_store(&mi_scan.state, MI_SCAN_READY);
+    }
+    return 1;
+}
+
+char ModImport_ScanPoll(ModImportUsage *out)
+{
+    Jobs_Poll();
+    if (atomic_load(&mi_scan.state) != MI_SCAN_READY) return 0;
+
+    if (atomic_exchange(&mi_scan.dirty, 0)) { /* resultado velho: varre de novo */
+        atomic_store(&mi_scan.state, MI_SCAN_IDLE);
+        (void)ModImport_ScanStart(mi_scan.root);
+        return 0;
+    }
+    if (out != NULL) *out = mi_scan.usage;
+    atomic_store(&mi_scan.state, MI_SCAN_IDLE);
+    return 1;
+}
+
+char ModImport_ScanBusy(void)
+{
+    return (char)(atomic_load(&mi_scan.state) != MI_SCAN_IDLE);
+}
+
 char ModImport_DeleteAll(const char *dstRoot, char *msg, size_t msgSize,
-                         int *removedMods, long *freedBytes)
+                         int *removedMods, long long *freedBytes)
 {
     FilePathList mods;
     FilePathList rootEntries;
@@ -1678,7 +2137,7 @@ char ModImport_DeleteAll(const char *dstRoot, char *msg, size_t msgSize,
     int layoutFound = 0;
     int rootIsMod = 0;
     int removedFiles = 0;
-    long bytes = 0;
+    long long bytes = 0;
     int ok = 1;
 
     if (removedMods != NULL) *removedMods = 0;
@@ -1696,7 +2155,7 @@ char ModImport_DeleteAll(const char *dstRoot, char *msg, size_t msgSize,
         return 1;
     }
 
-    bytes = MI_CountTreeBytes(dstRoot, 0);
+    bytes = MI_CountTreeBytes(dstRoot);
     rootIsMod = MI_HasModLayout(dstRoot);
     mods = MI_ListDirectories(dstRoot);
     for (unsigned i = 0; i < mods.count; ++i) {
@@ -1721,8 +2180,8 @@ char ModImport_DeleteAll(const char *dstRoot, char *msg, size_t msgSize,
     if (freedBytes != NULL) *freedBytes = bytes;
     if (msg != NULL && msgSize > 0) {
         (void)snprintf(msg, msgSize,
-            "delete: %d mods, %d arquivos, aproximadamente %ld KB liberados em %s",
-            modCount, removedFiles, bytes / 1024L, dstRoot);
+            "delete: %d mods, %d arquivos, aproximadamente %lld KB liberados em %s",
+            modCount, removedFiles, bytes / 1024LL, dstRoot);
     }
     return (char)(ok != 0);
 }
