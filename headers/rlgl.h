@@ -724,6 +724,9 @@ RLAPI void rlUnloadRenderBatch(rlRenderBatch batch);    // Unload render batch s
 RLAPI void rlDrawRenderBatch(rlRenderBatch *batch);     // Draw render batch data (Update->Draw->Reset)
 RLAPI void rlSetRenderBatchActive(rlRenderBatch *batch); // Set the active render batch for rlgl (NULL for default internal)
 RLAPI void rlDrawRenderBatchActive(void);               // Update and draw internal render batch
+#if defined(FNF_DEBUG_STATS)
+RLAPI void rlTakeDrawStats(unsigned int *drawCalls, unsigned int *flushes); // [engine] glDraw* calls and batch flushes since last take (then resets)
+#endif
 RLAPI bool rlCheckRenderBatchLimit(int vCount);         // Check internal buffer overflow for a given number of vertex
 
 RLAPI void rlSetTexture(unsigned int id);               // Set current texture for render batch and check buffers limits

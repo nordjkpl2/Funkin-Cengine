@@ -229,6 +229,9 @@ FNF_C_ENGINE_IS_TOP_LEVEL:STATIC=ON
 //Value Computed by CMake
 FNF_C_ENGINE_SOURCE_DIR:STATIC=D:/dev/funkin c
 
+//F3 overlay with frame times and draw calls
+FNF_DEBUG_STATS:BOOL=OFF
+
 
 ########################
 # INTERNAL cache entries

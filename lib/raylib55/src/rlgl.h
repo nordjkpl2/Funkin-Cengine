@@ -724,6 +724,9 @@ RLAPI void rlUnloadRenderBatch(rlRenderBatch batch);    // Unload render batch s
 RLAPI void rlDrawRenderBatch(rlRenderBatch *batch);     // Draw render batch data (Update->Draw->Reset)
 RLAPI void rlSetRenderBatchActive(rlRenderBatch *batch); // Set the active render batch for rlgl (NULL for default internal)
 RLAPI void rlDrawRenderBatchActive(void);               // Update and draw internal render batch
+#if defined(FNF_DEBUG_STATS)
+RLAPI void rlTakeDrawStats(unsigned int *drawCalls, unsigned int *flushes); // [engine] glDraw* calls and batch flushes since last take (then resets)
+#endif
 RLAPI bool rlCheckRenderBatchLimit(int vCount);         // Check internal buffer overflow for a given number of vertex
 
 RLAPI void rlSetTexture(unsigned int id);               // Set current texture for render batch and check buffers limits
@@ -2901,6 +2904,18 @@ void rlUnloadRenderBatch(rlRenderBatch batch)
 
 // Draw render batch
 // NOTE: We require a pointer to reset batch and increase current buffer (multi-buffer)
+#if defined(FNF_DEBUG_STATS)
+// [engine] frame statistics (debug overlay)
+static unsigned int rlStatDrawCalls = 0, rlStatFlushes = 0;
+void rlTakeDrawStats(unsigned int *drawCalls, unsigned int *flushes)
+{
+    if (drawCalls != NULL) *drawCalls = rlStatDrawCalls;
+    if (flushes != NULL) *flushes = rlStatFlushes;
+    rlStatDrawCalls = 0;
+    rlStatFlushes = 0;
+}
+#endif
+
 void rlDrawRenderBatch(rlRenderBatch *batch)
 {
 #if defined(GRAPHICS_API_OPENGL_33) || defined(GRAPHICS_API_OPENGL_ES2)
@@ -2910,6 +2925,9 @@ void rlDrawRenderBatch(rlRenderBatch *batch)
     // TODO: If no data changed on the CPU arrays --> No need to re-update GPU arrays (use a change detector flag?)
     if (RLGL.State.vertexCounter > 0)
     {
+#if defined(FNF_DEBUG_STATS)
+        rlStatFlushes++;
+#endif
         // Activate elements VAO
         if (RLGL.ExtSupported.vao) glBindVertexArray(batch->vertexBuffer[batch->currentBuffer].vaoId);
 
@@ -3072,6 +3090,9 @@ void rlDrawRenderBatch(rlRenderBatch *batch)
                 }
 
                 vertexOffset += (batch->draws[i].vertexCount + batch->draws[i].vertexAlignment);
+#if defined(FNF_DEBUG_STATS)
+                rlStatDrawCalls++;
+#endif
             }
 
             if (!RLGL.ExtSupported.vao)

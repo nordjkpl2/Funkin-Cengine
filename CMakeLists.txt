@@ -57,6 +57,13 @@ set(FNF_COMPILE_FLAGS
     -DGRAPHICS_API_OPENGL_33
 )
 
+# Overlay de debug (F3): tempos do quadro e draw calls. Desligado por padrao.
+# Ligar: cmake -DFNF_DEBUG_STATS=ON (reconfigurar o cache).
+option(FNF_DEBUG_STATS "F3 overlay with frame times and draw calls" OFF)
+if(FNF_DEBUG_STATS)
+    list(APPEND FNF_COMPILE_FLAGS -DFNF_DEBUG_STATS)
+endif()
+
 # =========
 # RAYLIB OBJECT LIBRARY
 # =========

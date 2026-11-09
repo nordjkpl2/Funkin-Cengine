@@ -12,6 +12,9 @@
 #include "threads/cpu/Jobs.h"
 #include "data/ModImport.h"
 #include "threads/Thread.h"
+#if defined(FNF_DEBUG_STATS)
+#include "rlgl.h"
+#endif
 
 #include <stdbool.h>
 #include <stdio.h>
@@ -88,6 +91,25 @@ static void RayGame_UpdateViewport(bool force)
     viewportInitialized = true;
 }
 
+#if defined(FNF_DEBUG_STATS)
+/* Overlay de debug (F3): so existe se compilar com -DFNF_DEBUG_STATS (cmake -DFNF_DEBUG_STATS=ON). */
+static struct { char on; double upd, draw, end; unsigned int calls, flushes; } dbg;
+
+static inline void RayGame_EndFrame(double tDraw0)
+{
+    if (!dbg.on) { EndDrawing(); return; }
+    {
+        const double t1 = GetTime();
+        EndDrawing();
+        dbg.draw = (t1 - tDraw0) * 1000.0;
+        dbg.end = (GetTime() - t1) * 1000.0;
+        rlTakeDrawStats(&dbg.calls, &dbg.flushes);
+    }
+}
+#else
+#define RayGame_EndFrame(tDraw0) ((void)(tDraw0), EndDrawing())
+#endif
+
 static inline void RayGame_UpdateOverlay(float frameDelta)
 {
     if (volOsdTimer > 0.0f)
@@ -102,6 +124,14 @@ static inline void RayGame_DrawOverlay(void)
 {
     if (gameOptions.showFps)
         DrawFPS(10, 3);
+
+#if defined(FNF_DEBUG_STATS)
+    if (dbg.on)
+    {
+        DrawText(TextFormat("upd %.2f  draw %.2f  end %.2f ms", dbg.upd, dbg.draw, dbg.end), 10, 70, 18, YELLOW);
+        DrawText(TextFormat("draw calls %u  flushes %u", dbg.calls, dbg.flushes), 10, 92, 18, YELLOW);
+    }
+#endif
 
     if (volOsdTimer > 0.0f)
     {
@@ -313,6 +343,9 @@ void RayGame_GameLoop(void)
     {
         dt = GetFrameTime();
         if (dt < 0.0f) dt = 0.0f;
+#if defined(FNF_DEBUG_STATS)
+        const double tLoop = dbg.on ? GetTime() : 0.0;
+#endif
 
         RayGame_UpdateViewport(false);
         RayGame_UpdateOverlay(dt);
@@ -322,6 +355,11 @@ void RayGame_GameLoop(void)
             ToggleBorderlessWindowed();
             RayGame_UpdateViewport(true);
         }
+
+#if defined(FNF_DEBUG_STATS)
+        if (IsKeyPressed(KEY_F3))
+            dbg.on = !dbg.on;
+#endif
 
         if (IsKeyPressed(KEY_EQUAL) || IsKeyPressed(KEY_KP_ADD))
             RayGame_BumpMusicVolume(0.1f);
@@ -343,6 +381,13 @@ void RayGame_GameLoop(void)
             EndDrawing();
             continue;
         }
+
+#if defined(FNF_DEBUG_STATS)
+        const double tDraw0 = dbg.on ? GetTime() : 0.0;
+        if (dbg.on) dbg.upd = (tDraw0 - tLoop) * 1000.0;
+#else
+        const double tDraw0 = 0.0;
+#endif
 
         if (gameOptions.fillScreen && stretchReady)
         {
@@ -367,7 +412,7 @@ void RayGame_GameLoop(void)
             );
 
             RayGame_DrawOverlay();
-            EndDrawing();
+            RayGame_EndFrame(tDraw0);
         }
         else
         {
@@ -397,7 +442,7 @@ void RayGame_GameLoop(void)
             }
 
             RayGame_DrawOverlay();
-            EndDrawing();
+            RayGame_EndFrame(tDraw0);
         }
     }
 }

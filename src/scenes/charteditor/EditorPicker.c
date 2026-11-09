@@ -354,15 +354,67 @@ char Editor_SaveAs(const char* modName) {
     return 1;
 }
 
+/* Pesquisa da lista suspensa: digitou, filtra na hora (sem Enter). So existe com a lista aberta;
+   fechada, CharDrop_Draw sai logo no inicio e nada daqui roda. */
+static char dropQuery[24];
+static int dropQueryLen;
+static int dropFilt[NAME_LIST_MAX];   /* indices de dropNames que combinam */
+static int dropFiltN;
+
+static char DropFold(char c) {
+    if(c >= 'A' && c <= 'Z') return (char)(c - 'A' + 'a');
+    if(c == '-' || c == '_') return ' ';
+    return c;
+}
+
+static char DropMatch(const char* name, const char* q) {
+    for(const char* s = name; *s; ++s) {
+        const char* a = s;
+        const char* b = q;
+        while(*b && *a && DropFold(*a) == DropFold(*b)) { ++a; ++b; }
+        if(!*b) return 1;
+    }
+    return 0;
+}
+
 void CharDrop_Draw(void) {
     if(!activeDrop || dropBox == NULL || dropNames == NULL)
         return;
     float bx = dropX, by = dropY, bw = dropW;
     TxtBox* box = dropBox;
-    int n = dropCount;
+    char dirty = 0;
+
+    if(dropJustOpened) {
+        dropQuery[0] = 0;
+        dropQueryLen = 0;
+        dirty = 1;
+        while(GetCharPressed() > 0) {}   // descarta teclas digitadas antes de abrir
+    } else {
+        int ch;
+        while((ch = GetCharPressed()) > 0) {
+            if(ch >= 32 && ch <= 126 && dropQueryLen < (int)sizeof(dropQuery) - 1) {
+                dropQuery[dropQueryLen++] = (char)ch;
+                dropQuery[dropQueryLen] = 0;
+                dirty = 1;
+            }
+        }
+        if((IsKeyPressed(KEY_BACKSPACE) || IsKeyPressedRepeat(KEY_BACKSPACE)) && dropQueryLen > 0) {
+            dropQuery[--dropQueryLen] = 0;
+            dirty = 1;
+        }
+    }
+    if(dirty) {
+        dropFiltN = 0;
+        if(dropQueryLen > 0) {
+            for(int i = 0; i < dropCount && dropFiltN < NAME_LIST_MAX; i++)
+                if(DropMatch(dropNames[i], dropQuery)) dropFilt[dropFiltN++] = i;
+        }
+        dropScroll = 0;
+    }
+    const int n = dropQueryLen > 0 ? dropFiltN : dropCount;   // itens visiveis
     float ih = 30;
     int rows = n < DROP_ROWS_MAX ? n : DROP_ROWS_MAX;
-    float h = (rows > 0 ? rows : 1) * ih + 8;
+    float h = (rows > 0 ? rows : 1) * ih + 8 + ih;   // + linha da pesquisa
     if(by + h > 700) by = 700 - h;
     Rectangle r = {bx - bw + 30, by, bw, h};
     if(r.x + r.width > 1270) r.x = 1270 - r.width;
@@ -371,8 +423,16 @@ void CharDrop_Draw(void) {
     Vector2 m = EdMouseWorld();
     const char inside = (m.x >= r.x && m.x <= r.x + r.width && m.y >= r.y && m.y <= r.y + r.height);
 
+    // linha da pesquisa (topo)
+    if(dropQueryLen > 0) {
+        DrawTextEx(mainFont, dropQuery, (Vector2) {r.x + 10, r.y + 6}, 20, 1, YELLOW);
+    } else {
+        DrawTextEx(mainFont, "search...", (Vector2) {r.x + 10, r.y + 6}, 20, 1, GRAY);
+    }
+    DrawLine((int)(r.x + 4), (int)(r.y + ih + 2), (int)(r.x + r.width - 4), (int)(r.y + ih + 2), (Color) {70, 70, 70, 255});
+    const float listY = r.y + ih;
+
     // roda: rola a lista (so com o mouse em cima dela)
-    if(dropJustOpened) dropScroll = 0;
     if(inside && n > rows) {
         dropScroll -= (int)GetMouseWheelMove();
         if(dropScroll > n - rows) dropScroll = n - rows;
@@ -380,13 +440,14 @@ void CharDrop_Draw(void) {
     }
 
     if(n == 0) {
-        DrawTextEx(mainFont, "(vazio)", (Vector2) {r.x + 8, r.y + 8}, 20, 1, YELLOW);
+        DrawTextEx(mainFont, dropQueryLen > 0 ? "(no results)" : "(vazio)", (Vector2) {r.x + 8, listY + 8}, 20, 1, YELLOW);
     }
     // o clique que abriu a lista nao pode escolher o item que ficou embaixo do mouse
     const char canPick = !dropJustOpened;
     for(int row = 0; row < rows; row++) {
-        const int i = dropScroll + row;
-        Rectangle ir = {r.x + 4, r.y + 4 + row * ih, r.width - 14, ih - 2};
+        const int vi = dropScroll + row;
+        const int i = dropQueryLen > 0 ? dropFilt[vi] : vi;
+        Rectangle ir = {r.x + 4, listY + 4 + row * ih, r.width - 14, ih - 2};
         char hov = (m.x >= ir.x && m.x <= ir.x + ir.width && m.y >= ir.y && m.y <= ir.y + ir.height);
         if(hov)
             DrawRectangleRec(ir, (Color) {50, 90, 50, 255});
@@ -408,9 +469,9 @@ void CharDrop_Draw(void) {
     }
     // barra de rolagem
     if(n > rows) {
-        const float trackH = h - 8;
+        const float trackH = h - 8 - ih;
         const float thumbH = trackH * rows / n;
-        const float thumbY = r.y + 4 + (trackH - thumbH) * dropScroll / (float)(n - rows);
+        const float thumbY = listY + 4 + (trackH - thumbH) * dropScroll / (float)(n - rows);
         DrawRectangle((int)(r.x + r.width - 8), (int)thumbY, 4, (int)thumbH, GREEN);
     }
     // clicou fora: fecha (pula o frame que abriu)

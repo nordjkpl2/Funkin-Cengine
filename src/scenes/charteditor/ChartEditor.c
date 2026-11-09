@@ -187,6 +187,8 @@ static void Edit_UpdateKeys(void) {
         activeDrop = 0;
         return;
     }
+    if(activeDrop)   // lista aberta: o teclado e da pesquisa, sem atalhos
+        return;
     if(focusNum != NULL) {
         if(IsKeyPressed(KEY_ENTER))
             NumBox_Commit();
