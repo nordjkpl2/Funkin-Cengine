@@ -186,7 +186,7 @@ void Edit_DrawTabs(void) {
 
 /* Linha "Rotulo: [caixa] [v]" com lista suspensa. */
 static void DrawDropField(float x, float y, float boxW, const char* label, TxtBox* box, const char* hint,
-                          int dropId, char (*names)[SONG_NAME_MAX], int count, char blocked) {
+                          int dropId, char blocked) {
     DrawTextEx(mainFont, label, (Vector2){x, y + 4}, 22, 1, WHITE);
 
     const Rectangle field = {x + SONG_FIELD_X, y, boxW, 32};
@@ -200,8 +200,7 @@ static void DrawDropField(float x, float y, float boxW, const char* label, TxtBo
         } else {
             activeDrop = dropId;
             dropBox = box;
-            dropNames = names;
-            dropCount = count;
+            dropCount = Lists_Get(dropId, &dropNames);   // scan so agora, na 1a abertura
             dropX = button.x;
             dropY = button.y + button.height + 4;
             dropW = boxW + 36;
@@ -235,15 +234,15 @@ static void Edit_DrawPanel_Song(float x, float y) {
 
     DrawTextEx(mainFont, "SONG", (Vector2){x, y}, 22, 1, GREEN);
     y += 34;
-    DrawDropField(x, y, boxW, "Boyfriend:", &p1Box, "bf", DROP_BOYFRIEND, charNames, charCount, blocked);
+    DrawDropField(x, y, boxW, "Boyfriend:", &p1Box, "bf", DROP_BOYFRIEND, blocked);
     y += 38;
-    DrawDropField(x, y, boxW, "Opponent:", &p2Box, "dad", DROP_OPPONENT, charNames, charCount, blocked);
+    DrawDropField(x, y, boxW, "Opponent:", &p2Box, "dad", DROP_OPPONENT, blocked);
     y += 38;
-    DrawDropField(x, y, boxW, "Girlfriend:", &gfBox, "gf", DROP_GIRLFRIEND, gfNames, gfCount, blocked);
+    DrawDropField(x, y, boxW, "Girlfriend:", &gfBox, "gf", DROP_GIRLFRIEND, blocked);
     y += 38;
-    DrawDropField(x, y, boxW, "Stage:", &stageBox, "stage", DROP_STAGE, stageNames, stageCount, blocked);
+    DrawDropField(x, y, boxW, "Stage:", &stageBox, "stage", DROP_STAGE, blocked);
     y += 38;
-    DrawDropField(x, y, boxW, "Note Skin:", &skinBox, "default", DROP_SKIN, skinNames, skinCount, blocked);
+    DrawDropField(x, y, boxW, "Note Skin:", &skinBox, "default", DROP_SKIN, blocked);
     y += 42;
 
     DrawTextEx(mainFont, "bpm:", (Vector2){x, y + 4}, 22, 1, WHITE);

@@ -228,15 +228,38 @@ static void Grid_DrawNote(const EdSec* s, const EdNote* n, float y, float ppm) {
 // nao depende de a nota estar "dentro" do tempo nominal do trecho, entao charts bagunçados carregam)
 static void Grid_DrawNotes(float ppm, double viewBottom) {
     double top = viewTopMs - 30.0 / ppm, bot = viewBottom + 30.0 / ppm;
+    /* Notas empilhadas no mesmo pixel e casa sao desenhadas uma vez (so as curtas): limita o custo
+       do desenho a ~8 casas x altura da grade, por maior que seja a densidade do chart. */
+    enum { OCC_ROWS = (int)(GRID_Y1 - GRID_Y0) + 61 };
+    static unsigned char occ[8][OCC_ROWS];
+    memset(occ, 0, sizeof(occ));
+
     for(int i = 0; i < chart.nsec; i++) {
         const EdSec* s = chart.secs + i;
         if(s->count <= 0 || s->tmax < top || s->tmin > bot)
             continue;
-        for(int k = 0; k < s->count; k++) {
+        // notas ordenadas por tempo: vai direto a primeira visivel e para na ultima
+        int lo = 0, hi = s->count;
+        while(lo < hi) {
+            const int mid = lo + (hi - lo) / 2;
+            if(s->notes[mid].time < top) lo = mid + 1;
+            else hi = mid;
+        }
+        for(int k = lo; k < s->count; k++) {
             const EdNote* n = s->notes + k;
+            if(n->time > bot)
+                break;
             float y = GRID_Y0 + (float)(n->time - viewTopMs) * ppm;
             if(y < GRID_Y0 - 30 || y > GRID_Y1 + 30)
                 continue;
+            if(n->len <= 0 && n->lane >= 0 && n->lane < 8) {
+                const int row = (int)(y - (GRID_Y0 - 30));
+                if(row >= 0 && row < OCC_ROWS) {
+                    if(occ[n->lane][row])
+                        continue;
+                    occ[n->lane][row] = 1;
+                }
+            }
             Grid_DrawNote(s, n, y, ppm);
         }
     }

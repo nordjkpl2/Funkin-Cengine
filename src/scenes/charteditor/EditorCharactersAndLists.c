@@ -507,6 +507,35 @@ void NoteSkinList_Scan(void) {
     }
 }
 
+static char listsStale = 1;   /* bit 1 = personagens/GF, 2 = stages, 4 = skins */
+
+void Lists_Invalidate(void) {
+    listsStale = 1 | 2 | 4;
+    charCount = gfCount = stageCount = skinCount = 0;
+}
+
+int Lists_Get(int dropId, char (**names)[SONG_NAME_MAX]) {
+    switch(dropId) {
+    case DROP_BOYFRIEND:
+    case DROP_OPPONENT:
+    case DROP_GIRLFRIEND:
+        if(listsStale & 1) { CharList_Scan(); listsStale &= ~1; }
+        if(dropId == DROP_GIRLFRIEND) { *names = gfNames; return gfCount; }
+        *names = charNames;
+        return charCount;
+    case DROP_STAGE:
+        if(listsStale & 2) { StageList_Scan(); listsStale &= ~2; }
+        *names = stageNames;
+        return stageCount;
+    case DROP_SKIN:
+        if(listsStale & 4) { NoteSkinList_Scan(); listsStale &= ~4; }
+        *names = skinNames;
+        return skinCount;
+    }
+    *names = NULL;
+    return 0;
+}
+
 TxtBox p1Box;
 
 TxtBox p2Box;

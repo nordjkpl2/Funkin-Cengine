@@ -420,6 +420,7 @@ static void Edit_Update(void) {
 // (removido: migrado p/ abas Song/Section)
 
 static void Edit_Draw(void) {
+    EdArrows_Init();   // so faz algo na 1a vez (e depois de trocar a skin)
     Render_SetCamera(&camEd);
     Render_DrawGraphicObject(&bgEd);
 
@@ -452,7 +453,7 @@ static void ChartEditor_Create([[maybe_unused]] RayScene* scene) {
     camEd.rotation = 0;
     camEd.offset = (Vector2) {0, 0};
 
-    EdArrows_Init();
+    // EdArrows_Init() so quando entrar no modo edicao (o seletor nao usa a skin das notas)
 
     if(pendingDir[0] != 0) {
         char tmp[256];

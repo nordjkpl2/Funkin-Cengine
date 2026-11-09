@@ -5,3 +5,8 @@ LOAD [spatial-abyss] init: 0.0 ms, chart: 25.3 ms, sounds: 60.2 ms, characters: 
 LOAD [moribund-3] init: 0.0 ms, chart: 167.1 ms, sounds: 104.8 ms, characters: 470.0 ms, stage: 3.9 ms, song audio: 1.8 ms, notes: 3.6 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 454.1 ms) total: 751.5 ms
 [WARN] Icone nao encontrado: 'fsm' (usando padrao)
 LOAD [realisticful] init: 0.0 ms, chart: 178.8 ms, sounds: 25.9 ms, characters: 417.1 ms, stage: 15.0 ms, song audio: 1.7 ms, notes: 3.6 ms, ui: 0.0 ms, warmup: 0.1 ms, (textures on main thread: 424.4 ms) total: 642.2 ms
+--- SESSION LOG START ---
+LOAD [moribund-3] init: 18.1 ms, chart: 166.6 ms, sounds: 64.4 ms, characters: 399.1 ms, stage: 3.9 ms, song audio: 1.7 ms, notes: 3.6 ms, ui: 7.7 ms, warmup: 0.2 ms, (textures on main thread: 426.2 ms) total: 665.3 ms
+
+--- SESSION LOG START ---
+LOAD [moribund-3] init: 17.6 ms, chart: 149.9 ms, sounds: 62.7 ms, characters: 418.6 ms, stage: 3.3 ms, song audio: 1.8 ms, notes: 3.6 ms, ui: 8.1 ms, warmup: 0.2 ms, (textures on main thread: 445.4 ms) total: 665.8 ms

@@ -164,9 +164,7 @@ void Editor_EnterDir(const char* dir) {
     strncpy(gfBox.buf, chart.gf, sizeof(gfBox.buf) - 1);
     strncpy(stageBox.buf, chart.stage, sizeof(stageBox.buf) - 1);
     strncpy(skinBox.buf, chart.noteSkin, sizeof(skinBox.buf) - 1);
-    CharList_Scan();
-    StageList_Scan();
-    NoteSkinList_Scan();
+    Lists_Invalidate();   // listas do dropdown: so escaneiam quando abrir
     activeDrop = 0;
     menuOpen = 0;
     activeTab = TAB_SECTION;
@@ -514,8 +512,7 @@ static void Picker_NewSong(void) {
     strncpy(p2Box.buf, "dad", sizeof(p2Box.buf) - 1);
     strncpy(gfBox.buf, "gf", sizeof(gfBox.buf) - 1);
     strncpy(stageBox.buf, "stage", sizeof(stageBox.buf) - 1);
-    CharList_Scan();
-    StageList_Scan();
+    Lists_Invalidate();
     activeDrop = 0;
     menuOpen = 0;
     activeTab = TAB_SONG;

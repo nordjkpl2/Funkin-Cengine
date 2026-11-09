@@ -107,3 +107,16 @@
 65	1694	8159414581821383	CMakeFiles/raylib_objects.dir/lib/raylib55/src/rtextures.c.obj	655983bc61bb275
 50	1700	8159414581663839	CMakeFiles/raylib_objects.dir/lib/raylib55/src/rmodels.c.obj	4742ca7234d86cd7
 1700	4492	8159414598090779	D:/dev/funkin c/FNF_C_ENGINE.exe	2662d046858b218c
+19	52	8159422649413547	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+56	236	8159422649727452	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/charteditor/ChartEditor.c.obj	499229d7a6dea3b5
+67	244	8159422649904984	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/charteditor/EditorPanels.c.obj	765f46be77223f91
+71	247	8159422649904984	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/charteditor/EditorPicker.c.obj	230077246c46d50e
+63	262	8159422649832791	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/charteditor/EditorIcons.c.obj	8d499d8170dc036c
+60	278	8159422649832791	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/charteditor/EditorCharactersAndLists.c.obj	f1721f0c8e7b0a58
+278	2792	8159422651964076	D:/dev/funkin c/FNF_C_ENGINE.exe	2662d046858b218c
+20	53	8159429165706471	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+67	180	8159429166182969	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayStateNoteSpawn.c.obj	aec72b9574efe967
+60	196	8159429166139958	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/charteditor/EditorGrid.c.obj	73b03399ebec1964
+64	270	8159429166182969	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayState.c.obj	6cb6e51baac2993
+57	332	8159429166026049	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/charteditor/EditorDataAndIO.c.obj	3b697d77e2c96570
+332	2900	8159429168733754	D:/dev/funkin c/FNF_C_ENGINE.exe	2662d046858b218c

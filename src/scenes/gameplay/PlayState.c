@@ -254,8 +254,14 @@ static void Event_PlayerHit(Note* note, PlayerRating rating) {
 }
 
 static void Event_PlayerMiss(int lane) {
+    static double lastMissSound = -1.0;
+    const double now = GetTime();
     bf.idleTimer = 0;
-    PlaySound(missSFX[GetRandomValue(0, 2)]);
+    /* chart com spam gigante pode errar milhares de notas no mesmo quadro: 1 som a cada 40 ms */
+    if (now - lastMissSound >= 0.04) {
+        lastMissSound = now;
+        PlaySound(missSFX[GetRandomValue(0, 2)]);
+    }
     AnimatedObject_SetAnimation(&bf.object, bf.missAnimations.notes[lane]);
 }
 

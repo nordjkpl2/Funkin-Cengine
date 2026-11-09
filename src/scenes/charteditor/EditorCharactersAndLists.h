@@ -37,6 +37,9 @@ extern char skinNames[SKIN_LIST_MAX][SONG_NAME_MAX];
 extern int skinCount;
 extern TxtBox skinBox;
 void NoteSkinList_Scan(void);
+/* Listas sob demanda: abrir a musica so as marca como velhas; o scan roda na 1a vez que o dropdown abre. */
+void Lists_Invalidate(void);
+int Lists_Get(int dropId, char (**names)[SONG_NAME_MAX]);   /* garante a lista e devolve a quantidade */
 void Editor_ApplyNoteSkin(const char* name, const char* songDir);
 extern TxtBox p1Box;
 extern TxtBox p2Box;

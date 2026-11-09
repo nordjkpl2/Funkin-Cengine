@@ -76,15 +76,38 @@ static void EdChart_CopyInto(EdChart* dst, const EdChart* src) {
     }
 }
 
+/* Memoria do undo: cada passo copia o chart inteiro. Em chart gigante o limite de passos (50)
+   estouraria a RAM, entao tambem ha teto em bytes (descarta os passos mais antigos). */
+#define UNDO_BUDGET_BYTES (128u * 1024u * 1024u)
+static size_t undoBytes[UNDO_MAX];
+
+static size_t EdChart_Bytes(const EdChart* c) {
+    size_t b = sizeof(EdSec) * (size_t)c->nsec;
+    for(int i = 0; i < c->nsec; i++)
+        b += sizeof(EdNote) * (size_t)c->secs[i].count;
+    return b;
+}
+
+static void Undo_DropOldest(void) {
+    EdChart_Free(undoStack);
+    memmove(undoStack, undoStack + 1, sizeof(EdChart) * (size_t)(undoCount - 1));
+    memmove(undoBytes, undoBytes + 1, sizeof(size_t) * (size_t)(undoCount - 1));
+    undoCount--;
+}
+
 static void Undo_Push(void) {
-    if(undoCount >= UNDO_MAX) {
-        EdChart_Free(undoStack);
-        memmove(undoStack, undoStack + 1, sizeof(EdChart) * (UNDO_MAX - 1));
-        undoCount = UNDO_MAX - 1;
-    }
+    if(undoCount >= UNDO_MAX)
+        Undo_DropOldest();
     memset(undoStack + undoCount, 0, sizeof(EdChart));
     EdChart_CopyInto(undoStack + undoCount, &chart);
+    undoBytes[undoCount] = EdChart_Bytes(undoStack + undoCount);
     undoCount++;
+    for(;;) {
+        size_t total = 0;
+        for(int i = 0; i < undoCount; i++) total += undoBytes[i];
+        if(total <= UNDO_BUDGET_BYTES || undoCount <= 1) break;
+        Undo_DropOldest();
+    }
 }
 
 void Undo_Clear(void) {
@@ -124,9 +147,31 @@ static void EdSec_Grow(EdSec* s, float time, float len) {
     if(s->count == 0 || end > s->tmax) s->tmax = end;
 }
 
+/* As notas de um trecho ficam sempre ordenadas por tempo (Add, FinishBulk, paste de trecho ordenado),
+   entao a busca e binaria: charts com milhoes de notas num trecho nao varrem tudo a cada clique. */
+static int EdSec_LowerBound(const EdSec* s, float time) {   /* 1o indice com time >= time */
+    int lo = 0, hi = s->count;
+    while(lo < hi) {
+        const int mid = lo + (hi - lo) / 2;
+        if(s->notes[mid].time < time) lo = mid + 1;
+        else hi = mid;
+    }
+    return lo;
+}
+
+static int EdSec_UpperBound(const EdSec* s, float time) {   /* 1o indice com time > time */
+    int lo = 0, hi = s->count;
+    while(lo < hi) {
+        const int mid = lo + (hi - lo) / 2;
+        if(s->notes[mid].time <= time) lo = mid + 1;
+        else hi = mid;
+    }
+    return lo;
+}
+
 void EdSec_Add(EdSec* s, float time, int lane, float len) {
-    // tira duplicada (mesma casa, <2ms) igual ao jogo
-    for(int i = 0; i < s->count; i++) {
+    // tira duplicada (mesma casa, <2ms) igual ao jogo: so os vizinhos dentro de 2 ms importam
+    for(int i = EdSec_LowerBound(s, time - 2.0f); i < s->count && s->notes[i].time < time + 2.0f; i++) {
         if(s->notes[i].lane == lane && fabsf(s->notes[i].time - time) < 2.0f)
             return;
     }
@@ -138,11 +183,12 @@ void EdSec_Add(EdSec* s, float time, int lane, float len) {
         s->cap = nc;
     }
     EdSec_Grow(s, time, len);
-    s->notes[s->count].time = time;
-    s->notes[s->count].lane = lane;
-    s->notes[s->count].len = (len < 0) ? 0 : len;
+    const int pos = EdSec_UpperBound(s, time);
+    memmove(s->notes + pos + 1, s->notes + pos, sizeof(EdNote) * (size_t)(s->count - pos));
+    s->notes[pos].time = time;
+    s->notes[pos].lane = lane;
+    s->notes[pos].len = (len < 0) ? 0 : len;
     s->count++;
-    EdSec_Sort(s);
 }
 
 // bulk: anexa sem dedup/sort (import/paste em massa). Fecha com FinishBulk.
@@ -198,7 +244,9 @@ int EdDispLane(const EdSec* s, int lane) {
 int EdSec_FindNear(EdSec* s, float time, int lane, float windowMs) {
     int best = -1;
     float bestD = windowMs;
-    for(int i = 0; i < s->count; i++) {
+    for(int i = EdSec_LowerBound(s, time - windowMs); i < s->count; i++) {
+        if(s->notes[i].time - time > windowMs)
+            break;
         if(s->notes[i].lane != lane)
             continue;
         float d = fabsf(s->notes[i].time - time);
