@@ -62,8 +62,8 @@
 It’s being developed by me, and I’m writing the code from scratch, so it might not be released all that quickly
 </details>
 
-<details>
-<summary><b>——Idea</b></summary>
+  <details>
+  <summary><b>——Idea</b></summary>
 
   ```text
   All Things your 2d (or semi 3d) game/mod needs, Made for Make
@@ -71,10 +71,10 @@ It’s being developed by me, and I’m writing the code from scratch, so it mig
 
   ⚙️ Backend, performance focus, and be all your need
 
-</details>
+  </details>
 
-<details>
-<summary><b>——Credits</b></summary>
+  <details>
+  <summary><b>——Credits</b></summary>
 
   <div align="left">
 
@@ -91,7 +91,7 @@ It’s being developed by me, and I’m writing the code from scratch, so it mig
   >> [...] I would like to thank Shadow Mario in (https://github.com/ShadowMario/FNF-PsychEngine) and Jordan SantiagoYT in (https://github.com/JordanSantiagoYT/FNF-JS-Engine) and the open-source community for the logic; without it, we wouldn't have been able to achieve the best result
 
   </div>
-</details>
+  </details>
 
 <div align="center">
   <h2>🤍</h2>
@@ -105,4 +105,4 @@ It’s being developed by me, and I’m writing the code from scratch, so it mig
   <img src="https://img.shields.io/github/commit-activity/m/nordjkpl2/funkin-cengine">
 </div>
 
-<img src="https://github.com/nordjkpl2/public-arquiv/blob/e5529f5a10b1ac8480bbefa3bd597f2f147c9a6b/emo%20music%20boyfriend.jpg" width="400" height="400">
+  <img src="https://github.com/nordjkpl2/public-arquiv/blob/e5529f5a10b1ac8480bbefa3bd597f2f147c9a6b/emo%20music%20boyfriend.jpg" width="400" height="400">
