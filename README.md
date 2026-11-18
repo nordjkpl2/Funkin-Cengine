@@ -8,6 +8,8 @@
   <img src="https://github.com/nordjkpl2/public-arquiv/blob/e5529f5a10b1ac8480bbefa3bd597f2f147c9a6b/amores%20bf%20e%20gf.jpg" width="100" height="100"/>
 </div>
 
+<div align="center">
+
 <details>
 <summary><b>——Libs</b></summary>
 
@@ -21,6 +23,8 @@ Read Files
 📦 2020 yyjson by YaoYuan - 📦 2014 yxml by Yoran Heling
 ```
 
+<div align="center">
+
 ```text
 Image Render
 📔 Wuffs image decoder by Google
@@ -30,7 +34,7 @@ Image Render
 Multi threading(cpu) manager
 💻 WindowsApi (windows.h) for Windows - 💻 P Threads (pthread.h) for All Platforms
   ```
-</div>
+  </div>
 
 </details>
 
@@ -54,7 +58,7 @@ Multi threading(cpu) manager
 - [ ] v1.0 — Release
       
 It’s being developed by me, and I’m writing the code from scratch, so it might not be released all that quickly
-
+</div>
 </details>
 
 <details>
@@ -86,6 +90,7 @@ All Friday Night Funkin' assets belong to their respective owners
 >> [...] I would like to thank Shadow Mario in (https://github.com/ShadowMario/FNF-PsychEngine) and Jordan SantiagoYT in (https://github.com/JordanSantiagoYT/FNF-JS-Engine) and the open-source community for the logic; without it, we wouldn't have been able to achieve the best result
 
 </details>
+</div>
 
 <div align="center"><h2>🤍</h2></div>
 
