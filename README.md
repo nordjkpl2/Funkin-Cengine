@@ -4,6 +4,10 @@
 
 > Performance, All Friday Night Funkin' assets belong to their respective owners.
 
+<div align="center">
+  <img src="https://github.com/nordjkpl2/public-arquiv/blob/e5529f5a10b1ac8480bbefa3bd597f2f147c9a6b/amores%20bf%20e%20gf.jpg" width="100" height="100"/>
+</div>
+
 <details>
 <summary><b>——Libs</b></summary>
 
@@ -17,15 +21,20 @@ Read Files
 📦 2020 yyjson by YaoYuan - 📦 2014 yxml by Yoran Heling
 ```
 
-```text
-Image Render
-📔 Wuffs image decoder by Google
-```
+<div align="center">
 
-```text
-Multi threading(cpu) manager for Windows
-💻 WindowsApi (windows.h)
-```
+  ```text
+  Image Render
+  📔 Wuffs image decoder by Google
+  ```
+
+  ```text
+  Multi threading(cpu) manager
+  💻 WindowsApi (windows.h) for Windows
+  💻 P Threads (pthread.h) for All Platforms
+  ```
+</div>
+
 </details>
 
 <details>
@@ -69,7 +78,7 @@ All Things your 2d (or semi 3d) game/mod needs, Made for Make
 
 Created by (c)2026 nordjkpl
 
-View License file for View Copyright
+View License file for View Copyright/License
 
 ```text
 All Friday Night Funkin' assets belong to their respective owners
@@ -77,10 +86,18 @@ All Friday Night Funkin' assets belong to their respective owners
 
 > nord in @nordjkpl 2 github
 
-```text
-
 >> [...] I would like to thank Shadow Mario in (https://github.com/ShadowMario/FNF-PsychEngine) and Jordan SantiagoYT in (https://github.com/JordanSantiagoYT/FNF-JS-Engine) and the open-source community for the logic; without it, we wouldn't have been able to achieve the best result
 
-```
-
 </details>
+
+<div align="center"><h2>🤍</h2></div>
+
+> Fan Made, project not affiliated to Funkin'Crew
+  
+<div align="left">
+  <div align="center">
+  <img src="https://img.shields.io/github/contributors/nordjkpl2/funkin-cengine">
+  <img src="https://img.shields.io/github/commit-activity/m/nordjkpl2/funkin-cengine">
+</div>
+
+<img src="https://github.com/nordjkpl2/public-arquiv/blob/e5529f5a10b1ac8480bbefa3bd597f2f147c9a6b/emo%20music%20boyfriend.jpg" width="400" height="400">

@@ -99,4 +99,4 @@ static double YYJSON_GetNum(yyjson_val* val, double default_val) {
 
     ai invez de tocar preto 200 notas toca uma textura de bulk
 
-    NÃO TEM GIRLFRIEND NO CHART EDITOR CORRIGE ISSO AI
+    contador de notas como se fosse os tecladinho de live pra video/gameplay

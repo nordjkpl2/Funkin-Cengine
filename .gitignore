@@ -1,28 +1,26 @@
-# Build
+# included ia, backup, and map files 
+# for all people want contribute to project (for automatic not upload trash files)
 *.exe
 *.o
 *.obj
 *.clangd
 compile_flags.txt
-
-# IDE
 .vscode/
 *.code-workspace
-
-# System
 Thumbs.db
 Desktop.ini
-
-# Backup
 src.rar
 lib.rar
 build-clang.rar
 headers.rar
-
-# Oth
 build/
 dist/
-
-# Test
+.claude/
 assets/mods
 assets/weeks
+CLAUDE.md
+claude.md
+CODEX.md
+codex.md
+MAPA.md
+mapa.md

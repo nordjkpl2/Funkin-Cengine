@@ -10,3 +10,25 @@ LOAD [moribund-3] init: 18.1 ms, chart: 166.6 ms, sounds: 64.4 ms, characters: 3
 
 --- SESSION LOG START ---
 LOAD [moribund-3] init: 17.6 ms, chart: 149.9 ms, sounds: 62.7 ms, characters: 418.6 ms, stage: 3.3 ms, song audio: 1.8 ms, notes: 3.6 ms, ui: 8.1 ms, warmup: 0.2 ms, (textures on main thread: 445.4 ms) total: 665.8 ms
+
+--- SESSION LOG START ---
+LOAD [test] init: 39.0 ms, chart: 3.1 ms, sounds: 192.2 ms, characters: 34.3 ms, stage: 7.0 ms, song audio: 1.7 ms, notes: 0.7 ms, ui: 20.0 ms, warmup: 0.2 ms, (textures on main thread: 78.3 ms) total: 298.2 ms
+LOAD [test] init: 0.0 ms, chart: 3.5 ms, sounds: 3.6 ms, characters: 167.3 ms, stage: 6.6 ms, song audio: 1.7 ms, notes: 0.7 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 172.2 ms) total: 183.6 ms
+
+--- SESSION LOG START ---
+LOAD [macrosm] init: 38.6 ms, chart: 15.3 ms, sounds: 270.9 ms, characters: 412.7 ms, stage: 5.4 ms, song audio: 2.5 ms, notes: 0.2 ms, ui: 19.3 ms, warmup: 0.2 ms, (textures on main thread: 446.9 ms) total: 765.2 ms
+
+--- SESSION LOG START ---
+LOAD [triklizo-koooled] init: 31.7 ms, chart: 18.7 ms, sounds: 247.7 ms, characters: 328.0 ms, stage: 2.4 ms, song audio: 2.1 ms, notes: 0.5 ms, ui: 13.1 ms, warmup: 0.2 ms, (textures on main thread: 346.3 ms) total: 644.3 ms
+LOAD [moribund-3] init: 0.0 ms, chart: 160.9 ms, sounds: 108.9 ms, characters: 548.9 ms, stage: 3.1 ms, song audio: 2.1 ms, notes: 3.6 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 525.8 ms) total: 827.7 ms
+
+--- SESSION LOG START ---
+LOAD [Singularity] init: 42.5 ms, chart: 40.1 ms, sounds: 259.4 ms, characters: 296.8 ms, stage: 9.3 ms, song audio: 1.9 ms, notes: 0.0 ms, ui: 18.9 ms, warmup: 0.2 ms, (textures on main thread: 332.8 ms) total: 669.0 ms
+LOAD [agony] init: 0.0 ms, chart: 19.9 ms, sounds: 156.7 ms, characters: 457.1 ms, stage: 11.9 ms, song audio: 2.0 ms, notes: 0.5 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 452.2 ms) total: 648.3 ms
+
+--- SESSION LOG START ---
+LOAD [undaunted-demise-naether] init: 39.0 ms, chart: 63.2 ms, sounds: 331.0 ms, characters: 410.9 ms, stage: 9.6 ms, song audio: 2.4 ms, notes: 2.0 ms, ui: 19.4 ms, warmup: 0.2 ms, (textures on main thread: 450.9 ms) total: 877.6 ms
+
+--- SESSION LOG START ---
+LOAD [Astray] init: 37.5 ms, chart: 87.9 ms, sounds: 288.1 ms, characters: 299.7 ms, stage: 8.7 ms, song audio: 2.1 ms, notes: 0.3 ms, ui: 20.8 ms, warmup: 0.2 ms, (textures on main thread: 368.9 ms) total: 745.3 ms
+LOAD [Trauma] init: 0.0 ms, chart: 25.6 ms, sounds: 42.2 ms, characters: 404.5 ms, stage: 1405.1 ms, song audio: 2.8 ms, notes: 0.7 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 1799.0 ms) total: 1881.2 ms
