@@ -17,25 +17,26 @@
   <details>
   <summary><b>——Libs</b></summary>
 
-    ```text
-    Graphic
-    📐 Raylib v5.5 (include rlgl55) - 📐 Raymath v2.0 by Ramon Santamaria - ⚙️ OpenGl 3.30
-    ```
+```text
+Graphic
+📐 Raylib v5.5 (include rlgl55) - 📐 Raymath v2.0 by Ramon Santamaria - ⚙️ OpenGl 3.30
+```
 
-    ```text
-    Read Files
-    📦 2020 yyjson by YaoYuan - 📦 2014 yxml by Yoran Heling
-    ```
+```text
+Read Files
+📦 2020 yyjson by YaoYuan - 📦 2014 yxml by Yoran Heling
+```
 
-    ```text
-    Image Render
-    📔 Wuffs image decoder by Google
-    ```
+```text
+Image Render
+📔 Wuffs image decoder by Google
+```
 
-    ```text
-    Multi threading(cpu) manager
-    💻 WindowsApi (windows.h) for Windows - 💻 P Threads (pthread.h) for All Platforms
-    ```
+```text
+Multi threading(cpu) manager
+💻 WindowsApi (windows.h) for Windows - 💻 P Threads (pthread.h) for All Platforms
+```
+
   </details>
 
   <details>
@@ -43,9 +44,9 @@
 
   <div align="left">
 
-    ```text
-    (40%) ████████░░░░░░░░░░ 04 of 1
-    ```
+```text
+(40%) ████████░░░░░░░░░░ 04 of 1
+```
 
 - [x] v0.1 — Basis
 - [x] v0.2 — Basis functions
