@@ -40,8 +40,6 @@
 
 </div>
 
-<div align="center">
-
   <details>
   <summary><b>——Development</b></summary>
 
@@ -64,8 +62,7 @@
   </div>
       
 It’s being developed by me, and I’m writing the code from scratch, so it might not be released all that quickly
-  </details>
-</div>
+</details>
 
 <details>
 <summary><b>——Idea</b></summary>
