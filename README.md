@@ -1,52 +1,56 @@
 <div align="center">
 
-# 👒 Friday Night Funkin´ — Cengine
+  # 👒 Friday Night Funkin´ — Cengine
 
-> Performance, All Friday Night Funkin' assets belong to their respective owners.
+  > Performance, All Friday Night Funkin' assets belong to their respective owners.
 
-<div align="center">
-  <img src="https://github.com/nordjkpl2/public-arquiv/blob/e5529f5a10b1ac8480bbefa3bd597f2f147c9a6b/amores%20bf%20e%20gf.jpg" width="100" height="100"/>
 </div>
 
 <div align="center">
 
-<details>
-<summary><b>——Libs</b></summary>
+  <img src="https://github.com/nordjkpl2/public-arquiv/blob/e5529f5a10b1ac8480bbefa3bd597f2f147c9a6b/amores%20bf%20e%20gf.jpg" width="100" height="100"/>
 
-```text
-Graphic
-📐 Raylib v5.5 (include rlgl55) - 📐 Raymath v2.0 by Ramon Santamaria - ⚙️ OpenGl 3.30
-```
-
-```text
-Read Files
-📦 2020 yyjson by YaoYuan - 📦 2014 yxml by Yoran Heling
-```
+</div>
 
 <div align="center">
 
-```text
-Image Render
-📔 Wuffs image decoder by Google
-```
+  <summary><b>——Libs</b></summary>
+  <details>
 
-```text
-Multi threading(cpu) manager
-💻 WindowsApi (windows.h) for Windows - 💻 P Threads (pthread.h) for All Platforms
-  ```
-  </div>
+    ```text
+    Graphic
+    📐 Raylib v5.5 (include rlgl55) - 📐 Raymath v2.0 by Ramon Santamaria - ⚙️ OpenGl 3.30
+    ```
 
-</details>
+    ```text
+    Read Files
+    📦 2020 yyjson by YaoYuan - 📦 2014 yxml by Yoran Heling
+    ```
 
-<details>
-<summary><b>——Development</b></summary>
+    ```text
+    Image Render
+    📔 Wuffs image decoder by Google
+    ```
 
-```text
-(40%) ████████░░░░░░░░░░ 04 of 1
-```
-<!---</div align="center">-->
-<div align="left">
-  
+    ```text
+    Multi threading(cpu) manager
+    💻 WindowsApi (windows.h) for Windows - 💻 P Threads (pthread.h) for All Platforms
+    ```
+  </details>
+
+</div>
+
+<div align="center">
+
+  <summary><b>——Development</b></summary>
+  <details>
+
+  <div align="left">
+
+    ```text
+    (40%) ████████░░░░░░░░░░ 04 of 1
+    ```
+
 - [x] v0.1 — Basis
 - [x] v0.2 — Basis functions
 - [x] v0.3 — Music Editor and Additional
@@ -56,43 +60,47 @@ Multi threading(cpu) manager
 - [ ] v0.7 - completed performance and visual
 - [ ] v0.9 — Game Polish and Bug Testing
 - [ ] v1.0 — Release
+
+  </div>
       
 It’s being developed by me, and I’m writing the code from scratch, so it might not be released all that quickly
+  </details>
 </div>
-</details>
 
-<details>
 <summary><b>——Idea</b></summary>
+  <details>
 
-```text
-All Things your 2d (or semi 3d) game/mod needs, Made for Make
-```
+  ```text
+  All Things your 2d (or semi 3d) game/mod needs, Made for Make
+  ```
 
-⚙️ Backend, performance focus, and be all your need
+  ⚙️ Backend, performance focus, and be all your need
 
 </details>
 
-<details>
 <summary><b>——Credits</b></summary>
+  <details>
 
-<div align="left">
+  <div align="left">
 
-Created by (c)2026 nordjkpl
+  Created by (c)2026 nordjkpl
 
-View License file for View Copyright/License
+  View License file for View Copyright/License
 
-```text
-All Friday Night Funkin' assets belong to their respective owners
-```
+  ```text
+  All Friday Night Funkin' assets belong to their respective owners
+  ```
 
-> nord in @nordjkpl 2 github
+  > nord in @nordjkpl 2 github
 
->> [...] I would like to thank Shadow Mario in (https://github.com/ShadowMario/FNF-PsychEngine) and Jordan SantiagoYT in (https://github.com/JordanSantiagoYT/FNF-JS-Engine) and the open-source community for the logic; without it, we wouldn't have been able to achieve the best result
+  >> [...] I would like to thank Shadow Mario in (https://github.com/ShadowMario/FNF-PsychEngine) and Jordan SantiagoYT in (https://github.com/JordanSantiagoYT/FNF-JS-Engine) and the open-source community for the logic; without it, we wouldn't have been able to achieve the best result
 
 </details>
 </div>
 
-<div align="center"><h2>🤍</h2></div>
+<div align="center">
+  <h2>🤍</h2>
+</div>
 
 > Fan Made, project not affiliated to Funkin'Crew
   
@@ -100,6 +108,7 @@ All Friday Night Funkin' assets belong to their respective owners
   <div align="center">
   <img src="https://img.shields.io/github/contributors/nordjkpl2/funkin-cengine">
   <img src="https://img.shields.io/github/commit-activity/m/nordjkpl2/funkin-cengine">
-</div>
 
-<img src="https://github.com/nordjkpl2/public-arquiv/blob/e5529f5a10b1ac8480bbefa3bd597f2f147c9a6b/emo%20music%20boyfriend.jpg" width="400" height="400">
+  <img src="https://github.com/nordjkpl2/public-arquiv/blob/e5529f5a10b1ac8480bbefa3bd597f2f147c9a6b/emo%20music%20boyfriend.jpg" width="400" height="400">
+
+</div>
