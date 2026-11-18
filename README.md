@@ -14,8 +14,8 @@
 
 <div align="center">
 
-  <summary><b>——Libs</b></summary>
   <details>
+  <summary><b>——Libs</b></summary>
 
     ```text
     Graphic
@@ -42,8 +42,8 @@
 
 <div align="center">
 
-  <summary><b>——Development</b></summary>
   <details>
+  <summary><b>——Development</b></summary>
 
   <div align="left">
 
@@ -67,8 +67,8 @@ It’s being developed by me, and I’m writing the code from scratch, so it mig
   </details>
 </div>
 
+<details>
 <summary><b>——Idea</b></summary>
-  <details>
 
   ```text
   All Things your 2d (or semi 3d) game/mod needs, Made for Make
@@ -78,8 +78,8 @@ It’s being developed by me, and I’m writing the code from scratch, so it mig
 
 </details>
 
+<details>
 <summary><b>——Credits</b></summary>
-  <details>
 
   <div align="left">
 
@@ -95,8 +95,8 @@ It’s being developed by me, and I’m writing the code from scratch, so it mig
 
   >> [...] I would like to thank Shadow Mario in (https://github.com/ShadowMario/FNF-PsychEngine) and Jordan SantiagoYT in (https://github.com/JordanSantiagoYT/FNF-JS-Engine) and the open-source community for the logic; without it, we wouldn't have been able to achieve the best result
 
+  </div>
 </details>
-</div>
 
 <div align="center">
   <h2>🤍</h2>
@@ -108,7 +108,6 @@ It’s being developed by me, and I’m writing the code from scratch, so it mig
   <div align="center">
   <img src="https://img.shields.io/github/contributors/nordjkpl2/funkin-cengine">
   <img src="https://img.shields.io/github/commit-activity/m/nordjkpl2/funkin-cengine">
-
-  <img src="https://github.com/nordjkpl2/public-arquiv/blob/e5529f5a10b1ac8480bbefa3bd597f2f147c9a6b/emo%20music%20boyfriend.jpg" width="400" height="400">
-
 </div>
+
+<img src="https://github.com/nordjkpl2/public-arquiv/blob/e5529f5a10b1ac8480bbefa3bd597f2f147c9a6b/emo%20music%20boyfriend.jpg" width="400" height="400">
