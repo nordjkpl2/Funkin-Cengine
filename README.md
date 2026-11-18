@@ -21,17 +21,14 @@ Read Files
 📦 2020 yyjson by YaoYuan - 📦 2014 yxml by Yoran Heling
 ```
 
-<div align="center">
+```text
+Image Render
+📔 Wuffs image decoder by Google
+```
 
-  ```text
-  Image Render
-  📔 Wuffs image decoder by Google
-  ```
-
-  ```text
-  Multi threading(cpu) manager
-  💻 WindowsApi (windows.h) for Windows
-  💻 P Threads (pthread.h) for All Platforms
+```text
+Multi threading(cpu) manager
+💻 WindowsApi (windows.h) for Windows - 💻 P Threads (pthread.h) for All Platforms
   ```
 </div>
 
