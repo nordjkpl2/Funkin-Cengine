@@ -1,7 +1,7 @@
 /* // * Friday Night Funkin´ c engine (c) 2026 nordjkpl */
 /* // * Código do Chart Editor */
 #include "scenes/api/FontLoader.h"
-#include "scenes/charteditor/ChartEditor.h"
+#include "scenes/modding/charteditor/ChartEditor.h"
 #include "scenes/gameplay/PlayState.h"
 #include"data/Song.h"
 #include"data/SongList.h"
@@ -12,15 +12,15 @@
 #include "Game.h"
 #include "GameData.h"
 #include "raymath.h"
-#include "scenes/charteditor/data/EditorDataAndIO.h"
-#include "scenes/charteditor/grid/EditorTimeline.h"
-#include "scenes/charteditor/audio/EditorAudio.h"
-#include "scenes/charteditor/ui/EditorWidgets.h"
-#include "scenes/charteditor/grid/EditorGrid.h"
-#include "scenes/charteditor/data/EditorCharactersAndLists.h"
-#include "scenes/charteditor/ui/EditorIcons.h"
-#include "scenes/charteditor/ui/EditorPicker.h"
-#include "scenes/charteditor/ui/EditorPanels.h"
+#include "scenes/modding/charteditor/data/EditorDataAndIO.h"
+#include "scenes/modding/charteditor/grid/EditorTimeline.h"
+#include "scenes/modding/charteditor/audio/EditorAudio.h"
+#include "scenes/modding/charteditor/ui/EditorWidgets.h"
+#include "scenes/modding/charteditor/grid/EditorGrid.h"
+#include "scenes/modding/charteditor/data/EditorCharactersAndLists.h"
+#include "scenes/modding/charteditor/ui/EditorIcons.h"
+#include "scenes/modding/charteditor/ui/EditorPicker.h"
+#include "scenes/modding/charteditor/ui/EditorPanels.h"
 
 // ---------- dialogs (por cima de tudo) ----------
 static void Dialogs_Update(void) {

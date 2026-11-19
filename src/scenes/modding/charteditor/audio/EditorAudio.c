@@ -10,8 +10,8 @@
 #include "Game.h"
 #include "GameData.h"
 #include "raymath.h"
-#include "scenes/charteditor/audio/EditorAudio.h"
-#include "scenes/charteditor/grid/EditorTimeline.h"
+#include "scenes/modding/charteditor/audio/EditorAudio.h"
+#include "scenes/modding/charteditor/grid/EditorTimeline.h"
 
 char playing = 0;
 

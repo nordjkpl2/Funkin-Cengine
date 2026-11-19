@@ -2,3 +2,6 @@
 
 --- SESSION LOG START ---
 LOAD [scorn] init: 22.3 ms, chart: 0.7 ms, sounds: 63.6 ms, characters: 364.8 ms, stage: 10.3 ms, song audio: 1.7 ms, notes: 0.1 ms, ui: 8.0 ms, warmup: 0.2 ms, (textures on main thread: 396.9 ms) total: 471.8 ms
+
+--- SESSION LOG START ---
+[WARN] Icone nao encontrado: 'fsm' (usando padrao)

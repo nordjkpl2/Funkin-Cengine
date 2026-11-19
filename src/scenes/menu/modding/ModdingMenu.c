@@ -5,7 +5,8 @@
  */
 
 #include "scenes/api/FontLoader.h"
-#include "scenes/charteditor/ChartEditor.h"
+#include "scenes/modding/charactereditor/CharEditor.h"
+#include "scenes/modding/charteditor/ChartEditor.h"
 #include "scenes/menu/MenuBackground.h"
 #include "scenes/menu/MenuState.h"
 #include "scenes/menu/modding/ModdingMenu.h"
@@ -165,8 +166,7 @@ static void ModdingMenu_Update([[maybe_unused]] RayScene *scene)
                 return;
 
             case 1:
-                stubTitle = tabs[selected];
-                mode = MOD_STUB;
+                CharEditor_SetScene();
                 return;
 
             case 2:

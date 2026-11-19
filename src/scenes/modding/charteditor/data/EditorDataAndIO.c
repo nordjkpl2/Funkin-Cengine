@@ -11,7 +11,7 @@
 #include "Game.h"
 #include "GameData.h"
 #include "raymath.h"
-#include "scenes/charteditor/data/EditorDataAndIO.h"
+#include "scenes/modding/charteditor/data/EditorDataAndIO.h"
 
 // helpers yyjson -> corrige bug do int vs double
 static inline double yy_to_double(yyjson_val *v){

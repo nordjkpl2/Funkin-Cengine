@@ -11,14 +11,14 @@
 #include "Game.h"
 #include "GameData.h"
 #include "raymath.h"
-#include "scenes/charteditor/data/EditorDataAndIO.h"
-#include "scenes/charteditor/grid/EditorTimeline.h"
-#include "scenes/charteditor/audio/EditorAudio.h"
-#include "scenes/charteditor/ui/EditorWidgets.h"
-#include "scenes/charteditor/grid/EditorGrid.h"
-#include "scenes/charteditor/ui/EditorPanels.h"
-#include "scenes/charteditor/data/EditorCharactersAndLists.h"
-#include "scenes/charteditor/ui/EditorPicker.h"
+#include "scenes/modding/charteditor/data/EditorDataAndIO.h"
+#include "scenes/modding/charteditor/grid/EditorTimeline.h"
+#include "scenes/modding/charteditor/audio/EditorAudio.h"
+#include "scenes/modding/charteditor/ui/EditorWidgets.h"
+#include "scenes/modding/charteditor/grid/EditorGrid.h"
+#include "scenes/modding/charteditor/ui/EditorPanels.h"
+#include "scenes/modding/charteditor/data/EditorCharactersAndLists.h"
+#include "scenes/modding/charteditor/ui/EditorPicker.h"
 
 // ---------- acoes de trecho (usadas no menu e nas abas, sem duplicar) ----------
 static void Edit_DoNewPart(void) {
