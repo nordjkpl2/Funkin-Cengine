@@ -48,7 +48,7 @@ static void HitNote(Note* note, float songTime) {
         rating = PLAYER_RATING_SICK;
     }
 
-    PlayStateHealth_Add(0.0115f);
+    PlayStateHealth_Add(HEALTH_GAIN_HIT);
     note->pressed = 1;
     events.hit(note, rating);
 }
@@ -57,7 +57,7 @@ void PlayStatePlayerInput_MissNote(Note* note) {
     if (gameOptions.botplay) return; // BOTPLAY NUNCA DISPARA MISS
 
     note->missed = 1;
-    PlayStateHealth_Add(-0.02f);
+    PlayStateHealth_Add(-HEALTH_LOSS_MISS);
     misses++;
     events.miss(note->id);
 }
@@ -66,7 +66,7 @@ static void GhostMiss(int lane) {
     if (gameOptions.botplay) return; // BOTPLAY NUNCA DISPARA MISS
     if (lane < 0 || lane > 3) return;
 
-    PlayStateHealth_Add(-0.02f);
+    PlayStateHealth_Add(-HEALTH_LOSS_MISS);
     misses++;
     events.miss(lane);
 }

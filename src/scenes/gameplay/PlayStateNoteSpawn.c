@@ -147,8 +147,13 @@ static void DrawSustainClipped(const StrumNote* strum, float k) {
         Render_DrawAnimatedObject(&end);
 }
 
+/* Tecla da lane segurada neste frame (botplay conta como sempre segurada). So e consultada quando ha sustain ativo. */
+static char LaneHeld(int lane) {
+    return gameOptions.botplay || IsKeyDown(game_scheme_keys[gameOptions.scheme][lane]);
+}
+
 /* Logica do sustain (hold/miss). Sem desenho: roda no Update. */
-static void UpdateSustain(Note* note, const PlayStateNoteView* view, const char* holdDown) {
+static void UpdateSustain(Note* note, const PlayStateNoteView* view) {
     if (note->missed) return;
 
     const char shouldHold = Note_ShouldHold(note, view->time);
@@ -164,7 +169,7 @@ static void UpdateSustain(Note* note, const PlayStateNoteView* view, const char*
     }
     else if (!view->paused && shouldHold) {
         const float tailLeft = (note->time + note->length) - view->time;
-        if (!holdDown[note->id] && tailLeft > 0.12f)
+        if (tailLeft > 0.12f && !LaneHeld(note->id))
             events.miss(note);
         else
             events.playerHold();
@@ -222,10 +227,6 @@ void PlayStateNoteSpawn_Update(const PlayStateNoteView* view) {
     const float scrollSpeed = 450.0f * view->songSpeed;
     const float cutoffTime = time + (900.0f / scrollSpeed);
 
-    char holdDown[4];
-    for (int k = 0; k < 4; k++)
-        holdDown[k] = gameOptions.botplay || IsKeyDown(game_scheme_keys[gameOptions.scheme][k]);
-
     CullPassedNotes(time, 400.0f / scrollSpeed);
 
     for (size_t i = firstNote; i < noteCount; i++) {
@@ -249,7 +250,7 @@ void PlayStateNoteSpawn_Update(const PlayStateNoteView* view) {
         }
 
         if (note->length > 0)
-            UpdateSustain(note, view, holdDown);
+            UpdateSustain(note, view);
 
         if (!note->pressed && !note->missed && Note_TooLate(note, time))
             events.miss(note);

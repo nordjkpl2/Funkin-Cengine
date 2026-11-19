@@ -34,10 +34,6 @@
 #define LANES 4
 #define LANE_SPACING 110.0f
 
-// Vida por nota (mesmos valores do jogador, para o botplay ficar parecido com um jogo perfeito).
-#define HEALTH_GAIN_HIT  0.0115f
-#define HEALTH_DRAIN_OPP 0.006f
-
 /* ------------------------------------------------------------------ */
 /* Estado                                                              */
 /* ------------------------------------------------------------------ */

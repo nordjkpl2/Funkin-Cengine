@@ -8,6 +8,11 @@
 
 #include "logic/Character.h"
 
+/* Variacao de vida por evento (0-1). Fonte unica para PlayState e PlayStatePlayerInput. */
+#define HEALTH_GAIN_HIT   0.0115f  /* acerto de nota (jogador ou botplay) */
+#define HEALTH_DRAIN_OPP  0.006f   /* perda por nota do oponente (drain ligado) */
+#define HEALTH_LOSS_MISS  0.02f    /* miss de nota ou ghost tap */
+
 /* Posicao e cores padrao da barra. Chamar uma vez ao criar a cena. */
 /* top = 1 no downscroll: barra no topo, com o mesmo espacamento da base. */
 /* mortal = 0: a vida nunca fica abaixo de 0 (imortal, ex.: botplay sem drain ou com drain). */

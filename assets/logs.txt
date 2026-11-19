@@ -50,3 +50,10 @@ LOAD [spatial-abyss] init: 0.0 ms, chart: 1.5 ms, sounds: 1.3 ms, characters: 14
 
 --- SESSION LOG START ---
 LOAD [triklizo-koooled] init: 23.2 ms, chart: 20.6 ms, sounds: 61.1 ms, characters: 432.1 ms, stage: 2.8 ms, song audio: 1.9 ms, notes: 0.5 ms, ui: 8.6 ms, warmup: 0.2 ms, (textures on main thread: 463.0 ms) total: 550.9 ms
+
+--- SESSION LOG START ---
+LOAD [oblivion-V2] init: 24.3 ms, chart: 30.3 ms, sounds: 163.7 ms, characters: 261.6 ms, stage: 4.7 ms, song audio: 2.3 ms, notes: 1.2 ms, ui: 8.7 ms, warmup: 0.2 ms, (textures on main thread: 277.1 ms) total: 497.1 ms
+
+--- SESSION LOG START ---
+LOAD [oblivion-V2] init: 24.4 ms, chart: 30.3 ms, sounds: 73.3 ms, characters: 242.1 ms, stage: 4.4 ms, song audio: 1.9 ms, notes: 1.2 ms, ui: 8.3 ms, warmup: 0.2 ms, (textures on main thread: 276.1 ms) total: 386.0 ms
+LOAD [oblivion-V2] init: 0.0 ms, chart: 33.4 ms, sounds: 0.9 ms, characters: 307.7 ms, stage: 4.7 ms, song audio: 1.8 ms, notes: 1.2 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 311.0 ms) total: 349.9 ms
