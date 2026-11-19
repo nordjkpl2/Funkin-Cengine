@@ -57,3 +57,7 @@ LOAD [oblivion-V2] init: 24.3 ms, chart: 30.3 ms, sounds: 163.7 ms, characters: 
 --- SESSION LOG START ---
 LOAD [oblivion-V2] init: 24.4 ms, chart: 30.3 ms, sounds: 73.3 ms, characters: 242.1 ms, stage: 4.4 ms, song audio: 1.9 ms, notes: 1.2 ms, ui: 8.3 ms, warmup: 0.2 ms, (textures on main thread: 276.1 ms) total: 386.0 ms
 LOAD [oblivion-V2] init: 0.0 ms, chart: 33.4 ms, sounds: 0.9 ms, characters: 307.7 ms, stage: 4.7 ms, song audio: 1.8 ms, notes: 1.2 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 311.0 ms) total: 349.9 ms
+
+--- SESSION LOG START ---
+LOAD [oblivion-V2] init: 21.4 ms, chart: 26.8 ms, sounds: 57.9 ms, characters: 224.5 ms, stage: 4.9 ms, song audio: 1.8 ms, notes: 1.2 ms, ui: 8.0 ms, warmup: 0.2 ms, (textures on main thread: 255.7 ms) total: 346.6 ms
+LOAD [oblivion-V2] init: 0.0 ms, chart: 30.4 ms, sounds: 0.7 ms, characters: 272.2 ms, stage: 3.9 ms, song audio: 1.6 ms, notes: 1.1 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 274.7 ms) total: 310.1 ms

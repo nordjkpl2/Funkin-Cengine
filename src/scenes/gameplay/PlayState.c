@@ -2,8 +2,8 @@
 /*
  * PlayState.c - coordenador da gameplay.
  * Cada parte pesada vive em um modulo gameplay/PlayState*.c; aqui ficam o estado
- * da cena, os receptores, o fluxo (intro, morte, pausa, fim da musica) e a ligacao
- * entre os modulos por callbacks.
+ * da cena, a batida, o popup de rating, o fluxo (saida, fim da musica) e a ligacao
+ * entre os modulos por callbacks. Receptores, pausa, morte e intro tem modulo proprio.
  */
 #include "scenes/AllScenes.h"
 #include "logic/Character.h"
@@ -16,12 +16,15 @@
 #include "scenes/gameplay/PlayStateNoteSpawn.h"
 #include "scenes/gameplay/PlayStatePlayerInput.h"
 #include "scenes/gameplay/PlayStateCamera.h"
+#include "scenes/gameplay/PlayStateStrums.h"
+#include "scenes/gameplay/PlayStatePause.h"
+#include "scenes/gameplay/PlayStateDeath.h"
+#include "scenes/gameplay/PlayStateIntro.h"
 #include "Log.h"
 #include "rendering/cpu/ImagePrefetch.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include <math.h>
 #include "Game.h"
 #include "GameData.h"
 #include "logic/BeatManager.h"
@@ -30,9 +33,6 @@
 
 #define SCREEN_W 1280.0f
 #define SCREEN_H 720.0f
-
-#define LANES 4
-#define LANE_SPACING 110.0f
 
 /* ------------------------------------------------------------------ */
 /* Estado                                                              */
@@ -55,12 +55,8 @@ static BeatManager songBeat;
 static int currentSteps;
 static int currentSection;
 
-// intro e popup de rating
-static int introHit;
-static float introTime, introStep;
+// popup de rating (a intro e a UI compartilham uiAssets)
 static RayAnimationHandler uiAssets;
-static RayAnimatedObject introText;
-static Sound introSounds[4];
 static int ratingAnim[4]; // indexado por PlayerRating
 static RayAnimatedObject popupObj;
 static float popupTimer;
@@ -74,146 +70,27 @@ static Character bf;
 static Character dad;
 static PlayStateStage stage;
 
-// receptores
-static StrumNote dadStrumline[LANES];
-static StrumNote bfStrumline[LANES];
-static Vector2 dadStrumIdleSizes[LANES];
-static Vector2 bfStrumIdleSizes[LANES];
-static float bfMiddleX = 475.0f; // middlescroll: X do 1o receptor do BF (centralizado)
-
 // sons
 static Sound missSFX[3];
 static Sound hitSFX;
-
-// morte
-static int deathAnimations[3];
-static float deadTime;
-static char justDied;
-static char retryin;
-static Music deathMusic, deathMusicEnd;
-static Sound deathSounds;
-
-// pausa
-static char isPaused;
-static int currentOption;
-static float optionOffset;
-static float pauseTimer;
 
 // vida: taxas por evento, decididas uma vez por cena (ver ConfigureHealthRates)
 static float oppDrain;   // perda por nota do oponente (0 = drain desligado)
 static float botGain;    // ganho por nota do botplay (0 = desligado)
 
-/* ------------------------------------------------------------------ */
-/* Receptores (gameOptions.scroll: 0 = up, 1 = down, 2 = middle)      */
-/* ------------------------------------------------------------------ */
-
-static float StrumY(void) {
-    if (gameOptions.scroll == 2) return 20.0f;
-    if (gameOptions.scroll == 1) return 600.0f;
-    return 50.0f;
-}
-
-static float StrumX(char mustHit, int lane) {
-    if (gameOptions.scroll != 2)
-        return (mustHit ? 700.0f : 50.0f) + LANE_SPACING * lane;
-
-    return mustHit ? bfMiddleX + LANE_SPACING * lane : 50.0f + 55.0f * lane;
-}
-
 static float NoteVelocity(void) {
     return gameOptions.scroll == 1 ? 450.0f : -450.0f;
 }
 
-static void Strumlines_Load(void) {
-    const char middle = gameOptions.scroll == 2;
-
-    for (int i = 0; i < LANES; i++) {
-        StrumNote_Load(dadStrumline + i, i);
-        StrumNote_Load(bfStrumline + i, i);
-
-        dadStrumline[i].object.position.y = StrumY();
-        bfStrumline[i].object.position.y = StrumY();
-
-        // Middlescroll: oponente menor; BF na escala normal das notas.
-        if (middle)
-            dadStrumline[i].object.scaleX = dadStrumline[i].object.scaleY = 0.5f;
-    }
-
-    if (middle) {
-        RayAnimatedObject idle = bfStrumline[0].object;
-        AnimatedObject_SetAnimation(&idle, StrumNote_IdleAnimation(0));
-        bfMiddleX = SCREEN_W / 2 - (LANE_SPACING * (LANES - 1) + AnimatedObject_Sizes(&idle).x) * 0.5f;
-    }
-
-    for (int i = 0; i < LANES; i++) {
-        dadStrumline[i].object.position.x = StrumX(0, i);
-        bfStrumline[i].object.position.x = StrumX(1, i);
-    }
-
-    // Cacheia o tamanho idle uma vez: nao mede/refaz a animacao a cada frame.
-    for (int i = 0; i < LANES; i++) {
-        RayAnimatedObject dadIdle = dadStrumline[i].object;
-        RayAnimatedObject bfIdle = bfStrumline[i].object;
-
-        AnimatedObject_SetAnimation(&dadIdle, StrumNote_IdleAnimation(i));
-        AnimatedObject_SetAnimation(&bfIdle, StrumNote_IdleAnimation(i));
-
-        dadStrumIdleSizes[i] = AnimatedObject_Sizes(&dadIdle);
-        bfStrumIdleSizes[i] = AnimatedObject_Sizes(&bfIdle);
-    }
-}
-
-/*
- * Desenha o receptor mantendo o centro visual da animacao idle como ancora.
- * Animacoes maiores (confirm, por causa do brilho) fariam a seta "saltar";
- * o tamanho idle e medido uma vez no load. A posicao logica da coluna e
- * restaurada depois do desenho, entao notas e sustains usam a coordenada fixa.
- */
-static void RenderStrumFixedCenter(StrumNote* strum, Vector2 idleSize) {
-    Vector2 currentSize = AnimatedObject_Sizes(&strum->object);
-    Vector2 originalPosition = strum->object.position;
-
-    strum->object.position.x += (idleSize.x - currentSize.x) * 0.5f;
-    strum->object.position.y += (idleSize.y - currentSize.y) * 0.5f;
-
-    Render_DrawAnimatedObject(&strum->object);
-
-    strum->object.position = originalPosition;
-}
-
-static void Strumlines_Draw(void) {
-    for (int i = 0; i < LANES; i++) {
-        AnimatedObject_UpdateFrame(&dadStrumline[i].object);
-        RenderStrumFixedCenter(dadStrumline + i, dadStrumIdleSizes[i]);
-
-        AnimatedObject_UpdateFrame(&bfStrumline[i].object);
-        RenderStrumFixedCenter(bfStrumline + i, bfStrumIdleSizes[i]);
-    }
-
-    // Botplay: volta o BF ao idle quando a animacao de confirm termina.
-    if (gameOptions.botplay) {
-        for (int i = 0; i < LANES; i++) {
-            if (AnimatedObject_FinishedAnimation(&bfStrumline[i].object))
-                AnimatedObject_SetAnimation(&bfStrumline[i].object, StrumNote_IdleAnimation(i));
-        }
-    }
-}
-
-// Animacao dos receptores do BF a partir das teclas deste frame.
-static void Strumlines_ApplyInput(const PlayStatePlayerKeys* keys) {
-    for (int i = 0; i < LANES; i++) {
-        RayAnimatedObject* strum = &bfStrumline[i].object;
-
-        if (keys->pressed[i])
-            AnimatedObject_SetAnimation(strum, StrumNote_ConfirmAnimation(i));
-        else if (!keys->keyDown[i]) {
-            const int idle = StrumNote_IdleAnimation(i);
-            if (strum->currentAnim.animationIndex != idle)
-                AnimatedObject_SetAnimation(strum, idle);
-        }
-        else if (keys->keyPressed[i])
-            AnimatedObject_SetAnimation(strum, StrumNote_PressAnimation(i));
-    }
+static PlayStateNoteView NoteView(void) {
+    return (PlayStateNoteView) {
+        .time = songBeat.time,
+        .songSpeed = song.speed,
+        .scrollVelocity = NoteVelocity(),
+        .paused = PlayStatePause_IsPaused(),
+        .dadStrums = PlayStateStrums_Dad(),
+        .bfStrums = PlayStateStrums_Bf(),
+    };
 }
 
 /* ------------------------------------------------------------------ */
@@ -225,7 +102,7 @@ static void Event_OpponentHit(Note* note) {
         PlayStateHealth_Add(-oppDrain);
     dad.idleTimer = 0;
     AnimatedObject_SetAnimation(&dad.object, dad.animations.notes[note->id]);
-    AnimatedObject_SetAnimation(&dadStrumline[note->id].object, StrumNote_ConfirmAnimation(note->id));
+    PlayStateStrums_ConfirmDad(note->id);
 }
 
 static void Event_BotHit(Note* note) {
@@ -234,7 +111,7 @@ static void Event_BotHit(Note* note) {
         PlayStateHealth_Add(botGain);
     bf.idleTimer = 0;
     AnimatedObject_SetAnimation(&bf.object, bf.animations.notes[note->id]);
-    AnimatedObject_SetAnimation(&bfStrumline[note->id].object, StrumNote_ConfirmAnimation(note->id));
+    PlayStateStrums_ConfirmBf(note->id);
 }
 
 static void Event_OpponentHold(void) { dad.idleTimer = 0; }
@@ -305,12 +182,7 @@ static void ApplyMusicVolume(void) {
     lastAppliedMusicVolume = volume;
 
     PlayStateAudio_SetVolume(volume);
-
-    if (deathMusic.stream.buffer != NULL)
-        SetMusicVolume(deathMusic, volume);
-
-    if (deathMusicEnd.stream.buffer != NULL)
-        SetMusicVolume(deathMusicEnd, volume);
+    PlayStateDeath_SetVolume(volume);
 }
 
 static void UpdateSection(void) {
@@ -372,10 +244,7 @@ static void StartBeat(void) {
     songBeat.music = PlayStateAudio_Inst();
     songBeat.bpm = song.sections[0].bpm;
 
-    introHit = 0;
-    introTime = -0.5f;
-    introStep = 60.0f / songBeat.bpm;
-    songBeat.time = introTime + -5 * introStep;
+    songBeat.time = PlayStateIntro_Start(songBeat.bpm);
 }
 
 /* ------------------------------------------------------------------ */
@@ -402,13 +271,8 @@ static void ResetState(void) {
     PlayStateCamera_Reset(&dad);
 
     popupTimer = 0;
-    isPaused = 0;
-    currentOption = 0;
-    optionOffset = 0;
-
-    deadTime = 0;
-    justDied = 1;
-    retryin = 0;
+    PlayStatePause_Reset();
+    PlayStateDeath_Reset();
 }
 
 // Restart: reaproveita tudo que ja esta carregado.
@@ -428,7 +292,7 @@ static void Restart(void) {
     PlayStateCamera_SetPosition(dad.object.position.x + SCREEN_W / 2, dad.object.position.y + SCREEN_H / 2);
     UpdateSection();
 
-    introText.currentAnim.isValid = 0;
+    PlayStateIntro_Restart();
     restarted = 0;
 }
 
@@ -480,7 +344,7 @@ static void LoadCharacters(void) {
     }
     Character_Load(&dad, dadName, CHAR_DAD);
     Character_Load(&bf, song.player1, CHAR_BF);
-    Character_LoadDeathAnimations(&bf, deathAnimations);
+    PlayStateDeath_LoadAnimations(&bf);
     PlayStateHealth_SetCharacterColors(&dad, &bf);
 }
 
@@ -494,9 +358,6 @@ static void LoadSounds(void) {
     static const char* const missFiles[3] = {
         "assets/sounds/missnote1.ogg", "assets/sounds/missnote2.ogg", "assets/sounds/missnote3.ogg"
     };
-    static const char* const introFiles[4] = {
-        "assets/sounds/intro3.ogg", "assets/sounds/intro2.ogg", "assets/sounds/intro1.ogg", "assets/sounds/introGo.ogg"
-    };
 
     for (int i = 0; i < 3; i++) {
         missSFX[i] = LoadSound(missFiles[i]);
@@ -506,16 +367,8 @@ static void LoadSounds(void) {
     hitSFX = LoadSound("assets/sounds/hitosu!mania.ogg");
     SetSoundVolume(hitSFX, 0.5f);
 
-    for (int i = 0; i < 4; i++) {
-        introSounds[i] = LoadSound(introFiles[i]);
-        SetSoundVolume(introSounds[i], 0.7f);
-    }
-
-    deathSounds = LoadSound("assets/sounds/fnf_loss_sfx.ogg");
-    deathMusic = LoadMusicStream("assets/music/gameOver.ogg");
-    deathMusic.looping = 1;
-    deathMusicEnd = LoadMusicStream("assets/music/gameOverEnd.ogg");
-    deathMusicEnd.looping = 0;
+    PlayStateIntro_LoadSounds();
+    PlayStateDeath_LoadSounds();
 }
 
 static char uiAssetsLoaded; // ui.png/ui.animset ficam carregados entre as musicas
@@ -531,9 +384,7 @@ static void LoadUiAssets(void) {
         uiAssetsLoaded = 1;
     }
 
-    Render_DefaultAnimated(&introText);
-    introText.animationSet = uiAssets;
-    introText.scaleX = introText.scaleY = 0.7f;
+    PlayStateIntro_LoadUi(&uiAssets);
 
     Render_DefaultAnimated(&popupObj);
     popupObj.animationSet = uiAssets;
@@ -605,7 +456,7 @@ static void PlayState_Create([[maybe_unused]] RayScene* scene) {
     else if (song.arrowSkin[0] != 0)
         snprintf(skinName, sizeof(skinName), "@%s", song.arrowSkin);
     Note_SetCurrentSkin(skinName[0] != 0 ? Cache_GetNoteSkinPtr(skinName, songDir) : NULL);
-    Strumlines_Load();   // depois da skin: os receptores usam as animacoes dela
+    PlayStateStrums_Load();   // depois da skin: os receptores usam as animacoes dela
     LoadMark("chart");
     PrefetchAssets();
     LoadSounds();               // roda enquanto o prefetch decodifica
@@ -707,86 +558,6 @@ static void FinishWeekSong(void) {
 /* Update                                                              */
 /* ------------------------------------------------------------------ */
 
-static void UpdateDeath(float dt) {
-    PlayStateAudio_Pause();
-
-    if (justDied) {
-        AnimatedObject_SetAnimation(&bf.object, deathAnimations[0]);
-        deadTime = -AnimationSet_AnimationLength(&bf.object.animationSet, deathAnimations[0]);
-        justDied = 0;
-        retryin = 0;
-        PlaySound(deathSounds);
-    }
-
-    PlayStateCamera_Follow(&bf);
-
-    if (retryin) {
-        UpdateMusicStream(deathMusicEnd);
-        bf.object.color.a = smooth(255.0f, 0, deadTime / 2);
-
-        if (deadTime >= 2.0f) {
-            StopMusicStream(deathMusicEnd);
-            restarted = 1;
-            PlayState_SetScene();
-            return;
-        }
-    }
-    else if (deadTime > 0) {
-        if (bf.object.currentAnim.animationIndex != deathAnimations[1]) {
-            PlayMusicStream(deathMusic);
-            AnimatedObject_SetAnimation(&bf.object, deathAnimations[1]);
-        }
-        else {
-            UpdateMusicStream(deathMusic);
-
-            if (IsKeyPressed(KEY_SPACE)) {
-                retryin = 1;
-                deadTime = 0;
-                AnimatedObject_SetAnimation(&bf.object, deathAnimations[2]);
-                StopMusicStream(deathMusic);
-                PlayMusicStream(deathMusicEnd);
-            }
-            else if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_BACKSPACE) || IsKeyPressed(KEY_ESCAPE)) {
-                StopMusicStream(deathMusic);
-                LeaveGameplay(0);
-                return;
-            }
-        }
-    }
-
-    deadTime += dt;
-}
-
-static void UpdateIntro(float dt) {
-    static const char* const countdownAnims[3] = {"ready", "set", "go"};
-
-    introTime += dt;
-    songBeat.time += dt;
-
-    while (introTime >= introStep) {
-        if (introHit < 4) {
-            if (introHit > 0) {
-                AnimatedObject_SetAnimation(&introText, AnimationSet_FindAnimation(&uiAssets, countdownAnims[introHit - 1]));
-                Vector2 sizes = AnimatedObject_Sizes(&introText);
-                introText.position.x = SCREEN_W / 2 - sizes.x / 2;
-                introText.position.y = SCREEN_H / 2 - sizes.y / 2;
-            }
-
-            PlaySound(introSounds[introHit]);
-        }
-
-        if (gfLoaded) {
-            gf.f = !gf.f;
-            AnimatedObject_SetAnimation(&gf.object, gf.anims[gf.f]);
-        }
-
-        introHit++;
-        introTime -= introStep;
-    }
-
-    introText.color.a = smooth(255.0f, 0, introTime / introStep);
-}
-
 // Retorna 1 se a cena mudou (fim da musica).
 static char UpdateSong(void) {
     PlayStateAudio_Update();
@@ -808,17 +579,10 @@ static char UpdateSong(void) {
 
     PlayStatePlayerKeys keys;
     if (PlayStatePlayerInput_Update(songBeat.time, &keys))
-        Strumlines_ApplyInput(&keys);
+        PlayStateStrums_ApplyInput(&keys);
 
     // Hits automaticos, hold e miss das notas (antes ficava no Draw).
-    const PlayStateNoteView view = {
-        .time = songBeat.time,
-        .songSpeed = song.speed,
-        .scrollVelocity = NoteVelocity(),
-        .paused = isPaused,
-        .dadStrums = dadStrumline,
-        .bfStrums = bfStrumline,
-    };
+    const PlayStateNoteView view = NoteView();
     PlayStateNoteSpawn_Update(&view);
 
     return 0;
@@ -839,26 +603,41 @@ static void PlayState_Update([[maybe_unused]] RayScene* scene) {
         return;
     }
 
-    if (isPaused) {
-        pauseTimer += dt;
+    if (PlayStatePause_IsPaused()) {
+        const PlayStatePauseAction action = PlayStatePause_Update(dt);
+        if (action == PLAYSTATE_PAUSE_RESTART) {
+            restarted = 1;
+            PlayState_SetScene();
+        }
+        else if (action == PLAYSTATE_PAUSE_EXIT) {
+            if (!LeavesToEditor(1)) {
+                RayGame_ResetMusic();
+                RayGame_ToggleMusic(1);
+            }
+            LeaveGameplay(1);
+        }
         return;
     }
 
     if (PlayStateHealth_IsDead()) {
-        UpdateDeath(dt);
+        const PlayStateDeathAction action = PlayStateDeath_Update(dt, &bf);
+        if (action == PLAYSTATE_DEATH_RESTART) {
+            restarted = 1;
+            PlayState_SetScene();
+        }
+        else if (action == PLAYSTATE_DEATH_LEAVE)
+            LeaveGameplay(0);
     }
     else if (songBeat.time < 0) {
-        UpdateIntro(dt);
+        songBeat.time += dt;
+        PlayStateIntro_Update(dt, gfLoaded ? &gf : NULL);
     }
     else if (UpdateSong()) {
         return;
     }
 
-    if (!PlayStateHealth_IsDead() && IsKeyPressed(KEY_ENTER)) {
-        pauseTimer = -0.1f;
-        isPaused = 1;
-        PlayStateAudio_Pause();
-    }
+    if (!PlayStateHealth_IsDead() && IsKeyPressed(KEY_ENTER))
+        PlayStatePause_Open();
 
     PlayStateHealth_Update(dt);
     PlayStateCamera_Update(dt, stage.defaultCameraZoom);
@@ -867,51 +646,6 @@ static void PlayState_Update([[maybe_unused]] RayScene* scene) {
 /* ------------------------------------------------------------------ */
 /* Draw                                                                */
 /* ------------------------------------------------------------------ */
-
-static void PauseMenu_Update(void) {
-    const char* const options[3] = {"Resume", "Restart", LeavesToEditor(1) ? "Exit to Chart Editor" : "Exit to Menu"};
-    const float dt = RayGame_DeltaTime();
-
-    DrawRectangle(0, 0, (int)SCREEN_W, (int)SCREEN_H, (Color) {0, 0, 0, 100});
-
-    if (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S)) {
-        currentOption++;
-        if (currentOption >= 3)
-            currentOption = 0;
-    }
-    else if (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W)) {
-        currentOption--;
-        if (currentOption < 0)
-            currentOption = 2;
-    }
-    else if (pauseTimer > 0 && (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE))) {
-        if (currentOption == 0)
-            isPaused = 0;
-        else if (currentOption == 1) {
-            restarted = 1;
-            PlayState_SetScene();
-            return;
-        }
-        else {
-            if (!LeavesToEditor(1)) {
-                RayGame_ResetMusic();
-                RayGame_ToggleMusic(1);
-            }
-            LeaveGameplay(1);
-            return;
-        }
-    }
-
-    optionOffset = Lerp(optionOffset, currentOption, dt * 10.0f);
-
-    Color color = WHITE;
-    for (int i = 0; i < 3; i++) {
-        const int fontSize = 85;
-        Vector2 pos = {150.0f + fabsf(i - optionOffset) * -30, SCREEN_H / 2 + (i - optionOffset) * (15 + fontSize)};
-        color.a = currentOption == i ? 255 : 150;
-        DrawTextEx(mainFont, options[i], pos, fontSize, 5, color);
-    }
-}
 
 // sing_duration em passos (padrao 4 = 1 beat).
 static void UpdateCharacterIdle(Character* character, float beatSeconds, float dt) {
@@ -927,9 +661,10 @@ static void UpdateCharacterIdle(Character* character, float beatSeconds, float d
 static void DrawWorld(float dt) {
     PlayStateCamera_BeginGame();
 
-    PlayStateStage_DrawBack(&stage, isPaused);
+    const char paused = PlayStatePause_IsPaused();
+    PlayStateStage_DrawBack(&stage, paused);
 
-    if (!isPaused) {
+    if (!paused) {
         const float beatSeconds = 60.0f / songBeat.bpm;
         UpdateCharacterIdle(&dad, beatSeconds, dt);
         UpdateCharacterIdle(&bf, beatSeconds, dt);
@@ -943,22 +678,15 @@ static void DrawWorld(float dt) {
     Render_DrawAnimatedObject(&dad.object);
     Render_DrawAnimatedObject(&bf.object);
 
-    PlayStateStage_DrawFront(&stage, isPaused);
+    PlayStateStage_DrawFront(&stage, paused);
 
     Render_StopCamera();
 }
 
 static void DrawHud(float dt) {
-    Strumlines_Draw();
+    PlayStateStrums_Draw();
 
-    const PlayStateNoteView view = {
-        .time = songBeat.time,
-        .songSpeed = song.speed,
-        .scrollVelocity = NoteVelocity(),
-        .paused = isPaused,
-        .dadStrums = dadStrumline,
-        .bfStrums = bfStrumline,
-    };
+    const PlayStateNoteView view = NoteView();
     PlayStateNoteSpawn_Draw(&view);
 
     PlayStateHealth_Draw(dad.icon, bf.icon);
@@ -966,7 +694,7 @@ static void DrawHud(float dt) {
                        gameOptions.showScore, gameOptions.scorePosition);
 
     if (songBeat.time < 0)
-        Render_DrawAnimatedObject(&introText);
+        PlayStateIntro_Draw();
 
     // No botplay nao cria popup para nao matar o FPS em spam notes
     if (!gameOptions.botplay && popupTimer > 0) {
@@ -1003,8 +731,8 @@ static void PlayState_Draw([[maybe_unused]] RayScene* scene) {
     PlayStateCamera_BeginHUD();
     DrawHud(dt);
 
-    if (isPaused)
-        PauseMenu_Update();
+    if (PlayStatePause_IsPaused())
+        PlayStatePause_Draw(LeavesToEditor(1));
     if (warnScreen)
         WarnScreen_Draw();
     Render_StopCamera();
@@ -1060,9 +788,7 @@ static void PlayState_Destroy([[maybe_unused]] RayScene* scene) {
     if (restarted) return; // restart reaproveita tudo
 
     // Sons comuns e ui continuam carregados (reuso na proxima musica); so garante que nada toca.
-    StopMusicStream(deathMusic);
-    StopMusicStream(deathMusicEnd);
-    StopSound(deathSounds);
+    PlayStateDeath_Stop();
 
     PlayStateNoteSpawn_Unload();
     Song_Free(&song);
