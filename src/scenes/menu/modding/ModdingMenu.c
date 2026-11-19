@@ -143,6 +143,20 @@ static void ModdingMenu_Update([[maybe_unused]] RayScene *scene)
             selected = TAB_COUNT - 1;
     }
 
+    /* Roda do mouse: acumula o movimento (touchpad manda fracoes) e troca de aba a cada clique. */
+    {
+        static float wheelAcc;
+        wheelAcc += GetMouseWheelMove();
+        while (wheelAcc >= 1.0f) {
+            wheelAcc -= 1.0f;
+            selected = (selected + TAB_COUNT - 1) % TAB_COUNT;
+        }
+        while (wheelAcc <= -1.0f) {
+            wheelAcc += 1.0f;
+            selected = (selected + 1) % TAB_COUNT;
+        }
+    }
+
     if (IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_ENTER) ||
         IsKeyPressed(KEY_KP_ENTER)) {
         switch (selected) {

@@ -90,6 +90,20 @@ static void OptionsMenu_Update([[maybe_unused]] RayScene* scene) {
     if (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S)) MoveSelection(1);
     else if (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W)) MoveSelection(-1);
 
+    // Roda do mouse: acumula o movimento (touchpad manda fracoes) e pula varias linhas por clique.
+    {
+        static float wheelAcc;
+        wheelAcc += GetMouseWheelMove();
+        while (wheelAcc >= 1.0f) {
+            wheelAcc -= 1.0f;
+            for (int k = 0; k < WHEEL_ROWS_PER_NOTCH; k++) MoveSelection(-1);
+        }
+        while (wheelAcc <= -1.0f) {
+            wheelAcc += 1.0f;
+            for (int k = 0; k < WHEEL_ROWS_PER_NOTCH; k++) MoveSelection(1);
+        }
+    }
+
     Option* cur = options + currentOption;
 
     if (IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_ENTER)) {
