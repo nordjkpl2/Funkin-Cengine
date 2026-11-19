@@ -2,7 +2,7 @@
 #ifndef STAGE_JSON_H
 #define STAGE_JSON_H
 
-#include "logic/Stage.h"
+#include "logic/stage/Stage.h"
 
 /* Le o <stage>.json (Psych). Sempre preenche *out (padroes quando falta campo).
  * Retorna 1 se o arquivo foi lido, 0 se nao existe ou e invalido.

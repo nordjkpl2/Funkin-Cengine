@@ -6,8 +6,8 @@
  * entre os modulos por callbacks. Receptores, pausa, morte e intro tem modulo proprio.
  */
 #include "scenes/AllScenes.h"
-#include "logic/Character.h"
-#include "logic/Note.h"
+#include "characters/Character.h"
+#include "logic/notes/Note.h"
 #include "data/Song.h"
 #include "scenes/gameplay/PlayStateStage.h"
 #include "scenes/gameplay/PlayStateHealth.h"
@@ -27,7 +27,7 @@
 #include <stdio.h>
 #include "Game.h"
 #include "GameData.h"
-#include "logic/BeatManager.h"
+#include "logic/beatmanager/BeatManager.h"
 #include "data/Week.h"
 #include "raymath.h"
 

@@ -8,7 +8,7 @@
 #ifndef PLAYSTATE_INTRO_H
 #define PLAYSTATE_INTRO_H
 
-#include "logic/Character.h"
+#include "characters/Character.h"
 #include "Render.h"
 
 /* Sons da contagem (3, 2, 1, go). Carregados uma vez, entre as musicas. */

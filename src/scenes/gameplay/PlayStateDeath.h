@@ -8,7 +8,7 @@
 #ifndef PLAYSTATE_DEATH_H
 #define PLAYSTATE_DEATH_H
 
-#include "logic/Character.h"
+#include "characters/Character.h"
 
 typedef enum {
     PLAYSTATE_DEATH_NONE,

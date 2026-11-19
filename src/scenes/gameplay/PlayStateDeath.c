@@ -4,7 +4,7 @@
  */
 
 #include "scenes/AllScenes.h"
-#include "logic/Character.h"
+#include "characters/Character.h"
 #include "scenes/gameplay/PlayStateDeath.h"
 #include "scenes/gameplay/PlayStateAudio.h"
 #include "scenes/gameplay/PlayStateCamera.h"

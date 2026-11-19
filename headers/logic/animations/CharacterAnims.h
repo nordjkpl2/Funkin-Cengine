@@ -9,8 +9,8 @@
 #define CHARACTER_ANIMS_H
 
 #include <stdbool.h>
-#include "logic/CharacterInternal.h"
-#include "logic/CharacterJson.h"
+#include "characters/CharacterInternal.h"
+#include "characters/CharacterJson.h"
 
 /* ------------------------------------------------------------------------- */
 

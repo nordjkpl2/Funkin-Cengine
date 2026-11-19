@@ -9,6 +9,6 @@
  *   AnimSetCharacterXML.c   XML de personagem Codename
  *   AnimSetParseUtil.c      helpers de parse compartilhados
  */
-#include "logic/AnimSetCharacterXML.h"
+#include "logic/animations/AnimSetCharacterXML.h"
 
 #endif /* ANIMATIONSETS_XML_H */

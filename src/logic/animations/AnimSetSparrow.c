@@ -6,8 +6,8 @@
  */
 
 #include "std.h"
-#include "logic/AnimSetSparrow.h"
-#include "logic/AnimSetParseUtil.h"
+#include "logic/animations/AnimSetSparrow.h"
+#include "logic/animations/AnimSetParseUtil.h"
 #include "Log.h"
 #include "yxml.h"
 

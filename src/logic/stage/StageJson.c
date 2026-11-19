@@ -6,7 +6,7 @@
  */
 
 #include "std.h"
-#include "logic/StageJson.h"
+#include "logic/stage/StageJson.h"
 
 #include <math.h>
 #include <stdbool.h>

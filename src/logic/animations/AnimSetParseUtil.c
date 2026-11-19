@@ -6,7 +6,7 @@
  */
 
 #include "std.h"
-#include "logic/AnimSetParseUtil.h"
+#include "logic/animations/AnimSetParseUtil.h"
 #include "Log.h"
 #include "yxml.h"
 

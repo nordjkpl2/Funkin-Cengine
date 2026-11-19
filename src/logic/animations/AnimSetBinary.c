@@ -6,8 +6,8 @@
  */
 
 #include "std.h"
-#include "logic/AnimSetBinary.h"
-#include "logic/AnimSetParseUtil.h"
+#include "logic/animations/AnimSetBinary.h"
+#include "logic/animations/AnimSetParseUtil.h"
 #include "Log.h"
 
 #include <stdio.h>

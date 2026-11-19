@@ -2,7 +2,7 @@
  * Note.c - animation cache and note timing helpers (Optimized)
  */
 
-#include "logic/Note.h"
+#include "logic/notes/Note.h"
 #include "scenes/AllScenes.h"
 
 #include <math.h>

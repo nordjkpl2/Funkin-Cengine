@@ -9,7 +9,7 @@
 #define CHARACTER_XML_H
 
 #include <stdbool.h>
-#include "logic/CharacterInternal.h"
+#include "characters/CharacterInternal.h"
 
 bool Char_FindCharacterXML(const CharCtx *ctx, const char *name,
                            char xmlPath[CHAR_PATH_MAX], char spriteName[128]);

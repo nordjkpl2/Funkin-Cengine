@@ -4,7 +4,7 @@
 #define CHARACTER_H
 
 #include "Render.h"
-#include "logic/Girlfriend.h"
+#include "characters/Girlfriend.h"
 #include <stdbool.h>
 
 /* Quem e o personagem: define animacoes padrao, camera e icone de reserva.

@@ -9,7 +9,7 @@
 #define CHARACTER_JSON_H
 
 #include <stdbool.h>
-#include "logic/CharacterInternal.h"
+#include "characters/CharacterInternal.h"
 
 /* Papel de uma animacao no jogo ("idle", "singLEFT"...) ligado ao nome dela no atlas. */
 typedef struct {

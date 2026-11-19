@@ -6,10 +6,10 @@
  */
 
 #include "std.h"
-#include "logic/AnimationSets_XML.h"
-#include "logic/AnimSetParseUtil.h"
-#include "logic/AnimSetSparrow.h"
-#include "logic/AnimSetBinary.h"
+#include "logic/animations/AnimationSets_XML.h"
+#include "logic/animations/AnimSetParseUtil.h"
+#include "logic/animations/AnimSetSparrow.h"
+#include "logic/animations/AnimSetBinary.h"
 #include "Log.h"
 
 #include <string.h>

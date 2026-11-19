@@ -5,9 +5,9 @@
  */
 
 #include "scenes/gameplay/PlayStateStage.h"
-#include "logic/Stage.h"
-#include "logic/StageLuaParse.h"
-#include "logic/StageJson.h"
+#include "logic/stage/Stage.h"
+#include "logic/stage/StageLuaParse.h"
+#include "logic/stage/StageJson.h"
 #include "core/ModPath.h"
 #include "Log.h"
 #include "rendering/cpu/ImagePrefetch.h"

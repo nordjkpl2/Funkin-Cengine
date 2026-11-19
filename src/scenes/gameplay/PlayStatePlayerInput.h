@@ -8,7 +8,7 @@
 #ifndef PLAYSTATE_PLAYERINPUT_H
 #define PLAYSTATE_PLAYERINPUT_H
 
-#include "logic/Note.h"
+#include "logic/notes/Note.h"
 
 typedef enum {
     PLAYER_RATING_SHIT,

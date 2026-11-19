@@ -6,9 +6,9 @@
  */
 
 #include "std.h"
-#include "logic/AnimSetCharacterXML.h"
-#include "logic/AnimSetParseUtil.h"
-#include "logic/AnimSetSparrow.h"
+#include "logic/animations/AnimSetCharacterXML.h"
+#include "logic/animations/AnimSetParseUtil.h"
+#include "logic/animations/AnimSetSparrow.h"
 #include "Log.h"
 #include "yxml.h"
 

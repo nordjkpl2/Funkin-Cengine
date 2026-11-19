@@ -2,7 +2,7 @@
 #ifndef STAGE_LUA_PARSE_H
 #define STAGE_LUA_PARSE_H
 
-#include "logic/Stage.h"
+#include "logic/stage/Stage.h"
 
 /* Faz parse do subset de Lua suportado para out[capacity]. Retorna quantidade.
  * ignoredGlitch/ignoredAnim podem ser NULL.

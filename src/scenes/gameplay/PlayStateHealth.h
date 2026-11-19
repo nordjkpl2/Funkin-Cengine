@@ -6,7 +6,7 @@
 #ifndef PLAYSTATE_HEALTH_H
 #define PLAYSTATE_HEALTH_H
 
-#include "logic/Character.h"
+#include "characters/Character.h"
 
 /* Variacao de vida por evento (0-1). Fonte unica para PlayState e PlayStatePlayerInput. */
 #define HEALTH_GAIN_HIT   0.0115f  /* acerto de nota (jogador ou botplay) */

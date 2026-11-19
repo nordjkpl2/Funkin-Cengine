@@ -71,3 +71,28 @@ LOAD [Astray] init: 20.4 ms, chart: 27.2 ms, sounds: 89.9 ms, characters: 395.6 
 
 --- SESSION LOG START ---
 LOAD [Astray] init: 23.5 ms, chart: 23.5 ms, sounds: 61.4 ms, characters: 407.4 ms, stage: 8.5 ms, song audio: 1.8 ms, notes: 0.3 ms, ui: 8.2 ms, warmup: 0.2 ms, (textures on main thread: 451.1 ms) total: 534.8 ms
+
+--- SESSION LOG START ---
+[WARN] Personagem 'lse' nao encontrado: usando dad padrao
+[WARN] Stage 'studio' nao encontrado: usando stage vazio
+LOAD [test4] init: 23.3 ms, chart: 29.5 ms, sounds: 82.5 ms, characters: 113.8 ms, stage: 0.1 ms, song audio: 23.1 ms, notes: 0.1 ms, ui: 9.4 ms, warmup: 0.5 ms, (textures on main thread: 143.7 ms) total: 282.4 ms
+[WARN] Personagem 'lse' nao encontrado: usando dad padrao
+[WARN] Stage 'studio' nao encontrado: usando stage vazio
+LOAD [test4] init: 0.0 ms, chart: 16.0 ms, sounds: 0.4 ms, characters: 171.3 ms, stage: 0.1 ms, song audio: 3.5 ms, notes: 0.1 ms, ui: 0.0 ms, warmup: 0.5 ms, (textures on main thread: 170.0 ms) total: 191.8 ms
+[WARN] Personagem 'lse' nao encontrado: usando dad padrao
+[WARN] Stage 'studio' nao encontrado: usando stage vazio
+LOAD [test4] init: 0.0 ms, chart: 6.1 ms, sounds: 0.8 ms, characters: 172.0 ms, stage: 0.1 ms, song audio: 3.3 ms, notes: 0.1 ms, ui: 0.0 ms, warmup: 0.5 ms, (textures on main thread: 170.8 ms) total: 182.8 ms
+LOAD [remorse] init: 0.0 ms, chart: 5.7 ms, sounds: 54.2 ms, characters: 452.4 ms, stage: 2.5 ms, song audio: 4.0 ms, notes: 0.1 ms, ui: 0.0 ms, warmup: 0.1 ms, (textures on main thread: 453.0 ms) total: 519.1 ms
+LOAD [remorse] init: 0.0 ms, chart: 6.9 ms, sounds: 1.5 ms, characters: 447.4 ms, stage: 1.9 ms, song audio: 1.7 ms, notes: 0.1 ms, ui: 0.0 ms, warmup: 0.1 ms, (textures on main thread: 446.5 ms) total: 459.7 ms
+
+--- SESSION LOG START ---
+[WARN] Icone nao encontrado: 'exosphereinsanity' (usando padrao)
+LOAD [disregard] init: 22.9 ms, chart: 1.9 ms, sounds: 175.8 ms, characters: 576.8 ms, stage: 3.8 ms, song audio: 12.9 ms, notes: 0.2 ms, ui: 8.8 ms, warmup: 0.5 ms, (textures on main thread: 601.2 ms) total: 803.6 ms
+
+--- SESSION LOG START ---
+LOAD [remorse] init: 22.5 ms, chart: 15.0 ms, sounds: 57.8 ms, characters: 394.0 ms, stage: 2.3 ms, song audio: 1.8 ms, notes: 0.1 ms, ui: 8.0 ms, warmup: 0.2 ms, (textures on main thread: 423.4 ms) total: 501.8 ms
+[WARN] Icone nao encontrado: 'exosphereinsanity' (usando padrao)
+LOAD [disregard] init: 0.0 ms, chart: 3.9 ms, sounds: 1.4 ms, characters: 605.3 ms, stage: 2.4 ms, song audio: 3.2 ms, notes: 0.2 ms, ui: 0.0 ms, warmup: 0.4 ms, (textures on main thread: 606.4 ms) total: 616.6 ms
+
+--- SESSION LOG START ---
+LOAD [remorse] init: 23.1 ms, chart: 13.2 ms, sounds: 57.4 ms, characters: 381.0 ms, stage: 1.9 ms, song audio: 1.8 ms, notes: 0.1 ms, ui: 8.3 ms, warmup: 0.2 ms, (textures on main thread: 410.9 ms) total: 487.0 ms

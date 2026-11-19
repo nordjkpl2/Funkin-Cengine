@@ -4,7 +4,7 @@
  */
 
 #include "scenes/AllScenes.h"
-#include "logic/Note.h"
+#include "logic/notes/Note.h"
 #include "scenes/gameplay/PlayStateStrums.h"
 #include "Game.h"
 #include "GameData.h"

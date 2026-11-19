@@ -6,7 +6,7 @@
  */
 
 #include "std.h"
-#include "logic/StageLuaParse.h"
+#include "logic/stage/StageLuaParse.h"
 
 #include <ctype.h>
 #include <errno.h>

@@ -10,7 +10,7 @@
 #define PLAYSTATE_NOTESPAWN_H
 
 #include "scenes/AllScenes.h"
-#include "logic/Note.h"
+#include "logic/notes/Note.h"
 #include "data/Song.h"
 
 typedef struct {

@@ -11,7 +11,7 @@
 
 #include <stdbool.h>
 #include <stddef.h>
-#include "logic/Character.h"
+#include "characters/Character.h"
 
 #define CHAR_PATH_MAX       512
 #define CHAR_MAX_DEFS       48

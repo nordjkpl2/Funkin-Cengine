@@ -6,7 +6,7 @@
  */
 
 #include "std.h"
-#include "logic/Stage.h"
+#include "logic/stage/Stage.h"
 #include "core/ModPath.h"
 
 #include <stdio.h>
