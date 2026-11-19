@@ -3,6 +3,7 @@
  * OptionsMenu.c - menu de opcoes (cena). Os valores salvos ficam em GameData.
  */
 #include "scenes/api/FontLoader.h"
+#include "scenes/menu/MenuBackground.h"
 #include "scenes/menu/MenuState.h"
 #include "scenes/menu/options/OptionsMenu.h"
 #include "Game.h"
@@ -584,7 +585,7 @@ static float LogoXAfterHeader(int header) {
 static void OptionsMenu_Create([[maybe_unused]] RayScene* scene) {
     Render_DefaultRGT(&bg);
     bg.objType = RGT_IMAGE;
-    bg.image = Render_LoadTexture("assets/images/freeplay/menuBGBlue.png");
+    bg.image = MenuBackground_Get();
     Render_DefaultCamera(&cam);
 
     windowLogoX = LogoXAfterHeader(OPTION_HEADER_WINDOW);
@@ -1082,7 +1083,7 @@ static void OptionsMenu_Draw([[maybe_unused]] RayScene* scene) {
 }
 
 static void OptionsMenu_Destroy([[maybe_unused]] RayScene* scene) {
-    UnloadTexture(bg.image);
+    bg.image = (Texture2D) {0}; // compartilhada: nao descarrega aqui
 }
 
 static RayScene scene;

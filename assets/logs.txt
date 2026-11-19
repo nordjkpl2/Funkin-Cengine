@@ -163,3 +163,6 @@ LOAD [hydromania-kooled] init: 21.0 ms, chart: 21.7 ms, sounds: 210.9 ms, charac
 --- SESSION LOG START ---
 LOAD [Astray] init: 20.6 ms, chart: 25.8 ms, sounds: 77.9 ms, characters: 407.4 ms, stage: 8.6 ms, song audio: 1.8 ms, notes: 0.3 ms, ui: 7.9 ms, warmup: 0.2 ms, (textures on main thread: 448.6 ms) total: 550.6 ms
 LOAD [undaunted-demise-naether] init: 0.0 ms, chart: 50.5 ms, sounds: 49.1 ms, characters: 488.2 ms, stage: 6.7 ms, song audio: 1.7 ms, notes: 1.7 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 479.0 ms) total: 598.1 ms
+
+--- SESSION LOG START ---
+LOAD [end-of-the-world-remake] init: 22.4 ms, chart: 12.7 ms, sounds: 97.4 ms, characters: 415.8 ms, stage: 3.8 ms, song audio: 1.7 ms, notes: 0.1 ms, ui: 8.0 ms, warmup: 0.1 ms, (textures on main thread: 447.1 ms) total: 562.1 ms

@@ -7,6 +7,7 @@
 #include "scenes/api/FontLoader.h"
 #include "scenes/gameplay/PlayState.h"
 #include "scenes/LoadingState.h"
+#include "scenes/menu/MenuBackground.h"
 #include "scenes/menu/MenuState.h"
 #include "scenes/menu/freeplay/Freeplay.h"
 #include "data/SongList.h"
@@ -130,7 +131,7 @@ static void Freeplay_Create([[maybe_unused]] RayScene* scene) {
 
     Render_DefaultRGT(&bg);
     bg.objType = RGT_IMAGE;
-    bg.image = Render_LoadTexture("assets/images/freeplay/menuBGBlue.png");
+    bg.image = MenuBackground_Get();
 
     cam = (Camera2D) {
         .target = {SCREEN_W / 2, SCREEN_H / 2},
@@ -327,8 +328,7 @@ static void Freeplay_Draw([[maybe_unused]] RayScene* scene) {
 
 static void Freeplay_Destroy([[maybe_unused]] RayScene* scene) {
     FreeplayIcon_Unload();
-    if (bg.image.id != 0) UnloadTexture(bg.image);
-    bg.image = (Texture2D) {0};
+    bg.image = (Texture2D) {0}; // textura compartilhada: quem libera e MenuBackground_Free
 
     SongList_Free(songs);
     songs = NULL;

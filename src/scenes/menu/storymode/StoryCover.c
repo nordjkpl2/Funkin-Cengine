@@ -7,6 +7,7 @@
  * So olha o mod dono da week e os assets base, sem listar pastas.
  */
 #include "Render.h"
+#include "scenes/menu/MenuBackground.h"
 #include "scenes/menu/storymode/StoryCover.h"
 #include "yyjson.h"
 
@@ -29,6 +30,7 @@ typedef struct {
 static CoverPathCache* pathCache; // um por week: guarda sucesso e falha
 static Texture2D cover;
 static char coverLoaded;
+static char coverShared; // cover e a textura compartilhada do fundo (nao descarregar)
 static int coverIndex = -1;
 
 /* ------------------------------------------------------------------ */
@@ -275,11 +277,12 @@ static int FindCoverPath(const WeekEntry* week, char out[PATH_MAX_LEN]) {
 /* ------------------------------------------------------------------ */
 
 static void StoryCover_Unload(void) {
-    if (coverLoaded && cover.id != 0)
+    if (coverLoaded && cover.id != 0 && !coverShared)
         UnloadTexture(cover);
 
     cover = (Texture2D){0};
     coverLoaded = 0;
+    coverShared = 0;
     coverIndex = -1;
 }
 
@@ -316,7 +319,13 @@ void StoryCover_Load(int index, const WeekEntry* week) {
         return; // sem memoria para o cache: uma tentativa por selecao
     }
 
-    cover = Render_LoadTexture(path);
+    // Sem capa propria: usa o fundo compartilhado em vez de decodificar a mesma PNG de novo.
+    if (strcmp(path, DEFAULT_COVER) == 0) {
+        cover = MenuBackground_Get();
+        coverShared = 1;
+    } else {
+        cover = Render_LoadTexture(path);
+    }
     coverLoaded = cover.id != 0;
 }
 

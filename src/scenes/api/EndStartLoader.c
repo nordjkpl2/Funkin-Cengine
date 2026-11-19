@@ -7,6 +7,7 @@
 #include "scenes/api/FontLoader.h"
 #include "scenes/api/NoteSkinCache.h"
 #include "scenes/menu/MenuMusic.h"
+#include "scenes/menu/MenuBackground.h"
 
 Vector2 VECTOR_ZERO;
 
@@ -21,5 +22,6 @@ void AllScenes_StartGame(void) {
 
 void AllScenes_DestroyGame(void) {
     NoteSkinCache_Free();
+    MenuBackground_Free();
     FontLoader_UnloadMain();
 }

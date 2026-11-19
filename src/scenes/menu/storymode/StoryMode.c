@@ -11,6 +11,7 @@
 #include "scenes/api/EndStartLoader.h"
 #include "scenes/api/FontLoader.h"
 #include "scenes/gameplay/PlayState.h"
+#include "scenes/menu/MenuBackground.h"
 #include "scenes/menu/MenuState.h"
 #include "scenes/menu/storymode/StoryMode.h"
 #include "data/SongList.h"
@@ -250,7 +251,7 @@ static void StartSelectedWeek(void) {
 /* ------------------------------------------------------------------ */
 
 static void StoryMode_Create([[maybe_unused]] RayScene* scene) {
-    backgroundTexture = Render_LoadTexture("assets/images/freeplay/menuBGBlue.png");
+    backgroundTexture = MenuBackground_Get();
 
     storyCamera = (Camera2D) {
         .target = {SCREEN_W * 0.5f, SCREEN_H * 0.5f},
@@ -510,9 +511,7 @@ static void StoryMode_Draw([[maybe_unused]] RayScene* scene) {
 static void StoryMode_Destroy([[maybe_unused]] RayScene* scene) {
     StoryCover_Free();
 
-    if (backgroundTexture.id != 0)
-        UnloadTexture(backgroundTexture);
-    backgroundTexture = (Texture2D) {0};
+    backgroundTexture = (Texture2D) {0}; // compartilhada: nao descarrega aqui
 
     WeekList_Free(weeks);
     weeks = NULL;

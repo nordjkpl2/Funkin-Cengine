@@ -8,6 +8,7 @@
 
 #include "scenes/api/FontLoader.h"
 #include "scenes/charteditor/ChartEditor.h"
+#include "scenes/menu/MenuBackground.h"
 #include "scenes/menu/MenuState.h"
 #include "scenes/menu/modding/ModdingMenu.h"
 #include "data/ModImport.h"
@@ -384,25 +385,68 @@ static void Imp_FormatSize(long long bytes, char *out, size_t cap)
     else                           snprintf(out, cap, "%lld B", bytes);
 }
 
-/* Fim do texto que cabe em maxW (caminhos longos mostram o final). */
+/* Fim do texto que cabe em maxW (caminhos longos mostram o final).
+ * Cada corte mede o resto do texto, ou seja O(n^2) por frame. O corte so muda com o
+ * texto e a largura, entao o resultado fica guardado enquanto eles nao mudarem. */
 static const char *Imp_FitTail(const char *text, float maxW, float size)
 {
-    const char *p = text;
-    while (*p && MeasureTextEx(mainFont, p, size, 1).x > maxW) {
-        ++p;
-        while ((*p & 0xC0) == 0x80) ++p;
+    static char key[MODDING_PATH_CAP];
+    static float keyW = -1.0f, keySize = -1.0f;
+    static size_t keyOff;
+
+    if (keyW != maxW || keySize != size || strcmp(key, text) != 0) {
+        const char *p = text;
+        while (*p && MeasureTextEx(mainFont, p, size, 1).x > maxW) {
+            ++p;
+            while ((*p & 0xC0) == 0x80) ++p;
+        }
+        snprintf(key, sizeof(key), "%s", text);
+        keyW = maxW;
+        keySize = size;
+        keyOff = (size_t)(p - text);
     }
-    return p;
+    return text + keyOff;
 }
 
-/* Quebra por palavras; devolve o y logo abaixo do texto. */
-static float Imp_DrawWrapped(const char *text, float x, float y, float maxW,
-                             float size, Color c)
+/* Quebras de linha de um texto ja medido. As linhas ficam em `packed`, separadas por '\0'. */
+enum { IMP_WRAP_INTRO, IMP_WRAP_DEST, IMP_WRAP_PROGRESS, IMP_WRAP_STATUS, IMP_WRAP_SLOTS };
+
+typedef struct {
+    char valid;
+    float maxW, size;
+    char key[MODDING_MSG_CAP];
+    char packed[2 * MODDING_MSG_CAP];
+    size_t used;
+    int count;
+    const char *lines[MODDING_MSG_CAP / 2 + 1];
+} ImpWrapCache;
+
+static ImpWrapCache impWrap[IMP_WRAP_SLOTS];
+
+static void Imp_WrapEmit(ImpWrapCache *w, const char *s, size_t n)
+{
+    if (w->count >= (int)(sizeof(w->lines) / sizeof(w->lines[0])) || w->used + n + 1 > sizeof(w->packed))
+        return;
+    w->lines[w->count++] = w->packed + w->used;
+    memcpy(w->packed + w->used, s, n);
+    w->packed[w->used + n] = '\0';
+    w->used += n + 1;
+}
+
+/* Quebra por palavras e guarda o resultado no slot. Mesma regra de antes, so que sem desenhar. */
+static void Imp_WrapBuild(ImpWrapCache *w, const char *text, float maxW, float size)
 {
     char line[MODDING_MSG_CAP] = "";
     char test[MODDING_MSG_CAP];
     size_t len = 0;
     const char *p = text;
+
+    w->valid = 1;
+    w->maxW = maxW;
+    w->size = size;
+    snprintf(w->key, sizeof(w->key), "%s", text);
+    w->used = 0;
+    w->count = 0;
 
     while (*p) {
         const char *e = p;
@@ -417,8 +461,7 @@ static float Imp_DrawWrapped(const char *text, float x, float y, float maxW,
         tl += wl;
         test[tl] = '\0';
         if (len && MeasureTextEx(mainFont, test, size, 1).x > maxW) {
-            DrawTextEx(mainFont, line, (Vector2){x, y}, size, 1, c);
-            y += size + 6;
+            Imp_WrapEmit(w, line, len);
             memcpy(line, p, wl);
             line[wl] = '\0';
             len = wl;
@@ -429,8 +472,20 @@ static float Imp_DrawWrapped(const char *text, float x, float y, float maxW,
         p = e;
         while (*p == ' ' || *p == '\n') ++p;
     }
-    if (len) {
-        DrawTextEx(mainFont, line, (Vector2){x, y}, size, 1, c);
+    if (len) Imp_WrapEmit(w, line, len);
+}
+
+/* Desenha o texto quebrado; devolve o y logo abaixo dele. Refaz a quebra so se o texto ou a largura mudarem. */
+static float Imp_DrawWrapped(int slot, const char *text, float x, float y, float maxW,
+                             float size, Color c)
+{
+    ImpWrapCache *w = &impWrap[slot];
+
+    if (!w->valid || w->maxW != maxW || w->size != size || strcmp(w->key, text) != 0)
+        Imp_WrapBuild(w, text, maxW, size);
+
+    for (int i = 0; i < w->count; ++i) {
+        DrawTextEx(mainFont, w->lines[i], (Vector2){x, y}, size, 1, c);
         y += size + 6;
     }
     return y;
@@ -523,9 +578,9 @@ static void Modding_DrawImport(void)
     (void)Imp_Chip(x, y, "BKSP", "Erase", selectedColor, impPath[0] != '\0');
 
     DrawRectangle((int)left.x + 20, (int)left.y + 206, (int)left.width - 40, 1, (Color){255, 255, 255, 30});
-    y = Imp_DrawWrapped("Imports charts, music, weeks, stages, images, characters and icons.",
+    y = Imp_DrawWrapped(IMP_WRAP_INTRO, "Imports charts, music, weeks, stages, images, characters and icons.",
                         left.x + 20, left.y + 222, left.width - 40, 19, fontColor);
-    y = Imp_DrawWrapped("Destination: assets/mods/<mod-name>/",
+    y = Imp_DrawWrapped(IMP_WRAP_DEST, "Destination: assets/mods/<mod-name>/",
                         left.x + 20, y + 2, left.width - 40, 19, muted);
 
     if (importing) {
@@ -537,12 +592,12 @@ static void Modding_DrawImport(void)
                  impProg.filesDone, impProg.filesTotal, c,
                  impProg.failed ? " (some files failed)" : "");
         DrawRectangle((int)left.x + 20, (int)top, 4, 90, selectedColor);
-        (void)Imp_DrawWrapped(msg, left.x + 36, top + 2, left.width - 60, 19, selectedColor);
+        (void)Imp_DrawWrapped(IMP_WRAP_PROGRESS, msg, left.x + 36, top + 2, left.width - 60, 19, selectedColor);
     } else if (impMsg[0]) {
         const float top = left.y + 322;
         snprintf(msg, sizeof(msg), "%s", impMsg);
         DrawRectangle((int)left.x + 20, (int)top, 4, 90, warning);
-        (void)Imp_DrawWrapped(msg, left.x + 36, top + 2, left.width - 60, 19, warning);
+        (void)Imp_DrawWrapped(IMP_WRAP_STATUS, msg, left.x + 36, top + 2, left.width - 60, 19, warning);
     }
 
     /* direita: dados que ja existem */
@@ -759,7 +814,7 @@ static void ModdingMenu_Create([[maybe_unused]] RayScene *scene)
 {
     Render_DefaultRGT(&bg);
     bg.objType = RGT_IMAGE;
-    bg.image = Render_LoadTexture("assets/images/freeplay/menuBGBlue.png");
+    bg.image = MenuBackground_Get();
 
     cam = (Camera2D){
         .target = {640.0f, 360.0f},
@@ -783,10 +838,7 @@ static void ModdingMenu_Create([[maybe_unused]] RayScene *scene)
 
 static void ModdingMenu_Destroy([[maybe_unused]] RayScene *scene)
 {
-    if (bg.image.id != 0)
-        UnloadTexture(bg.image);
-
-    bg.image = (Texture2D){0};
+    bg.image = (Texture2D){0}; // compartilhada: nao descarrega aqui
 }
 
 static RayScene moddingScene;

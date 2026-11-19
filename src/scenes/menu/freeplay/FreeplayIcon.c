@@ -318,22 +318,35 @@ static bool FindIconPath(const char* songDir, const char* modRoot, const char* h
 }
 
 /* ------------------------------------------------------------------ */
-/* API                                                                 */
+/* Cache                                                               */
 /* ------------------------------------------------------------------ */
 
-void FreeplayIcon_Unload(void) {
-    if (iconLoaded && icon.id != 0)
-        UnloadTexture(icon);
+/* Memo: resolucao (caminho + oponente) por musica. Evita refazer a busca em disco a cada seta. */
+#define MEMO_SLOTS 32
+/* Texturas: LRU pequeno por caminho. Icones se repetem entre musicas do mesmo oponente. */
+#define TEX_SLOTS 8
 
-    icon = (Texture2D){0};
-    iconLoaded = false;
-    opponentName[0] = '\0';
-}
+typedef struct {
+    const SongEntry* song;
+    char path[PATH_MAX_LEN];       /* vazio = nada achado */
+    char opponent[NAME_MAX_LEN];
+    bool used;
+} IconMemo;
 
-/* Resolve e carrega o icone da musica sem tocar no icone unico do Freeplay.
- * Devolve textura com id 0 se nada foi achado. Quem chama descarrega. */
-static Texture2D ResolveIcon(SongEntry* song, char opponent[NAME_MAX_LEN]) {
-    Texture2D result = {0};
+typedef struct {
+    char path[PATH_MAX_LEN];
+    Texture2D texture;             /* id 0 = falha, tambem fica em cache */
+    unsigned long long stamp;
+    bool used;
+} IconTexture;
+
+static IconMemo memo[MEMO_SLOTS];
+static int memoNext;
+static IconTexture textures[TEX_SLOTS];
+static unsigned long long useClock;
+
+/* Caminho do icone (ou vazio) e oponente da musica. Le disco: so no memo. */
+static void ResolvePath(SongEntry* song, char opponent[NAME_MAX_LEN], char out[PATH_MAX_LEN]) {
     char modRoot[PATH_MAX_LEN] = {0};
     (void)GetModRoot(song->dir, modRoot, sizeof(modRoot));
 
@@ -346,42 +359,107 @@ static Texture2D ResolveIcon(SongEntry* song, char opponent[NAME_MAX_LEN]) {
     }
     if (!opponent[0]) CopyString(opponent, NAME_MAX_LEN, "unknown");
 
-    char iconPath[PATH_MAX_LEN];
+    out[0] = '\0';
 
-    // O icone da week (["musica", "icon-charlie", ...]) vence o player2 do chart,
-    // pois alguns charts de mod ainda declaram player2="dad".
-    if (song->weekIcon[0] && IsSafeAssetName(song->weekIcon) &&
-        FindIconPath(song->dir, modRoot, song->weekIcon, NULL, iconPath))
-        result = Render_LoadTexture(iconPath);
+    // O icone da week vence o player2 do chart (alguns charts de mod ainda declaram "dad").
+    if (song->weekIcon[0] && IsSafeAssetName(song->weekIcon))
+        (void)FindIconPath(song->dir, modRoot, song->weekIcon, NULL, out);
 
     // Depois, o healthicon do personagem.
-    if (result.id == 0) {
+    if (out[0] == '\0') {
         char healthIcon[NAME_MAX_LEN] = {0};
         (void)FindHealthIconKey(song->dir, modRoot, opponent, healthIcon);
         if (!healthIcon[0]) CopyString(healthIcon, sizeof(healthIcon), opponent);
-
-        if (FindIconPath(song->dir, modRoot, healthIcon, opponent, iconPath))
-            result = Render_LoadTexture(iconPath);
+        (void)FindIconPath(song->dir, modRoot, healthIcon, opponent, out);
     }
 
     // Ultimo recurso: icone do BF.
-    if (result.id == 0 && FileExists("assets/images/icons/bf.png"))
-        result = Render_LoadTexture("assets/images/icons/bf.png");
-
-    return result;
+    if (out[0] == '\0' && FileExists("assets/images/icons/bf.png"))
+        CopyString(out, PATH_MAX_LEN, "assets/images/icons/bf.png");
 }
 
+static IconMemo* MemoFor(SongEntry* song) {
+    for (int i = 0; i < MEMO_SLOTS; ++i)
+        if (memo[i].used && memo[i].song == song) return memo + i;
+
+    IconMemo* slot = memo + memoNext;
+    memoNext = (memoNext + 1) % MEMO_SLOTS;
+    slot->song = song;
+    slot->used = true;
+    ResolvePath(song, slot->opponent, slot->path);
+    return slot;
+}
+
+/* Textura para o caminho: reaproveita a do cache ou descarrega a menos usada. */
+static Texture2D TextureForPath(const char* path) {
+    int victim = -1;
+    for (int i = 0; i < TEX_SLOTS; ++i) {
+        IconTexture* t = textures + i;
+        if (t->used && strcmp(t->path, path) == 0) {
+            t->stamp = ++useClock;
+            return t->texture;
+        }
+        if (!t->used && victim < 0) victim = i;
+    }
+
+    if (victim < 0) {
+        victim = 0;
+        for (int i = 1; i < TEX_SLOTS; ++i)
+            if (textures[i].stamp < textures[victim].stamp) victim = i;
+        if (textures[victim].texture.id != 0) UnloadTexture(textures[victim].texture);
+    }
+
+    IconTexture* t = textures + victim;
+    CopyString(t->path, sizeof(t->path), path);
+    t->texture = Render_LoadTexture(path);
+    t->stamp = ++useClock;
+    t->used = true;
+    return t->texture;
+}
+
+/* ------------------------------------------------------------------ */
+/* API                                                                 */
+/* ------------------------------------------------------------------ */
+
+/* Solta tudo: texturas, memo e icone atual. Chamar ao entrar e sair do Freeplay. */
+void FreeplayIcon_Unload(void) {
+    for (int i = 0; i < TEX_SLOTS; ++i) {
+        if (textures[i].used && textures[i].texture.id != 0)
+            UnloadTexture(textures[i].texture);
+    }
+    memset(textures, 0, sizeof(textures));
+    memset(memo, 0, sizeof(memo));
+    memoNext = 0;
+    useClock = 0;
+
+    icon = (Texture2D){0};
+    iconLoaded = false;
+    opponentName[0] = '\0';
+}
+
+/* Troca o icone atual. Nao descarrega: a textura continua no cache. */
 void FreeplayIcon_Load(SongEntry* song) {
-    FreeplayIcon_Unload();
+    icon = (Texture2D){0};
+    iconLoaded = false;
+    opponentName[0] = '\0';
     if (!song) return;
 
-    icon = ResolveIcon(song, opponentName);
+    const IconMemo* m = MemoFor(song);
+    CopyString(opponentName, sizeof(opponentName), m->opponent);
+    if (m->path[0] == '\0') return;
+
+    icon = TextureForPath(m->path);
     iconLoaded = icon.id != 0;
 }
 
+/* Carrega sem cache (uso: lista do Chart Editor). Quem chama descarrega. */
 Texture2D FreeplayIcon_Resolve(SongEntry* song) {
+    if (!song) return (Texture2D){0};
+
     char opponent[NAME_MAX_LEN];
-    return song ? ResolveIcon(song, opponent) : (Texture2D){0};
+    char path[PATH_MAX_LEN];
+    ResolvePath(song, opponent, path);
+    return path[0] ? Render_LoadTexture(path) : (Texture2D){0};
 }
 
 char FreeplayIcon_IsLoaded(void) { return iconLoaded; }
