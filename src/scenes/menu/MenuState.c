@@ -5,7 +5,7 @@
  */
 #include "scenes/api/FontLoader.h"
 #include "scenes/menu/MenuState.h"
-#include "scenes/menu/Freeplay.h"
+#include "scenes/menu/freeplay/Freeplay.h"
 #include "scenes/menu/StoryMode.h"
 #include "scenes/menu/OptionsMenu.h"
 #include "scenes/menu/ModdingMenu.h"

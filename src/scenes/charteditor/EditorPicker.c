@@ -19,7 +19,7 @@
 #include "EditorPicker.h"
 #include "EditorCharactersAndLists.h"
 #include "EditorIcons.h"
-#include "scenes/menu/FreeplayIcon.h"
+#include "scenes/menu/freeplay/FreeplayIcon.h"
 #include "widgets-and-menus-ui/SearchBox.h"
 
 const char* ChartTab_Name(int t) {

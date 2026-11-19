@@ -8,9 +8,9 @@
 #include "scenes/gameplay/PlayState.h"
 #include "scenes/LoadingState.h"
 #include "scenes/menu/MenuState.h"
-#include "scenes/menu/Freeplay.h"
+#include "scenes/menu/freeplay/Freeplay.h"
 #include "data/SongList.h"
-#include "scenes/menu/FreeplayIcon.h"
+#include "scenes/menu/freeplay/FreeplayIcon.h"
 #include "widgets-and-menus-ui/SearchBox.h"
 #include <stdlib.h>
 

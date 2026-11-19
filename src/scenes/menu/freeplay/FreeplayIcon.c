@@ -6,7 +6,7 @@
  * Pastas de mods vem antes das do jogo base. Roda so quando a selecao muda.
  */
 #include "Render.h"
-#include "scenes/menu/FreeplayIcon.h"
+#include "scenes/menu/freeplay/FreeplayIcon.h"
 #include "yyjson.h"
 
 #include <stdio.h>
