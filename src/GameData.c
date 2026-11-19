@@ -25,7 +25,7 @@ int game_scheme_keys[SCHEME_COUNT][4] = {
 
 static FILE* saveFile;
 
-#define SAVE_VERSION 9   /* 9: + scorePosition (apos threadLimit); 8: + lista de mods desativados; 7: + threadLimit (no fim); 6: + hitSound e as 4 teclas do esquema Custom. v7 e v8 ainda sao lidos. */
+#define SAVE_VERSION 10  /* 10: + healthDrainPlay e healthDrainBotplay (apos scorePosition); 9: + scorePosition (apos threadLimit); 8: + lista de mods desativados; 7: + threadLimit (no fim); 6: + hitSound e as 4 teclas do esquema Custom. v7 e v8 ainda sao lidos. */
 
 static void GameData_Defaults(void) {
     game_scheme_keys[SCHEME_CUSTOM][0] = KEY_LEFT;
@@ -89,6 +89,11 @@ void GameData_Start(void) {
     SREAD(int,  gameOptions.threadLimit)
     gameOptions.scorePosition = SCORE_POS_CENGINE;   /* saves antigos (< v9) */
     if(version >= 9) SREAD(char, gameOptions.scorePosition)
+    gameOptions.healthDrainPlay = gameOptions.healthDrainBotplay = 0;   /* saves antigos (< v10) */
+    if(version >= 10) {
+        SREAD(char, gameOptions.healthDrainPlay)
+        SREAD(char, gameOptions.healthDrainBotplay)
+    }
     gameDisabledModCount = 0;
     if(version >= 8) {
         SREAD(int, gameDisabledModCount)
@@ -121,6 +126,8 @@ void GameData_Flush(void) {
     WRITE(int, 4, game_scheme_keys[SCHEME_CUSTOM][0])
     SWRITE(int,  gameOptions.threadLimit)
     SWRITE(char, gameOptions.scorePosition)
+    SWRITE(char, gameOptions.healthDrainPlay)
+    SWRITE(char, gameOptions.healthDrainBotplay)
     SWRITE(int,  gameDisabledModCount)
     WRITE(char, gameDisabledModCount * MOD_NAME_MAX, gameDisabledMods[0][0])
 }

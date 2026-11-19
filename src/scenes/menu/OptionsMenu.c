@@ -13,12 +13,13 @@
 
 #define SCREEN_H 720.0f
 
+// texto e header ta tudo aqui
 #define SCROLL_LERP_SPEED 10.0f
 #define ROW_FONT_SIZE 70
 #define ROW_PADDING 30
 #define HEADER_FONT_SIZE 90
 #define HEADER_PADDING 10
-#define TEXT_SHADOW 5
+#define TEXT_SHADOW 6
 #define TEXT_SPACING 5.0f
 #define ROW_X 150.0f
 #define HEADER_X 50.0f
@@ -85,6 +86,7 @@ typedef enum {
     OPTION_SCROLL_STYLE,
     OPTION_GHOST,
     OPTION_HITSOUND,
+    OPTION_HEALTH_DRAIN_PLAY,
     OPTION_HEADER_VISUAL,
     OPTION_SHOW_SCORE,
     OPTION_SCORE_POSITION,
@@ -94,6 +96,7 @@ typedef enum {
     OPTION_HEADER_OTHER,
     OPTION_FILL_SCREEN,
     OPTION_BOTPLAY,
+    OPTION_HEALTH_DRAIN_BOTPLAY,
     OPTION_COUNT
 } OptionOrder;
 
@@ -124,6 +127,7 @@ static Option options[OPTION_COUNT] = {
     [OPTION_SCROLL_STYLE] = {.text = "Scroll Style", .type = OPTION_VALUE_LIST, .options = scroll_names, .step = 1, .max = 2, .min = 0},
     [OPTION_GHOST] = {.text = "Ghost Tapping", .type = OPTION_VALUE_LIST, .options = ghost_names, .step = 1, .max = 2, .min = 0},
     [OPTION_HITSOUND] = {.text = "Hit Sound", .type = OPTION_VALUE_BOOL},
+    [OPTION_HEALTH_DRAIN_PLAY] = {.text = "Health Drain (Play)", .type = OPTION_VALUE_BOOL},
     [OPTION_HEADER_VISUAL] = {.text = "[Visual]", .type = OPTION_VALUE_HEADER},
     [OPTION_SHOW_SCORE] = {.text = "Show Score", .type = OPTION_VALUE_BOOL},
     [OPTION_SCORE_POSITION] = {.text = "Score Position", .type = OPTION_VALUE_LIST, .options = score_position_names, .step = 1, .max = 1, .min = 0},
@@ -133,6 +137,7 @@ static Option options[OPTION_COUNT] = {
     [OPTION_HEADER_OTHER] = {.text = "[Other]", .type = OPTION_VALUE_HEADER},
     [OPTION_FILL_SCREEN] = {.text = "Stretch", .type = OPTION_VALUE_BOOL},
     [OPTION_BOTPLAY] = {.text = "Botplay", .type = OPTION_VALUE_BOOL},
+    [OPTION_HEALTH_DRAIN_BOTPLAY] = {.text = "Health Drain (Botplay)", .type = OPTION_VALUE_BOOL},
 };
 
 static float scrollOffset; // posicao suavizada da lista (em linhas)
@@ -235,6 +240,8 @@ static void ApplyBoolValue(void) {
         case OPTION_FILL_SCREEN:   gameOptions.fillScreen = on; break;
         case OPTION_BOTPLAY:       gameOptions.botplay = on; break;
         case OPTION_HITSOUND:      gameOptions.hitSound = on; break;
+        case OPTION_HEALTH_DRAIN_PLAY:    gameOptions.healthDrainPlay = on; break;
+        case OPTION_HEALTH_DRAIN_BOTPLAY: gameOptions.healthDrainBotplay = on; break;
     }
 
     Option_RebuildText(o);
@@ -517,6 +524,8 @@ static void OptionsMenu_Create([[maybe_unused]] RayScene* scene) {
     options[OPTION_SCROLL_STYLE].value = gameOptions.scroll;
     options[OPTION_GHOST].value = gameOptions.ghost;
     options[OPTION_HITSOUND].value = gameOptions.hitSound;
+    options[OPTION_HEALTH_DRAIN_PLAY].value = gameOptions.healthDrainPlay;
+    options[OPTION_HEALTH_DRAIN_BOTPLAY].value = gameOptions.healthDrainBotplay;
     options[OPTION_ZOOMFACTOR_GAME].value = gameOptions.zoomFactorGAME;
     options[OPTION_ZOOMFACTOR_UI].value = gameOptions.zoomFactorUI;
     options[OPTION_FILL_SCREEN].value = gameOptions.fillScreen;

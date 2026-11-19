@@ -11,6 +11,8 @@ typedef struct GameOptions {
     char showScore, bopIcons, vsync, fillScreen;
     char botplay, ghost, scroll, hitSound, showFps;
     char scorePosition; /* SCORE_POS_CENGINE ou SCORE_POS_PSYCH */
+    char healthDrainPlay;     /* oponente acerta -> perde vida no jogo normal (padrao: off) */
+    char healthDrainBotplay;  /* botplay ganha/perde vida como o jogador (padrao: off; off = barra travada) */
     int scheme, fps;
     int threadLimit; /* 0 = Auto (nucleos - 1); >0 = limite de threads de fundo (1..64) */
     float zoomFactorUI, zoomFactorGAME;

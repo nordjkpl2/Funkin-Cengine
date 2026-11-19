@@ -10,7 +10,8 @@
 
 /* Posicao e cores padrao da barra. Chamar uma vez ao criar a cena. */
 /* top = 1 no downscroll: barra no topo, com o mesmo espacamento da base. */
-void PlayStateHealth_Init(char top);
+/* mortal = 0: a vida nunca fica abaixo de 0 (imortal, ex.: botplay sem drain ou com drain). */
+void PlayStateHealth_Init(char top, char mortal);
 
 /* Y da barra (popup de rating usa). */
 float PlayStateHealth_BarY(void);
@@ -22,9 +23,7 @@ void PlayStateHealth_Reset(void);
 /* Usa healthbar_colors dos personagens; sem cor no JSON, mantem a atual. */
 void PlayStateHealth_SetCharacterColors(const Character* dad, const Character* bf);
 
-void PlayStateHealth_Set(float value);
-
-/* Soma delta (positivo ou negativo). O topo e limitado a 1; abaixo de 0 = morte. */
+/* Soma delta (positivo ou negativo). O topo e limitado a 1; abaixo de 0 = morte (so se mortal). */
 void PlayStateHealth_Add(float delta);
 char PlayStateHealth_IsDead(void);
 

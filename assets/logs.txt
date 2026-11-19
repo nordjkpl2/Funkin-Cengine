@@ -43,3 +43,10 @@ LOAD [moribund-3] init: 0.0 ms, chart: 164.0 ms, sounds: 116.9 ms, characters: 4
 --- SESSION LOG START ---
 LOAD [triklizo-koooled] init: 22.9 ms, chart: 18.2 ms, sounds: 167.0 ms, characters: 372.5 ms, stage: 3.7 ms, song audio: 2.0 ms, notes: 0.4 ms, ui: 8.0 ms, warmup: 0.1 ms, (textures on main thread: 396.2 ms) total: 594.8 ms
 LOAD [Crisis] init: 0.0 ms, chart: 23.9 ms, sounds: 271.9 ms, characters: 413.2 ms, stage: 16.9 ms, song audio: 2.0 ms, notes: 0.5 ms, ui: 0.0 ms, warmup: 0.1 ms, (textures on main thread: 413.2 ms) total: 728.7 ms
+
+--- SESSION LOG START ---
+LOAD [spatial-abyss] init: 22.1 ms, chart: 7.8 ms, sounds: 125.9 ms, characters: 72.6 ms, stage: 2.2 ms, song audio: 3.9 ms, notes: 0.1 ms, ui: 8.5 ms, warmup: 0.2 ms, (textures on main thread: 102.7 ms) total: 243.3 ms
+LOAD [spatial-abyss] init: 0.0 ms, chart: 1.5 ms, sounds: 1.3 ms, characters: 147.8 ms, stage: 2.2 ms, song audio: 1.7 ms, notes: 0.1 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 148.1 ms) total: 154.7 ms
+
+--- SESSION LOG START ---
+LOAD [triklizo-koooled] init: 23.2 ms, chart: 20.6 ms, sounds: 61.1 ms, characters: 432.1 ms, stage: 2.8 ms, song audio: 1.9 ms, notes: 0.5 ms, ui: 8.6 ms, warmup: 0.2 ms, (textures on main thread: 463.0 ms) total: 550.9 ms

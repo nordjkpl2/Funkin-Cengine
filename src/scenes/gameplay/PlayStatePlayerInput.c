@@ -9,6 +9,7 @@
 #include <math.h>
 #include "GameData.h"
 
+// se motal = 0 fica imortal se mortal = 1 morre
 static int score;
 static int misses;
 static PlayStatePlayerInputEvents events;
@@ -77,10 +78,9 @@ char PlayStatePlayerInput_Update(float songTime, PlayStatePlayerKeys* keys) {
 
     // SE BOTPLAY ESTIVER ATIVO: O acerto agora ocorre diretamente no receptor (em PlayState_Draw)
     // exatamente como o oponente, deixando as notas 100% visíveis e imunes a morte!
-    if (gameOptions.botplay) {
-        PlayStateHealth_Set(0.5f); // Mantém a vida travada e imortal no botplay
+    // Vida do botplay nao e tocada aqui: fica no 0.5 do Reset (sem drain) ou so cai com o drain, que nunca mata.
+    if (gameOptions.botplay)
         return 0;
-    }
 
     char* pressed = keys->pressed;
     int* keyPressed = keys->keyPressed;

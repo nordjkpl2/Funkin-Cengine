@@ -34,6 +34,10 @@
 #define LANES 4
 #define LANE_SPACING 110.0f
 
+// Vida por nota (mesmos valores do jogador, para o botplay ficar parecido com um jogo perfeito).
+#define HEALTH_GAIN_HIT  0.0115f
+#define HEALTH_DRAIN_OPP 0.006f
+
 /* ------------------------------------------------------------------ */
 /* Estado                                                              */
 /* ------------------------------------------------------------------ */
@@ -217,6 +221,8 @@ static void Strumlines_ApplyInput(const PlayStatePlayerKeys* keys) {
 /* ------------------------------------------------------------------ */
 
 static void Event_OpponentHit(Note* note) {
+    if (gameOptions.botplay ? gameOptions.healthDrainBotplay : gameOptions.healthDrainPlay)
+        PlayStateHealth_Add(-HEALTH_DRAIN_OPP);
     dad.idleTimer = 0;
     AnimatedObject_SetAnimation(&dad.object, dad.animations.notes[note->id]);
     AnimatedObject_SetAnimation(&dadStrumline[note->id].object, StrumNote_ConfirmAnimation(note->id));
@@ -224,6 +230,8 @@ static void Event_OpponentHit(Note* note) {
 
 static void Event_BotHit(Note* note) {
     PlayStatePlayerInput_AddScore(350); // sick fixo no botplay
+    if (gameOptions.healthDrainBotplay)
+        PlayStateHealth_Add(HEALTH_GAIN_HIT);
     bf.idleTimer = 0;
     AnimatedObject_SetAnimation(&bf.object, bf.animations.notes[note->id]);
     AnimatedObject_SetAnimation(&bfStrumline[note->id].object, StrumNote_ConfirmAnimation(note->id));
@@ -572,7 +580,8 @@ static void PlayState_Create([[maybe_unused]] RayScene* scene) {
     const double loadStart = GetTime();
     LoadMark_Begin();
     Log_WarnClear();
-    PlayStateHealth_Init(gameOptions.scroll == 1);
+    // Botplay nunca morre (com ou sem drain): a vida so cai ate 0.
+    PlayStateHealth_Init(gameOptions.scroll == 1, !gameOptions.botplay);
     PlayStateText_Init(songDir);
 
     PlayStateNoteSpawn_Init();
@@ -827,8 +836,7 @@ static void PlayState_Update([[maybe_unused]] RayScene* scene) {
         return;
     }
 
-    // No botplay, vida nunca e menor que 0
-    if (!gameOptions.botplay && PlayStateHealth_IsDead()) {
+    if (PlayStateHealth_IsDead()) {
         UpdateDeath(dt);
     }
     else if (songBeat.time < 0) {
@@ -968,7 +976,7 @@ static void DrawHud(float dt) {
 }
 
 static void PlayState_Draw([[maybe_unused]] RayScene* scene) {
-    if (!gameOptions.botplay && PlayStateHealth_IsDead()) {
+    if (PlayStateHealth_IsDead()) {
         ClearBackground(BLACK);
 
         PlayStateCamera_BeginGame();

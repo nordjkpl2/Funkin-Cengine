@@ -13,8 +13,10 @@ static Color dadColor;
 static Color bfColor;
 static float bop;
 static float bopT;
+static float minHealth;       /* -inf se mortal (morre abaixo de 0), senao 0 */
 
-void PlayStateHealth_Init(char top) {
+void PlayStateHealth_Init(char top, char mortal) {
+    minHealth = mortal ? -INFINITY : 0.0f;
     healthbarPadding = 4;
     healthbar.width = 600;
     healthbar.height = 17;
@@ -37,12 +39,8 @@ void PlayStateHealth_SetCharacterColors(const Character* dad, const Character* b
     if (bf->hasHealthColor) bfColor = bf->healthColor;
 }
 
-void PlayStateHealth_Set(float value) {
-    health = value;
-}
-
 void PlayStateHealth_Add(float delta) {
-    health = fminf(1, health + delta);
+    health = fmaxf(minHealth, fminf(1, health + delta));
 }
 
 char PlayStateHealth_IsDead(void) {
@@ -78,7 +76,9 @@ void PlayStateHealth_Draw(Texture2D dadIcon, Texture2D bfIcon) {
     float offsetX = healthbar.x + healthbarPadding;
     float availableWidth = healthbar.width - healthbarPadding * 2;
     float availableHeight = healthbar.height - healthbarPadding * 2;
-    float middle = availableWidth * (1 - health);
+    /* so o desenho limita: a morte usa health cru (< 0) */
+    float shown = health < 0 ? 0 : (health > 1 ? 1 : health);
+    float middle = availableWidth * (1 - shown);
 
     if (middle > 0) {
         DrawRectangle((int)offsetX, (int)(healthbar.y + healthbarPadding), (int)middle, (int)availableHeight, dadColor);

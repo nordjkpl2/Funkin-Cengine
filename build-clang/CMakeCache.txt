@@ -24,8 +24,10 @@ CMAKE_AR:FILEPATH=C:/msys64/clang64/bin/llvm-ar.exe
 // MinSizeRel ...
 CMAKE_BUILD_TYPE:STRING=Release
 
-//C compiler
-CMAKE_C_COMPILER:STRING=C:/msys64/clang64/bin/clang.exe
+//Full path to the compiler used for language <LANG>. Set by CMake
+// during compiler detection on the first configure; users may
+// override on the command line to select a specific toolchain.
+CMAKE_C_COMPILER:UNINITIALIZED=clang
 
 //LLVM archiver
 CMAKE_C_COMPILER_AR:FILEPATH=C:/msys64/clang64/bin/llvm-ar.exe
