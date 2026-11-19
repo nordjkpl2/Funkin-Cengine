@@ -197,3 +197,11 @@
 75	222	8168014884846170	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/modding/weekeditor/WeekEditor.c.obj	b398afc52cb20d0f
 71	246	8168014884806152	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/modding/stageeditor/StageEditor.c.obj	66e34fc63dfbdccd
 246	3712	8168014886557089	D:/dev/funkin c/FNF_C_ENGINE.exe	ece1139216b9236c
+22	60	8168138632476036	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+65	1281	8168138632906028	CMakeFiles/FNF_C_ENGINE.dir/src/data/Week.c.obj	d339087b84624830
+1281	3888	8168138645073595	D:/dev/funkin c/FNF_C_ENGINE.exe	ece1139216b9236c
+32	68	8168139440994528	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+22	69	8168140146850037	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+75	218	8168140147369638	CMakeFiles/FNF_C_ENGINE.dir/src/data/Week.c.obj	d339087b84624830
+43	85	8168140907144815	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+89	2689	8168140907602139	D:/dev/funkin c/FNF_C_ENGINE.exe	ece1139216b9236c

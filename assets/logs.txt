@@ -5,3 +5,14 @@ LOAD [scorn] init: 22.3 ms, chart: 0.7 ms, sounds: 63.6 ms, characters: 364.8 ms
 
 --- SESSION LOG START ---
 [WARN] Icone nao encontrado: 'fsm' (usando padrao)
+
+--- SESSION LOG START ---
+[WARN] Personagem 'icon-charlie' nao encontrado: usando dad padrao
+LOAD [moribund] init: 38.8 ms, chart: 290.0 ms, sounds: 313.9 ms, characters: 349.7 ms, stage: 3.8 ms, song audio: 1.7 ms, notes: 2.4 ms, ui: 20.7 ms, warmup: 0.2 ms, (textures on main thread: 376.3 ms) total: 1021.3 ms
+LOAD [moribund-3] init: 0.0 ms, chart: 118.9 ms, sounds: 48.9 ms, characters: 631.5 ms, stage: 4.8 ms, song audio: 2.3 ms, notes: 3.4 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 616.9 ms) total: 809.9 ms
+[WARN] Personagem 'icon-charlie' nao encontrado: usando dad padrao
+LOAD [moribund] init: 0.0 ms, chart: 265.2 ms, sounds: 3.1 ms, characters: 428.5 ms, stage: 2.6 ms, song audio: 1.6 ms, notes: 2.1 ms, ui: 0.0 ms, warmup: 0.1 ms, (textures on main thread: 429.4 ms) total: 703.3 ms
+[WARN] Personagem 'icon-charlie' nao encontrado: usando dad padrao
+LOAD [moribund] init: 0.0 ms, chart: 286.3 ms, sounds: 1.4 ms, characters: 430.7 ms, stage: 2.2 ms, song audio: 1.6 ms, notes: 2.2 ms, ui: 0.0 ms, warmup: 0.1 ms, (textures on main thread: 431.1 ms) total: 724.5 ms
+
+--- SESSION LOG START ---

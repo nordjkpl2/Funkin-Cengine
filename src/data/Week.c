@@ -73,7 +73,8 @@ static char Week_ParseFile(const char* path, const char* dir, const char* fileBa
             if(!yyjson_is_str(jn) || !yyjson_get_str(jn)[0]) continue;
             WeekSong* w=out->songs+out->songCount;
             StrCopy(w->song,sizeof(w->song),yyjson_get_str(jn),"?");
-            if(yyjson_is_str(jc)) StrCopy(w->character,sizeof(w->character),yyjson_get_str(jc),"");
+            /* "icon-xxx" e uma chave de icone, nao um personagem: deixa vazio para usar o player2 do chart. */
+            if(yyjson_is_str(jc) && strncmp(yyjson_get_str(jc),"icon-",5)!=0) StrCopy(w->character,sizeof(w->character),yyjson_get_str(jc),"");
             else w->character[0]=0;
             out->songCount++;
         }
@@ -144,6 +145,8 @@ int WeekList_Scan(WeekEntry** outEntries){
         for(unsigned i=0;i<mods.count;i++){ char wd[300]; snprintf(wd,sizeof(wd),"%s/weeks",mods.paths[i]); Scan_WeeksDir(wd,NULL,1); }
         UnloadDirectoryFiles(mods);
     }
+    /* Mod "direto" (assets/mods como raiz, igual ao ModList "(direto)"): weeks/ fica em assets/mods/weeks. */
+    Scan_WeeksDir("assets/mods/weeks",NULL,1);
     *outEntries=entries; int n=entryCount; entries=NULL; entryCount=0; entryCap=0; return n;
 }
 void WeekList_Free(WeekEntry* list){ free(list); }
