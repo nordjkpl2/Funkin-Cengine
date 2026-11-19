@@ -21,9 +21,16 @@ typedef struct {
     char applied[SEARCH_TEXT_MAX]; /* filtro em uso (ja normalizado) */
     int length;
     bool focused;
+    bool compact; /* so a lupa; o campo abre ao clicar nela (ou some ao confirmar/Esc) */
 } SearchBox;
 
 void SearchBox_Init(SearchBox* box, Rectangle bounds);
+
+/* Modo compacto: so a lupa (menor) fica visivel; clicar nela abre o campo. */
+void SearchBox_SetCompact(SearchBox* box, bool compact);
+
+/* true quando ha um filtro aplicado (Enter ou clique na lupa). */
+bool SearchBox_HasFilter(const SearchBox* box);
 
 /* Teclado e mouse. Enquanto focado, consome o texto digitado. true = aplicar filtro. */
 bool SearchBox_Update(SearchBox* box);

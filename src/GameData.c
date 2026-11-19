@@ -25,7 +25,7 @@ int game_scheme_keys[SCHEME_COUNT][4] = {
 
 static FILE* saveFile;
 
-#define SAVE_VERSION 8   /* 8: + lista de mods desativados (v7 ainda e lido); 7: + threadLimit (no fim); 6: + hitSound e as 4 teclas do esquema Custom */
+#define SAVE_VERSION 9   /* 9: + scorePosition (apos threadLimit); 8: + lista de mods desativados; 7: + threadLimit (no fim); 6: + hitSound e as 4 teclas do esquema Custom. v7 e v8 ainda sao lidos. */
 
 static void GameData_Defaults(void) {
     game_scheme_keys[SCHEME_CUSTOM][0] = KEY_LEFT;
@@ -49,6 +49,7 @@ static void GameData_Checks(void) {
     if(gameOptions.scroll < 0 || gameOptions.scroll > 2) IERR
     if(gameOptions.hitSound < 0 || gameOptions.hitSound > 1) IERR
     if(gameOptions.showFps < 0 || gameOptions.showFps > 1) IERR
+    if(gameOptions.scorePosition < SCORE_POS_CENGINE || gameOptions.scorePosition > SCORE_POS_PSYCH) IERR
     for(int k = 0; k < 4; k++)
         if(game_scheme_keys[SCHEME_CUSTOM][k] <= 0) IERR
 }
@@ -65,7 +66,7 @@ void GameData_Start(void) {
     char version = 0;
     SREAD(char, version)
 
-    if(version != SAVE_VERSION && version != 7) {
+    if(version < 7 || version > SAVE_VERSION) {
         GameData_Defaults();
         GameData_Flush();
         return;
@@ -86,6 +87,8 @@ void GameData_Start(void) {
     SREAD(float,gameOptions.zoomFactorGAME) 
     READ(int, 4, game_scheme_keys[SCHEME_CUSTOM][0])
     SREAD(int,  gameOptions.threadLimit)
+    gameOptions.scorePosition = SCORE_POS_CENGINE;   /* saves antigos (< v9) */
+    if(version >= 9) SREAD(char, gameOptions.scorePosition)
     gameDisabledModCount = 0;
     if(version >= 8) {
         SREAD(int, gameDisabledModCount)
@@ -117,6 +120,7 @@ void GameData_Flush(void) {
     SWRITE(float,gameOptions.zoomFactorGAME) 
     WRITE(int, 4, game_scheme_keys[SCHEME_CUSTOM][0])
     SWRITE(int,  gameOptions.threadLimit)
+    SWRITE(char, gameOptions.scorePosition)
     SWRITE(int,  gameDisabledModCount)
     WRITE(char, gameDisabledModCount * MOD_NAME_MAX, gameDisabledMods[0][0])
 }

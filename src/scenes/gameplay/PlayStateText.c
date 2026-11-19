@@ -5,8 +5,18 @@
 
 #include "scenes/gameplay/PlayStateText.h"
 #include "scenes/gameplay/PlayStateAudio.h"
+#include "scenes/gameplay/PlayStateHealth.h"
+#include "GameData.h"
 #include <stdio.h>
 #include <string.h>
+
+// Modo Psych: "Score | Misses" centralizado logo abaixo da barra de vida.
+#define PSYCH_SCORE_FONT 16.0f
+#define PSYCH_SCORE_OFFSET 30.0f // distancia da barra de vida (topo da linha)
+static int lastPsychScore = -1;
+static int lastPsychMisses = -1;
+static char psychBuf[48] = "";
+static Vector2 psychPos;
 
 static Font vcrFont;
 
@@ -106,10 +116,28 @@ void PlayStateText_Unload(void) {
 void PlayStateText_Reset(void) {
     lastScoreDrawn = -1;
     lastMissesDrawn = -1;
+    lastPsychScore = -1;
+    lastPsychMisses = -1;
     lastTimeSec = -1;
 }
 
-void PlayStateText_Draw(int score, int misses, float songTime, char showScore) {
+// Refaz o texto e a posicao so quando score/misses mudam (medir fonte e caro).
+static void DrawScorePsych(int score, int misses) {
+    if (score != lastPsychScore || misses != lastPsychMisses) {
+        lastPsychScore = score;
+        lastPsychMisses = misses;
+        snprintf(psychBuf, sizeof(psychBuf), "Score: %d | Misses: %d", score, misses);
+
+        const Vector2 size = MeasureTextEx(vcrFont, psychBuf, PSYCH_SCORE_FONT, 1);
+        psychPos = (Vector2) {TEXT_CENTER_X - size.x * 0.5f, PlayStateHealth_BarY() + PSYCH_SCORE_OFFSET};
+    }
+
+    const float shadow = 1.5f;
+    DrawTextEx(vcrFont, psychBuf, (Vector2) {psychPos.x + shadow, psychPos.y - shadow}, PSYCH_SCORE_FONT, 1, BLACK);
+    DrawTextEx(vcrFont, psychBuf, psychPos, PSYCH_SCORE_FONT, 1, WHITE);
+}
+
+void PlayStateText_Draw(int score, int misses, float songTime, char showScore, char scorePosition) {
     // Tempo
     {
         int currentSec = (int)(songTime < 0 ? 0 : songTime);
@@ -140,8 +168,11 @@ void PlayStateText_Draw(int score, int misses, float songTime, char showScore) {
             13.0f, 1.0f, titleColor);
     }
 
-    // Score e Misses
-    if (showScore) {
+    // Score e Misses (Cengine: canto direito; Psych: centro sob a barra)
+    if (showScore && scorePosition == SCORE_POS_PSYCH) {
+        DrawScorePsych(score, misses);
+    }
+    else if (showScore) {
         if (score != lastScoreDrawn) {
             snprintf(scoreBuf, sizeof(scoreBuf), "Score: %d", score);
             lastScoreDrawn = score;

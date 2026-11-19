@@ -24,10 +24,8 @@ CMAKE_AR:FILEPATH=C:/msys64/clang64/bin/llvm-ar.exe
 // MinSizeRel ...
 CMAKE_BUILD_TYPE:STRING=Release
 
-//Full path to the compiler used for language <LANG>. Set by CMake
-// during compiler detection on the first configure; users may
-// override on the command line to select a specific toolchain.
-CMAKE_C_COMPILER:UNINITIALIZED=clang
+//C compiler
+CMAKE_C_COMPILER:STRING=C:/msys64/clang64/bin/clang.exe
 
 //LLVM archiver
 CMAKE_C_COMPILER_AR:FILEPATH=C:/msys64/clang64/bin/llvm-ar.exe
@@ -246,9 +244,9 @@ CMAKE_CACHEFILE_DIR:INTERNAL=d:/dev/funkin c/build-clang
 //Major version of cmake used to create the current loaded cache
 CMAKE_CACHE_MAJOR_VERSION:INTERNAL=4
 //Minor version of cmake used to create the current loaded cache
-CMAKE_CACHE_MINOR_VERSION:INTERNAL=4
+CMAKE_CACHE_MINOR_VERSION:INTERNAL=5
 //Patch version of cmake used to create the current loaded cache
-CMAKE_CACHE_PATCH_VERSION:INTERNAL=5
+CMAKE_CACHE_PATCH_VERSION:INTERNAL=0
 //Path to CMake executable.
 CMAKE_COMMAND:INTERNAL=C:/msys64/clang64/bin/cmake.exe
 //Path to cpack program executable.
@@ -277,7 +275,7 @@ CMAKE_C_FLAGS_RELWITHDEBINFO-ADVANCED:INTERNAL=1
 CMAKE_C_STANDARD_LIBRARIES-ADVANCED:INTERNAL=1
 //Set initial state for CMake diagnostics; used to persist state
 // set by command-line options across invocations.
-CMAKE_DIAGNOSTIC_INIT:INTERNAL=CMD_AUTHOR=WARN;CMD_DEPRECATED=WARN;CMD_EXPERIMENTAL=WARN;CMD_INSTALL_ABSOLUTE_DESTINATION=IGNORE;CMD_POLICY=WARN;CMD_UNINITIALIZED=IGNORE;CMD_UNUSED_CLI=WARN
+CMAKE_DIAGNOSTIC_INIT:INTERNAL=CMD_AUTHOR=WARN;CMD_DEPRECATED=WARN;CMD_EXPERIMENTAL=WARN;CMD_STRICT=IGNORE;CMD_INSTALL_ABSOLUTE_DESTINATION=IGNORE;CMD_NON_TARGET_DIRECTIVE=IGNORE;CMD_POLICY=WARN;CMD_UNINITIALIZED=IGNORE;CMD_UNUSED_CLI=WARN
 //ADVANCED property for variable: CMAKE_DLLTOOL
 CMAKE_DLLTOOL-ADVANCED:INTERNAL=1
 //Deprecated.  Use -W[no-]error=deprecated instead.
@@ -382,6 +380,8 @@ CMAKE_STATIC_LINKER_FLAGS_RELEASE-ADVANCED:INTERNAL=1
 CMAKE_STATIC_LINKER_FLAGS_RELWITHDEBINFO-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: CMAKE_STRIP
 CMAKE_STRIP-ADVANCED:INTERNAL=1
+//Opaque identifier for the current system environment
+CMAKE_SYSTEM_ENVIRONMENT_ID:INTERNAL=
 //ADVANCED property for variable: CMAKE_TAPI
 CMAKE_TAPI-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: CMAKE_VERBOSE_MAKEFILE

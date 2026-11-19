@@ -946,7 +946,8 @@ static void DrawHud(float dt) {
     PlayStateNoteSpawn_Draw(&view);
 
     PlayStateHealth_Draw(dad.icon, bf.icon);
-    PlayStateText_Draw(PlayStatePlayerInput_Score(), PlayStatePlayerInput_Misses(), songBeat.time, gameOptions.showScore);
+    PlayStateText_Draw(PlayStatePlayerInput_Score(), PlayStatePlayerInput_Misses(), songBeat.time,
+                       gameOptions.showScore, gameOptions.scorePosition);
 
     if (songBeat.time < 0)
         Render_DrawAnimatedObject(&introText);

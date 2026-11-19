@@ -32,3 +32,14 @@ LOAD [undaunted-demise-naether] init: 39.0 ms, chart: 63.2 ms, sounds: 331.0 ms,
 --- SESSION LOG START ---
 LOAD [Astray] init: 37.5 ms, chart: 87.9 ms, sounds: 288.1 ms, characters: 299.7 ms, stage: 8.7 ms, song audio: 2.1 ms, notes: 0.3 ms, ui: 20.8 ms, warmup: 0.2 ms, (textures on main thread: 368.9 ms) total: 745.3 ms
 LOAD [Trauma] init: 0.0 ms, chart: 25.6 ms, sounds: 42.2 ms, characters: 404.5 ms, stage: 1405.1 ms, song audio: 2.8 ms, notes: 0.7 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 1799.0 ms) total: 1881.2 ms
+
+--- SESSION LOG START ---
+LOAD [agony] init: 49.2 ms, chart: 19.8 ms, sounds: 302.5 ms, characters: 308.1 ms, stage: 13.0 ms, song audio: 2.0 ms, notes: 0.5 ms, ui: 18.9 ms, warmup: 0.2 ms, (textures on main thread: 339.5 ms) total: 714.1 ms
+[WARN] Stage 'void' nao encontrado: usando stage vazio
+LOAD [unknownbambi] init: 0.0 ms, chart: 13.3 ms, sounds: 61.3 ms, characters: 82.3 ms, stage: 0.1 ms, song audio: 1.8 ms, notes: 0.0 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 58.7 ms) total: 159.0 ms
+LOAD [stagnant] init: 0.0 ms, chart: 58.1 ms, sounds: 64.7 ms, characters: 416.4 ms, stage: 7.4 ms, song audio: 4.3 ms, notes: 0.4 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 420.6 ms) total: 551.5 ms
+LOAD [moribund-3] init: 0.0 ms, chart: 164.0 ms, sounds: 116.9 ms, characters: 475.3 ms, stage: 4.2 ms, song audio: 2.1 ms, notes: 3.2 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 444.2 ms) total: 765.9 ms
+
+--- SESSION LOG START ---
+LOAD [triklizo-koooled] init: 22.9 ms, chart: 18.2 ms, sounds: 167.0 ms, characters: 372.5 ms, stage: 3.7 ms, song audio: 2.0 ms, notes: 0.4 ms, ui: 8.0 ms, warmup: 0.1 ms, (textures on main thread: 396.2 ms) total: 594.8 ms
+LOAD [Crisis] init: 0.0 ms, chart: 23.9 ms, sounds: 271.9 ms, characters: 413.2 ms, stage: 16.9 ms, song audio: 2.0 ms, notes: 0.5 ms, ui: 0.0 ms, warmup: 0.1 ms, (textures on main thread: 413.2 ms) total: 728.7 ms

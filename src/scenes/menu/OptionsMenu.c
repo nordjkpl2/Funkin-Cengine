@@ -8,6 +8,7 @@
 #include "raymath.h"
 #include "threads/Thread.h"
 #include "threads/cpu/Jobs.h"
+#include "widgets-and-menus-ui/SearchBox.h"
 #include <stdio.h>
 
 #define SCREEN_H 720.0f
@@ -44,6 +45,11 @@
 #define SYMBOL_STROKE 7.0f   // espessura do traco
 #define SYMBOL_GAP 22.0f     // espaco entre simbolos
 
+// Quadro (moldura) ao lado de "[ Visual Options ]".
+#define FRAME_WIDTH 50.0f
+#define FRAME_HEIGHT 38.0f
+#define FRAME_STROKE 6.0f
+
 typedef enum {
     OPTION_VALUE_INT,
     OPTION_VALUE_FLOAT,
@@ -79,11 +85,13 @@ typedef enum {
     OPTION_SCROLL_STYLE,
     OPTION_GHOST,
     OPTION_HITSOUND,
-    OPTION_HEADER_OTHER,
+    OPTION_HEADER_VISUAL,
     OPTION_SHOW_SCORE,
+    OPTION_SCORE_POSITION,
     OPTION_BOPPING_ICONS,
     OPTION_ZOOMFACTOR_UI,
     OPTION_ZOOMFACTOR_GAME,
+    OPTION_HEADER_OTHER,
     OPTION_FILL_SCREEN,
     OPTION_BOTPLAY,
     OPTION_COUNT
@@ -92,6 +100,7 @@ typedef enum {
 static const char* ghost_names[3] = {"On", "50/50", "Off"};
 static const char* scroll_names[3] = {"Normal", "Downscroll", "Middlescroll"};
 static const char* thread_names[2] = {"Auto", "Limited"};
+static const char* score_position_names[2] = {"Cengine", "Psych"};
 
 #define THREADS_MAX JOBS_MAX_THREADS
 static int limitedThreads = 2; // ultimo numero usado no modo Limited (volta ao alternar)
@@ -104,22 +113,24 @@ static int AutoThreads(void) {
 }
 
 static Option options[OPTION_COUNT] = {
-    [OPTION_HEADER_WINDOW] = {.text = "[ Window Options ]", .type = OPTION_VALUE_HEADER},
+    [OPTION_HEADER_WINDOW] = {.text = "[Window]", .type = OPTION_VALUE_HEADER},
     [OPTION_FPS] = {.text = "Framerate", .type = OPTION_VALUE_INT, .min = 60, .max = 2000, .step = 10, .altStep = 100},
     [OPTION_UNCAPPED_FPS] = {.text = "Uncapped FPS", .type = OPTION_VALUE_BOOL},
     [OPTION_SHOW_FPS] = {.text = "Show FPS", .type = OPTION_VALUE_BOOL},
     [OPTION_VSYNC] = {.text = "V-SYNC", .type = OPTION_VALUE_BOOL},
     [OPTION_THREADS] = {.text = "Threads", .type = OPTION_VALUE_LIST, .options = thread_names, .step = 1, .max = 1, .min = 0},
-    [OPTION_HEADER_GAMEPLAY] = {.text = "[ Gameplay Options ]", .type = OPTION_VALUE_HEADER},
+    [OPTION_HEADER_GAMEPLAY] = {.text = "[Gameplay]", .type = OPTION_VALUE_HEADER},
     [OPTION_KEYBOARD_SCHEME] = {.text = "Scheme", .type = OPTION_VALUE_LIST, .options = game_available_schemes, .step = 1, .max = SCHEME_COUNT - 1, .min = 0},
     [OPTION_SCROLL_STYLE] = {.text = "Scroll Style", .type = OPTION_VALUE_LIST, .options = scroll_names, .step = 1, .max = 2, .min = 0},
     [OPTION_GHOST] = {.text = "Ghost Tapping", .type = OPTION_VALUE_LIST, .options = ghost_names, .step = 1, .max = 2, .min = 0},
     [OPTION_HITSOUND] = {.text = "Hit Sound", .type = OPTION_VALUE_BOOL},
-    [OPTION_HEADER_OTHER] = {.text = "[ Other Options ]", .type = OPTION_VALUE_HEADER},
+    [OPTION_HEADER_VISUAL] = {.text = "[Visual]", .type = OPTION_VALUE_HEADER},
     [OPTION_SHOW_SCORE] = {.text = "Show Score", .type = OPTION_VALUE_BOOL},
+    [OPTION_SCORE_POSITION] = {.text = "Score Position", .type = OPTION_VALUE_LIST, .options = score_position_names, .step = 1, .max = 1, .min = 0},
     [OPTION_BOPPING_ICONS] = {.text = "Bopping Icons", .type = OPTION_VALUE_BOOL},
     [OPTION_ZOOMFACTOR_UI] = {.text = "UI beat zoom", .type = OPTION_VALUE_FLOAT, .max = 3, .min = 0, .step = 0.1f, .altStep = 1},
     [OPTION_ZOOMFACTOR_GAME] = {.text = "Game beat zoom", .type = OPTION_VALUE_FLOAT, .max = 3, .min = 0, .step = 0.1f, .altStep = 1},
+    [OPTION_HEADER_OTHER] = {.text = "[Other]", .type = OPTION_VALUE_HEADER},
     [OPTION_FILL_SCREEN] = {.text = "Stretch", .type = OPTION_VALUE_BOOL},
     [OPTION_BOTPLAY] = {.text = "Botplay", .type = OPTION_VALUE_BOOL},
 };
@@ -128,6 +139,7 @@ static float scrollOffset; // posicao suavizada da lista (em linhas)
 static float windowLogoX;  // calculado uma vez no Create
 static float otherLogoX;
 static float gameplayLogoX;
+static float visualLogoX;
 static int currentOption = OPTION_FPS; // comeca na primeira opcao, nao no cabecalho
 static Camera2D cam;
 static RayGraphicObject bg;
@@ -185,6 +197,7 @@ static void ApplyNumValue(void) {
         case OPTION_GHOST:             gameOptions.ghost = (char)(int)o->value; break;
         case OPTION_ZOOMFACTOR_GAME:   gameOptions.zoomFactorGAME = o->value; break;
         case OPTION_ZOOMFACTOR_UI:     gameOptions.zoomFactorUI = o->value; break;
+        case OPTION_SCORE_POSITION:    gameOptions.scorePosition = (char)(int)o->value; break;
     }
 
     Option_RebuildText(o);
@@ -213,7 +226,11 @@ static void ApplyBoolValue(void) {
             options[OPTION_SHOW_FPS].dirty = true;
             break;
         case OPTION_SHOW_FPS:      gameOptions.showFps = on; break;
-        case OPTION_SHOW_SCORE:    gameOptions.showScore = on; break;
+        case OPTION_SHOW_SCORE:
+            gameOptions.showScore = on;
+            options[OPTION_SCORE_POSITION].active = on;   // so faz sentido escolher posicao com score visivel
+            options[OPTION_SCORE_POSITION].dirty = true;
+            break;
         case OPTION_BOPPING_ICONS: gameOptions.bopIcons = on; break;
         case OPTION_FILL_SCREEN:   gameOptions.fillScreen = on; break;
         case OPTION_BOTPLAY:       gameOptions.botplay = on; break;
@@ -227,9 +244,29 @@ static void ApplyBoolValue(void) {
 /* Navegacao                                                           */
 /* ------------------------------------------------------------------ */
 
-/* Cabecalhos sempre aparecem; opcoes somem quando a secao esta recolhida. */
+/* Lupa (so o icone; o campo abre ao clicar). Filtra as opcoes pelo nome. */
+#define SEARCH_X 940.0f
+#define SEARCH_Y 20.0f
+#define SEARCH_W 320.0f
+#define SEARCH_H 44.0f
+static SearchBox search;
+
+/* Secao tem alguma opcao que bate com o filtro? */
+static bool Section_HasMatch(int header) {
+    for (int i = header + 1; i < OPTION_COUNT && options[i].type != OPTION_VALUE_HEADER; i++)
+        if (SearchBox_Match(&search, options[i].text)) return true;
+    return false;
+}
+
+/* Com filtro, aparecem so as opcoes (e secoes) que batem, mesmo se recolhidas.
+   Sem filtro: cabecalhos sempre; opcoes somem quando a secao esta recolhida. */
 static bool Option_IsVisible(int i) {
-    return options[i].type == OPTION_VALUE_HEADER || !options[options[i].header].collapsed;
+    const bool filtering = SearchBox_HasFilter(&search);
+    if (options[i].type == OPTION_VALUE_HEADER)
+        return !filtering || Section_HasMatch(i);
+    if (filtering)
+        return SearchBox_Match(&search, options[i].text);
+    return !options[options[i].header].collapsed;
 }
 
 /* Cabecalhos sao selecionaveis (para abrir/recolher); opcoes, so se visiveis e ativas. */
@@ -438,11 +475,17 @@ static void OptionsMenu_Create([[maybe_unused]] RayScene* scene) {
     const Vector2 headerSize = MeasureTextEx(mainFont, options[OPTION_HEADER_WINDOW].text, HEADER_FONT_SIZE, TEXT_SPACING);
     windowLogoX = HEADER_X - TEXT_SHADOW + headerSize.x + LOGO_MARGIN;
 
+    SearchBox_Init(&search, (Rectangle) {SEARCH_X, SEARCH_Y, SEARCH_W, SEARCH_H});
+    SearchBox_SetCompact(&search, true);
+
     const Vector2 otherSize = MeasureTextEx(mainFont, options[OPTION_HEADER_OTHER].text, HEADER_FONT_SIZE, TEXT_SPACING);
     otherLogoX = HEADER_X - TEXT_SHADOW + otherSize.x + LOGO_MARGIN;
 
     const Vector2 gameplaySize = MeasureTextEx(mainFont, options[OPTION_HEADER_GAMEPLAY].text, HEADER_FONT_SIZE, TEXT_SPACING);
     gameplayLogoX = HEADER_X - TEXT_SHADOW + gameplaySize.x + LOGO_MARGIN;
+
+    const Vector2 visualSize = MeasureTextEx(mainFont, options[OPTION_HEADER_VISUAL].text, HEADER_FONT_SIZE, TEXT_SPACING);
+    visualLogoX = HEADER_X - TEXT_SHADOW + visualSize.x + LOGO_MARGIN;
 
     // Cada opcao guarda o cabecalho da sua secao; todas as secoes comecam abertas.
     int header = 0;
@@ -464,6 +507,8 @@ static void OptionsMenu_Create([[maybe_unused]] RayScene* scene) {
     options[OPTION_UNCAPPED_FPS].value = targetFps == 0;
     options[OPTION_SHOW_FPS].value = gameOptions.showFps;
     options[OPTION_SHOW_SCORE].value = gameOptions.showScore;
+    options[OPTION_SCORE_POSITION].value = gameOptions.scorePosition;
+    options[OPTION_SCORE_POSITION].active = gameOptions.showScore;
     options[OPTION_BOPPING_ICONS].value = gameOptions.bopIcons;
     options[OPTION_VSYNC].value = gameOptions.vsync;
     if (gameOptions.threadLimit > 0) limitedThreads = gameOptions.threadLimit;
@@ -493,6 +538,13 @@ static void OptionsMenu_Update([[maybe_unused]] RayScene* scene) {
         ThreadsScreen_Update();
         return;
     }
+
+    // Lupa: le o clique nela e, com o campo aberto, o teclado (Esc/Backspace nao saem da cena).
+    const bool typing = SearchBox_Focused(&search);
+    if (SearchBox_Update(&search) && !Option_IsSelectable(currentOption))
+        MoveSelection(1);                 // filtro mudou: garante uma linha selecionavel
+    if (typing || SearchBox_Focused(&search))
+        return;
 
     if (IsKeyPressed(KEY_BACKSPACE) || IsKeyPressed(KEY_ESCAPE)) {
         GameData_Flush();
@@ -611,6 +663,18 @@ static void DrawGameplayLogo(float rowY, Color fill, Color shadow) {
     DrawPlayStationSymbols(rowY, 0.0f, fill);
 }
 
+/* Quadro (moldura com borda grossa), com a mesma sombra do texto. */
+static void DrawVisualLogo(float rowY, Color fill, Color shadow) {
+    const float cy = rowY + LOGO_TOP + LOGO_SQUARE + LOGO_GAP * 0.5f;
+
+    for (int pass = 0; pass < 2; pass++) {
+        const Color color = pass == 0 ? shadow : fill;
+        const float shift = pass == 0 ? TEXT_SHADOW : 0.0f;
+        DrawRectangleLinesEx((Rectangle) {visualLogoX + shift, cy - FRAME_HEIGHT * 0.5f + shift, FRAME_WIDTH, FRAME_HEIGHT},
+                             FRAME_STROKE, color);
+    }
+}
+
 /* Setinha da secao: "v" aberta, ">" recolhida. */
 static void DrawChevron(float rowY, bool collapsed, Color fill, Color shadow) {
     const float s = CHEVRON_SIZE;
@@ -676,6 +740,8 @@ static void OptionsMenu_Draw([[maybe_unused]] RayScene* scene) {
                 DrawWindowLogo(drawY, fill, shadow);
             else if (i == OPTION_HEADER_GAMEPLAY)
                 DrawGameplayLogo(drawY, fill, shadow);
+            else if (i == OPTION_HEADER_VISUAL)
+                DrawVisualLogo(drawY, fill, shadow);
             else if (i == OPTION_HEADER_OTHER)
                 DrawOtherLogo(drawY, fill, shadow);
             continue;
@@ -696,6 +762,8 @@ static void OptionsMenu_Draw([[maybe_unused]] RayScene* scene) {
 
     if (currentOption == OPTION_THREADS && (int)options[OPTION_THREADS].value == 1)
         DrawTextEx(mainFont, "ENTER: set thread count", (Vector2) {ROW_X, SCREEN_H - 50.0f}, 24, 2, (Color) {245, 220, 120, 255});
+
+    SearchBox_Draw(&search, mainFont);
 
     if (capturing)
         Capture_Draw();
