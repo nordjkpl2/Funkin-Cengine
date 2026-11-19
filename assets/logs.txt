@@ -119,3 +119,22 @@ LOAD [unknownbambi] init: 0.0 ms, chart: 13.9 ms, sounds: 0.6 ms, characters: 63
 LOAD [unstable] init: 20.0 ms, chart: 17.5 ms, sounds: 67.6 ms, characters: 380.0 ms, stage: 6.0 ms, song audio: 1.6 ms, notes: 0.4 ms, ui: 7.9 ms, warmup: 0.2 ms, (textures on main thread: 410.2 ms) total: 501.0 ms
 LOAD [triklizo-koooled] init: 0.0 ms, chart: 24.5 ms, sounds: 1.3 ms, characters: 436.1 ms, stage: 2.7 ms, song audio: 1.7 ms, notes: 0.5 ms, ui: 0.0 ms, warmup: 0.1 ms, (textures on main thread: 436.9 ms) total: 467.1 ms
 LOAD [unstable] init: 0.0 ms, chart: 22.7 ms, sounds: 2.8 ms, characters: 450.8 ms, stage: 6.2 ms, song audio: 1.7 ms, notes: 0.4 ms, ui: 0.0 ms, warmup: 0.1 ms, (textures on main thread: 453.5 ms) total: 484.6 ms
+
+--- SESSION LOG START ---
+LOAD [Astray] init: 26.3 ms, chart: 25.0 ms, sounds: 90.8 ms, characters: 360.4 ms, stage: 8.2 ms, song audio: 1.8 ms, notes: 0.3 ms, ui: 8.4 ms, warmup: 0.2 ms, (textures on main thread: 407.6 ms) total: 521.5 ms
+LOAD [unstable] init: 0.0 ms, chart: 21.4 ms, sounds: 2.3 ms, characters: 435.4 ms, stage: 5.9 ms, song audio: 1.7 ms, notes: 0.3 ms, ui: 0.0 ms, warmup: 0.1 ms, (textures on main thread: 437.7 ms) total: 467.1 ms
+LOAD [Astray] init: 0.0 ms, chart: 17.3 ms, sounds: 3.0 ms, characters: 447.8 ms, stage: 9.3 ms, song audio: 1.8 ms, notes: 0.3 ms, ui: 0.0 ms, warmup: 0.1 ms, (textures on main thread: 454.8 ms) total: 479.7 ms
+[WARN] Personagem 'lse' nao encontrado: usando dad padrao
+[WARN] Stage 'studio' nao encontrado: usando stage vazio
+LOAD [test4] init: 0.0 ms, chart: 14.6 ms, sounds: 1.2 ms, characters: 175.8 ms, stage: 0.1 ms, song audio: 5.4 ms, notes: 0.1 ms, ui: 0.0 ms, warmup: 0.5 ms, (textures on main thread: 169.4 ms) total: 197.6 ms
+
+--- SESSION LOG START ---
+LOAD [Astray] init: 21.5 ms, chart: 25.6 ms, sounds: 87.8 ms, characters: 354.3 ms, stage: 8.5 ms, song audio: 1.7 ms, notes: 0.3 ms, ui: 7.8 ms, warmup: 0.2 ms, (textures on main thread: 396.1 ms) total: 507.7 ms
+LOAD [test] init: 0.0 ms, chart: 5.6 ms, sounds: 1.5 ms, characters: 157.5 ms, stage: 6.7 ms, song audio: 4.0 ms, notes: 0.7 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 162.4 ms) total: 176.3 ms
+[WARN] Personagem 'krab' nao encontrado: usando dad padrao
+[WARN] Personagem 'bobsponge' nao encontrado: usando bf padrao
+[WARN] Stage 'krab' nao encontrado: usando stage vazio
+LOAD [test3] init: 0.0 ms, chart: 15.9 ms, sounds: 0.6 ms, characters: 160.0 ms, stage: 0.1 ms, song audio: 12.0 ms, notes: 0.1 ms, ui: 0.0 ms, warmup: 0.3 ms, (textures on main thread: 158.7 ms) total: 189.1 ms
+LOAD [b] init: 0.0 ms, chart: 1.0 ms, sounds: 0.6 ms, characters: 156.9 ms, stage: 0.0 ms, song audio: 6.7 ms, notes: 0.0 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 156.2 ms) total: 165.4 ms
+LOAD [b] init: 0.0 ms, chart: 0.8 ms, sounds: 0.6 ms, characters: 151.3 ms, stage: 0.0 ms, song audio: 3.3 ms, notes: 0.0 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 150.5 ms) total: 156.2 ms
+LOAD [Singularity] init: 0.0 ms, chart: 43.5 ms, sounds: 235.5 ms, characters: 520.7 ms, stage: 10.3 ms, song audio: 2.1 ms, notes: 0.1 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 492.2 ms) total: 812.4 ms

@@ -14,15 +14,20 @@
 #define SCREEN_H 720.0f
 #define LANE_SPACING 110.0f
 #define STRUM_BG_HEIGHT 150   // faixa preta atras dos receptores (Strumline Background)
-#define MOBILE_COLUMN_BASE 22.0f  // opacidade parada das colunas (Strumline Mobile Visible)
-#define MOBILE_COLUMN_PEAK 80.0f  // opacidade maxima ao apertar (limite baixo por causa de epilepsia)
-#define MOBILE_GLOW_RISE 6.0f     // velocidade de subida (por segundo)
-#define MOBILE_GLOW_FALL 2.5f     // velocidade de descida (por segundo): fade lento
+// Monitor de teclas (Keys Monitor): quadradinhos no canto superior direito.
+#define MONITOR_KEY 40.0f         // lado de cada quadradinho
+#define MONITOR_GAP 6.0f          // espaco entre eles
+#define MONITOR_MARGIN 20.0f      // distancia da borda direita
+#define MONITOR_TOP 20.0f         // distancia da borda superior
+#define MONITOR_FONT 24
+#define MOBILE_GLOW_RISE 12.0f    // velocidade de subida (por segundo): acende rapido
+#define MOBILE_GLOW_FALL 4.0f     // velocidade de descida (por segundo): fade curto
 
 /* Mesmas cores das notas no editor de chart: roxo, azul, verde, vermelho. */
 static const Color laneColors[PLAYSTATE_LANES] = {
     {200, 80, 255, 255}, {80, 180, 255, 255}, {80, 255, 150, 255}, {255, 90, 90, 255},
 };
+static const char* const laneLetters[PLAYSTATE_LANES] = {"L", "D", "U", "R"};
 
 /* gameOptions.scroll: 0 = up, 1 = down, 2 = middle */
 static StrumNote dadStrumline[PLAYSTATE_LANES];
@@ -105,22 +110,54 @@ static void RenderStrumFixedCenter(StrumNote* strum, Vector2 idleSize) {
     strum->object.position = originalPosition;
 }
 
-/* Fundos atras de tudo do HUD: colunas coloridas (mobile) e faixa preta dos receptores. */
+/* Fundo atras de tudo do HUD: faixa preta dos receptores. */
 void PlayStateStrums_DrawBackdrop(void) {
-    if (gameOptions.strumMobileVisible) {
-        const float colW = SCREEN_W / PLAYSTATE_LANES;
-        for (int i = 0; i < PLAYSTATE_LANES; i++) {
-            // Base bem fraca; acende so a coluna pressionada, com alpha limitado (sem flash forte).
-            const float a = MOBILE_COLUMN_BASE + (MOBILE_COLUMN_PEAK - MOBILE_COLUMN_BASE) * mobileGlow[i];
-            Color c = laneColors[i];
-            c.a = (unsigned char)a;
-            DrawRectangleRec((Rectangle) {colW * (float)i, 0.0f, colW, SCREEN_H}, c);
-        }
-    }
-
     if (gameOptions.strumBgPercent > 0) {
         const unsigned char alpha = (unsigned char)(gameOptions.strumBgPercent * 255 / 100);
         DrawRectangle(0, (int)StrumY() - 10, (int)SCREEN_W, STRUM_BG_HEIGHT, (Color) {0, 0, 0, alpha});
+    }
+}
+
+/* Chamar todo frame (inclusive botplay, com keyDown zerado): sobe ao apertar, desce devagar. */
+void PlayStateStrums_UpdateGlow(const char* keyDown) {
+    const float dt = GetFrameTime();
+    for (int i = 0; i < PLAYSTATE_LANES; i++) {
+        const float target = keyDown[i] ? 1.0f : 0.0f;
+        const float speed = target > mobileGlow[i] ? MOBILE_GLOW_RISE : MOBILE_GLOW_FALL;
+        const float step = speed * dt > 1.0f ? 1.0f : speed * dt;
+        mobileGlow[i] += (target - mobileGlow[i]) * step;
+    }
+}
+
+/* Tecla da coluna para o monitor: letra/numero quando possivel, senao a inicial da direcao. */
+static void MonitorLabel(int key, int lane, char out[4]) {
+    if (key >= KEY_A && key <= KEY_Z) { out[0] = (char)('A' + (key - KEY_A)); out[1] = 0; }
+    else if (key >= KEY_ZERO && key <= KEY_NINE) { out[0] = (char)('0' + (key - KEY_ZERO)); out[1] = 0; }
+    else { out[0] = laneLetters[lane][0]; out[1] = 0; }
+}
+
+/* Monitor de teclas estilo overlay de streamer: quadradinhos que acendem com a tecla. Desenhar por cima das notas. */
+void PlayStateStrums_DrawKeyMonitor(void) {
+    if (!gameOptions.strumMobileVisible) return;
+
+    const float total = PLAYSTATE_LANES * MONITOR_KEY + (PLAYSTATE_LANES - 1) * MONITOR_GAP;
+    const float x0 = SCREEN_W - MONITOR_MARGIN - total;
+    const float y = MONITOR_TOP;
+
+    for (int i = 0; i < PLAYSTATE_LANES; i++) {
+        const Rectangle box = {x0 + i * (MONITOR_KEY + MONITOR_GAP), y, MONITOR_KEY, MONITOR_KEY};
+
+        DrawRectangleRec(box, (Color) {0, 0, 0, 150});
+        Color lit = laneColors[i];
+        lit.a = (unsigned char)(255.0f * mobileGlow[i]);
+        DrawRectangleRec(box, lit);
+        DrawRectangleLinesEx(box, 2.0f, laneColors[i]);
+
+        char label[4];
+        MonitorLabel(game_scheme_keys[gameOptions.scheme][i], i, label);
+        const Vector2 ts = MeasureTextEx(mainFont, label, MONITOR_FONT, 1.0f);
+        DrawTextEx(mainFont, label, (Vector2) {box.x + (MONITOR_KEY - ts.x) * 0.5f, box.y + (MONITOR_KEY - ts.y) * 0.5f},
+                   MONITOR_FONT, 1.0f, WHITE);
     }
 }
 
@@ -152,14 +189,7 @@ void PlayStateStrums_ConfirmBf(int lane) {
 
 // Animacao dos receptores do BF a partir das teclas deste frame.
 void PlayStateStrums_ApplyInput(const PlayStatePlayerKeys* keys) {
-    const float dt = GetFrameTime();
     for (int i = 0; i < PLAYSTATE_LANES; i++) {
-        // Glow das colunas: sobe rapido quando a tecla esta segurada, desce devagar.
-        const float target = keys->keyDown[i] ? 1.0f : 0.0f;
-        const float speed = target > mobileGlow[i] ? MOBILE_GLOW_RISE : MOBILE_GLOW_FALL;
-        const float step = speed * dt > 1.0f ? 1.0f : speed * dt;
-        mobileGlow[i] += (target - mobileGlow[i]) * step;
-
         RayAnimatedObject* strum = &bfStrumline[i].object;
 
         if (keys->pressed[i])

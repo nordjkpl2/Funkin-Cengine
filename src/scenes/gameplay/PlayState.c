@@ -407,9 +407,10 @@ static char UpdateSong(void) {
         return 1;
     }
 
-    PlayStatePlayerKeys keys;
+    PlayStatePlayerKeys keys = {0};   // botplay nao preenche: fica zerado e o monitor apaga
     if (PlayStatePlayerInput_Update(PlayStateBeat_Time(), &keys))
         PlayStateStrums_ApplyInput(&keys);
+    PlayStateStrums_UpdateGlow(keys.keyDown);
 
     // Hits automaticos, hold e miss das notas (antes ficava no Draw).
     const PlayStateNoteView view = NoteView();
@@ -500,6 +501,7 @@ static void DrawHud(float dt) {
 
     const PlayStateNoteView view = NoteView();
     PlayStateNoteSpawn_Draw(&view);
+    PlayStateStrums_DrawKeyMonitor();
 
     PlayStateHealth_Draw(PlayStateAnimations_Dad()->icon, PlayStateAnimations_Bf()->icon);
     PlayStateText_Draw(PlayStatePlayerInput_Score(), PlayStatePlayerInput_Misses(), (float)PlayStateBeat_Time(),

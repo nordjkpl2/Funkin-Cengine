@@ -28,8 +28,14 @@ void PlayStateStrums_ConfirmBf(int lane);
 /* Anima os receptores do BF a partir das teclas deste frame. */
 void PlayStateStrums_ApplyInput(const PlayStatePlayerKeys* keys);
 
-/* Fundos do HUD (chamar antes de tudo): colunas mobile e faixa preta dos receptores. */
+/* Fundo do HUD (chamar antes de tudo): faixa preta dos receptores. */
 void PlayStateStrums_DrawBackdrop(void);
+
+/* Glow do monitor de teclas (Keys Monitor): chamar todo frame com keyDown[4] (zerado no botplay). */
+void PlayStateStrums_UpdateGlow(const char* keyDown);
+
+/* Monitor de teclas no canto superior direito (so com Keys Monitor ligado). Desenhar por cima das notas. */
+void PlayStateStrums_DrawKeyMonitor(void);
 
 /* Desenha os dois lados; no botplay volta o BF ao idle quando o confirm termina. */
 void PlayStateStrums_Draw(void);
