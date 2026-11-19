@@ -1,6 +1,6 @@
 /* // * Friday Night Funkin´ c engine (c) 2026 nordjkpl */
 /* Chart Editor: caixas de texto/numero, botoes, listas e bloqueio do mouse. */
-#include"scenes/AllScenes.h"
+#include "scenes/api/FontLoader.h"
 #include"data/Song.h"
 #include"data/SongList.h"
 #include "core/ModPath.h"

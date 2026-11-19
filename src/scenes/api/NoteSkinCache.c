@@ -1,19 +1,18 @@
 /* // * Friday Night Funkin´ c engine (c) 2026 nordjkpl */
 /*
- * AllScenes.c - inicio/fim do jogo, fonte global e cache das skins de nota.
+ * NoteSkinCache.c - cache das skins de nota.
  *
  * A skin padrao carrega so no primeiro uso. Skins de mod sao procuradas uma vez
  * por nome, na pasta do mod da musica e depois nos assets base, e ficam em cache.
  */
 
-#include "scenes/AllScenes.h"
+#include "scenes/api/NoteSkinCache.h"
 #include <string.h>
 #include <stdbool.h>
 #include "Game.h"
 #include "data/Song.h"
 #include "core/ModPath.h"
 #include "core/ModList.h"
-#include "scenes/menu/MenuMusic.h"
 
 #define NOTE_SKIN_MAX 16
 #define NOTE_SKIN_NAME_MAX (SONG_NAME_MAX - 1)
@@ -29,9 +28,6 @@ typedef struct {
     char texturePath[SKIN_PATH_MAX];
     char isLoaded;
 } CachedNoteSkin;
-
-Font mainFont;
-Vector2 VECTOR_ZERO;
 
 static RayAnimationHandler defaultSkin;
 static char defaultSkinLoaded;
@@ -207,24 +203,14 @@ static void Cache_UnloadCustomNoteSkins(void) {
     noteSkinCount = 0;
 }
 
-/* ------------------------------------------------------------------ */
-/* Inicio e fim do jogo                                                */
-/* ------------------------------------------------------------------ */
-
-void AllScenes_StartGame(void) {
-    VECTOR_ZERO = (Vector2) {0, 0};
-
-    MenuMusic_Init();   // faixa salva ou Alpha (assets/music/menu)
-    mainFont = LoadFontEx("assets/fonts/main.ttf", 64, 0, 0);
-
+void NoteSkinCache_Reset(void) {
     defaultSkinLoaded = 0;
-    Cache_UnloadCustomNoteSkins(); // zera o cache de skins
+    Cache_UnloadCustomNoteSkins();
 }
 
-void AllScenes_DestroyGame(void) {
+void NoteSkinCache_Free(void) {
     if (defaultSkinLoaded)
         AnimationSet_FreeAll(&defaultSkin);
 
     Cache_UnloadCustomNoteSkins();
-    UnloadFont(mainFont);
 }

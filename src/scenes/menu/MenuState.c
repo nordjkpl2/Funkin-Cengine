@@ -3,7 +3,12 @@
  * MenuState.c - menu principal: Story Mode, Freeplay, Options e Modding.
  * Os 3 primeiros sao botoes animados; "Modding" e um texto na parte de baixo.
  */
-#include "scenes/AllScenes.h"
+#include "scenes/api/FontLoader.h"
+#include "scenes/menu/MenuState.h"
+#include "scenes/menu/Freeplay.h"
+#include "scenes/menu/StoryMode.h"
+#include "scenes/menu/OptionsMenu.h"
+#include "scenes/menu/ModdingMenu.h"
 #include <math.h>
 #include "Game.h"
 #include "raymath.h"

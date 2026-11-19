@@ -3,6 +3,7 @@
  * PlayStateNoteSpawn.c - notas da musica: carregar, atualizar e desenhar.
  */
 
+#include "scenes/api/NoteSkinCache.h"
 #include "scenes/gameplay/PlayStateNoteSpawn.h"
 #include <math.h>
 #include <stdlib.h>

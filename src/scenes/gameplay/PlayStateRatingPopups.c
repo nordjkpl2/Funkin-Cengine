@@ -3,7 +3,7 @@
  * PlayStateRatingPopups.c - popup de rating do PlayState.
  */
 
-#include "scenes/AllScenes.h"
+
 #include "scenes/gameplay/PlayStateRatingPopups.h"
 #include "scenes/gameplay/PlayStateHealth.h"
 #include "GameData.h"

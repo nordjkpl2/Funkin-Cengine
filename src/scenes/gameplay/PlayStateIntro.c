@@ -3,7 +3,7 @@
  * PlayStateIntro.c - contagem regressiva (ready, set, go) do PlayState.
  */
 
-#include "scenes/AllScenes.h"
+
 #include "characters/Character.h"
 #include "scenes/gameplay/PlayStateIntro.h"
 #include "raymath.h"

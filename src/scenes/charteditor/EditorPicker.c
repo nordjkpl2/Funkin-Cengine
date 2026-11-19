@@ -1,6 +1,7 @@
 /* // * Friday Night Funkin´ c engine (c) 2026 nordjkpl */
 /* Chart Editor: lista de musicas, abrir/salvar/importar e o estado da sessao de edicao. */
-#include"scenes/AllScenes.h"
+#include "scenes/api/FontLoader.h"
+#include "scenes/menu/MenuState.h"
 #include"data/Song.h"
 #include"data/SongList.h"
 #include "core/ModPath.h"

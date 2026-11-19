@@ -1,6 +1,6 @@
 /* // * Friday Night Funkin´ c engine (c) 2026 nordjkpl */
 /* Chart Editor: tempo do chart (inicio dos trechos, cursor, janela visivel). */
-#include"scenes/AllScenes.h"
+
 #include"data/Song.h"
 #include"data/SongList.h"
 #include "core/ModPath.h"

@@ -3,7 +3,7 @@
  * PlayStatePause.c - menu de pausa do PlayState.
  */
 
-#include "scenes/AllScenes.h"
+#include "scenes/api/FontLoader.h"
 #include "scenes/gameplay/PlayStatePause.h"
 #include "scenes/gameplay/PlayStateAudio.h"
 #include "raymath.h"

@@ -1,6 +1,6 @@
 /* // * Friday Night Funkin´ c engine (c) 2026 nordjkpl */
 /* Chart Editor: audio do editor (Inst, Voices e vozes separadas andam juntos). */
-#include"scenes/AllScenes.h"
+
 #include"data/Song.h"
 #include"data/SongList.h"
 #include "core/ModPath.h"

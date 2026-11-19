@@ -155,3 +155,7 @@ LOAD [execution] init: 0.0 ms, chart: 0.5 ms, sounds: 27.9 ms, characters: 155.9
 
 --- SESSION LOG START ---
 LOAD [Astray] init: 34.1 ms, chart: 44.6 ms, sounds: 268.2 ms, characters: 321.4 ms, stage: 8.2 ms, song audio: 2.1 ms, notes: 0.3 ms, ui: 17.0 ms, warmup: 0.2 ms, (textures on main thread: 364.8 ms) total: 696.1 ms
+
+--- SESSION LOG START ---
+[WARN] Stage: imagem nao encontrada: characters/corniexpunged
+LOAD [hydromania-kooled] init: 21.0 ms, chart: 21.7 ms, sounds: 210.9 ms, characters: 349.0 ms, stage: 14.3 ms, song audio: 2.9 ms, notes: 0.9 ms, ui: 8.2 ms, warmup: 0.2 ms, (textures on main thread: 361.0 ms) total: 629.0 ms

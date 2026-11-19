@@ -3,7 +3,7 @@
  */
 
 #include "logic/notes/Note.h"
-#include "scenes/AllScenes.h"
+#include "scenes/api/NoteSkinCache.h"
 
 #include <math.h>
 #include <stdint.h>

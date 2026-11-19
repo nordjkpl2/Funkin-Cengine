@@ -3,7 +3,7 @@
  * PlayStateStrums.c - receptores (strumlines) do oponente e do BF.
  */
 
-#include "scenes/AllScenes.h"
+#include "scenes/api/FontLoader.h"
 #include "logic/notes/Note.h"
 #include "scenes/gameplay/PlayStateStrums.h"
 #include "Game.h"

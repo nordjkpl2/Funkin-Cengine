@@ -1,6 +1,8 @@
 /* // * Friday Night Funkin´ c engine (c) 2026 nordjkpl */
 /* // * Código do Chart Editor */
-#include"scenes/AllScenes.h"
+#include "scenes/api/FontLoader.h"
+#include "scenes/charteditor/ChartEditor.h"
+#include "scenes/gameplay/PlayState.h"
 #include"data/Song.h"
 #include"data/SongList.h"
 #include "core/ModPath.h"

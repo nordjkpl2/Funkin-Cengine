@@ -7,7 +7,12 @@
  * selecao muda, nunca no Draw.
  */
 
-#include "scenes/AllScenes.h"
+#include "scenes/LoadingState.h"
+#include "scenes/api/EndStartLoader.h"
+#include "scenes/api/FontLoader.h"
+#include "scenes/gameplay/PlayState.h"
+#include "scenes/menu/MenuState.h"
+#include "scenes/menu/StoryMode.h"
 #include "data/SongList.h"
 #include "scenes/menu/StoryCover.h"
 

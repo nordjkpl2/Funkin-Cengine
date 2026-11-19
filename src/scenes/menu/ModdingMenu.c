@@ -6,7 +6,10 @@
  * Input/state work is handled in Update; Draw only renders.
  */
 
-#include "scenes/AllScenes.h"
+#include "scenes/api/FontLoader.h"
+#include "scenes/charteditor/ChartEditor.h"
+#include "scenes/menu/MenuState.h"
+#include "scenes/menu/ModdingMenu.h"
 #include "data/ModImport.h"
 
 #include <math.h>

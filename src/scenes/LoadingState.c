@@ -1,5 +1,7 @@
 /* // * Friday Night Funkin´ c engine (c) 2026 nordjkpl */
-#include "scenes/AllScenes.h"
+#include "scenes/api/FontLoader.h"
+#include "scenes/gameplay/PlayState.h"
+#include "scenes/LoadingState.h"
 #include "Game.h"
 /* // * Tela de Loading pra não ter que esperar carregar charts de teste, outd 18 of10 2026 */
 

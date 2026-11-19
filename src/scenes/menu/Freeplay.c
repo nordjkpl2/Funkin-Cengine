@@ -4,7 +4,11 @@
  * A busca do icone fica em FreeplayIcon.c e so roda quando a selecao muda.
  */
 
-#include "scenes/AllScenes.h"
+#include "scenes/api/FontLoader.h"
+#include "scenes/gameplay/PlayState.h"
+#include "scenes/LoadingState.h"
+#include "scenes/menu/MenuState.h"
+#include "scenes/menu/Freeplay.h"
 #include "data/SongList.h"
 #include "scenes/menu/FreeplayIcon.h"
 #include "widgets-and-menus-ui/SearchBox.h"

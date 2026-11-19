@@ -3,7 +3,7 @@
  * PlayStateDeath.c - tela de morte do PlayState.
  */
 
-#include "scenes/AllScenes.h"
+
 #include "characters/Character.h"
 #include "scenes/gameplay/PlayStateDeath.h"
 #include "scenes/gameplay/PlayStateAudio.h"

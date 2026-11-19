@@ -1,6 +1,6 @@
 /* // * Friday Night Funkin´ c engine (c) 2026 nordjkpl */
 /* Chart Editor: listas de personagens, stages e noteskins (varredura de pastas) e as caixas ligadas a elas. */
-#include"scenes/AllScenes.h"
+#include "scenes/api/NoteSkinCache.h"
 #include"data/Song.h"
 #include"data/SongList.h"
 #include "core/ModPath.h"

@@ -1,7 +1,8 @@
 #include "headers/std.h"
 #include "headers/raylib.h" 
 #include "headers/Game.h"
-#include "headers/scenes/AllScenes.h"
+#include "scenes/api/EndStartLoader.h"
+#include "scenes/menu/EnterToPlay.h"
  
 int main() { 
 	RayGame_Start("Friday Night Funkin' Cengine");

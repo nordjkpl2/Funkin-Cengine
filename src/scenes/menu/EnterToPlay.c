@@ -4,7 +4,9 @@
  * EnterToPlay.c - title screen
  */
 
-#include "scenes/AllScenes.h"
+#include "scenes/api/FontLoader.h"
+#include "scenes/menu/MenuState.h"
+#include "scenes/menu/EnterToPlay.h"
 
 #include <math.h>
 #include <stdbool.h>

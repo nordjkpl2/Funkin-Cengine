@@ -5,7 +5,12 @@
  * a ordem de carregamento, o fluxo (saida, fim da musica) e a ligacao entre os modulos
  * por callbacks. Batida, popup de rating e personagens tem modulo proprio.
  */
-#include "scenes/AllScenes.h"
+#include "scenes/api/FontLoader.h"
+#include "scenes/api/NoteSkinCache.h"
+#include "scenes/gameplay/PlayState.h"
+#include "scenes/charteditor/ChartEditor.h"
+#include "scenes/menu/Freeplay.h"
+#include "scenes/menu/StoryMode.h"
 #include "logic/notes/Note.h"
 #include "data/Song.h"
 #include "scenes/gameplay/PlayStateStage.h"
@@ -546,7 +551,7 @@ static void PlayState_Draw([[maybe_unused]] RayScene* scene) {
 }
 
 /* ------------------------------------------------------------------ */
-/* API publica (declarada em AllScenes.h)                              */
+/* API publica (declarada no header de cada cena)                              */
 /* ------------------------------------------------------------------ */
 
 void PlayState_SetSongDir(const char* dir) {

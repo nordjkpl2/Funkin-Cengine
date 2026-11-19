@@ -1,6 +1,6 @@
 /* // * Friday Night Funkin´ c engine (c) 2026 nordjkpl */
 /* Chart Editor: dados do chart (notas, trechos, undo) e leitura/gravacao em arquivo. */
-#include"scenes/AllScenes.h"
+
 #include"data/Song.h"
 #include"data/SongList.h"
 #include "core/ModPath.h"
