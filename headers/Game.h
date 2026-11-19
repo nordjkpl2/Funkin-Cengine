@@ -30,6 +30,7 @@ int RayGame_GetTargetFPS(void);
 
 void RayGame_SetMusic(const char* path, float volume, char looping);
 void RayGame_ToggleMusic(char on);
+char RayGame_MusicFinished(void);   /* stream nao-loop que estava tocando acabou */
 void RayGame_ResetMusic();
 float RayGame_MusicVolumeLevel(void);
 int RayGame_CanvasWidth(void);

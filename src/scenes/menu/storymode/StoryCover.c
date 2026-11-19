@@ -7,7 +7,7 @@
  * So olha o mod dono da week e os assets base, sem listar pastas.
  */
 #include "Render.h"
-#include "scenes/menu/StoryCover.h"
+#include "scenes/menu/storymode/StoryCover.h"
 #include "yyjson.h"
 
 #include <ctype.h>

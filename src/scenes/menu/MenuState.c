@@ -6,9 +6,9 @@
 #include "scenes/api/FontLoader.h"
 #include "scenes/menu/MenuState.h"
 #include "scenes/menu/freeplay/Freeplay.h"
-#include "scenes/menu/StoryMode.h"
-#include "scenes/menu/OptionsMenu.h"
-#include "scenes/menu/ModdingMenu.h"
+#include "scenes/menu/storymode/StoryMode.h"
+#include "scenes/menu/options/OptionsMenu.h"
+#include "scenes/menu/modding/ModdingMenu.h"
 #include <math.h>
 #include "Game.h"
 #include "raymath.h"

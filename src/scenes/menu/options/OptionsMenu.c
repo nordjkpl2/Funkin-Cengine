@@ -4,7 +4,7 @@
  */
 #include "scenes/api/FontLoader.h"
 #include "scenes/menu/MenuState.h"
-#include "scenes/menu/OptionsMenu.h"
+#include "scenes/menu/options/OptionsMenu.h"
 #include "Game.h"
 #include "GameData.h"
 #include "raymath.h"
@@ -84,8 +84,7 @@
 #define NOTE_FLAG_W 16.0f
 #define NOTE_FLAG_H 22.0f
 
-// Aba Musica: Auto troca de faixa sozinho a cada AUTO_PERIOD segundos (so com o menu aberto).
-#define AUTO_PERIOD 6.0f
+// Aba Musica: Auto passa para a proxima faixa quando a atual termina (so com o menu aberto).
 #define MUSIC_SLOTS 65 // 64 faixas + Auto
 
 typedef enum {
@@ -198,7 +197,6 @@ static float musicLogoX;
 static const char* musicNames[MUSIC_SLOTS]; // rotulos das faixas (+ Auto no fim)
 static char autoLabel[160];                 // "Auto (faixa atual)"
 static int autoTrack;                       // faixa que o Auto esta tocando
-static float autoTimer;
 
 /* ------------------------------------------------------------------ */
 /* Texto das opcoes                                                    */
@@ -254,13 +252,12 @@ static void ApplyMusicValue(void) {
 
     if (MusicAutoOn()) {
         autoTrack = MenuMusic_SavedIndex();
-        MenuMusic_Play(autoTrack);
-        autoTimer = AUTO_PERIOD;
+        MenuMusic_Play(autoTrack, 0);
         RefreshAutoLabel();
         return;
     }
 
-    MenuMusic_Play(v);
+    MenuMusic_Play(v, 1);
     (void)snprintf(gameOptions.menuMusic, sizeof(gameOptions.menuMusic), "%s", MenuMusic_FileName(v));
 }
 
@@ -683,14 +680,11 @@ static void OptionsMenu_Update([[maybe_unused]] RayScene* scene) {
         return;
     }
 
-    if (MusicAutoOn() && MenuMusic_Count() > 0) {
-        autoTimer -= RayGame_DeltaTime();
-        if (autoTimer <= 0.0f) {
-            autoTrack = (autoTrack + 1) % MenuMusic_Count();
-            MenuMusic_Play(autoTrack);
-            autoTimer = AUTO_PERIOD;
-            RefreshAutoLabel();
-        }
+    // Auto: so avanca quando a faixa atual acaba (stream sem loop).
+    if (MusicAutoOn() && MenuMusic_Count() > 0 && RayGame_MusicFinished()) {
+        autoTrack = (autoTrack + 1) % MenuMusic_Count();
+        MenuMusic_Play(autoTrack, 0);
+        RefreshAutoLabel();
     }
 
     scrollOffset = Lerp(scrollOffset, (float)Option_VisualIndex(currentOption), RayGame_DeltaTime() * SCROLL_LERP_SPEED);

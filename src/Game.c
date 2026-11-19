@@ -196,6 +196,12 @@ void RayGame_ToggleMusic(char on)
     playingMusic = enable;
 }
 
+/* raylib para o stream sozinho quando um stream sem loop chega ao fim. */
+char RayGame_MusicFinished(void)
+{
+    return musicLoaded && playingMusic && !IsMusicStreamPlaying(gameMusic);
+}
+
 void RayGame_ResetMusic(void)
 {
     if (!musicLoaded || !audioReady)

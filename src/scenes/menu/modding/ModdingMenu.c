@@ -9,7 +9,7 @@
 #include "scenes/api/FontLoader.h"
 #include "scenes/charteditor/ChartEditor.h"
 #include "scenes/menu/MenuState.h"
-#include "scenes/menu/ModdingMenu.h"
+#include "scenes/menu/modding/ModdingMenu.h"
 #include "data/ModImport.h"
 
 #include <math.h>

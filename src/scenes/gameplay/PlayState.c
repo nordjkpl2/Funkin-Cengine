@@ -10,7 +10,7 @@
 #include "scenes/gameplay/PlayState.h"
 #include "scenes/charteditor/ChartEditor.h"
 #include "scenes/menu/freeplay/Freeplay.h"
-#include "scenes/menu/StoryMode.h"
+#include "scenes/menu/storymode/StoryMode.h"
 #include "logic/notes/Note.h"
 #include "data/Song.h"
 #include "scenes/gameplay/PlayStateStage.h"

@@ -76,14 +76,14 @@ int MenuMusic_SavedIndex(void) {
     return 0;
 }
 
-void MenuMusic_Play(int index) {
+void MenuMusic_Play(int index, char loop) {
     if (index < 0 || index >= trackCount) return;
 
     char path[256];
     (void)snprintf(path, sizeof(path), "%s/%s.ogg", MENU_MUSIC_DIR, tracks[index].file);
-    RayGame_SetMusic(path, MENU_MUSIC_VOLUME, 1);
+    RayGame_SetMusic(path, MENU_MUSIC_VOLUME, loop);
 }
 
 void MenuMusic_RestoreSaved(void) {
-    if (trackCount > 0) MenuMusic_Play(MenuMusic_SavedIndex());
+    if (trackCount > 0) MenuMusic_Play(MenuMusic_SavedIndex(), 1);
 }

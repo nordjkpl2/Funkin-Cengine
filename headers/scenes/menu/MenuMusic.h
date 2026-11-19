@@ -14,7 +14,7 @@ const char* MenuMusic_Label(int index);     /* "Titulo by Autor" */
 const char* MenuMusic_FileName(int index);  /* nome sem extensao (o que e salvo) */
 int         MenuMusic_SavedIndex(void);     /* indice da faixa salva (padrao se nao achar) */
 
-void MenuMusic_Play(int index);             /* troca a musica de menu (nao salva) */
+void MenuMusic_Play(int index, char loop);  /* troca a musica de menu (nao salva); loop=0 para o Auto avancar ao fim */
 void MenuMusic_RestoreSaved(void);          /* volta para a faixa salva */
 
 #endif
