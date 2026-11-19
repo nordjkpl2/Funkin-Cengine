@@ -55,21 +55,10 @@ typedef struct {
 /* Procura <nome>.json nos mesmos lugares do .lua. Retorna 1 se achou. */
 char Stage_FindJson(const char *stageName, const char *songDir, char out[300]);
 
-/* Le o JSON. Sempre preenche *out (padroes quando falta campo).
- * Retorna 1 se o arquivo foi lido, 0 se nao existe ou e invalido.
- */
-char Stage_LoadJson(const char *path, StageMeta *out);
-
 /* Procura <nome>.lua em <mod>/stages/, <mod>/data/stages/,
  * assets/stages/, assets/data/stages/ e songDir/.
  * Retorna 1 quando encontrado; escreve o caminho em out[300].
  */
 char Stage_FindLua(const char *stageName, const char *songDir, char out[300]);
-
-/* Faz parse do subset de Lua suportado para out[capacity]. Retorna quantidade.
- * ignoredGlitch/ignoredAnim podem ser NULL.
- */
-int Stage_ParseLua(const char *luaText, StageSprite *out, int capacity,
-                   int *ignoredGlitch, int *ignoredAnim);
 
 #endif /* STAGE_H */

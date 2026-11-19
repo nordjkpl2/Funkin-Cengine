@@ -4,6 +4,7 @@
 #define CHARACTER_H
 
 #include "Render.h"
+#include "logic/Girlfriend.h"
 #include <stdbool.h>
 
 /* Quem e o personagem: define animacoes padrao, camera e icone de reserva.
@@ -30,19 +31,11 @@ typedef struct {
     Color healthColor;
 } Character;
 
-typedef struct {
-    RayAnimatedObject object;
-    unsigned char f;         /* 0/1: qual das duas poses de danca */
-    int anims[2];
-} Girlfriend;
-
 /* Define a pasta do mod da musica (assets/mods/<mod>); chamar antes de carregar. */
 void Character_SetSongDir(const char* restrict songDir);
 
 /* Busca no mod da musica primeiro, depois em assets/. Sem arquivos, cai no bf/dad padrao. */
 void Character_Load(Character* restrict character, const char* restrict characterName, CharRole role);
-void Girlfriend_Load(Girlfriend* restrict gf, const char* restrict name);
-
 /* Dica de desempenho: acha o png que Character_Load/Girlfriend_Load vao usar e manda decodificar em
    fundo (rendering/cpu/ImagePrefetch). Chamar depois de Character_SetSongDir e antes de carregar.
    Se o palpite errar, o carregamento normal continua correto. role CHAR_GF = Girlfriend_Load. */
