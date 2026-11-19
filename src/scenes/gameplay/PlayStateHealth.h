@@ -30,6 +30,8 @@ void PlayStateHealth_SetCharacterColors(const Character* dad, const Character* b
 
 /* Soma delta (positivo ou negativo). O topo e limitado a 1; abaixo de 0 = morte (so se mortal). */
 void PlayStateHealth_Add(float delta);
+/* Perda do drain do oponente: nunca leva a vida abaixo de 0 (nao mata). */
+void PlayStateHealth_Drain(float delta);
 char PlayStateHealth_IsDead(void);
 
 /* Pulso dos icones: Bop() no beat, Update() uma vez por frame. */

@@ -138,3 +138,20 @@ LOAD [test3] init: 0.0 ms, chart: 15.9 ms, sounds: 0.6 ms, characters: 160.0 ms,
 LOAD [b] init: 0.0 ms, chart: 1.0 ms, sounds: 0.6 ms, characters: 156.9 ms, stage: 0.0 ms, song audio: 6.7 ms, notes: 0.0 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 156.2 ms) total: 165.4 ms
 LOAD [b] init: 0.0 ms, chart: 0.8 ms, sounds: 0.6 ms, characters: 151.3 ms, stage: 0.0 ms, song audio: 3.3 ms, notes: 0.0 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 150.5 ms) total: 156.2 ms
 LOAD [Singularity] init: 0.0 ms, chart: 43.5 ms, sounds: 235.5 ms, characters: 520.7 ms, stage: 10.3 ms, song audio: 2.1 ms, notes: 0.1 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 492.2 ms) total: 812.4 ms
+
+--- SESSION LOG START ---
+[WARN] Personagem 'sonic.exe' nao encontrado: usando dad padrao
+[WARN] Stage 'sonicexeStage' nao encontrado: usando stage vazio
+LOAD [you_cant_run] init: 25.2 ms, chart: 0.2 ms, sounds: 64.6 ms, characters: 105.5 ms, stage: 0.1 ms, song audio: 9.0 ms, notes: 0.1 ms, ui: 9.6 ms, warmup: 0.7 ms, (textures on main thread: 137.2 ms) total: 215.1 ms
+LOAD [execution] init: 0.0 ms, chart: 0.6 ms, sounds: 0.9 ms, characters: 159.2 ms, stage: 7.0 ms, song audio: 5.7 ms, notes: 0.0 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 164.6 ms) total: 173.6 ms
+LOAD [Crisis] init: 0.0 ms, chart: 7.3 ms, sounds: 1.1 ms, characters: 437.8 ms, stage: 17.6 ms, song audio: 1.7 ms, notes: 0.4 ms, ui: 0.0 ms, warmup: 0.1 ms, (textures on main thread: 453.5 ms) total: 466.0 ms
+
+--- SESSION LOG START ---
+[WARN] Personagem 'lse' nao encontrado: usando dad padrao
+[WARN] Stage 'studio' nao encontrado: usando stage vazio
+LOAD [test4] init: 40.3 ms, chart: 15.2 ms, sounds: 215.3 ms, characters: 67.0 ms, stage: 0.1 ms, song audio: 25.4 ms, notes: 0.1 ms, ui: 22.4 ms, warmup: 0.6 ms, (textures on main thread: 82.3 ms) total: 386.4 ms
+LOAD [b] init: 0.0 ms, chart: 0.7 ms, sounds: 0.4 ms, characters: 178.1 ms, stage: 0.0 ms, song audio: 12.6 ms, notes: 0.1 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 177.3 ms) total: 192.2 ms
+LOAD [execution] init: 0.0 ms, chart: 0.5 ms, sounds: 27.9 ms, characters: 155.9 ms, stage: 7.2 ms, song audio: 52.5 ms, notes: 0.0 ms, ui: 0.0 ms, warmup: 0.5 ms, (textures on main thread: 161.9 ms) total: 244.6 ms
+
+--- SESSION LOG START ---
+LOAD [Astray] init: 34.1 ms, chart: 44.6 ms, sounds: 268.2 ms, characters: 321.4 ms, stage: 8.2 ms, song audio: 2.1 ms, notes: 0.3 ms, ui: 17.0 ms, warmup: 0.2 ms, (textures on main thread: 364.8 ms) total: 696.1 ms

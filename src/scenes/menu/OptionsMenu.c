@@ -52,6 +52,29 @@
 #define FRAME_HEIGHT 38.0f
 #define FRAME_STROKE 6.0f
 
+// Icone de TV ao lado das opcoes de Window (Framerate ate V-SYNC); o texto dessas linhas recua para caber.
+#define TV_X 46.0f
+#define TV_W 50.0f
+#define TV_H 34.0f
+#define TV_STROKE 5.0f
+#define WINDOW_ROW_SHIFT 14.0f
+
+// Coracao com adaga cravada ao lado de "Health Drain" (esquerda da linha).
+#define HEALTH_ICON_CX 58.0f
+#define HEALTH_HEART_R 11.0f
+
+// Uma seta a esquerda de Scheme, Scroll Style e Ghost Tapping.
+#define KEY_ARROW_CX 58.0f
+#define KEY_ARROW_HALF 11.0f
+
+// Icones extras (todos na mesma coluna esquerda das linhas).
+#define EXTRA_ICON_CX 58.0f
+#define STRETCH_HALF 20.0f     // meia largura da seta dupla <-->
+#define STRETCH_HEAD 9.0f      // tamanho da ponta da seta
+#define TEXT_ICON_HALF 14.0f   // meia altura da caixa com o "T"
+#define BOP_ICON_R 7.0f        // raio de cada bolinha do Bopping
+#define KEYMON_ICON_HALF 11.0f // meia largura do quadrado do Keys Monitor
+
 // Nota musical ao lado de "[Musica]".
 #define NOTE_HEAD_RADIUS 13.0f
 #define NOTE_STEM_W 7.0f
@@ -327,13 +350,35 @@ static bool Section_HasMatch(int header) {
 
 /* Com filtro, aparecem so as opcoes (e secoes) que batem, mesmo se recolhidas.
    Sem filtro: cabecalhos sempre; opcoes somem quando a secao esta recolhida. */
-static bool Option_IsVisible(int i) {
+static bool Option_ComputeVisible(int i) {
     const bool filtering = SearchBox_HasFilter(&search);
     if (options[i].type == OPTION_VALUE_HEADER)
         return !filtering || Section_HasMatch(i);
     if (filtering)
         return SearchBox_Match(&search, options[i].text);
     return !options[options[i].header].collapsed;
+}
+
+/* Cache do layout: so recalcula quando o filtro muda ou uma secao abre/fecha (layoutDirty). */
+static bool layoutDirty = true;
+static bool visibleCache[OPTION_COUNT];
+static int visualRowCache[OPTION_COUNT]; // linhas visiveis antes de cada opcao
+
+static void Layout_Refresh(void) {
+    if (!layoutDirty) return;
+
+    int row = 0;
+    for (int i = 0; i < OPTION_COUNT; i++) {
+        visibleCache[i] = Option_ComputeVisible(i);
+        visualRowCache[i] = row;
+        if (visibleCache[i]) row++;
+    }
+    layoutDirty = false;
+}
+
+static bool Option_IsVisible(int i) {
+    Layout_Refresh();
+    return visibleCache[i];
 }
 
 /* Cabecalhos sao selecionaveis (para abrir/recolher); opcoes, so se visiveis e ativas. */
@@ -344,10 +389,8 @@ static bool Option_IsSelectable(int i) {
 
 /* Posicao da opcao na tela, em linhas (ignora as recolhidas). */
 static int Option_VisualIndex(int index) {
-    int visual = 0;
-    for (int i = 0; i < index; i++)
-        if (Option_IsVisible(i)) visual++;
-    return visual;
+    Layout_Refresh();
+    return visualRowCache[index];
 }
 
 /* Anda para a proxima linha selecionavel. */
@@ -555,6 +598,7 @@ static void OptionsMenu_Create([[maybe_unused]] RayScene* scene) {
     SearchBox_SetCompact(&search, true);
 
     // Cada opcao guarda o cabecalho da sua secao; todas as secoes comecam abertas.
+    layoutDirty = true;
     int header = 0;
     for (int i = 0; i < OPTION_COUNT; i++) {
         if (options[i].type == OPTION_VALUE_HEADER) header = i;
@@ -622,8 +666,11 @@ static void OptionsMenu_Update([[maybe_unused]] RayScene* scene) {
 
     // Lupa: le o clique nela e, com o campo aberto, o teclado (Esc/Backspace nao saem da cena).
     const bool typing = SearchBox_Focused(&search);
-    if (SearchBox_Update(&search) && !Option_IsSelectable(currentOption))
-        MoveSelection(1);                 // filtro mudou: garante uma linha selecionavel
+    if (SearchBox_Update(&search)) {
+        layoutDirty = true;               // filtro mudou: refaz o layout
+        if (!Option_IsSelectable(currentOption))
+            MoveSelection(1);             // garante uma linha selecionavel
+    }
     if (typing || SearchBox_Focused(&search))
         return;
 
@@ -658,6 +705,7 @@ static void OptionsMenu_Update([[maybe_unused]] RayScene* scene) {
         }
         else if (cur->type == OPTION_VALUE_HEADER) {
             cur->collapsed = !cur->collapsed;
+            layoutDirty = true;
         }
         else if (currentOption == OPTION_KEYBOARD_SCHEME && (int)cur->value == SCHEME_CUSTOM) {
             Capture_Begin();
@@ -814,6 +862,147 @@ static void DrawChevron(float rowY, bool collapsed, Color fill, Color shadow) {
     }
 }
 
+/* TV (retangulo com antenas), com a mesma sombra do texto. */
+static void DrawTvIcon(float rowY, Color fill, Color shadow) {
+    const float cy = rowY + ROW_FONT_SIZE * 0.5f;
+
+    for (int pass = 0; pass < 2; pass++) {
+        const Color color = pass == 0 ? shadow : fill;
+        const float shift = pass == 0 ? TEXT_SHADOW : 0.0f;
+        const float left = TV_X + shift;
+        const float top = cy - TV_H * 0.5f + shift;
+        const float cx = left + TV_W * 0.5f;
+
+        DrawLineEx((Vector2) {cx - 6.0f, top}, (Vector2) {cx - 14.0f, top - 12.0f}, TV_STROKE * 0.6f, color);
+        DrawLineEx((Vector2) {cx + 6.0f, top}, (Vector2) {cx + 14.0f, top - 12.0f}, TV_STROKE * 0.6f, color);
+        DrawRectangleLinesEx((Rectangle) {left, top, TV_W, TV_H}, TV_STROKE, color);
+    }
+}
+
+/* Triangulo preenchido, independente da ordem dos vertices (DrawTriangle exige um sentido). */
+static void FillTriangle(Vector2 a, Vector2 b, Vector2 c, Color color) {
+    const float cross = (b.x - a.x) * (c.y - a.y) - (c.x - a.x) * (b.y - a.y);
+    if (cross > 0.0f) {   // DrawTriangle do raylib so desenha no sentido oposto ao que ficava invisivel
+        const Vector2 t = b;
+        b = c;
+        c = t;
+    }
+    DrawTriangle(a, b, c, color);
+}
+
+/* Coracao: curva parametrica classica, preenchida em leque a partir do centro. r = meia largura. */
+static void DrawHeart(float cx, float cy, float r, Color color) {
+    enum { HEART_SEGMENTS = 32 };
+    static Vector2 unit[HEART_SEGMENTS]; // contorno normalizado (largura ~32), calculado uma vez
+    static bool unitReady;
+
+    if (!unitReady) {
+        for (int i = 0; i < HEART_SEGMENTS; i++) {
+            const float t = 2.0f * PI * (float)i / (float)HEART_SEGMENTS;
+            const float s = sinf(t);
+            const float x = 16.0f * s * s * s;
+            const float y = 13.0f * cosf(t) - 5.0f * cosf(2.0f * t) - 2.0f * cosf(3.0f * t) - cosf(4.0f * t);
+            unit[i] = (Vector2) {x, -(y + 2.5f)}; // +2.5 centraliza verticalmente
+        }
+        unitReady = true;
+    }
+
+    const float scale = r / 9.0f;
+    Vector2 pts[HEART_SEGMENTS];
+    for (int i = 0; i < HEART_SEGMENTS; i++)
+        pts[i] = (Vector2) {cx + unit[i].x * scale, cy + unit[i].y * scale};
+
+    for (int i = 0; i < HEART_SEGMENTS; i++)
+        FillTriangle((Vector2) {cx, cy}, pts[i], pts[(i + 1) % HEART_SEGMENTS], color);
+}
+
+/* Adaga na vertical: ponta para baixo, cruzando o coracao (cx, cy = centro da lamina). */
+static void DrawDagger(float cx, float cy, Color color) {
+    FillTriangle((Vector2) {cx - 5.0f, cy - 8.0f}, (Vector2) {cx + 5.0f, cy - 8.0f}, (Vector2) {cx, cy + 12.0f}, color); // lamina
+    DrawRectangleRec((Rectangle) {cx - 12.0f, cy - 13.0f, 24.0f, 5.0f}, color);  // guarda
+    DrawRectangleRec((Rectangle) {cx - 3.0f, cy - 19.0f, 6.0f, 7.0f}, color);    // cabo
+    DrawCircleV((Vector2) {cx, cy - 22.0f}, 4.0f, color);                       // pomo
+}
+
+/* Coracao com adaga cravada, com a mesma sombra do texto. */
+static void DrawHealthIcons(float rowY, Color fill, Color shadow) {
+    const float cy = rowY + ROW_FONT_SIZE * 0.5f;
+
+    for (int pass = 0; pass < 2; pass++) {
+        const Color color = pass == 0 ? shadow : fill;
+        const float shift = pass == 0 ? TEXT_SHADOW : 0.0f;
+        const float cx = HEALTH_ICON_CX + shift;
+
+        DrawHeart(cx, cy + 3.0f + shift, HEALTH_HEART_R, color);
+        DrawDagger(cx, cy + shift, color);
+    }
+}
+
+/* Uma seta (triangulo apontando para a direita), com a mesma sombra do texto. */
+static void DrawKeyArrow(float rowY, Color fill, Color shadow) {
+    const float cy = rowY + ROW_FONT_SIZE * 0.5f;
+    const float s = KEY_ARROW_HALF;
+
+    for (int pass = 0; pass < 2; pass++) {
+        const Color color = pass == 0 ? shadow : fill;
+        const float shift = pass == 0 ? TEXT_SHADOW : 0.0f;
+        const float cx = KEY_ARROW_CX + shift;
+        const float y = cy + shift;
+
+        FillTriangle((Vector2) {cx - s * 0.5f, y - s}, (Vector2) {cx - s * 0.5f, y + s}, (Vector2) {cx + s * 0.8f, y}, color);
+    }
+}
+
+/* Seta dupla <-->, para Stretch. */
+static void DrawStretchIcon(float cx, float cy, Color color) {
+    const float h = STRETCH_HALF;
+    const float head = STRETCH_HEAD;
+
+    DrawRoundLine((Vector2) {cx - h, cy}, (Vector2) {cx + h, cy}, color);
+    FillTriangle((Vector2) {cx - h - 4.0f, cy}, (Vector2) {cx - h + head, cy - head * 0.7f}, (Vector2) {cx - h + head, cy + head * 0.7f}, color);
+    FillTriangle((Vector2) {cx + h + 4.0f, cy}, (Vector2) {cx + h - head, cy - head * 0.7f}, (Vector2) {cx + h - head, cy + head * 0.7f}, color);
+}
+
+/* Caixa com um "T" dentro, para as opcoes de texto (Show Score / Score Position). */
+static void DrawTextIcon(float cx, float cy, Color color) {
+    const float h = TEXT_ICON_HALF;
+    DrawRectangleLinesEx((Rectangle) {cx - h, cy - h, h * 2.0f, h * 2.0f}, 4.0f, color);
+    DrawTextEx(mainFont, "T", (Vector2) {cx - 8.0f, cy - 17.0f}, 34, 0.0f, color);
+}
+
+/* Duas bolinhas, uma um pouco mais alta que a outra (Bopping Icons). */
+static void DrawBopIcon(float cx, float cy, Color color) {
+    DrawCircleV((Vector2) {cx - 9.0f, cy + 3.0f}, BOP_ICON_R, color);
+    DrawCircleV((Vector2) {cx + 9.0f, cy - 3.0f}, BOP_ICON_R, color);
+}
+
+/* Quadrado, para Keys Monitor. */
+static void DrawSquareIcon(float cx, float cy, Color color) {
+    const float h = KEYMON_ICON_HALF;
+    DrawRectangleLinesEx((Rectangle) {cx - h, cy - h, h * 2.0f, h * 2.0f}, 5.0f, color);
+}
+
+/* Icone da linha (so para as opcoes que tem), com a mesma sombra do texto. */
+static void DrawExtraIcon(int i, float rowY, Color fill, Color shadow) {
+    const float cy = rowY + ROW_FONT_SIZE * 0.5f;
+
+    for (int pass = 0; pass < 2; pass++) {
+        const Color color = pass == 0 ? shadow : fill;
+        const float shift = pass == 0 ? TEXT_SHADOW : 0.0f;
+        const float cx = EXTRA_ICON_CX + shift;
+        const float y = cy + shift;
+
+        switch (i) {
+            case OPTION_FILL_SCREEN:    DrawStretchIcon(cx, y, color); break;
+            case OPTION_SHOW_SCORE:
+            case OPTION_SCORE_POSITION: DrawTextIcon(cx, y, color); break;
+            case OPTION_BOPPING_ICONS:  DrawBopIcon(cx, y, color); break;
+            case OPTION_STRUM_MOBILE:   DrawSquareIcon(cx, y, color); break;
+            default: return;
+        }
+    }
+}
+
 static void OptionsMenu_Draw([[maybe_unused]] RayScene* scene) {
     Render_SetCamera(&cam);
     Render_DrawGraphicObject(&bg);
@@ -865,7 +1054,19 @@ static void OptionsMenu_Draw([[maybe_unused]] RayScene* scene) {
         fill.a = selected ? 255 : 150;
         shadow.a = selected ? 255 : 100;
 
-        DrawOptionText(o->cachedText, ROW_X, drawY, ROW_FONT_SIZE, fill, shadow);
+        // Framerate ate V-SYNC (secao Window): icone de TV e texto recuado.
+        const bool inWindow = i >= OPTION_FPS && i <= OPTION_VSYNC;
+        const float textX = inWindow ? ROW_X - WINDOW_ROW_SHIFT : ROW_X;
+        DrawOptionText(o->cachedText, textX, drawY, ROW_FONT_SIZE, fill, shadow);
+        if (inWindow) DrawTvIcon(drawY, fill, shadow);
+
+        const bool isHealthDrain = i == OPTION_HEALTH_DRAIN_PLAY || i == OPTION_HEALTH_DRAIN_BOTPLAY;
+        if (isHealthDrain) DrawHealthIcons(drawY, fill, shadow);
+
+        const bool hasKeyArrows = i == OPTION_KEYBOARD_SCHEME || i == OPTION_SCROLL_STYLE || i == OPTION_GHOST;
+        if (hasKeyArrows) DrawKeyArrow(drawY, fill, shadow);
+
+        DrawExtraIcon(i, drawY, fill, shadow);
     }
 
     if (currentOption == OPTION_KEYBOARD_SCHEME && (int)options[OPTION_KEYBOARD_SCHEME].value == SCHEME_CUSTOM)

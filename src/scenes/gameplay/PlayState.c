@@ -81,7 +81,7 @@ static const char* OpponentName(void) {
 
 static void Event_OpponentHit(Note* note) {
     if (oppDrain > 0.0f)
-        PlayStateHealth_Add(-oppDrain);
+        PlayStateHealth_Drain(oppDrain);   // drain nunca mata: para em 0
     PlayStateAnimations_OpponentHit(note->id);
     PlayStateStrums_ConfirmDad(note->id);
 }

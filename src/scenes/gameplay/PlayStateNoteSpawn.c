@@ -132,12 +132,21 @@ static void DrawSustainFull(char fullyAbove) {
 /* Sustain em andamento: corta a parte que ja passou do receptor. */
 static void DrawSustainClipped(const StrumNote* strum, float k) {
     const float receptorY = strum->object.position.y + trailOffset.y * k;
-    const float trailBottom = trail.position.y + trail.scaleY * TRAIL_SEGMENT_H;
 
     if (gameOptions.scroll == 1) {
+        // Downscroll: a cauda fica acima da cabeca; o que ja passou do receptor (abaixo dele) some.
+        const float trailBottom = trail.position.y + trail.scaleY * TRAIL_SEGMENT_H;
         if (trailBottom > receptorY)
             trail.scaleY = fmaxf(0.0f, (receptorY - trail.position.y) / TRAIL_SEGMENT_H);
-    } else if (trail.position.y < receptorY) {
+        if (trail.scaleY > 0.0f)
+            Render_DrawAnimatedObject(&trail);
+        if (end.position.y < receptorY)
+            Render_DrawAnimatedObject(&end);
+        return;
+    }
+
+    const float trailBottom = trail.position.y + trail.scaleY * TRAIL_SEGMENT_H;
+    if (trail.position.y < receptorY) {
         trail.scaleY = fmaxf(0.0f, (trailBottom - receptorY) / TRAIL_SEGMENT_H);
         trail.position.y = receptorY;
     }
@@ -183,18 +192,28 @@ static void DrawSustain(const Note* note, const StrumNote* strum, float endHeigh
     // Middlescroll: sustain do oponente acompanha a escala menor do receptor.
     const float k = (gameOptions.scroll == 2 && !note->mustHit) ? (0.4f / NOTE_SCALE) : 1.0f;
 
+    const float lengthPx = scrollSpeed * note->length;
+    const float headY = renderNote.position.y + trailOffset.y * k;
+
     SetAnimIfChanged(&trail, Note_TrailAnimation(note->id));
     trail.scaleX = end.scaleX = NOTE_SCALE * k;
     trail.position.x = strum->object.position.x + trailOffset.x * k;
-    trail.position.y = renderNote.position.y + trailOffset.y * k;
-    trail.scaleY = fmaxf(0.01f, (scrollSpeed * note->length - endHeight) / TRAIL_SEGMENT_H);
+    trail.scaleY = fmaxf(0.01f, (lengthPx - endHeight) / TRAIL_SEGMENT_H);
     trail.color = normalColor;
 
     SetAnimIfChanged(&end, Note_EndAnimation(note->id));
     end.position.x = trail.position.x;
-    end.position.y = trail.position.y + trail.scaleY * TRAIL_SEGMENT_H;
     end.scaleY = endHeight / END_SEGMENT_H;
     end.color = normalColor;
+
+    // Cauda vai no sentido do futuro: para baixo no normal, para cima no downscroll.
+    if (gameOptions.scroll == 1) {
+        end.position.y = headY - lengthPx;
+        trail.position.y = end.position.y + endHeight;
+    } else {
+        trail.position.y = headY;
+        end.position.y = trail.position.y + trail.scaleY * TRAIL_SEGMENT_H;
+    }
 
     if (note->missed) {
         trail.color = end.color = missedColor;

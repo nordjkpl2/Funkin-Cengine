@@ -57,6 +57,13 @@ void PlayStateHealth_Add(float delta) {
     health = h > 1.0f ? 1.0f : (h < minHealth ? minHealth : h);
 }
 
+/* Drain do oponente: desce no maximo ate 0, sem matar o player (misses ainda podem matar). */
+void PlayStateHealth_Drain(float delta) {
+    const float h = health - delta;
+    if (h >= 0.0f) health = h;
+    else if (health > 0.0f) health = 0.0f;
+}
+
 char PlayStateHealth_IsDead(void) {
     return health < 0;
 }
