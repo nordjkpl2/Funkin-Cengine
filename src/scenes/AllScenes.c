@@ -13,6 +13,7 @@
 #include "data/Song.h"
 #include "core/ModPath.h"
 #include "core/ModList.h"
+#include "scenes/menu/MenuMusic.h"
 
 #define NOTE_SKIN_MAX 16
 #define NOTE_SKIN_NAME_MAX (SONG_NAME_MAX - 1)
@@ -213,8 +214,7 @@ static void Cache_UnloadCustomNoteSkins(void) {
 void AllScenes_StartGame(void) {
     VECTOR_ZERO = (Vector2) {0, 0};
 
-    RayGame_SetMusic("assets/music/freakyMenu.ogg", 0.3f, 1);
-    RayGame_ToggleMusic(1);
+    MenuMusic_Init();   // faixa salva ou Alpha (assets/music/menu)
     mainFont = LoadFontEx("assets/fonts/main.ttf", 64, 0, 0);
 
     defaultSkinLoaded = 0;

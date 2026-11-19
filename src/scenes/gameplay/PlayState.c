@@ -495,6 +495,7 @@ static void DrawWorld(float dt) {
 }
 
 static void DrawHud(float dt) {
+    PlayStateStrums_DrawBackdrop();
     PlayStateStrums_Draw();
 
     const PlayStateNoteView view = NoteView();

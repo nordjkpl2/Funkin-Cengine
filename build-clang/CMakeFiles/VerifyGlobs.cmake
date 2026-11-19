@@ -148,6 +148,7 @@ set(OLD_GLOB
   "D:/dev/funkin c/src/scenes/menu/EnterToPlay.c"
   "D:/dev/funkin c/src/scenes/menu/Freeplay.c"
   "D:/dev/funkin c/src/scenes/menu/FreeplayIcon.c"
+  "D:/dev/funkin c/src/scenes/menu/MenuMusic.c"
   "D:/dev/funkin c/src/scenes/menu/MenuState.c"
   "D:/dev/funkin c/src/scenes/menu/ModdingMenu.c"
   "D:/dev/funkin c/src/scenes/menu/OptionsMenu.c"

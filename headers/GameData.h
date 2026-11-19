@@ -5,14 +5,19 @@
 
 #include "raylib.h"
 
+#define MENU_MUSIC_NAME_MAX 64
+
 /* Opcoes do jogador (salvas em assets/save.data). Para criar uma opcao nova:
    campo aqui, valor padrao em GameData_Defaults() e leitura/escrita em GameData.c. */
 typedef struct GameOptions {
+    char menuMusic[MENU_MUSIC_NAME_MAX]; /* faixa de menu escolhida (nome sem extensao); vazio = padrao */
     char showScore, bopIcons, vsync, fillScreen;
     char botplay, ghost, scroll, hitSound, showFps;
     char scorePosition; /* SCORE_POS_CENGINE ou SCORE_POS_PSYCH */
     char healthDrainPlay;     /* oponente acerta -> perde vida no jogo normal (padrao: off) */
     char healthDrainBotplay;  /* botplay ganha/perde vida como o jogador (padrao: off; off = barra travada) */
+    char strumBgPercent;      /* fundo preto atras dos receptores: 0 = off, 10..100 = opacidade em % */
+    char strumMobileVisible;  /* 1 = tela dividida em 4 colunas com as cores das notas */
     int scheme, fps;
     int threadLimit; /* 0 = Auto (nucleos - 1); >0 = limite de threads de fundo (1..64) */
     float zoomFactorUI, zoomFactorGAME;

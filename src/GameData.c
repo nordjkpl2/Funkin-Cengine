@@ -25,7 +25,7 @@ int game_scheme_keys[SCHEME_COUNT][4] = {
 
 static FILE* saveFile;
 
-#define SAVE_VERSION 10  /* 10: + healthDrainPlay e healthDrainBotplay (apos scorePosition); 9: + scorePosition (apos threadLimit); 8: + lista de mods desativados; 7: + threadLimit (no fim); 6: + hitSound e as 4 teclas do esquema Custom. v7 e v8 ainda sao lidos. */
+#define SAVE_VERSION 12  /* 12: + strumBgPercent e strumMobileVisible (no fim); 11: + menuMusic (no fim, apos as mods); 10: + healthDrainPlay e healthDrainBotplay (apos scorePosition); 9: + scorePosition (apos threadLimit); 8: + lista de mods desativados; 7: + threadLimit (no fim); 6: + hitSound e as 4 teclas do esquema Custom. v7 e v8 ainda sao lidos. */
 
 static void GameData_Defaults(void) {
     game_scheme_keys[SCHEME_CUSTOM][0] = KEY_LEFT;
@@ -50,6 +50,8 @@ static void GameData_Checks(void) {
     if(gameOptions.hitSound < 0 || gameOptions.hitSound > 1) IERR
     if(gameOptions.showFps < 0 || gameOptions.showFps > 1) IERR
     if(gameOptions.scorePosition < SCORE_POS_CENGINE || gameOptions.scorePosition > SCORE_POS_PSYCH) IERR
+    if(gameOptions.strumBgPercent < 0 || gameOptions.strumBgPercent > 100) IERR
+    if(gameOptions.strumMobileVisible < 0 || gameOptions.strumMobileVisible > 1) IERR
     for(int k = 0; k < 4; k++)
         if(game_scheme_keys[SCHEME_CUSTOM][k] <= 0) IERR
 }
@@ -101,6 +103,17 @@ void GameData_Start(void) {
         READ(char, gameDisabledModCount * MOD_NAME_MAX, gameDisabledMods[0][0])
         for(int i = 0; i < gameDisabledModCount; i++) gameDisabledMods[i][MOD_NAME_MAX - 1] = 0;
     }
+    gameOptions.menuMusic[0] = 0;   /* saves antigos (< v11): padrao */
+    if(version >= 11) {
+        READ(char, MENU_MUSIC_NAME_MAX, gameOptions.menuMusic[0])
+        gameOptions.menuMusic[MENU_MUSIC_NAME_MAX - 1] = 0;
+    }
+    gameOptions.strumBgPercent = 0;      /* saves antigos (< v12): padrao */
+    gameOptions.strumMobileVisible = 0;
+    if(version >= 12) {
+        SREAD(char, gameOptions.strumBgPercent)
+        SREAD(char, gameOptions.strumMobileVisible)
+    }
 
     GameData_Checks();
 }
@@ -130,6 +143,9 @@ void GameData_Flush(void) {
     SWRITE(char, gameOptions.healthDrainBotplay)
     SWRITE(int,  gameDisabledModCount)
     WRITE(char, gameDisabledModCount * MOD_NAME_MAX, gameDisabledMods[0][0])
+    WRITE(char, MENU_MUSIC_NAME_MAX, gameOptions.menuMusic[0])
+    SWRITE(char, gameOptions.strumBgPercent)
+    SWRITE(char, gameOptions.strumMobileVisible)
 }
 
 void GameData_Stop(void) {

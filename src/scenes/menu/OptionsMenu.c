@@ -9,6 +9,7 @@
 #include "threads/Thread.h"
 #include "threads/cpu/Jobs.h"
 #include "widgets-and-menus-ui/SearchBox.h"
+#include "scenes/menu/MenuMusic.h"
 #include <stdio.h>
 
 #define SCREEN_H 720.0f
@@ -51,6 +52,17 @@
 #define FRAME_HEIGHT 38.0f
 #define FRAME_STROKE 6.0f
 
+// Nota musical ao lado de "[Musica]".
+#define NOTE_HEAD_RADIUS 13.0f
+#define NOTE_STEM_W 7.0f
+#define NOTE_STEM_H 56.0f
+#define NOTE_FLAG_W 16.0f
+#define NOTE_FLAG_H 22.0f
+
+// Aba Musica: Auto troca de faixa sozinho a cada AUTO_PERIOD segundos (so com o menu aberto).
+#define AUTO_PERIOD 6.0f
+#define MUSIC_SLOTS 65 // 64 faixas + Auto
+
 typedef enum {
     OPTION_VALUE_INT,
     OPTION_VALUE_FLOAT,
@@ -91,12 +103,16 @@ typedef enum {
     OPTION_SHOW_SCORE,
     OPTION_SCORE_POSITION,
     OPTION_BOPPING_ICONS,
+    OPTION_STRUM_BG,
+    OPTION_STRUM_MOBILE,
     OPTION_ZOOMFACTOR_UI,
     OPTION_ZOOMFACTOR_GAME,
     OPTION_HEADER_OTHER,
     OPTION_FILL_SCREEN,
     OPTION_BOTPLAY,
     OPTION_HEALTH_DRAIN_BOTPLAY,
+    OPTION_HEADER_MUSIC,
+    OPTION_MENU_MUSIC,
     OPTION_COUNT
 } OptionOrder;
 
@@ -104,6 +120,7 @@ static const char* ghost_names[3] = {"On", "50/50", "Off"};
 static const char* scroll_names[3] = {"Normal", "Downscroll", "Middlescroll"};
 static const char* thread_names[2] = {"Auto", "Limited"};
 static const char* score_position_names[2] = {"Cengine", "Psych"};
+static const char* strum_bg_names[11] = {"Off", "10%", "20%", "30%", "40%", "50%", "60%", "70%", "80%", "90%", "100%"};
 
 #define THREADS_MAX JOBS_MAX_THREADS
 static int limitedThreads = 2; // ultimo numero usado no modo Limited (volta ao alternar)
@@ -132,12 +149,16 @@ static Option options[OPTION_COUNT] = {
     [OPTION_SHOW_SCORE] = {.text = "Show Score", .type = OPTION_VALUE_BOOL},
     [OPTION_SCORE_POSITION] = {.text = "Score Position", .type = OPTION_VALUE_LIST, .options = score_position_names, .step = 1, .max = 1, .min = 0},
     [OPTION_BOPPING_ICONS] = {.text = "Bopping Icons", .type = OPTION_VALUE_BOOL},
+    [OPTION_STRUM_BG] = {.text = "Strumline Background", .type = OPTION_VALUE_LIST, .options = strum_bg_names, .step = 1, .min = 0, .max = 10},
+    [OPTION_STRUM_MOBILE] = {.text = "Strumline Mobile Visible", .type = OPTION_VALUE_BOOL},
     [OPTION_ZOOMFACTOR_UI] = {.text = "UI beat zoom", .type = OPTION_VALUE_FLOAT, .max = 3, .min = 0, .step = 0.1f, .altStep = 1},
     [OPTION_ZOOMFACTOR_GAME] = {.text = "Game beat zoom", .type = OPTION_VALUE_FLOAT, .max = 3, .min = 0, .step = 0.1f, .altStep = 1},
     [OPTION_HEADER_OTHER] = {.text = "[Other]", .type = OPTION_VALUE_HEADER},
     [OPTION_FILL_SCREEN] = {.text = "Stretch", .type = OPTION_VALUE_BOOL},
     [OPTION_BOTPLAY] = {.text = "Botplay", .type = OPTION_VALUE_BOOL},
     [OPTION_HEALTH_DRAIN_BOTPLAY] = {.text = "Health Drain (Botplay)", .type = OPTION_VALUE_BOOL},
+    [OPTION_HEADER_MUSIC] = {.text = "[Musica]", .type = OPTION_VALUE_HEADER},
+    [OPTION_MENU_MUSIC] = {.text = "Track", .type = OPTION_VALUE_LIST, .step = 1, .min = 0}, // options/max: Create
 };
 
 static float scrollOffset; // posicao suavizada da lista (em linhas)
@@ -148,6 +169,11 @@ static float visualLogoX;
 static int currentOption = OPTION_FPS; // comeca na primeira opcao, nao no cabecalho
 static Camera2D cam;
 static RayGraphicObject bg;
+static float musicLogoX;
+static const char* musicNames[MUSIC_SLOTS]; // rotulos das faixas (+ Auto no fim)
+static char autoLabel[160];                 // "Auto (faixa atual)"
+static int autoTrack;                       // faixa que o Auto esta tocando
+static float autoTimer;
 
 /* ------------------------------------------------------------------ */
 /* Texto das opcoes                                                    */
@@ -182,6 +208,37 @@ static void Option_RebuildText(Option* o) {
 /* Aplicar mudancas de valor                                           */
 /* ------------------------------------------------------------------ */
 
+/* ---- Aba Musica ---- */
+
+static bool MusicAutoOn(void) {
+    return (int)options[OPTION_MENU_MUSIC].value >= MenuMusic_Count();
+}
+
+/* Rotulo do Auto mostra a faixa que esta tocando. */
+static void RefreshAutoLabel(void) {
+    if (MenuMusic_Count() > 0)
+        (void)snprintf(autoLabel, sizeof(autoLabel), "Auto (%s)", MenuMusic_Label(autoTrack));
+    else
+        (void)snprintf(autoLabel, sizeof(autoLabel), "Auto");
+    options[OPTION_MENU_MUSIC].dirty = true;
+}
+
+/* Escolha mudou: toca a faixa (ou entra no Auto) e guarda a faixa escolhida. */
+static void ApplyMusicValue(void) {
+    const int v = (int)options[OPTION_MENU_MUSIC].value;
+
+    if (MusicAutoOn()) {
+        autoTrack = MenuMusic_SavedIndex();
+        MenuMusic_Play(autoTrack);
+        autoTimer = AUTO_PERIOD;
+        RefreshAutoLabel();
+        return;
+    }
+
+    MenuMusic_Play(v);
+    (void)snprintf(gameOptions.menuMusic, sizeof(gameOptions.menuMusic), "%s", MenuMusic_FileName(v));
+}
+
 /* Valor numerico/lista mudou: limita, aplica no jogo e refaz o texto. */
 static void ApplyNumValue(void) {
     Option* o = options + currentOption;
@@ -203,6 +260,8 @@ static void ApplyNumValue(void) {
         case OPTION_ZOOMFACTOR_GAME:   gameOptions.zoomFactorGAME = o->value; break;
         case OPTION_ZOOMFACTOR_UI:     gameOptions.zoomFactorUI = o->value; break;
         case OPTION_SCORE_POSITION:    gameOptions.scorePosition = (char)(int)o->value; break;
+        case OPTION_STRUM_BG:          gameOptions.strumBgPercent = (char)((int)o->value * 10); break;
+        case OPTION_MENU_MUSIC:        ApplyMusicValue(); break;
     }
 
     Option_RebuildText(o);
@@ -237,6 +296,7 @@ static void ApplyBoolValue(void) {
             options[OPTION_SCORE_POSITION].dirty = true;
             break;
         case OPTION_BOPPING_ICONS: gameOptions.bopIcons = on; break;
+        case OPTION_STRUM_MOBILE:  gameOptions.strumMobileVisible = on; break;
         case OPTION_FILL_SCREEN:   gameOptions.fillScreen = on; break;
         case OPTION_BOTPLAY:       gameOptions.botplay = on; break;
         case OPTION_HITSOUND:      gameOptions.hitSound = on; break;
@@ -473,26 +533,26 @@ static void ThreadsScreen_Draw(void) {
 /* Cena                                                                */
 /* ------------------------------------------------------------------ */
 
+/* X do logo ao lado de um cabecalho: logo depois do fim do texto (medido uma vez no Create). */
+static float LogoXAfterHeader(int header) {
+    const Vector2 size = MeasureTextEx(mainFont, options[header].text, HEADER_FONT_SIZE, TEXT_SPACING);
+    return HEADER_X - TEXT_SHADOW + size.x + LOGO_MARGIN;
+}
+
 static void OptionsMenu_Create([[maybe_unused]] RayScene* scene) {
     Render_DefaultRGT(&bg);
     bg.objType = RGT_IMAGE;
     bg.image = Render_LoadTexture("assets/images/freeplay/menuBGBlue.png");
     Render_DefaultCamera(&cam);
 
-    const Vector2 headerSize = MeasureTextEx(mainFont, options[OPTION_HEADER_WINDOW].text, HEADER_FONT_SIZE, TEXT_SPACING);
-    windowLogoX = HEADER_X - TEXT_SHADOW + headerSize.x + LOGO_MARGIN;
+    windowLogoX = LogoXAfterHeader(OPTION_HEADER_WINDOW);
+    otherLogoX = LogoXAfterHeader(OPTION_HEADER_OTHER);
+    gameplayLogoX = LogoXAfterHeader(OPTION_HEADER_GAMEPLAY);
+    visualLogoX = LogoXAfterHeader(OPTION_HEADER_VISUAL);
+    musicLogoX = LogoXAfterHeader(OPTION_HEADER_MUSIC);
 
     SearchBox_Init(&search, (Rectangle) {SEARCH_X, SEARCH_Y, SEARCH_W, SEARCH_H});
     SearchBox_SetCompact(&search, true);
-
-    const Vector2 otherSize = MeasureTextEx(mainFont, options[OPTION_HEADER_OTHER].text, HEADER_FONT_SIZE, TEXT_SPACING);
-    otherLogoX = HEADER_X - TEXT_SHADOW + otherSize.x + LOGO_MARGIN;
-
-    const Vector2 gameplaySize = MeasureTextEx(mainFont, options[OPTION_HEADER_GAMEPLAY].text, HEADER_FONT_SIZE, TEXT_SPACING);
-    gameplayLogoX = HEADER_X - TEXT_SHADOW + gameplaySize.x + LOGO_MARGIN;
-
-    const Vector2 visualSize = MeasureTextEx(mainFont, options[OPTION_HEADER_VISUAL].text, HEADER_FONT_SIZE, TEXT_SPACING);
-    visualLogoX = HEADER_X - TEXT_SHADOW + visualSize.x + LOGO_MARGIN;
 
     // Cada opcao guarda o cabecalho da sua secao; todas as secoes comecam abertas.
     int header = 0;
@@ -517,6 +577,8 @@ static void OptionsMenu_Create([[maybe_unused]] RayScene* scene) {
     options[OPTION_SCORE_POSITION].value = gameOptions.scorePosition;
     options[OPTION_SCORE_POSITION].active = gameOptions.showScore;
     options[OPTION_BOPPING_ICONS].value = gameOptions.bopIcons;
+    options[OPTION_STRUM_BG].value = gameOptions.strumBgPercent / 10;
+    options[OPTION_STRUM_MOBILE].value = gameOptions.strumMobileVisible;
     options[OPTION_VSYNC].value = gameOptions.vsync;
     if (gameOptions.threadLimit > 0) limitedThreads = gameOptions.threadLimit;
     options[OPTION_THREADS].value = gameOptions.threadLimit > 0;
@@ -530,6 +592,16 @@ static void OptionsMenu_Create([[maybe_unused]] RayScene* scene) {
     options[OPTION_ZOOMFACTOR_UI].value = gameOptions.zoomFactorUI;
     options[OPTION_FILL_SCREEN].value = gameOptions.fillScreen;
     options[OPTION_BOTPLAY].value = gameOptions.botplay;
+
+    // Faixas de assets/music/menu, com Auto no fim. A aba comeca na faixa salva.
+    const int trackCount = MenuMusic_Count();
+    for (int t = 0; t < trackCount; t++) musicNames[t] = MenuMusic_Label(t);
+    options[OPTION_MENU_MUSIC].options = musicNames;
+    options[OPTION_MENU_MUSIC].max = (float)trackCount;
+    options[OPTION_MENU_MUSIC].value = (float)MenuMusic_SavedIndex();
+    autoTrack = MenuMusic_SavedIndex();
+    RefreshAutoLabel();
+    musicNames[trackCount] = autoLabel;
 
     for (int i = 0; i < OPTION_COUNT; i++)
         Option_RebuildText(options + i);
@@ -556,9 +628,20 @@ static void OptionsMenu_Update([[maybe_unused]] RayScene* scene) {
         return;
 
     if (IsKeyPressed(KEY_BACKSPACE) || IsKeyPressed(KEY_ESCAPE)) {
+        if (MusicAutoOn()) MenuMusic_RestoreSaved();   // Auto nao fica tocando fora da aba
         GameData_Flush();
         MenuState_SetScene();
         return;
+    }
+
+    if (MusicAutoOn() && MenuMusic_Count() > 0) {
+        autoTimer -= RayGame_DeltaTime();
+        if (autoTimer <= 0.0f) {
+            autoTrack = (autoTrack + 1) % MenuMusic_Count();
+            MenuMusic_Play(autoTrack);
+            autoTimer = AUTO_PERIOD;
+            RefreshAutoLabel();
+        }
     }
 
     scrollOffset = Lerp(scrollOffset, (float)Option_VisualIndex(currentOption), RayGame_DeltaTime() * SCROLL_LERP_SPEED);
@@ -684,6 +767,23 @@ static void DrawVisualLogo(float rowY, Color fill, Color shadow) {
     }
 }
 
+/* Nota musical (colcheia), com a mesma sombra do texto. */
+static void DrawMusicLogo(float rowY, Color fill, Color shadow) {
+    for (int pass = 0; pass < 2; pass++) {
+        const Color color = pass == 0 ? shadow : fill;
+        const float shift = pass == 0 ? TEXT_SHADOW : 0.0f;
+        const float top = rowY + LOGO_TOP + shift;
+        const float headX = musicLogoX + NOTE_HEAD_RADIUS + shift;
+        const float headY = top + NOTE_STEM_H;
+        const float stemLeft = headX + NOTE_HEAD_RADIUS - NOTE_STEM_W;
+        const float stemX = stemLeft + NOTE_STEM_W * 0.5f;
+
+        DrawCircleV((Vector2) {headX, headY}, NOTE_HEAD_RADIUS, color);
+        DrawRectangleRec((Rectangle) {stemLeft, top, NOTE_STEM_W, NOTE_STEM_H}, color);
+        DrawRoundLine((Vector2) {stemX, top}, (Vector2) {stemX + NOTE_FLAG_W, top + NOTE_FLAG_H}, color);
+    }
+}
+
 /* Setinha da secao: "v" aberta, ">" recolhida. */
 static void DrawChevron(float rowY, bool collapsed, Color fill, Color shadow) {
     const float s = CHEVRON_SIZE;
@@ -753,6 +853,8 @@ static void OptionsMenu_Draw([[maybe_unused]] RayScene* scene) {
                 DrawVisualLogo(drawY, fill, shadow);
             else if (i == OPTION_HEADER_OTHER)
                 DrawOtherLogo(drawY, fill, shadow);
+            else if (i == OPTION_HEADER_MUSIC)
+                DrawMusicLogo(drawY, fill, shadow);
             continue;
         }
 

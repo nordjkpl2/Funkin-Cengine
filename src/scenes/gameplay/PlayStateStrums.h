@@ -28,6 +28,9 @@ void PlayStateStrums_ConfirmBf(int lane);
 /* Anima os receptores do BF a partir das teclas deste frame. */
 void PlayStateStrums_ApplyInput(const PlayStatePlayerKeys* keys);
 
+/* Fundos do HUD (chamar antes de tudo): colunas mobile e faixa preta dos receptores. */
+void PlayStateStrums_DrawBackdrop(void);
+
 /* Desenha os dois lados; no botplay volta o BF ao idle quando o confirm termina. */
 void PlayStateStrums_Draw(void);
 
