@@ -1,5 +1,5 @@
 #include "headers/std.h"
-#include "headers/raylib.h" 
+#include "raylib.h" 
 #include "headers/Game.h"
 #include "scenes/api/EndStartLoader.h"
 #include "scenes/menu/EnterToPlay.h"

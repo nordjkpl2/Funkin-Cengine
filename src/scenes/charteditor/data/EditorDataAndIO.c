@@ -670,13 +670,22 @@ char EdCopyFile(const char* src, const char* dst) {
         fclose(in);
         return 0;
     }
-    char buf[8192];
+    /* buffer de 64 KB: menos chamadas de sistema em audio grande. Erro de escrita conta como falha
+       (antes ignorava fwrite/fclose e dizia "ok" com arquivo truncado). */
+    char buf[65536];
     size_t n;
-    while((n = fread(buf, 1, sizeof(buf), in)) > 0)
-        fwrite(buf, 1, n, out);
-    fclose(in);
-    fclose(out);
-    return 1;
+    char ok = 1;
+    while((n = fread(buf, 1, sizeof(buf), in)) > 0) {
+        if(fwrite(buf, 1, n, out) != n) {
+            ok = 0;
+            break;
+        }
+    }
+    if(ferror(in)) ok = 0;
+    if(fclose(in) != 0) ok = 0;
+    if(fclose(out) != 0) ok = 0;
+    if(!ok) remove(dst);
+    return ok;
 }
 
 void EdSanitizeName(char* dst, size_t dstSize, const char* src) {

@@ -1,5 +1,5 @@
 # ninja log v7
-37	75	8167936648577074	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+22	60	8167959262433075	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
 53	149	8167608206393106	CMakeFiles/FNF_C_ENGINE.dir/src/GameData.c.obj	a6f0e9fa468f93c9
 59	2241	8156873801758605	CMakeFiles/FNF_C_ENGINE.dir/src/Log.c.obj	881c0d8d86c8c7c8
 81	269	8167935268130040	CMakeFiles/FNF_C_ENGINE.dir/main.c.obj	21ab7fe1ff5a8c76
@@ -26,7 +26,7 @@
 131	1290	8157079514083868	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/other/ModImport.c.obj	f28ac8e69a406350
 110	1439	8157079513871267	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/ChartEditor.c.obj	e5ace1f6581241d
 3816	6687	8167541109115722	CMakeFiles/FNF_C_ENGINE.dir/lib/yyjson.c.obj	1ec6f7fbfe8548d6
-214	4206	8167936650354294	D:/dev/funkin c/FNF_C_ENGINE.exe	398df9bced641fad
+347	3429	8167938803224404	D:/dev/funkin c/FNF_C_ENGINE.exe	44d2906aba83b171
 143	509	8167541072397795	CMakeFiles/raylib_objects.dir/lib/raylib55/src/utils.c.obj	60256b7fb8824505
 122	671	8167541072192858	CMakeFiles/raylib_objects.dir/lib/raylib55/src/rshapes.c.obj	1145fe0211f400b8
 131	2081	8167541072273248	CMakeFiles/raylib_objects.dir/lib/raylib55/src/rtext.c.obj	5e9b5cfef723dbd5
@@ -50,8 +50,8 @@
 92	213	8167614027258698	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayStateText.c.obj	cf141a072feec42c
 269	541	8167935270006447	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayState.c.obj	f7d8a49524915b31
 562	754	8167570605078562	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayStateStage.c.obj	482a046b11bd1de7
-51	321	8167938798367744	build.ninja	d326d16b80b4f275
-51	321	8167938798311676	D:/dev/funkin c/build-clang/cmake_install.cmake	d326d16b80b4f275
+51	321	8167959264100259	build.ninja	d326d16b80b4f275
+51	321	8167959264080231	D:/dev/funkin c/build-clang/cmake_install.cmake	d326d16b80b4f275
 442	652	8167935271742529	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/menu/MenuState.c.obj	320296a9165e7069
 87	291	8156462884009688	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/menu/TitleState.c.obj	a6260f3de2715e25
 107	376	8167923495570082	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/menu/OptionsMenu.c.obj	b1fa538e02a831b9
@@ -132,22 +132,107 @@
 73	182	8167614027063495	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayStateBeat.c.obj	5e9dcd2768d20b74
 339	616	8167923403559880	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayStateRatingPopups.c.obj	b94e79c03eabcc00
 416	618	8167935271477300	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/menu/MenuMusic.c.obj	7e5e3550e1fe9694
-100	252	8167935268315217	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/api/EndStartLoader.c.obj	8e4402cf7f111a5a
+134	239	8167938801098747	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/api/EndStartLoader.c.obj	8e4402cf7f111a5a
 152	402	8167923102368493	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/api/FontLoader.c.obj	d57697afb226638
 105	337	8167935268365304	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/api/NoteSkinCache.c.obj	a85d03fab611fd55
-472	677	8167935272037552	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/menu/freeplay/Freeplay.c.obj	bb9eb466c75a22f4
-80	214	8167936649000138	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/menu/freeplay/FreeplayIcon.c.obj	6494c2cee1a2041
-521	704	8167935272535779	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/menu/storymode/StoryMode.c.obj	7524ca8bfb0692b3
-484	699	8167935272157617	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/menu/modding/ModdingMenu.c.obj	a8d23bfec02d6378
-140	317	8167931844693404	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/menu/storymode/StoryCover.c.obj	edb0ad0fe3fc9ed5
-515	742	8167935272465758	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/menu/options/OptionsMenu.c.obj	b08f2aaf4c27f5bb
-66	130	8167938800407430	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
-134	239	8167938801098747	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/api/EndStartLoader.c.obj	8e4402cf7f111a5a
-138	247	8167938801133817	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/menu/MenuBackground.c.obj	ba8163e399cf4ac2
 142	283	8167938801178812	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/menu/freeplay/Freeplay.c.obj	bb9eb466c75a22f4
+80	214	8167936649000138	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/menu/freeplay/FreeplayIcon.c.obj	6494c2cee1a2041
 163	313	8167938801386015	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/menu/storymode/StoryMode.c.obj	7524ca8bfb0692b3
 148	331	8167938801234042	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/menu/modding/ModdingMenu.c.obj	a8d23bfec02d6378
 158	341	8167938801345894	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/menu/storymode/StoryCover.c.obj	edb0ad0fe3fc9ed5
 153	347	8167938801289331	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/menu/options/OptionsMenu.c.obj	b08f2aaf4c27f5bb
-347	3429	8167938803224404	D:/dev/funkin c/FNF_C_ENGINE.exe	44d2906aba83b171
-41	80	8167939571014793	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+138	247	8167938801133817	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/menu/MenuBackground.c.obj	ba8163e399cf4ac2
+60	277	8167959264100259	build.ninja	d326d16b80b4f275
+60	277	8167959264100259	D:/dev/funkin c/build-clang/cmake_install.cmake	d326d16b80b4f275
+18	69	8167959264913012	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+84	248	8167959265572200	CMakeFiles/FNF_C_ENGINE.dir/src/GameData.c.obj	a6f0e9fa468f93c9
+78	276	8167959265512256	CMakeFiles/FNF_C_ENGINE.dir/src/Game.c.obj	e22261edfd953dfb
+119	290	8167959265932202	CMakeFiles/FNF_C_ENGINE.dir/src/core/ModList.c.obj	d8faa5071400760e
+90	299	8167959265632206	CMakeFiles/FNF_C_ENGINE.dir/src/Render.c.obj	e6015b7127654ecd
+113	330	8167959265862232	CMakeFiles/FNF_C_ENGINE.dir/src/characters/Girlfriend.c.obj	d955f9c67f7b35bc
+125	361	8167959266012225	CMakeFiles/FNF_C_ENGINE.dir/src/data/ModLayout.c.obj	a474cb013e62df37
+107	374	8167959265812211	CMakeFiles/FNF_C_ENGINE.dir/src/characters/CharacterXML.c.obj	ef11c222c7ae2a09
+96	397	8167959265682223	CMakeFiles/FNF_C_ENGINE.dir/src/characters/Character.c.obj	8b0269e49e4f0237
+102	438	8167959265742223	CMakeFiles/FNF_C_ENGINE.dir/src/characters/CharacterJson.c.obj	26985ddd9f08766b
+147	471	8167959266212302	CMakeFiles/FNF_C_ENGINE.dir/src/data/SongList.c.obj	8e2bbcc7dcdeffdd
+163	479	8167959266447504	CMakeFiles/FNF_C_ENGINE.dir/src/data/modimport/ModImport.c.obj	986f360740d4718c
+154	488	8167959266307387	CMakeFiles/FNF_C_ENGINE.dir/src/data/Week.c.obj	d339087b84624830
+133	509	8167959266152210	CMakeFiles/FNF_C_ENGINE.dir/src/data/Song.c.obj	5e350792b6d0602a
+31	67	8167960107701806	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+71	172	8167960108116776	CMakeFiles/FNF_C_ENGINE.dir/main.c.obj	21ab7fe1ff5a8c76
+98	273	8167960108376818	CMakeFiles/FNF_C_ENGINE.dir/src/logic/animations/AnimSetParseUtil.c.obj	51fe9a8cf666b1e1
+107	293	8167960108466914	CMakeFiles/FNF_C_ENGINE.dir/src/logic/animations/AnimationSets.c.obj	915f73e41c893cf1
+89	306	8167960108286778	CMakeFiles/FNF_C_ENGINE.dir/src/logic/animations/AnimSetBinary.c.obj	1f72c37edadf7b90
+130	321	8167960108702113	CMakeFiles/FNF_C_ENGINE.dir/src/logic/stage/Stage.c.obj	3fb4c168688d9496
+85	336	8167960108246796	CMakeFiles/FNF_C_ENGINE.dir/src/data/modimport/ModImportPath.c.obj	cf12f30d0fce1ed0
+102	351	8167960108416817	CMakeFiles/FNF_C_ENGINE.dir/src/logic/animations/AnimSetSparrow.c.obj	38302d2f37cca343
+125	366	8167960108652099	CMakeFiles/FNF_C_ENGINE.dir/src/logic/notes/Note.c.obj	dad1932313402a45
+78	381	8167960108176792	CMakeFiles/FNF_C_ENGINE.dir/src/data/modimport/ModImportFiles.c.obj	83dd18aaa600b651
+120	396	8167960108602001	CMakeFiles/FNF_C_ENGINE.dir/src/logic/beatmanager/BeatManager.c.obj	b5f80d86dae28dc9
+93	411	8167960108326808	CMakeFiles/FNF_C_ENGINE.dir/src/logic/animations/AnimSetCharacterXML.c.obj	2f325da9f58b18b4
+75	427	8167960108147217	CMakeFiles/FNF_C_ENGINE.dir/src/data/modimport/ModImportCharacters.c.obj	458b6bfe250c86d8
+82	442	8167960108216801	CMakeFiles/FNF_C_ENGINE.dir/src/data/modimport/ModImportParse.c.obj	ec349f11e1a58af5
+112	458	8167960108546924	CMakeFiles/FNF_C_ENGINE.dir/src/logic/animations/CharacterAnims.c.obj	43335e1c169611ff
+173	472	8167960109122102	CMakeFiles/FNF_C_ENGINE.dir/src/logic/stage/StageJson.c.obj	1aa3035c7a69bdad
+293	488	8167960110335049	CMakeFiles/FNF_C_ENGINE.dir/src/rendering/cpu/ImagePrefetch.c.obj	c3a0c6b5482f850
+322	502	8167960110620371	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/LoadingState.c.obj	3b3607f3c2531cc8
+336	516	8167960110760395	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/api/EndStartLoader.c.obj	8e4402cf7f111a5a
+351	533	8167960110910503	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/api/FontLoader.c.obj	d57697afb226638
+278	548	8167960110177499	CMakeFiles/FNF_C_ENGINE.dir/src/logic/stage/StageLuaParse.c.obj	e75f8c74ac73a1d5
+367	563	8167960111065741	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/api/NoteSkinCache.c.obj	a85d03fab611fd55
+396	628	8167960111355752	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/charteditor/audio/EditorAudio.c.obj	802eb23d690f8f31
+382	695	8167960111215753	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/charteditor/ChartEditor.c.obj	195bdf36e8aa83ba
+442	725	8167960111816328	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/charteditor/grid/EditorGrid.c.obj	85201eed40ae84b9
+458	740	8167960111976325	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/charteditor/grid/EditorTimeline.c.obj	3e56144046a7a8e2
+548	755	8167960112880880	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayStateAnimations.c.obj	965b1f0f0709cd92
+411	770	8167960111515839	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/charteditor/data/EditorCharactersAndLists.c.obj	c913564b8cadaace
+517	785	8167960112565634	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/charteditor/ui/EditorWidgets.c.obj	6d531230e86316be
+533	800	8167960112730841	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayState.c.obj	f7d8a49524915b31
+564	816	8167960113030854	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayStateAudio.c.obj	9842cb6e4ad80790
+472	831	8167960112126325	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/charteditor/ui/EditorIcons.c.obj	584908d52e276127
+488	847	8167960112276319	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/charteditor/ui/EditorPanels.c.obj	bf58ea582727cc9
+502	864	8167960112426294	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/charteditor/ui/EditorPicker.c.obj	a8a7c90cf569e9fe
+633	879	8167960113741638	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayStateBeat.c.obj	5e9dcd2768d20b74
+740	903	8167960114793439	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayStateHealth.c.obj	2071e28efb42dbcb
+708	920	8167960114498112	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayStateCamera.c.obj	d926955845263565
+725	945	8167960114653335	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayStateDeath.c.obj	823ada1d274ff248
+755	962	8167960114949611	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayStateIntro.c.obj	ff8cbf8b9c14d6be
+800	982	8167960115401858	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayStatePlayerInput.c.obj	61077273e5e23e61
+770	1005	8167960115099605	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayStateNoteSpawn.c.obj	b31df85a014b1877
+786	1065	8167960115249902	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayStatePause.c.obj	b7289efc429333d8
+817	1090	8167960115561938	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayStateRatingPopups.c.obj	b94e79c03eabcc00
+879	1107	8167960116187231	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/menu/EnterToPlay.c.obj	1c8bd6d747ca918c
+903	1122	8167960116427231	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/menu/MenuBackground.c.obj	ba8163e399cf4ac2
+864	1144	8167960116037235	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayStateText.c.obj	cf141a072feec42c
+832	1156	8167960115717273	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayStateStage.c.obj	482a046b11bd1de7
+848	1168	8167960115877266	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayStateStrums.c.obj	45ba158316daa2b
+920	1178	8167960116597408	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/menu/MenuMusic.c.obj	7e5e3550e1fe9694
+427	1189	8167960111671121	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/charteditor/data/EditorDataAndIO.c.obj	e56b44b3d5e88ba6
+945	1201	8167960116858049	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/menu/MenuState.c.obj	320296a9165e7069
+962	1209	8167960117018080	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/menu/freeplay/Freeplay.c.obj	bb9eb466c75a22f4
+983	1274	8167960117228082	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/menu/freeplay/FreeplayIcon.c.obj	6494c2cee1a2041
+1005	1283	8167960117448138	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/menu/modding/ModdingMenu.c.obj	a8d23bfec02d6378
+1123	1290	8167960118623946	CMakeFiles/FNF_C_ENGINE.dir/src/widgets-and-menus-ui/SearchBox.c.obj	9342f782f2918b06
+1107	1305	8167960118468686	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/menu/storymode/StoryMode.c.obj	7524ca8bfb0692b3
+1091	1320	8167960118308600	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/menu/storymode/StoryCover.c.obj	edb0ad0fe3fc9ed5
+1074	1333	8167960118138568	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/menu/options/OptionsMenu.c.obj	b08f2aaf4c27f5bb
+307	2923	8167960110465181	CMakeFiles/FNF_C_ENGINE.dir/src/rendering/cpu/PngDecode.c.obj	49904474b8a7d9df
+2923	5631	8167960136628094	D:/dev/funkin c/FNF_C_ENGINE.exe	3779f0ccc3315f01
+34	81	8167961790419068	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+98	278	8167961791071579	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/charteditor/grid/EditorGrid.c.obj	85201eed40ae84b9
+87	285	8167961790961520	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/charteditor/ChartEditor.c.obj	195bdf36e8aa83ba
+108	286	8167961791167006	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/charteditor/ui/EditorIcons.c.obj	584908d52e276127
+127	297	8167961791362162	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/charteditor/ui/EditorWidgets.c.obj	6d531230e86316be
+115	299	8167961791236957	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/charteditor/ui/EditorPanels.c.obj	bf58ea582727cc9
+121	302	8167961791302152	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/charteditor/ui/EditorPicker.c.obj	a8a7c90cf569e9fe
+91	312	8167961790992647	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/charteditor/data/EditorCharactersAndLists.c.obj	c913564b8cadaace
+312	4916	8167961793212792	D:/dev/funkin c/FNF_C_ENGINE.exe	3779f0ccc3315f01
+42	93	8167962177369030	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+19	62	8167962887150215	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+67	195	8167962887621394	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/charteditor/ui/EditorPicker.c.obj	a8a7c90cf569e9fe
+196	3450	8167962888912968	D:/dev/funkin c/FNF_C_ENGINE.exe	3779f0ccc3315f01
+33	71	8167965697859690	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+75	155	8167965698290087	CMakeFiles/FNF_C_ENGINE.dir/src/core/ModPath.c.obj	7a94bbfaa7051fef
+78	162	8167965698320070	CMakeFiles/FNF_C_ENGINE.dir/src/rendering/cpu/ImagePrefetch.c.obj	c3a0c6b5482f850
+82	323	8167965698359952	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/charteditor/data/EditorDataAndIO.c.obj	e56b44b3d5e88ba6
+323	3242	8167965700771284	D:/dev/funkin c/FNF_C_ENGINE.exe	3779f0ccc3315f01

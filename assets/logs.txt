@@ -166,3 +166,10 @@ LOAD [undaunted-demise-naether] init: 0.0 ms, chart: 50.5 ms, sounds: 49.1 ms, c
 
 --- SESSION LOG START ---
 LOAD [end-of-the-world-remake] init: 22.4 ms, chart: 12.7 ms, sounds: 97.4 ms, characters: 415.8 ms, stage: 3.8 ms, song audio: 1.7 ms, notes: 0.1 ms, ui: 8.0 ms, warmup: 0.1 ms, (textures on main thread: 447.1 ms) total: 562.1 ms
+
+--- SESSION LOG START ---
+[WARN] Girlfriend 'air' nao encontrada: usando gf padrao
+LOAD [end-of-the-world] init: 21.9 ms, chart: 32.6 ms, sounds: 126.7 ms, characters: 37.7 ms, stage: 8.7 ms, song audio: 1.7 ms, notes: 2.2 ms, ui: 7.7 ms, warmup: 0.2 ms, (textures on main thread: 62.5 ms) total: 239.4 ms
+
+--- SESSION LOG START ---
+LOAD [superposition] init: 20.4 ms, chart: 106.7 ms, sounds: 95.7 ms, characters: 90.9 ms, stage: 17.3 ms, song audio: 1.8 ms, notes: 2.8 ms, ui: 8.7 ms, warmup: 0.2 ms, (textures on main thread: 123.7 ms) total: 344.4 ms

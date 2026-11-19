@@ -113,7 +113,7 @@ void Edit_DrawMenuBar(void) {
         char hov = (m.x >= r.x && m.x <= r.x + r.width && m.y >= r.y && m.y <= r.y + r.height);
         char open = (menuOpen == i + 1);
         DrawRectangleRec(r, (open || hov) ? (Color){60,60,60,255} : (Color){16,16,16,255});
-        DrawTextEx(mainFont, names[i], (Vector2){r.x + 12, 5}, 20, 1, open ? GREEN : WHITE);
+        Ed_DrawText(mainFont, names[i], (Vector2){r.x + 12, 5}, 20, 1, open ? GREEN : WHITE);
         if(hov && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             menuOpen = open ? 0 : (i + 1);
             activeDrop = 0;
@@ -173,7 +173,7 @@ void Edit_DrawTabs(void) {
         DrawRectangleRec(r, active ? (Color){45,90,45,255} : hov ? (Color){60,60,60,255} : (Color){28,28,28,255});
         DrawRectangleLinesEx(r, 1, active ? GREEN : GRAY);
         Vector2 s = MeasureTextEx(mainFont, ChartTab_Name(t), 18, 1);
-        DrawTextEx(mainFont, ChartTab_Name(t), (Vector2){r.x + (r.width - s.x) / 2, r.y + 4}, 18, 1, active ? GREEN : WHITE);
+        Ed_DrawText(mainFont, ChartTab_Name(t), (Vector2){r.x + (r.width - s.x) / 2, r.y + 4}, 18, 1, active ? GREEN : WHITE);
         if(hov && IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && ceDlg == DLG_NONE && !activeDrop) {
             activeTab = t;
             menuOpen = 0;
@@ -188,7 +188,7 @@ void Edit_DrawTabs(void) {
 /* Linha "Rotulo: [caixa] [v]" com lista suspensa. */
 static void DrawDropField(float x, float y, float boxW, const char* label, TxtBox* box, const char* hint,
                           int dropId, char blocked) {
-    DrawTextEx(mainFont, label, (Vector2){x, y + 4}, 22, 1, WHITE);
+    Ed_DrawText(mainFont, label, (Vector2){x, y + 4}, 22, 1, WHITE);
 
     const Rectangle field = {x + SONG_FIELD_X, y, boxW, 32};
     TxtBox_Update(box, field, blocked);
@@ -233,7 +233,7 @@ static void Edit_DrawPanel_Song(float x, float y) {
     const char blocked = (ceDlg != DLG_NONE || activeDrop || menuOpen);
     const float boxW = SongFieldWidth();
 
-    DrawTextEx(mainFont, "SONG", (Vector2){x, y}, 22, 1, GREEN);
+    Ed_DrawText(mainFont, "SONG", (Vector2){x, y}, 22, 1, GREEN);
     y += 34;
     DrawDropField(x, y, boxW, "Boyfriend:", &p1Box, "bf", DROP_BOYFRIEND, blocked);
     y += 38;
@@ -246,14 +246,14 @@ static void Edit_DrawPanel_Song(float x, float y) {
     DrawDropField(x, y, boxW, "Note Skin:", &skinBox, "default", DROP_SKIN, blocked);
     y += 42;
 
-    DrawTextEx(mainFont, "bpm:", (Vector2){x, y + 4}, 22, 1, WHITE);
+    Ed_DrawText(mainFont, "bpm:", (Vector2){x, y + 4}, 22, 1, WHITE);
     {
         Rectangle r = {x + SONG_FIELD_X, y, 80, 32};
         if(focusNum != &nbTopBpm) NumBox_Refresh(&nbTopBpm, chart.bpm, 0);
         NumBox_Update(&nbTopBpm, r, blocked);
         NumBox_Draw(&nbTopBpm, r);
     }
-    DrawTextEx(mainFont, "speed:", (Vector2){x + 230, y + 4}, 22, 1, WHITE);
+    Ed_DrawText(mainFont, "speed:", (Vector2){x + 230, y + 4}, 22, 1, WHITE);
     {
         Rectangle r = {x + 310, y, 70, 32};
         if(focusNum != &nbSpeed) NumBox_Refresh(&nbSpeed, chart.speed, 0);
@@ -273,24 +273,24 @@ static void Edit_DrawPanel_Section(float x, float y) {
     char buf[96];
     SecFollowCursor();
     snprintf(buf, sizeof(buf), "SECTION %d/%d", secIdx + 1, chart.nsec);
-    DrawTextEx(mainFont, buf, (Vector2){x, y}, 22, 1, GREEN);
+    Ed_DrawText(mainFont, buf, (Vector2){x, y}, 22, 1, GREEN);
     y += 32;
-    DrawTextEx(mainFont, "turn (TAB):", (Vector2){x, y + 4}, 22, 1, WHITE);
+    Ed_DrawText(mainFont, "turn (TAB):", (Vector2){x, y + 4}, 22, 1, WHITE);
     if(EdButton((Rectangle){x + 150, y, 180, 32}, chart.secs[secIdx].mustHit ? "boyfriend" : "opponent", 20)) {
         EdTouch(); chart.secs[secIdx].mustHit = !chart.secs[secIdx].mustHit;
     }
     y += 42;
     // steps = tamanho do trecho em passos (16 = padrao, 4 tempos). Era "size:".
-    DrawTextEx(mainFont, "steps:", (Vector2){x, y + 4}, 22, 1, WHITE);
+    Ed_DrawText(mainFont, "steps:", (Vector2){x, y + 4}, 22, 1, WHITE);
     {
         Rectangle r = {x + 150, y, 90, 32};
         if(focusNum != &nbLen) NumBox_Refresh(&nbLen, (float)chart.secs[secIdx].lenSteps, 1);
         NumBox_Update(&nbLen, r, blocked);
         NumBox_Draw(&nbLen, r);
     }
-    DrawTextEx(mainFont, "16=4 tempos", (Vector2){x + 250, y + 8}, 18, 1, YELLOW);
+    Ed_DrawText(mainFont, "16=4 tempos", (Vector2){x + 250, y + 8}, 18, 1, YELLOW);
     y += 42;
-    DrawTextEx(mainFont, "bpm:", (Vector2){x, y + 4}, 22, 1, WHITE);
+    Ed_DrawText(mainFont, "bpm:", (Vector2){x, y + 4}, 22, 1, WHITE);
     {
         Rectangle r = {x + 150, y, 90, 32};
         if(focusNum != &nbSecBpm) NumBox_Refresh(&nbSecBpm, chart.secs[secIdx].bpm, 0);
@@ -311,64 +311,64 @@ static void Edit_DrawPanel_Data(float x, float y) {
     char buf[160];
     char tbuf[32];
     SecFollowCursor();
-    DrawTextEx(mainFont, "DATA", (Vector2){x, y}, 22, 1, GREEN);
+    Ed_DrawText(mainFont, "DATA", (Vector2){x, y}, 22, 1, GREEN);
     y += 32;
     EdTimeFmt(tbuf, sizeof(tbuf), cursorMs);
     snprintf(buf, sizeof(buf), "cursor: %s", tbuf);
-    DrawTextEx(mainFont, buf, (Vector2){x, y}, 20, 1, WHITE);
+    Ed_DrawText(mainFont, buf, (Vector2){x, y}, 20, 1, WHITE);
     y += 30;
     snprintf(buf, sizeof(buf), "in part: %d notes", chart.secs[secIdx].count);
-    DrawTextEx(mainFont, buf, (Vector2){x, y}, 20, 1, WHITE);
+    Ed_DrawText(mainFont, buf, (Vector2){x, y}, 20, 1, WHITE);
     y += 30;
     int total = 0;
     for(int i = 0; i < chart.nsec; i++) total += chart.secs[i].count;
     snprintf(buf, sizeof(buf), "total: %d notes in %d parts", total, chart.nsec);
-    DrawTextEx(mainFont, buf, (Vector2){x, y}, 20, 1, WHITE);
+    Ed_DrawText(mainFont, buf, (Vector2){x, y}, 20, 1, WHITE);
     y += 30;
     EdTimeFmt(tbuf, sizeof(tbuf), SongEndMs());
     snprintf(buf, sizeof(buf), "length: %s", tbuf);
-    DrawTextEx(mainFont, buf, (Vector2){x, y}, 20, 1, WHITE);
+    Ed_DrawText(mainFont, buf, (Vector2){x, y}, 20, 1, WHITE);
     y += 30;
     snprintf(buf, sizeof(buf), "dir: %s", chart.dir[0] ? chart.dir : "(unsaved)");
-    DrawTextEx(mainFont, buf, (Vector2){x, y}, 18, 1, YELLOW);
+    Ed_DrawText(mainFont, buf, (Vector2){x, y}, 18, 1, YELLOW);
     y += 28;
     snprintf(buf, sizeof(buf), "bpm %.1f  speed %.2f%s", (double)chart.bpm, (double)chart.speed, chart.dirty ? " *" : "");
-    DrawTextEx(mainFont, buf, (Vector2){x, y}, 18, 1, YELLOW);
+    Ed_DrawText(mainFont, buf, (Vector2){x, y}, 18, 1, YELLOW);
     y += 36;
-    DrawTextEx(mainFont, "click adds  right-click deletes", (Vector2){x, y}, 18, 1, YELLOW);
+    Ed_DrawText(mainFont, "click adds  right-click deletes", (Vector2){x, y}, 18, 1, YELLOW);
     y += 24;
-    DrawTextEx(mainFont, "SHIFT/CTRL+wheel = long note", (Vector2){x, y}, 18, 1, YELLOW);
+    Ed_DrawText(mainFont, "SHIFT/CTRL+wheel = long note", (Vector2){x, y}, 18, 1, YELLOW);
 }
 
 static void Edit_DrawPanel_Charting(float x, float y) {
-    DrawTextEx(mainFont, "CHARTING", (Vector2){x, y}, 22, 1, GREEN);
+    Ed_DrawText(mainFont, "CHARTING", (Vector2){x, y}, 22, 1, GREEN);
     y += 34;
     if(EdButton((Rectangle){x, y, 190, 40}, playing ? "PAUSAR" : "OUVIR", 22)) Audio_Toggle();
     y += 50;
     if(EdButton((Rectangle){x, y, 190, 40}, "play (F5)", 22)) Edit_DoTestPlay();
     y += 50;
     // arquivos de audio achados (flags ja existem, custo zero)
-    DrawTextEx(mainFont, edHasAudio ? "inst.ogg: yes" : "inst.ogg: no", (Vector2){x, y}, 18, 1,
+    Ed_DrawText(mainFont, edHasAudio ? "inst.ogg: yes" : "inst.ogg: no", (Vector2){x, y}, 18, 1,
         edHasAudio ? GREEN : RED);
     y += 24;
     const char* vocTxt = edHasSplit ? "vocals.ogg: split" : (edHasVoices ? "vocals.ogg: yes" : "vocals.ogg: no");
-    DrawTextEx(mainFont, vocTxt, (Vector2){x, y}, 18, 1, (edHasSplit || edHasVoices) ? GREEN : RED);
+    Ed_DrawText(mainFont, vocTxt, (Vector2){x, y}, 18, 1, (edHasSplit || edHasVoices) ? GREEN : RED);
     y += 30;
-    DrawTextEx(mainFont, "space = play/stop", (Vector2){x, y}, 18, 1, YELLOW);
+    Ed_DrawText(mainFont, "space = play/stop", (Vector2){x, y}, 18, 1, YELLOW);
     y += 24;
-    DrawTextEx(mainFont, "drag red bar = seek", (Vector2){x, y}, 18, 1, YELLOW);
+    Ed_DrawText(mainFont, "drag red bar = seek", (Vector2){x, y}, 18, 1, YELLOW);
     y += 24;
-    DrawTextEx(mainFont, "W/S or wheel = scroll", (Vector2){x, y}, 18, 1, YELLOW);
+    Ed_DrawText(mainFont, "W/S or wheel = scroll", (Vector2){x, y}, 18, 1, YELLOW);
 }
 
 static void Edit_DrawPanel_Events(float x, float y) {
-    DrawTextEx(mainFont, "EVENTS", (Vector2){x, y}, 22, 1, GREEN);
+    Ed_DrawText(mainFont, "EVENTS", (Vector2){x, y}, 22, 1, GREEN);
     y += 34;
-    DrawTextEx(mainFont, "events.json ignorado", (Vector2){x, y}, 20, 1, YELLOW);
+    Ed_DrawText(mainFont, "events.json ignorado", (Vector2){x, y}, 20, 1, YELLOW);
     y += 30;
-    DrawTextEx(mainFont, "(Song.c nao le events,", (Vector2){x, y}, 18, 1, YELLOW);
+    Ed_DrawText(mainFont, "(Song.c nao le events,", (Vector2){x, y}, 18, 1, YELLOW);
     y += 24;
-    DrawTextEx(mainFont, "compat Psych so p/ notes)", (Vector2){x, y}, 18, 1, YELLOW);
+    Ed_DrawText(mainFont, "compat Psych so p/ notes)", (Vector2){x, y}, 18, 1, YELLOW);
 }
 
 void Edit_DrawPanel(void) {
@@ -387,7 +387,7 @@ void Edit_DrawPanel(void) {
         if(L > 4) { titleBuf[L - 4] = '.'; titleBuf[L - 3] = '.'; titleBuf[L - 2] = '.'; titleBuf[L - 1] = 0; }
         else break;
     }
-    DrawTextEx(mainFont, titleBuf, (Vector2){x, 66}, 24, 2, WHITE);
+    Ed_DrawText(mainFont, titleBuf, (Vector2){x, 66}, 24, 2, WHITE);
     // OPEN ao lado da musica: volta p/ lista p/ abrir outra (mesmo que ESC)
     if(EdButton((Rectangle){x + 300, 62, 110, 32}, "OPEN", 20)) {
         Editor_RequestLeave();
@@ -410,8 +410,8 @@ void Edit_DrawPanel(void) {
         };
         float hy[4] = {648, 668, 688, 708};
         for(int hi = 0; hi < 4; hi++) {
-            DrawTextEx(mainFont, hs[hi], (Vector2){PANEL_X + 2, hy[hi] + 2}, 15, 1, shade);
-            DrawTextEx(mainFont, hs[hi], (Vector2){PANEL_X, hy[hi]}, 15, 1, help);
+            Ed_DrawText(mainFont, hs[hi], (Vector2){PANEL_X + 2, hy[hi] + 2}, 15, 1, shade);
+            Ed_DrawText(mainFont, hs[hi], (Vector2){PANEL_X, hy[hi]}, 15, 1, help);
         }
     }
 }

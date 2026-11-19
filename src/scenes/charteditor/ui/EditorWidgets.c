@@ -16,6 +16,13 @@
 
 TxtBox* focusBox = NULL;
 
+void Ed_DrawText(Font f, const char* t, Vector2 p, float size, float spacing, Color c)
+{
+    const float off = size >= 30 ? 3.0f : 2.0f;
+    DrawTextEx(f, t, (Vector2) {p.x + off, p.y + off}, size, spacing, (Color) {0, 0, 0, 200});
+    DrawTextEx(f, t, p, size, spacing, c);
+}
+
 static float backTimer = 0;
 
 NumBox* focusNum = NULL;
@@ -93,7 +100,7 @@ void TxtBox_Draw(TxtBox* box, Rectangle r, const char* hint) {
     DrawRectangleLinesEx(r, 1, (focusBox == box) ? GREEN : GRAY);
     const char* txt = (box->buf[0] != 0) ? box->buf : hint;
     Color c = (box->buf[0] != 0) ? WHITE : (Color) {120, 120, 120, 255};
-    DrawTextEx(mainFont, txt, (Vector2) {r.x + 6, r.y + 6}, 20, 1, c);
+    Ed_DrawText(mainFont, txt, (Vector2) {r.x + 6, r.y + 6}, 20, 1, c);
 }
 
 void NumBox_Update(NumBox* nb, Rectangle r, char blocked) {
@@ -154,7 +161,7 @@ void NumBox_Draw(NumBox* nb, Rectangle r) {
     DrawRectangleRec(r, (Color) {20, 20, 20, 255});
     DrawRectangleLinesEx(r, 1, (focusNum == nb) ? GREEN : GRAY);
     const char* txt = (nb->buf[0] != 0) ? nb->buf : "0";
-    DrawTextEx(mainFont, txt, (Vector2) {r.x + 6, r.y + 6}, 20, 1, YELLOW);
+    Ed_DrawText(mainFont, txt, (Vector2) {r.x + 6, r.y + 6}, 20, 1, YELLOW);
 }
 
 char activeDrop = DROP_NONE;
@@ -194,7 +201,7 @@ char EdButton(Rectangle r, const char* label, int fs) {
     DrawRectangleRec(r, hov ? (Color) {60, 60, 60, 255} : (Color) {30, 30, 30, 255});
     DrawRectangleLinesEx(r, 1, hov ? GREEN : GRAY);
     Vector2 s = MeasureTextEx(mainFont, label, fs, 1);
-    DrawTextEx(mainFont, label, (Vector2) {r.x + (r.width - s.x) / 2, r.y + (r.height - s.y) / 2}, fs, 1, WHITE);
+    Ed_DrawText(mainFont, label, (Vector2) {r.x + (r.width - s.x) / 2, r.y + (r.height - s.y) / 2}, fs, 1, WHITE);
     return hov && IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
 }
 
@@ -236,7 +243,7 @@ char EdDlgButton(Rectangle r, const char* label, Color edge) {
     DrawRectangleRec(r, hov ? (Color) {60, 60, 60, 255} : (Color) {30, 30, 30, 255});
     DrawRectangleLinesEx(r, 2, hov ? WHITE : edge);
     Vector2 sz = MeasureTextEx(mainFont, label, 24, 1);
-    DrawTextEx(mainFont, label, (Vector2) {r.x + (r.width - sz.x) / 2, r.y + (r.height - sz.y) / 2}, 24, 1, WHITE);
+    Ed_DrawText(mainFont, label, (Vector2) {r.x + (r.width - sz.x) / 2, r.y + (r.height - sz.y) / 2}, 24, 1, WHITE);
     return hov && IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
 }
 
@@ -279,6 +286,6 @@ char EdMenuItem(Rectangle r, const char* label) {
     Vector2 m = EdMouseWorld();
     char hov = (m.x >= r.x && m.x <= r.x + r.width && m.y >= r.y && m.y <= r.y + r.height);
     DrawRectangleRec(r, hov ? (Color){60,60,60,255} : (Color){18,18,18,255});
-    DrawTextEx(mainFont, label, (Vector2){r.x + 8, r.y + 5}, 20, 1, WHITE);
+    Ed_DrawText(mainFont, label, (Vector2){r.x + 8, r.y + 5}, 20, 1, WHITE);
     return hov && IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
 }

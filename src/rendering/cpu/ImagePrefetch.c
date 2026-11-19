@@ -61,10 +61,14 @@ static void Pf_Job(void* data) {
     atomic_store_explicit(&s->state, s->img.data != NULL ? PF_READY : PF_FAILED, memory_order_release);
 }
 
+/* Decodificar costuma levar poucos ms: cede a CPU algumas vezes (Sleep(0)) antes de dormir de
+   verdade. Sleep(1) no Windows pode custar ate ~15 ms com a resolucao padrao do timer. */
+#define PF_SPIN_YIELDS 256
+
 static void Pf_Wait(PfSlot* s) {
-    while(atomic_load_explicit(&s->state, memory_order_acquire) == PF_RUNNING) {
+    for(unsigned spins = 0; atomic_load_explicit(&s->state, memory_order_acquire) == PF_RUNNING; spins++) {
         Jobs_Poll();
-        Thread_SleepMs(1);
+        Thread_SleepMs(spins < PF_SPIN_YIELDS ? 0 : 1);
     }
 }
 

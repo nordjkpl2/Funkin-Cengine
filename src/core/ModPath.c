@@ -7,6 +7,7 @@
 #include "core/ModPath.h"
 #include <stdio.h>
 #include <string.h>
+#include <sys/stat.h>
 
 #define MODS_PREFIX "assets/mods/"
 #define MODS_PREFIX_LEN (sizeof(MODS_PREFIX) - 1u)
@@ -60,12 +61,12 @@ bool ModPath_Root(const char* restrict songDir, char* restrict out, size_t capac
     return true;
 }
 
-static bool FileOpens(const char* path)
+/* Arquivo regular existente? So um stat: nao abre o arquivo (fopen + fclose e bem mais caro). */
+static bool IsRegularFile(const char* path)
 {
-    FILE* file = fopen(path, "rb");
-    if (file == NULL) return false;
-    fclose(file);
-    return true;
+    struct stat info;
+    if (stat(path, &info) != 0) return false;
+    return (info.st_mode & S_IFMT) == S_IFREG;
 }
 
 bool ModPath_FindIn(const char* restrict root, const char* restrict relative,
@@ -76,7 +77,7 @@ bool ModPath_FindIn(const char* restrict root, const char* restrict relative,
     if (root == NULL || root[0] == '\0' || relative == NULL || relative[0] == '\0') return false;
 
     const int written = snprintf(out, capacity, "%s/%s", root, relative);
-    if (written > 0 && (size_t)written < capacity && FileOpens(out)) return true;
+    if (written > 0 && (size_t)written < capacity && IsRegularFile(out)) return true;
 
     out[0] = '\0';
     return false;

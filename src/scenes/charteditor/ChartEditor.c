@@ -75,8 +75,8 @@ static void Dialogs_Draw(void) {
     Render_SetCamera(&camEd);
     DrawRectangle(0, 0, 1280, 720, (Color) {0, 0, 0, 180});
     if(ceDlg == DLG_LEAVE) {
-        DrawTextEx(mainFont, "Salvar as alteracoes?", (Vector2) {340, 250}, 40, 3, WHITE);
-        DrawTextEx(mainFont, "enter salva, esc cancela", (Vector2) {340, 310}, 20, 1, YELLOW);
+        Ed_DrawText(mainFont, "Salvar as alteracoes?", (Vector2) {340, 250}, 40, 3, WHITE);
+        Ed_DrawText(mainFont, "enter salva, esc cancela", (Vector2) {340, 310}, 20, 1, YELLOW);
         if(EdDlgButton((Rectangle) {340, 360, 170, 48}, "SALVAR", GREEN)) {
             Editor_Save();
             Editor_LeaveToPicker();
@@ -87,19 +87,19 @@ static void Dialogs_Draw(void) {
             ceDlg = DLG_NONE;
         }
     } else if(ceDlg == DLG_OPEN) {
-        DrawTextEx(mainFont, ".json path", (Vector2) {340, 250}, 40, 3, WHITE);
+        Ed_DrawText(mainFont, ".json path", (Vector2) {340, 250}, 40, 3, WHITE);
         Rectangle r = {340, 320, 600, 40};
         TxtBox_Update(&openBox, r, 0);
         TxtBox_Draw(&openBox, r, "C:/.../musica.json");
-        DrawTextEx(mainFont, "enter import, esc cancel", (Vector2) {340, 380}, 20, 1, YELLOW);
-        DrawTextEx(mainFont, "You can copy and paste the path to the .json file.", (Vector2) {340, 410}, 20, 1, YELLOW);
+        Ed_DrawText(mainFont, "enter import, esc cancel", (Vector2) {340, 380}, 20, 1, YELLOW);
+        Ed_DrawText(mainFont, "You can copy and paste the path to the .json file.", (Vector2) {340, 410}, 20, 1, YELLOW);
     } else {
-        DrawTextEx(mainFont, "Save (path name):", (Vector2) {140, 190}, 36, 3, WHITE);
+        Ed_DrawText(mainFont, "Save (path name):", (Vector2) {140, 190}, 36, 3, WHITE);
         Rectangle r = {140, 260, 600, 40};
         TxtBox_Update(&saveAsBox, r, 0);
         TxtBox_Draw(&saveAsBox, r, "my-music-renameonexplorer");
-        DrawTextEx(mainFont, "enter save, esc cancel", (Vector2) {140, 320}, 20, 1, YELLOW);
-        DrawTextEx(mainFont, "renames the folder if it already exists", (Vector2) {140, 350}, 20, 1, YELLOW);
+        Ed_DrawText(mainFont, "enter save, esc cancel", (Vector2) {140, 320}, 20, 1, YELLOW);
+        Ed_DrawText(mainFont, "renames the folder if it already exists", (Vector2) {140, 350}, 20, 1, YELLOW);
         {
             char clean[64];
             EdSanitizeName(clean, sizeof(clean), saveAsBox.buf);
@@ -112,13 +112,13 @@ static void Dialogs_Draw(void) {
                 snprintf(dstDir, sizeof(dstDir), "assets/mods/<your-song>");
                 snprintf(where, sizeof(where), "saves to: mods/<your-song>");
             }
-            DrawTextEx(mainFont, where, (Vector2) {140, 380}, 20, 1, YELLOW);
+            Ed_DrawText(mainFont, where, (Vector2) {140, 380}, 20, 1, YELLOW);
             if(importPath[0] != 0) {
                 char from[96];
                 size_t L = strlen(importPath);
                 const char* tail = (L > 52) ? importPath + L - 52 : importPath;
                 snprintf(from, sizeof(from), "from: ...%s", (L > 52) ? tail : importPath);
-                DrawTextEx(mainFont, from, (Vector2) {140, 410}, 18, 1, GRAY);
+                Ed_DrawText(mainFont, from, (Vector2) {140, 410}, 18, 1, GRAY);
             }
             // mini arvore do destino (leve: so re-checa quando o nome muda)
             static char lastTree[64] = {0};
@@ -142,25 +142,25 @@ static void Dialogs_Draw(void) {
             }
             float tx = 780;
             float ty = 260;
-            DrawTextEx(mainFont, "tree:", (Vector2) {tx, ty}, 20, 1, GREEN);
+            Ed_DrawText(mainFont, "tree:", (Vector2) {tx, ty}, 20, 1, GREEN);
             ty += 30;
-            DrawTextEx(mainFont, "assets/", (Vector2) {tx, ty}, 18, 1, GRAY);
+            Ed_DrawText(mainFont, "assets/", (Vector2) {tx, ty}, 18, 1, GRAY);
             ty += 24;
-            DrawTextEx(mainFont, "  mods/", (Vector2) {tx, ty}, 18, 1, GRAY);
+            Ed_DrawText(mainFont, "  mods/", (Vector2) {tx, ty}, 18, 1, GRAY);
             ty += 24;
             {
                 char mod[80];
                 if(clean[0] != 0) snprintf(mod, sizeof(mod), "    %.28s/", clean);
                 else snprintf(mod, sizeof(mod), "    <your-song>/");
-                DrawTextEx(mainFont, mod, (Vector2) {tx, ty}, 18, 1, WHITE);
-                DrawTextEx(mainFont, tChart ? "[existe]" : "[novo]", (Vector2) {tx + 240, ty}, 18, 1, tChart ? YELLOW : GREEN);
+                Ed_DrawText(mainFont, mod, (Vector2) {tx, ty}, 18, 1, WHITE);
+                Ed_DrawText(mainFont, tChart ? "[existe]" : "[novo]", (Vector2) {tx + 240, ty}, 18, 1, tChart ? YELLOW : GREEN);
             }
             ty += 24;
-            DrawTextEx(mainFont, "      data.json", (Vector2) {tx, ty}, 18, 1, WHITE);
+            Ed_DrawText(mainFont, "      data.json", (Vector2) {tx, ty}, 18, 1, WHITE);
             ty += 24;
-            DrawTextEx(mainFont, tInst ? "      Inst.ogg [ok]" : "      Inst.ogg [--]", (Vector2) {tx, ty}, 18, 1, tInst ? GREEN : GRAY);
+            Ed_DrawText(mainFont, tInst ? "      Inst.ogg [ok]" : "      Inst.ogg [--]", (Vector2) {tx, ty}, 18, 1, tInst ? GREEN : GRAY);
             ty += 24;
-            DrawTextEx(mainFont, tVox ? "      Voices.ogg [ok]" : "      Voices.ogg [--]", (Vector2) {tx, ty}, 18, 1, tVox ? GREEN : GRAY);
+            Ed_DrawText(mainFont, tVox ? "      Voices.ogg [ok]" : "      Voices.ogg [--]", (Vector2) {tx, ty}, 18, 1, tVox ? GREEN : GRAY);
         }
     }
     Render_StopCamera();
@@ -429,11 +429,11 @@ static void Edit_Draw(void) {
     // tempo no canto + status
     char tbuf[32];
     EdTimeFmt(tbuf, sizeof(tbuf), cursorMs);
-    DrawTextEx(mainFont, tbuf, (Vector2) {1110, 2}, 24, 2, WHITE);
+    Ed_DrawText(mainFont, tbuf, (Vector2) {1110, 2}, 24, 2, WHITE);
     // status embaixo da grade (antes caia em cima do painel, lado direito)
     if(statusTimer > 0) {
         DrawTextEx(mainFont, statusText, (Vector2) {GRID_X0 + 2, 692}, 20, 1, (Color){0, 0, 0, 200});
-        DrawTextEx(mainFont, statusText, (Vector2) {GRID_X0, 690}, 20, 1, YELLOW);
+        Ed_DrawText(mainFont, statusText, (Vector2) {GRID_X0, 690}, 20, 1, YELLOW);
     }
 
     Edit_DrawGrid();
@@ -500,7 +500,7 @@ static void ChartEditor_Draw([[maybe_unused]] RayScene* scene) {
         Edit_Draw();
     Dialogs_Draw();
     if(statusTimer > 0 && ceMode == CE_PICKER)
-        DrawTextEx(mainFont, statusText, (Vector2) {150, 640}, 24, 2, YELLOW);
+        Ed_DrawText(mainFont, statusText, (Vector2) {150, 640}, 24, 2, YELLOW);
 }
 
 static void ChartEditor_Destroy([[maybe_unused]] RayScene* scene) {

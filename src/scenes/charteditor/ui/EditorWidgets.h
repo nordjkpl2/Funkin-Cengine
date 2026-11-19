@@ -54,5 +54,7 @@ void EdTimeFmt(char* out, size_t n, double ms);
 char EdDlgButton(Rectangle r, const char* label, Color edge);
 void NumBox_Commit(void);
 char EdMenuItem(Rectangle r, const char* label);
+// texto com sombra (legivel sobre fundo da mesma cor)
+void Ed_DrawText(Font f, const char* t, Vector2 p, float size, float spacing, Color c);
 
 #endif
