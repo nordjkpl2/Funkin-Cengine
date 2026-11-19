@@ -16,3 +16,27 @@ LOAD [moribund] init: 0.0 ms, chart: 265.2 ms, sounds: 3.1 ms, characters: 428.5
 LOAD [moribund] init: 0.0 ms, chart: 286.3 ms, sounds: 1.4 ms, characters: 430.7 ms, stage: 2.2 ms, song audio: 1.6 ms, notes: 2.2 ms, ui: 0.0 ms, warmup: 0.1 ms, (textures on main thread: 431.1 ms) total: 724.5 ms
 
 --- SESSION LOG START ---
+LOAD [moribund] init: 21.9 ms, chart: 228.1 ms, sounds: 75.1 ms, characters: 368.1 ms, stage: 3.5 ms, song audio: 1.6 ms, notes: 2.3 ms, ui: 7.7 ms, warmup: 0.2 ms, (textures on main thread: 392.9 ms) total: 708.5 ms
+LOAD [moribund] init: 0.0 ms, chart: 145.9 ms, sounds: 3.5 ms, characters: 425.2 ms, stage: 2.3 ms, song audio: 1.6 ms, notes: 2.5 ms, ui: 0.0 ms, warmup: 0.1 ms, (textures on main thread: 425.4 ms) total: 581.0 ms
+
+--- SESSION LOG START ---
+[WARN] Girlfriend 'air' nao encontrada: usando gf padrao
+LOAD [end-of-the-world] init: 24.0 ms, chart: 33.4 ms, sounds: 119.9 ms, characters: 51.8 ms, stage: 8.4 ms, song audio: 4.1 ms, notes: 2.2 ms, ui: 8.2 ms, warmup: 0.2 ms, (textures on main thread: 66.5 ms) total: 252.3 ms
+[WARN] Girlfriend 'air' nao encontrada: usando gf padrao
+LOAD [end-of-the-world] init: 0.0 ms, chart: 39.1 ms, sounds: 6.4 ms, characters: 84.8 ms, stage: 8.5 ms, song audio: 1.6 ms, notes: 2.1 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 91.1 ms) total: 142.7 ms
+
+--- SESSION LOG START ---
+LOAD [end-of-the-world] init: 23.2 ms, chart: 33.3 ms, sounds: 56.2 ms, characters: 19.1 ms, stage: 7.4 ms, song audio: 1.7 ms, notes: 2.1 ms, ui: 7.7 ms, warmup: 0.2 ms, (textures on main thread: 54.3 ms) total: 151.0 ms
+LOAD [end-of-the-world-remake] init: 0.0 ms, chart: 13.2 ms, sounds: 11.9 ms, characters: 422.9 ms, stage: 9.1 ms, song audio: 4.0 ms, notes: 0.1 ms, ui: 0.0 ms, warmup: 0.1 ms, (textures on main thread: 425.3 ms) total: 461.2 ms
+LOAD [moribund-3] init: 0.0 ms, chart: 109.8 ms, sounds: 0.9 ms, characters: 458.2 ms, stage: 3.5 ms, song audio: 1.6 ms, notes: 3.6 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 460.3 ms) total: 577.7 ms
+[WARN] Stage 'void' nao encontrado: usando stage vazio
+LOAD [unknownbambi] init: 0.0 ms, chart: 4.6 ms, sounds: 29.6 ms, characters: 79.1 ms, stage: 0.1 ms, song audio: 1.7 ms, notes: 0.0 ms, ui: 0.0 ms, warmup: 0.1 ms, (textures on main thread: 60.3 ms) total: 115.4 ms
+LOAD [technophobia-V2] init: 0.0 ms, chart: 17.8 ms, sounds: 53.4 ms, characters: 390.3 ms, stage: 10.6 ms, song audio: 1.8 ms, notes: 0.8 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 380.5 ms) total: 474.9 ms
+LOAD [omission] init: 0.0 ms, chart: 25.7 ms, sounds: 50.1 ms, characters: 290.2 ms, stage: 10.3 ms, song audio: 1.7 ms, notes: 1.0 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 257.1 ms) total: 379.1 ms
+LOAD [sacrifice] init: 0.0 ms, chart: 5.1 ms, sounds: 33.0 ms, characters: 407.4 ms, stage: 8.5 ms, song audio: 3.9 ms, notes: 0.1 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 404.2 ms) total: 458.3 ms
+
+--- SESSION LOG START ---
+[WARN] Icone nao encontrado: 'fsm' (usando padrao)
+LOAD [realisticful] init: 21.9 ms, chart: 153.7 ms, sounds: 77.4 ms, characters: 357.2 ms, stage: 20.6 ms, song audio: 2.2 ms, notes: 3.5 ms, ui: 8.1 ms, warmup: 0.2 ms, (textures on main thread: 387.7 ms) total: 644.6 ms
+[WARN] Icone nao encontrado: 'fsm' (usando padrao)
+LOAD [realisticful] init: 0.0 ms, chart: 107.1 ms, sounds: 0.8 ms, characters: 420.3 ms, stage: 11.2 ms, song audio: 1.7 ms, notes: 3.5 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 430.3 ms) total: 544.7 ms

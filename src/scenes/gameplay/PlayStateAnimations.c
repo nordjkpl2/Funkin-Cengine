@@ -21,7 +21,7 @@ static Sound missSFX[3];
 static Sound hitSFX;
 
 static const char* const noGfNames[] = {
-    "empty", "none", "nogf", "no-gf", "nogirlfriend", "no_gf", "__not_have_a_gf", ""
+    "empty", "none", "nogf", "no-gf", "nogirlfriend", "no_gf", "__not_have_a_gf", "air", ""
 };
 
 Character* PlayStateAnimations_Dad(void) { return &dad; }

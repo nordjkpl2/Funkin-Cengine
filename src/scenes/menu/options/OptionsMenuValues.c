@@ -202,14 +202,20 @@ static bool Section_HasMatch(int header) {
     return false;
 }
 
-/* Com filtro, aparecem so as opcoes (e secoes) que batem, mesmo se recolhidas.
+/* Titulo da secao bate com o filtro? Entao a secao inteira aparece. */
+static bool Header_TitleMatches(int header) {
+    return SearchBox_Match(&search, options[header].text);
+}
+
+/* Com filtro, aparecem as secoes cujo titulo ou alguma opcao bate (mesmo recolhidas),
+   e dentro delas: todas as opcoes se o titulo bateu, senao so as que batem.
    Sem filtro: cabecalhos sempre; opcoes somem quando a secao esta recolhida. */
 static bool Option_ComputeVisible(int i) {
     const bool filtering = SearchBox_HasFilter(&search);
     if (options[i].type == OPTION_VALUE_HEADER)
-        return !filtering || Section_HasMatch(i);
+        return !filtering || Header_TitleMatches(i) || Section_HasMatch(i);
     if (filtering)
-        return SearchBox_Match(&search, options[i].text);
+        return Header_TitleMatches(options[i].header) || SearchBox_Match(&search, options[i].text);
     return !options[options[i].header].collapsed;
 }
 

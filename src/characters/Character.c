@@ -217,9 +217,14 @@ void Char_LoadIcon(const CharCtx *ctx, Character *character,
                                ? healthIcon : name;
     char path[CHAR_PATH_MAX];
 
+    /* Ordem: nome, depois "icon-nome" (aceita icon-fsm.png e fsm.png). */
     bool found = Char_Find(ctx, path, "images/icons/%s.png", iconName);
     if (!found && strcmp(iconName, name) != 0)
         found = Char_Find(ctx, path, "images/icons/%s.png", name);
+    if (!found)
+        found = Char_Find(ctx, path, "images/icons/icon-%s.png", iconName);
+    if (!found && strcmp(iconName, name) != 0)
+        found = Char_Find(ctx, path, "images/icons/icon-%s.png", name);
 
     if (!found) {
         Log_WarnF("Icone nao encontrado: '%s' (usando padrao)", iconName);
