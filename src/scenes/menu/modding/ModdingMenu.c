@@ -7,6 +7,8 @@
 #include "scenes/api/FontLoader.h"
 #include "scenes/modding/charactereditor/CharEditor.h"
 #include "scenes/modding/charteditor/ChartEditor.h"
+#include "scenes/modding/stageeditor/StageEditor.h"
+#include "scenes/modding/weekeditor/WeekEditor.h"
 #include "scenes/menu/MenuBackground.h"
 #include "scenes/menu/MenuState.h"
 #include "scenes/menu/modding/ModdingMenu.h"
@@ -25,6 +27,8 @@
 const char *const tabs[TAB_COUNT] = {
     "Chart Editor",
     "Character Editor",
+    "Stage Editor",
+    "Week Editor",
     "Import Mod"
 };
 
@@ -170,6 +174,14 @@ static void ModdingMenu_Update([[maybe_unused]] RayScene *scene)
                 return;
 
             case 2:
+                StageEditor_SetScene();
+                return;
+
+            case 3:
+                WeekEditor_SetScene();
+                return;
+
+            case 4:
                 mode = MOD_IMPORT;
                 impConfirmDel = 0;
                 Imp_RefreshUsage();

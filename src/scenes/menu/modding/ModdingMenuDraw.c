@@ -392,6 +392,8 @@ static void Modding_DrawTabIcon(int tab, float x, float y, float size, Color c)
     switch (tab) {
         case 0: Modding_DrawMusicNote(x, y, size, c); break;
         case 1: Modding_DrawPerson(x, y, size, c);    break;
+        case 2:
+        case 3: DrawRectangleLinesEx((Rectangle){x, y, size, size * 0.75f}, 2.0f, c); break;
         default: Modding_DrawDownload(x, y, size, c); break;
     }
 }

@@ -35,8 +35,10 @@ rule C_COMPILER__FNF_C_ENGINE_unscanned_Release
 # Rule for linking C executable.
 
 rule C_EXECUTABLE_LINKER__FNF_C_ENGINE_Release
-  command = C:\WINDOWS\system32\cmd.exe /C "$PRE_LINK && C:\msys64\clang64\bin\clang.exe $FLAGS $LINK_FLAGS $in -o $TARGET_FILE -Wl,--out-implib,$TARGET_IMPLIB -Wl,--major-image-version,0,--minor-image-version,0 $LINK_PATH $LINK_LIBRARIES && $POST_BUILD"
+  command = C:\WINDOWS\system32\cmd.exe /C "$PRE_LINK && C:\msys64\clang64\bin\clang.exe $FLAGS $LINK_FLAGS @$RSP_FILE -o $TARGET_FILE -Wl,--out-implib,$TARGET_IMPLIB -Wl,--major-image-version,0,--minor-image-version,0 && $POST_BUILD"
   description = Linking C executable $TARGET_FILE
+  rspfile = $RSP_FILE
+  rspfile_content = $in $LINK_PATH $LINK_LIBRARIES
   restat = $RESTAT
 
 
