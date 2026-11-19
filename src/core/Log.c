@@ -51,11 +51,12 @@ static void EnsureLogFileOpen(void) {
     }
 }
 
-static void WriteToFile(const char* buf, size_t len) {
+/* flush so só em mensagens de erro/fatal: Info e Warn sao frequentes e nao precisam de syscall por linha. */
+static void WriteToFile(const char* buf, size_t len, int flush) {
     EnsureLogFileOpen();
     if (logFile) {
         fwrite(buf, 1, len, logFile);
-        fflush(logFile);
+        if (flush) fflush(logFile);
     }
 }
 
@@ -68,11 +69,11 @@ static void RawWrite(int fd, const char* s, size_t n) {
     }
 }
 
-static void Emit(int fd, const char* msg) {
-    if(msg == NULL) { 
-        RawWrite(fd, "\n", 1); 
-        WriteToFile("\n", 1);
-        return; 
+static void Emit(int fd, const char* msg, int flush) {
+    if(msg == NULL) {
+        RawWrite(fd, "\n", 1);
+        WriteToFile("\n", 1, flush);
+        return;
     }
     size_t len = strlen(msg);
     if(len + 1 < 512) {
@@ -80,12 +81,12 @@ static void Emit(int fd, const char* msg) {
         memcpy(tmp, msg, len);
         tmp[len] = '\n';
         RawWrite(fd, tmp, len + 1);
-        WriteToFile(tmp, len + 1);
+        WriteToFile(tmp, len + 1, flush);
     } else {
         RawWrite(fd, msg, len);
         RawWrite(fd, "\n", 1);
-        WriteToFile(msg, len);
-        WriteToFile("\n", 1);
+        WriteToFile(msg, len, flush);
+        WriteToFile("\n", 1, flush);
     }
 }
 
@@ -109,7 +110,7 @@ static void EmitF(int fd, int fatal, const char* fmt, va_list ap) {
     buf[len] = '\n';
     
     RawWrite(fd, buf, (size_t)len + 1);
-    WriteToFile(buf, (size_t)len + 1);
+    WriteToFile(buf, (size_t)len + 1, 1);
     
     if(fatal) {
         buf[len] = '\0';
@@ -122,12 +123,12 @@ static void EmitF(int fd, int fatal, const char* fmt, va_list ap) {
     }
 }
 
-void Log_Info(const char* msg)  { LogLock(); Emit(STDOUT_FILENO, msg); LogUnlock(); }
-void Log_Error(const char* msg) { LogLock(); Emit(STDERR_FILENO, msg); LogUnlock(); }
+void Log_Info(const char* msg)  { LogLock(); Emit(STDOUT_FILENO, msg, 0); LogUnlock(); }
+void Log_Error(const char* msg) { LogLock(); Emit(STDERR_FILENO, msg, 1); LogUnlock(); }
 
-void Log_Fatal(const char* msg) { 
+void Log_Fatal(const char* msg) {
     LogLock(); // nao destrava: o processo vai sair
-    Emit(STDERR_FILENO, msg); 
+    Emit(STDERR_FILENO, msg, 1);
     ShowFatalPopup(msg);
     if (logFile) {
         fclose(logFile);
@@ -158,7 +159,7 @@ void Log_WarnF(const char* fmt, ...) {
     char line[LOG_WARN_LEN * 2 + 8];
     snprintf(line, sizeof(line), "[WARN] %s", text);
     LogLock();
-    Emit(STDERR_FILENO, line);
+    Emit(STDERR_FILENO, line, 0);
 
     if (warnTotal < LOG_WARN_MAX) {
         memcpy(warnText[warnTotal], text, LOG_WARN_LEN - 1);

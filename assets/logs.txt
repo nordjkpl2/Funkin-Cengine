@@ -61,3 +61,13 @@ LOAD [oblivion-V2] init: 0.0 ms, chart: 33.4 ms, sounds: 0.9 ms, characters: 307
 --- SESSION LOG START ---
 LOAD [oblivion-V2] init: 21.4 ms, chart: 26.8 ms, sounds: 57.9 ms, characters: 224.5 ms, stage: 4.9 ms, song audio: 1.8 ms, notes: 1.2 ms, ui: 8.0 ms, warmup: 0.2 ms, (textures on main thread: 255.7 ms) total: 346.6 ms
 LOAD [oblivion-V2] init: 0.0 ms, chart: 30.4 ms, sounds: 0.7 ms, characters: 272.2 ms, stage: 3.9 ms, song audio: 1.6 ms, notes: 1.1 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 274.7 ms) total: 310.1 ms
+
+--- SESSION LOG START ---
+LOAD [oblivion-V2] init: 21.7 ms, chart: 27.7 ms, sounds: 57.1 ms, characters: 223.9 ms, stage: 4.4 ms, song audio: 1.8 ms, notes: 1.2 ms, ui: 8.1 ms, warmup: 0.2 ms, (textures on main thread: 255.1 ms) total: 346.1 ms
+LOAD [oblivion-V2] init: 0.0 ms, chart: 28.5 ms, sounds: 0.8 ms, characters: 282.6 ms, stage: 3.4 ms, song audio: 1.7 ms, notes: 1.2 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 284.6 ms) total: 318.3 ms
+
+--- SESSION LOG START ---
+LOAD [Astray] init: 20.4 ms, chart: 27.2 ms, sounds: 89.9 ms, characters: 395.6 ms, stage: 8.1 ms, song audio: 4.2 ms, notes: 0.3 ms, ui: 7.8 ms, warmup: 0.2 ms, (textures on main thread: 436.3 ms) total: 553.7 ms
+
+--- SESSION LOG START ---
+LOAD [Astray] init: 23.5 ms, chart: 23.5 ms, sounds: 61.4 ms, characters: 407.4 ms, stage: 8.5 ms, song audio: 1.8 ms, notes: 0.3 ms, ui: 8.2 ms, warmup: 0.2 ms, (textures on main thread: 451.1 ms) total: 534.8 ms

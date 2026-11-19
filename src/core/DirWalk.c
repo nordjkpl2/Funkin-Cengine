@@ -97,35 +97,34 @@ static void DwClose(DwIter* it) {
 
 #endif
 
-static void DwWalk(const char* path, int depth, int maxDepth, DirWalkTotals* totals) {
+/* Retorna 0 se o diretorio nao pode ser aberto (sem sonda extra: abre uma unica vez). */
+static int DwWalk(const char* path, int depth, int maxDepth, DirWalkTotals* totals) {
     DwIter it;
     char name[DW_NAME_MAX];
     int isDir;
     long long size;
 
-    if (depth > maxDepth || !DwOpen(path, &it)) return;
+    if (depth > maxDepth || !DwOpen(path, &it)) return 0;
     while (DwNext(&it, path, name, (int)sizeof(name), &isDir, &size)) {
         if (isDir) {
             char child[DW_PATH_MAX];
             ++totals->dirs;
             if (snprintf(child, sizeof(child), "%s/%s", path, name) < (int)sizeof(child))
-                DwWalk(child, depth + 1, maxDepth, totals);
+                (void)DwWalk(child, depth + 1, maxDepth, totals);
         } else {
             ++totals->files;
             totals->bytes += size;
         }
     }
     DwClose(&it);
+    return 1;
 }
 
 int DirWalk_Totals(const char* path, int maxDepth, DirWalkTotals* out) {
-    DwIter probe;
     DirWalkTotals totals = {0, 0, 0};
     if (out != NULL) *out = totals;
     if (path == NULL || path[0] == '\0') return 0;
-    if (!DwOpen(path, &probe)) return 0;
-    DwClose(&probe);
-    DwWalk(path, 0, maxDepth, &totals);
+    if (!DwWalk(path, 0, maxDepth, &totals)) return 0;
     if (out != NULL) *out = totals;
     return 1;
 }

@@ -28,7 +28,8 @@ static const Vector2 trailOffset = {40, 60};
 #define NOTE_SCALE 0.7f
 #define NOTE_OCC_TOP 300                    /* margem acima da tela (px) */
 #define NOTE_OCC_ROWS (300 + 720 + 300)     /* linhas de pixel cobertas pela grade de ocupacao */
-static unsigned char occupied[8][NOTE_OCC_ROWS];   /* (lado, casa) x linha de pixel; zerada a cada Draw */
+static unsigned short occupied[8][NOTE_OCC_ROWS];  /* (lado, casa) x linha de pixel; marcada com a geracao do Draw */
+static unsigned short occupiedGen = 0;             /* geracao atual; evita memset por frame */
 #define TRAIL_SEGMENT_H 44.0f /* altura do sprite do sustain na escala 1 */
 #define END_SEGMENT_H 64.0f   /* altura do sprite da ponta na escala 1 */
 
@@ -268,7 +269,10 @@ void PlayStateNoteSpawn_Draw(const PlayStateNoteView* view) {
     const float cutoffTime = time + (900.0f / scrollSpeed);
     const float endHeight = fmaxf(END_SEGMENT_H, 18.0f * view->songSpeed);
 
-    memset(occupied, 0, sizeof(occupied));
+    if (++occupiedGen == 0) {   /* wraparound: limpa uma vez a cada 65535 frames */
+        memset(occupied, 0, sizeof(occupied));
+        occupiedGen = 1;
+    }
 
     for (size_t i = firstNote; i < noteCount; i++) {
         const Note* note = notes + i;
@@ -299,10 +303,10 @@ void PlayStateNoteSpawn_Draw(const PlayStateNoteView* view) {
             const int row = (int)yf + NOTE_OCC_TOP;
             if (note->pressed)
                 continue;
-            unsigned char* cell = &occupied[(note->mustHit ? 4 : 0) + note->id][row];
-            if (*cell)
+            unsigned short* cell = &occupied[(note->mustHit ? 4 : 0) + note->id][row];
+            if (*cell == occupiedGen)
                 continue;
-            *cell = 1;
+            *cell = occupiedGen;
         }
 
         SetAnimIfChanged(&renderNote, Note_Animation(note->id));

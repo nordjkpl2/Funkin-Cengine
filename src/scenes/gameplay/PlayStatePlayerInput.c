@@ -97,8 +97,10 @@ char PlayStatePlayerInput_Update(float songTime, PlayStatePlayerKeys* keys) {
             anyPressed = 1;
     }
 
+    // Ghost: uma unica varredura guarda a primeira nota acertavel de cada lane;
+    // o acerto usa esses candidatos (mesma ordem de janela/condicoes da varredura de acerto).
+    Note* candidate[4] = {NULL, NULL, NULL, NULL};
     if (gameOptions.ghost == 1 && anyPressed) {
-        char hittable[4] = {0, 0, 0, 0};
         char anyHittable = 0;
         for (size_t i = firstNote; i < noteCount; i++) {
             Note* n = notes + i;
@@ -108,15 +110,15 @@ char PlayStatePlayerInput_Update(float songTime, PlayStatePlayerKeys* keys) {
                 break;
             if (n->id < 0 || n->id > 3)
                 continue;
-            if (Note_CanBeHit(n, songTime)) {
-                hittable[n->id] = 1;
+            if (!candidate[n->id] && Note_CanBeHit(n, songTime)) {
+                candidate[n->id] = n;
                 anyHittable = 1;
             }
         }
         if (anyHittable) {
             anyPressed = 0;
             for (int i = 0; i < 4; i++) {
-                if (keyPressed[i] && !hittable[i]) {
+                if (keyPressed[i] && !candidate[i]) {
                     keyPressed[i] = 0;
                     keyDown[i] = 0;
                 }
@@ -124,6 +126,16 @@ char PlayStatePlayerInput_Update(float songTime, PlayStatePlayerKeys* keys) {
                     anyPressed = 1;
             }
         }
+        else
+            anyPressed = 0;
+
+        for (int i = 0; i < 4; i++) {
+            if (keyPressed[i] && candidate[i] && !candidate[i]->pressed && !pressed[i]) {
+                pressed[i] = 1;
+                HitNote(candidate[i], songTime);
+            }
+        }
+        goto BRUH;
     }
 
     if (!anyPressed)

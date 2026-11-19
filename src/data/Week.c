@@ -92,9 +92,10 @@ static inline int Entry_HasFile(const char* dir, const char* file){
 }
 static void Scan_Add(const char* path, const char* dir, const char* fileBase, char fromMods){
     (void)fromMods;
+    /* Checa duplicata antes do parse: o mesmo arquivo aparece em weekList.txt e na varredura do diretorio. */
+    if(Entry_HasFile(dir,fileBase)) return;
     WeekEntry e;
     if(!Week_ParseFile(path,dir,fileBase,&e)) return;
-    if(Entry_HasFile(dir,fileBase)) return;
     if(entryCount>=entryCap){
         int nc=(entryCap==0)?8:entryCap*2;
         WeekEntry* g=realloc(entries,sizeof(WeekEntry)*(size_t)nc);
