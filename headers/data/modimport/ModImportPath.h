@@ -9,7 +9,7 @@
 #ifndef MODIMPORTPATH_H
 #define MODIMPORTPATH_H
 
-#include "data/ModImportInternal.h"
+#include "data/modimport/ModImportInternal.h"
 
 const char *MI_BaseName(const char *path);
 

@@ -16,7 +16,7 @@
 #include <stdio.h>
 #include <sys/stat.h>
 
-#include "data/ModImport.h"
+#include "data/modimport/ModImport.h"
 #include "yyjson.h"
 
 #ifdef _WIN32

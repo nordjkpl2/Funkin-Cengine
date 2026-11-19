@@ -9,7 +9,7 @@
 #ifndef MODIMPORTCHARACTERS_H
 #define MODIMPORTCHARACTERS_H
 
-#include "data/ModImportInternal.h"
+#include "data/modimport/ModImportInternal.h"
 
 void MI_CopyCollectedIcons(MI_ImportContext *context);
 

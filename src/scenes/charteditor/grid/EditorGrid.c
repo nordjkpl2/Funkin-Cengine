@@ -10,11 +10,11 @@
 #include "Game.h"
 #include "GameData.h"
 #include "raymath.h"
-#include "EditorGrid.h"
-#include "EditorDataAndIO.h"
-#include "EditorTimeline.h"
-#include "EditorAudio.h"
-#include "EditorWidgets.h"
+#include "scenes/charteditor/grid/EditorGrid.h"
+#include "scenes/charteditor/data/EditorDataAndIO.h"
+#include "scenes/charteditor/grid/EditorTimeline.h"
+#include "scenes/charteditor/audio/EditorAudio.h"
+#include "scenes/charteditor/ui/EditorWidgets.h"
 
 /* // * Código do Chart Editor */
 // Chart Editor v1: palavras simples, sem jargao.

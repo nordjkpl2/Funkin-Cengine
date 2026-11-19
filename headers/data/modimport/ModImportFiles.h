@@ -9,7 +9,7 @@
 #ifndef MODIMPORTFILES_H
 #define MODIMPORTFILES_H
 
-#include "data/ModImportInternal.h"
+#include "data/modimport/ModImportInternal.h"
 
 char MI_CopyFile(const char *source, const char *destination, long long *bytes);
 

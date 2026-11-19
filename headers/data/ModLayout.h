@@ -9,7 +9,7 @@
 #ifndef MODLAYOUT_H
 #define MODLAYOUT_H
 
-#include "data/ModImportInternal.h"
+#include "data/modimport/ModImportInternal.h"
 
 int MI_HasModLayout(const char *root);
 

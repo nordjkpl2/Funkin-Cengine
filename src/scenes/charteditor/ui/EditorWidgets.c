@@ -10,9 +10,9 @@
 #include "Game.h"
 #include "GameData.h"
 #include "raymath.h"
-#include "EditorWidgets.h"
-#include "EditorDataAndIO.h"
-#include "EditorTimeline.h"
+#include "scenes/charteditor/ui/EditorWidgets.h"
+#include "scenes/charteditor/data/EditorDataAndIO.h"
+#include "scenes/charteditor/grid/EditorTimeline.h"
 
 TxtBox* focusBox = NULL;
 

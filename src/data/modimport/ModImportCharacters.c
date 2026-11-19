@@ -6,12 +6,12 @@
  */
 
 #include "std.h"
-#include "data/ModImport.h"
-#include "data/ModImportInternal.h"
-#include "data/ModImportCharacters.h"
-#include "data/ModImportPath.h"
-#include "data/ModImportFiles.h"
-#include "data/ModImportParse.h"
+#include "data/modimport/ModImport.h"
+#include "data/modimport/ModImportInternal.h"
+#include "data/modimport/ModImportCharacters.h"
+#include "data/modimport/ModImportPath.h"
+#include "data/modimport/ModImportFiles.h"
+#include "data/modimport/ModImportParse.h"
 
 #include "core/DirWalk.h"
 #include "threads/cpu/Jobs.h"

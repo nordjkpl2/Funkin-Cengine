@@ -9,7 +9,7 @@
 #ifndef MODIMPORTPARSE_H
 #define MODIMPORTPARSE_H
 
-#include "data/ModImportInternal.h"
+#include "data/modimport/ModImportInternal.h"
 
 void MI_AddName(MI_NameList *list, const char *name);
 

@@ -11,13 +11,13 @@
 #include "Game.h"
 #include "GameData.h"
 #include "raymath.h"
-#include "EditorDataAndIO.h"
-#include "EditorTimeline.h"
-#include "EditorAudio.h"
-#include "EditorWidgets.h"
-#include "EditorGrid.h"
-#include "EditorIcons.h"
-#include "EditorCharactersAndLists.h"
+#include "scenes/charteditor/data/EditorDataAndIO.h"
+#include "scenes/charteditor/grid/EditorTimeline.h"
+#include "scenes/charteditor/audio/EditorAudio.h"
+#include "scenes/charteditor/ui/EditorWidgets.h"
+#include "scenes/charteditor/grid/EditorGrid.h"
+#include "scenes/charteditor/ui/EditorIcons.h"
+#include "scenes/charteditor/data/EditorCharactersAndLists.h"
 
 void Editor_UnloadIcons(void) {
     if(edIconOOk) {

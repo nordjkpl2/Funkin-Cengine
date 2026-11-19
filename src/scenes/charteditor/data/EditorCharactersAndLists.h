@@ -7,11 +7,11 @@
 #include "std.h"
 #include "Render.h"
 #include "data/Song.h"
-#include "EditorDataAndIO.h"
-#include "EditorTimeline.h"
-#include "EditorAudio.h"
-#include "EditorWidgets.h"
-#include "EditorGrid.h"
+#include "scenes/charteditor/data/EditorDataAndIO.h"
+#include "scenes/charteditor/grid/EditorTimeline.h"
+#include "scenes/charteditor/audio/EditorAudio.h"
+#include "scenes/charteditor/ui/EditorWidgets.h"
+#include "scenes/charteditor/grid/EditorGrid.h"
 
 // lista de cantores (artes que existem): pro seletor Boyfriend/Opponent
 #define NAME_LIST_MAX 1024  /* mods grandes tem centenas de personagens */

@@ -10,7 +10,7 @@
 #include "GameData.h"
 #include "Log.h"
 #include "threads/cpu/Jobs.h"
-#include "data/ModImport.h"
+#include "data/modimport/ModImport.h"
 #include "threads/Thread.h"
 #if defined(FNF_DEBUG_STATS)
 #include "rlgl.h"

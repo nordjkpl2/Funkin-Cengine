@@ -10,8 +10,8 @@
 #include "Game.h"
 #include "GameData.h"
 #include "raymath.h"
-#include "EditorTimeline.h"
-#include "EditorDataAndIO.h"
+#include "scenes/charteditor/grid/EditorTimeline.h"
+#include "scenes/charteditor/data/EditorDataAndIO.h"
 
 // editor
 int secIdx = 0;

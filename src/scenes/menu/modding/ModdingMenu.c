@@ -11,7 +11,7 @@
 #include "scenes/menu/MenuBackground.h"
 #include "scenes/menu/MenuState.h"
 #include "scenes/menu/modding/ModdingMenu.h"
-#include "data/ModImport.h"
+#include "data/modimport/ModImport.h"
 
 #include <math.h>
 #include <stdio.h>
