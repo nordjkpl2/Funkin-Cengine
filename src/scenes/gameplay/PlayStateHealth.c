@@ -13,7 +13,12 @@ static Color dadColor;
 static Color bfColor;
 static float bop;
 static float bopT;
+static float bobY;            /* calculado em Update, usado no Draw */
+static float sway;
 static float minHealth;       /* -inf se mortal (morre abaixo de 0), senao 0 */
+
+/* area interna da barra em pixels inteiros: calculada uma vez no Init */
+static int innerX, innerY, innerW, innerH;
 
 void PlayStateHealth_Init(char top, char mortal) {
     minHealth = mortal ? -INFINITY : 0.0f;
@@ -24,6 +29,11 @@ void PlayStateHealth_Init(char top, char mortal) {
     /* base: y 600 (103 px da borda de baixo); topo: mesma distancia de cima */
     healthbar.y = top ? 103 : 600;
 
+    innerX = (int)healthbar.x + healthbarPadding;
+    innerY = (int)healthbar.y + healthbarPadding;
+    innerW = (int)healthbar.width - healthbarPadding * 2;
+    innerH = (int)healthbar.height - healthbarPadding * 2;
+
     dadColor = (Color) {204, 85, 180, 255};
     bfColor = (Color) {0, 217, 204, 255};
 }
@@ -32,6 +42,8 @@ void PlayStateHealth_Reset(void) {
     health = 0.5f;
     bop = 1;
     bopT = 1;
+    bobY = 0;
+    sway = 0;
 }
 
 void PlayStateHealth_SetCharacterColors(const Character* dad, const Character* bf) {
@@ -39,8 +51,10 @@ void PlayStateHealth_SetCharacterColors(const Character* dad, const Character* b
     if (bf->hasHealthColor) bfColor = bf->healthColor;
 }
 
+/* PlayStateHealth_Add ja deixa health em [minHealth, 1]; nada mais precisa limitar depois. */
 void PlayStateHealth_Add(float delta) {
-    health = fmaxf(minHealth, fminf(1, health + delta));
+    const float h = health + delta;
+    health = h > 1.0f ? 1.0f : (h < minHealth ? minHealth : h);
 }
 
 char PlayStateHealth_IsDead(void) {
@@ -57,8 +71,11 @@ void PlayStateHealth_Update(float deltaTime) {
         if (bopT > 1) bopT = 1;
     }
 
-    float k = 1 - bopT;
-    bop = 1 + 0.22f * k * k;
+    const float k = 1 - bopT;
+    const float kk = k * k;
+    bop = 1 + 0.22f * kk;
+    bobY = -7 * kk;
+    sway = 4 * kk;
 }
 
 float PlayStateHealth_BarY(void) {
@@ -73,36 +90,29 @@ void PlayStateHealth_Draw(Texture2D dadIcon, Texture2D bfIcon) {
     const int C = 35;
     DrawRectangleRec(healthbar, BLACK);
 
-    float offsetX = healthbar.x + healthbarPadding;
-    float availableWidth = healthbar.width - healthbarPadding * 2;
-    float availableHeight = healthbar.height - healthbarPadding * 2;
-    /* so o desenho limita: a morte usa health cru (< 0) */
-    float shown = health < 0 ? 0 : (health > 1 ? 1 : health);
-    float middle = availableWidth * (1 - shown);
+    /* so a morte (health < 0) precisa cortar em 0 */
+    const float shown = health < 0 ? 0.0f : health;
+    const float middle = innerW * (1.0f - shown);
+    const int splitX = innerX + (int)middle;
+    const int dadW = splitX - innerX;
+    const int bfW = innerX + innerW - splitX;
 
-    if (middle > 0) {
-        DrawRectangle((int)offsetX, (int)(healthbar.y + healthbarPadding), (int)middle, (int)availableHeight, dadColor);
-    }
-    if (middle < availableWidth) {
-        DrawRectangle((int)(offsetX + middle), (int)(healthbar.y + healthbarPadding), (int)(availableWidth - middle), (int)availableHeight, bfColor);
-    }
+    if (dadW > 0) DrawRectangle(innerX, innerY, dadW, innerH, dadColor);
+    if (bfW > 0)  DrawRectangle(splitX, innerY, bfW, innerH, bfColor);
 
-    float iconHalf = 75 * bop;
-    float iconCY = healthbar.y + healthbar.height / 2;
-    float kk = 1 - bopT;
-    kk *= kk;
-    float bobY = -7 * kk;
-    float sway = 4 * kk;
+    const float iconHalf = 75 * bop;
+    const float iconCY = healthbar.y + healthbar.height / 2;
+    const float iconX = innerX + middle;
 
     DrawTexturePro(dadIcon, Character_IconFrame(dadIcon), (Rectangle) {
-        .x = offsetX + middle + C - 75 - iconHalf - sway,
+        .x = iconX + C - 75 - iconHalf - sway,
         .y = iconCY - iconHalf + bobY,
         .width = 130 * bop,
         .height = 130 * bop
     }, (Vector2) {0, 0}, 0, WHITE);
 
     DrawTexturePro(bfIcon, Character_IconFrame(bfIcon), (Rectangle) {
-        .x = offsetX + middle - C + 75 - iconHalf + sway,
+        .x = iconX - C + 75 - iconHalf + sway,
         .y = iconCY - iconHalf - bobY,
         .width = 145 * bop,
         .height = 145 * bop

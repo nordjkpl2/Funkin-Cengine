@@ -101,3 +101,9 @@
 96	273	8167518184088651	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayState.c.obj	6cb6e51baac2993
 111	278	8167518184247003	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/menu/OptionsMenu.c.obj	7f49eb7aa1cbbf7c
 278	3461	8167518185921489	D:/dev/funkin c/FNF_C_ENGINE.exe	2662d046858b218c
+35	75	8167521518668656	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+83	175	8167521519153062	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayStateHealth.c.obj	99b33ad82d8de672
+87	180	8167521519196359	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayStatePlayerInput.c.obj	3846446947f8b1af
+79	237	8167521519113085	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayState.c.obj	6cb6e51baac2993
+237	5135	8167521520689254	D:/dev/funkin c/FNF_C_ENGINE.exe	2662d046858b218c
+36	73	8167522730044931	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218

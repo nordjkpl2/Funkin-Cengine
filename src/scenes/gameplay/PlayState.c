@@ -103,6 +103,10 @@ static int currentOption;
 static float optionOffset;
 static float pauseTimer;
 
+// vida: taxas por evento, decididas uma vez por cena (ver ConfigureHealthRates)
+static float oppDrain;   // perda por nota do oponente (0 = drain desligado)
+static float botGain;    // ganho por nota do botplay (0 = desligado)
+
 /* ------------------------------------------------------------------ */
 /* Receptores (gameOptions.scroll: 0 = up, 1 = down, 2 = middle)      */
 /* ------------------------------------------------------------------ */
@@ -221,8 +225,8 @@ static void Strumlines_ApplyInput(const PlayStatePlayerKeys* keys) {
 /* ------------------------------------------------------------------ */
 
 static void Event_OpponentHit(Note* note) {
-    if (gameOptions.botplay ? gameOptions.healthDrainBotplay : gameOptions.healthDrainPlay)
-        PlayStateHealth_Add(-HEALTH_DRAIN_OPP);
+    if (oppDrain > 0.0f)
+        PlayStateHealth_Add(-oppDrain);
     dad.idleTimer = 0;
     AnimatedObject_SetAnimation(&dad.object, dad.animations.notes[note->id]);
     AnimatedObject_SetAnimation(&dadStrumline[note->id].object, StrumNote_ConfirmAnimation(note->id));
@@ -230,8 +234,8 @@ static void Event_OpponentHit(Note* note) {
 
 static void Event_BotHit(Note* note) {
     PlayStatePlayerInput_AddScore(350); // sick fixo no botplay
-    if (gameOptions.healthDrainBotplay)
-        PlayStateHealth_Add(HEALTH_GAIN_HIT);
+    if (botGain > 0.0f)
+        PlayStateHealth_Add(botGain);
     bf.idleTimer = 0;
     AnimatedObject_SetAnimation(&bf.object, bf.animations.notes[note->id]);
     AnimatedObject_SetAnimation(&bfStrumline[note->id].object, StrumNote_ConfirmAnimation(note->id));
@@ -382,7 +386,15 @@ static void StartBeat(void) {
 /* Create                                                              */
 /* ------------------------------------------------------------------ */
 
+// Le as opcoes de drain/ganho uma vez por cena, em vez de a cada nota acertada.
+static void ConfigureHealthRates(void) {
+    const char drainOpp = gameOptions.botplay ? gameOptions.healthDrainBotplay : gameOptions.healthDrainPlay;
+    oppDrain = drainOpp ? HEALTH_DRAIN_OPP : 0.0f;
+    botGain = gameOptions.healthDrainBotplay ? HEALTH_GAIN_HIT : 0.0f;
+}
+
 static void ResetState(void) {
+    ConfigureHealthRates();
     currentSteps = 0;
     currentSection = 0;
     lastAppliedMusicVolume = -1.0f;
