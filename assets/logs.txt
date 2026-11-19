@@ -40,3 +40,21 @@ LOAD [sacrifice] init: 0.0 ms, chart: 5.1 ms, sounds: 33.0 ms, characters: 407.4
 LOAD [realisticful] init: 21.9 ms, chart: 153.7 ms, sounds: 77.4 ms, characters: 357.2 ms, stage: 20.6 ms, song audio: 2.2 ms, notes: 3.5 ms, ui: 8.1 ms, warmup: 0.2 ms, (textures on main thread: 387.7 ms) total: 644.6 ms
 [WARN] Icone nao encontrado: 'fsm' (usando padrao)
 LOAD [realisticful] init: 0.0 ms, chart: 107.1 ms, sounds: 0.8 ms, characters: 420.3 ms, stage: 11.2 ms, song audio: 1.7 ms, notes: 3.5 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 430.3 ms) total: 544.7 ms
+
+--- SESSION LOG START ---
+LOAD [realisticful] init: 25.1 ms, chart: 103.2 ms, sounds: 54.7 ms, characters: 375.1 ms, stage: 12.5 ms, song audio: 1.8 ms, notes: 3.7 ms, ui: 8.0 ms, warmup: 0.2 ms, (textures on main thread: 417.7 ms) total: 584.4 ms
+LOAD [Astray] init: 0.0 ms, chart: 42.5 ms, sounds: 69.3 ms, characters: 457.5 ms, stage: 8.5 ms, song audio: 4.0 ms, notes: 0.3 ms, ui: 0.0 ms, warmup: 0.1 ms, (textures on main thread: 455.8 ms) total: 582.4 ms
+LOAD [Crisis] init: 0.0 ms, chart: 16.2 ms, sounds: 37.6 ms, characters: 422.8 ms, stage: 19.3 ms, song audio: 3.8 ms, notes: 0.5 ms, ui: 0.0 ms, warmup: 0.1 ms, (textures on main thread: 431.1 ms) total: 500.5 ms
+LOAD [Fatigue] init: 0.0 ms, chart: 17.5 ms, sounds: 72.5 ms, characters: 437.8 ms, stage: 4.8 ms, song audio: 4.0 ms, notes: 0.3 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 424.7 ms) total: 537.0 ms
+LOAD [Singularity] init: 0.0 ms, chart: 36.8 ms, sounds: 84.8 ms, characters: 425.2 ms, stage: 9.1 ms, song audio: 3.8 ms, notes: 0.1 ms, ui: 0.0 ms, warmup: 0.1 ms, (textures on main thread: 422.2 ms) total: 559.9 ms
+LOAD [Spacathon] init: 0.0 ms, chart: 16.1 ms, sounds: 68.4 ms, characters: 411.5 ms, stage: 7.3 ms, song audio: 12.7 ms, notes: 0.3 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 410.4 ms) total: 516.6 ms
+LOAD [Trauma] init: 0.0 ms, chart: 20.0 ms, sounds: 42.6 ms, characters: 413.0 ms, stage: 1330.4 ms, song audio: 1.6 ms, notes: 0.6 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 1724.9 ms) total: 1808.4 ms
+LOAD [abandonment] init: 0.0 ms, chart: 38.6 ms, sounds: 27.0 ms, characters: 416.5 ms, stage: 1193.5 ms, song audio: 3.8 ms, notes: 0.8 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 1589.1 ms) total: 1680.4 ms
+LOAD [absolute-zero] init: 0.0 ms, chart: 1030.1 ms, sounds: 45.6 ms, characters: 496.3 ms, stage: 1261.3 ms, song audio: 3.9 ms, notes: 1.0 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 1729.6 ms) total: 2838.4 ms
+LOAD [absolute-zero-2] init: 0.0 ms, chart: 0.3 ms, sounds: 2.3 ms, characters: 467.4 ms, stage: 1231.5 ms, song audio: 4.1 ms, notes: 0.0 ms, ui: 0.0 ms, warmup: 0.1 ms, (textures on main thread: 1696.7 ms) total: 1705.7 ms
+LOAD [agony] init: 0.0 ms, chart: 16.8 ms, sounds: 36.0 ms, characters: 449.1 ms, stage: 15.5 ms, song audio: 4.1 ms, notes: 0.5 ms, ui: 0.0 ms, warmup: 0.1 ms, (textures on main thread: 452.1 ms) total: 522.2 ms
+LOAD [ampersand] init: 0.0 ms, chart: 7.4 ms, sounds: 28.3 ms, characters: 423.5 ms, stage: 19.0 ms, song audio: 11.3 ms, notes: 0.3 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 418.9 ms) total: 490.0 ms
+LOAD [astrophobia] init: 0.0 ms, chart: 146.4 ms, sounds: 27.9 ms, characters: 424.1 ms, stage: 8.9 ms, song audio: 4.1 ms, notes: 2.0 ms, ui: 0.0 ms, warmup: 0.1 ms, (textures on main thread: 432.9 ms) total: 613.6 ms
+LOAD [central] init: 0.0 ms, chart: 21.6 ms, sounds: 60.7 ms, characters: 530.2 ms, stage: 7.1 ms, song audio: 3.9 ms, notes: 0.4 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 520.6 ms) total: 624.0 ms
+LOAD [corrosion-v2] init: 0.0 ms, chart: 42.4 ms, sounds: 28.6 ms, characters: 413.0 ms, stage: 8.4 ms, song audio: 4.2 ms, notes: 1.4 ms, ui: 0.0 ms, warmup: 0.3 ms, (textures on main thread: 423.6 ms) total: 498.3 ms
+LOAD [guilt] init: 0.0 ms, chart: 6.6 ms, sounds: 40.2 ms, characters: 414.0 ms, stage: 7.2 ms, song audio: 3.8 ms, notes: 0.1 ms, ui: 0.0 ms, warmup: 0.1 ms, (textures on main thread: 409.0 ms) total: 472.1 ms
