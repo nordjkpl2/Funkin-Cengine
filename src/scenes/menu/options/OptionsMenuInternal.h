@@ -16,13 +16,13 @@
 
 // texto e header ta tudo aqui
 #define SCROLL_LERP_SPEED 10.0f
-#define WHEEL_ROWS_PER_NOTCH 3 // linhas puladas a cada clique da roda do mouse
-#define ROW_FONT_SIZE 70
-#define ROW_PADDING 30
-#define HEADER_FONT_SIZE 90
-#define HEADER_PADDING 10
+#define WHEEL_ROWS_PER_NOTCH 1 // linhas puladas a cada clique da roda do mouse
+#define ROW_FONT_SIZE 60
+#define ROW_PADDING 27
+#define HEADER_FONT_SIZE 87
+#define HEADER_PADDING 6
 #define TEXT_SHADOW 6
-#define TEXT_SPACING 5.0f
+#define TEXT_SPACING 2.0f
 #define ROW_X 150.0f
 #define HEADER_X 50.0f
 #define ROW_HEIGHT (ROW_FONT_SIZE + ROW_PADDING)
