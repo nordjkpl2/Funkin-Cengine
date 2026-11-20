@@ -15,10 +15,10 @@
 #define SCREEN_H 720.0f
 
 // texto e header ta tudo aqui
-#define SCROLL_LERP_SPEED 10.0f
+#define SCROLL_LERP_SPEED 09.0f
 #define WHEEL_ROWS_PER_NOTCH 1 // linhas puladas a cada clique da roda do mouse
 #define ROW_FONT_SIZE 60
-#define ROW_PADDING 27
+#define ROW_PADDING 18
 #define HEADER_FONT_SIZE 87
 #define HEADER_PADDING 6
 #define TEXT_SHADOW 6

@@ -76,7 +76,7 @@ void Option_RebuildText(Option* o) {
     else switch (o->type) {
         case OPTION_VALUE_INT:   (void)snprintf(out, size, "%s: < %d >", o->text, (int)o->value); break;
         case OPTION_VALUE_FLOAT: (void)snprintf(out, size, "%s: < %.2f >", o->text, (double)o->value); break;
-        case OPTION_VALUE_BOOL:  (void)snprintf(out, size, "%s: [ %s ]", o->text, o->value ? "ON" : "OFF"); break;
+        case OPTION_VALUE_BOOL:  (void)snprintf(out, size, "%s: [%s]", o->text, o->value ? "ON" : "OFF"); break;
         case OPTION_VALUE_LIST:
             if (o == options + OPTION_THREADS)   // mostra quantas threads estao valendo
                 (void)snprintf(out, size, "%s: << %s (%d) >>", o->text, o->options[(int)o->value],

@@ -276,3 +276,21 @@
 106	208	8168478967023187	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/menu/options/OptionsMenuScreens.c.obj	4af68e1cd1299135
 110	217	8168478967073192	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/menu/options/OptionsMenuValues.c.obj	21c6bffe52aa8d0
 217	3148	8168478968145099	D:/dev/funkin c/FNF_C_ENGINE.exe	66a7bc324f7725aa
+28	66	8168480843847310	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+71	162	8168480844272468	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/menu/options/OptionsMenu.c.obj	b08f2aaf4c27f5bb
+74	163	8168480844312477	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/menu/options/OptionsMenuValues.c.obj	21c6bffe52aa8d0
+164	3191	8168480845202549	D:/dev/funkin c/FNF_C_ENGINE.exe	66a7bc324f7725aa
+40	82	8168482101813721	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+99	213	8168482102413605	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/menu/options/OptionsMenuScreens.c.obj	4af68e1cd1299135
+87	214	8168482102283831	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/menu/options/OptionsMenu.c.obj	b08f2aaf4c27f5bb
+94	226	8168482102363587	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/menu/options/OptionsMenuNoteColors.c.obj	899f83d04157bfc4
+90	228	8168482102313734	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/menu/options/OptionsMenuIcons.c.obj	1b66e7aaccfbd982
+104	233	8168482102463597	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/menu/options/OptionsMenuValues.c.obj	21c6bffe52aa8d0
+233	3515	8168482103749805	D:/dev/funkin c/FNF_C_ENGINE.exe	66a7bc324f7725aa
+41	79	8168485872992968	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+83	193	8168485873412971	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/menu/options/OptionsMenu.c.obj	b08f2aaf4c27f5bb
+97	202	8168485873543001	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/menu/options/OptionsMenuScreens.c.obj	4af68e1cd1299135
+92	207	8168485873503006	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/menu/options/OptionsMenuNoteColors.c.obj	899f83d04157bfc4
+88	208	8168485873452982	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/menu/options/OptionsMenuIcons.c.obj	1b66e7aaccfbd982
+102	219	8168485873602992	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/menu/options/OptionsMenuValues.c.obj	21c6bffe52aa8d0
+219	2916	8168485874765691	D:/dev/funkin c/FNF_C_ENGINE.exe	66a7bc324f7725aa

@@ -51,6 +51,42 @@ static void OptionsMenu_Create([[maybe_unused]] RayScene* scene) {
         MoveSelection(1);
 }
 
+#define ROW_CLICK_W 1280.0f // largura clicavel da linha (a tela inteira)
+
+/* Acao de ENTER/clique na opcao atual: liga/desliga, recolhe secao ou abre a tela da opcao. */
+static void ActivateCurrent(void) {
+    Option* cur = options + currentOption;
+
+    if (cur->type == OPTION_VALUE_BOOL) {
+        cur->value = !cur->value;
+        ApplyBoolValue();
+    }
+    else if (cur->type == OPTION_VALUE_HEADER) {
+        cur->collapsed = !cur->collapsed;
+        layoutDirty = true;
+    }
+    else if (currentOption == OPTION_KEYBOARD_SCHEME && (int)cur->value == SCHEME_CUSTOM)
+        Capture_Begin();
+    else if (currentOption == OPTION_THREADS && (int)cur->value == 1)
+        ThreadsScreen_Begin();
+    else if (currentOption == OPTION_NOTE_COLORS)
+        NoteColorScreen_Begin();
+}
+
+/* Indice da linha sob o ponto m (mesma conta de y que o Draw), ou -1. So roda no clique. */
+static int RowAtPoint(Vector2 m) {
+    float y = SCREEN_H / 2.0f - scrollOffset * ROW_HEIGHT;
+    if (m.x < 0.0f || m.x >= ROW_CLICK_W) return -1;
+
+    for (int i = 0; i < OPTION_COUNT; i++) {
+        if (!Option_IsVisible(i)) continue;
+        const float height = options[i].type == OPTION_VALUE_HEADER ? HEADER_HEIGHT : ROW_HEIGHT;
+        if (m.y >= y && m.y < y + height) return i;
+        y += height;
+    }
+    return -1;
+}
+
 static void OptionsMenu_Update([[maybe_unused]] RayScene* scene) {
     if (capturing) {
         Capture_Update();
@@ -108,26 +144,20 @@ static void OptionsMenu_Update([[maybe_unused]] RayScene* scene) {
         }
     }
 
+    // Clique esquerdo: seleciona a linha e faz o mesmo que ENTER nela.
+    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+        const int row = RowAtPoint(RayGame_MouseWorld());
+        if (row >= 0 && Option_IsSelectable(row)) {
+            currentOption = row;
+            ActivateCurrent();
+            return;
+        }
+    }
+
     Option* cur = options + currentOption;
 
     if (IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_ENTER)) {
-        if (cur->type == OPTION_VALUE_BOOL) {
-            cur->value = !cur->value;
-            ApplyBoolValue();
-        }
-        else if (cur->type == OPTION_VALUE_HEADER) {
-            cur->collapsed = !cur->collapsed;
-            layoutDirty = true;
-        }
-        else if (currentOption == OPTION_KEYBOARD_SCHEME && (int)cur->value == SCHEME_CUSTOM) {
-            Capture_Begin();
-        }
-        else if (currentOption == OPTION_THREADS && (int)cur->value == 1) {
-            ThreadsScreen_Begin();
-        }
-        else if (currentOption == OPTION_NOTE_COLORS) {
-            NoteColorScreen_Begin();
-        }
+        ActivateCurrent();
     }
     else if (cur->type != OPTION_VALUE_BOOL && cur->type != OPTION_VALUE_HEADER) {
         const float step = IsKeyDown(KEY_LEFT_ALT) ? cur->altStep : cur->step;
@@ -141,6 +171,10 @@ static void OptionsMenu_Update([[maybe_unused]] RayScene* scene) {
             ApplyNumValue();
         }
     }
+}
+
+static void DrawHint(const char* text) {
+    DrawTextEx(mainFont, text, (Vector2) {ROW_X, SCREEN_H - 50.0f}, 24, 2, (Color) {245, 220, 120, 255});
 }
 
 static void OptionsMenu_Draw([[maybe_unused]] RayScene* scene) {
@@ -209,14 +243,13 @@ static void OptionsMenu_Draw([[maybe_unused]] RayScene* scene) {
         DrawExtraIcon(i, drawY, fill, shadow);
     }
 
+    // Dica da opcao atual, no rodape.
     if (currentOption == OPTION_KEYBOARD_SCHEME && (int)options[OPTION_KEYBOARD_SCHEME].value == SCHEME_CUSTOM)
-        DrawTextEx(mainFont, "ENTER: edit custom keys", (Vector2) {ROW_X, SCREEN_H - 50.0f}, 24, 2, (Color) {245, 220, 120, 255});
-
-    if (currentOption == OPTION_NOTE_COLORS)
-        DrawTextEx(mainFont, "ENTER: edit note colors", (Vector2) {ROW_X, SCREEN_H - 50.0f}, 24, 2, (Color) {245, 220, 120, 255});
-
-    if (currentOption == OPTION_THREADS && (int)options[OPTION_THREADS].value == 1)
-        DrawTextEx(mainFont, "ENTER: set thread count", (Vector2) {ROW_X, SCREEN_H - 50.0f}, 24, 2, (Color) {245, 220, 120, 255});
+        DrawHint("ENTER: edit custom keys");
+    else if (currentOption == OPTION_NOTE_COLORS)
+        DrawHint("ENTER: edit note colors");
+    else if (currentOption == OPTION_THREADS && (int)options[OPTION_THREADS].value == 1)
+        DrawHint("ENTER: set thread count");
 
     SearchBox_Draw(&search, mainFont);
 
