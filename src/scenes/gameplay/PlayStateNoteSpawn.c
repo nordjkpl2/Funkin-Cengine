@@ -200,12 +200,14 @@ static void DrawSustain(const Note* note, const StrumNote* strum, float endHeigh
     trail.scaleX = end.scaleX = NOTE_SCALE * k;
     trail.position.x = strum->object.position.x + trailOffset.x * k;
     trail.scaleY = fmaxf(0.01f, (lengthPx - endHeight) / TRAIL_SEGMENT_H);
-    trail.color = normalColor;
+    const Color tint = GameData_LaneTint(note->id);
+    const Color body = {tint.r, tint.g, tint.b, normalColor.a};
+    trail.color = body;
 
     SetAnimIfChanged(&end, Note_EndAnimation(note->id));
     end.position.x = trail.position.x;
     end.scaleY = endHeight / END_SEGMENT_H;
-    end.color = normalColor;
+    end.color = body;
 
     // Cauda vai no sentido do futuro: para baixo no normal, para cima no downscroll.
     if (gameOptions.scroll == 1) {
@@ -336,6 +338,7 @@ void PlayStateNoteSpawn_Draw(const PlayStateNoteView* view) {
 
         if (!note->pressed) {
             renderNote.scaleX = renderNote.scaleY = HeadScale(note);
+            renderNote.color = GameData_LaneTint(note->id);
             Render_DrawAnimatedObject(&renderNote);
         }
     }

@@ -60,6 +60,10 @@ static void OptionsMenu_Update([[maybe_unused]] RayScene* scene) {
         ThreadsScreen_Update();
         return;
     }
+    if (noteColorScreen) {
+        NoteColorScreen_Update();
+        return;
+    }
 
     // Lupa: le o clique nela e, com o campo aberto, o teclado (Esc/Backspace nao saem da cena).
     const bool typing = SearchBox_Focused(&search);
@@ -120,6 +124,9 @@ static void OptionsMenu_Update([[maybe_unused]] RayScene* scene) {
         }
         else if (currentOption == OPTION_THREADS && (int)cur->value == 1) {
             ThreadsScreen_Begin();
+        }
+        else if (currentOption == OPTION_NOTE_COLORS) {
+            NoteColorScreen_Begin();
         }
     }
     else if (cur->type != OPTION_VALUE_BOOL && cur->type != OPTION_VALUE_HEADER) {
@@ -205,6 +212,9 @@ static void OptionsMenu_Draw([[maybe_unused]] RayScene* scene) {
     if (currentOption == OPTION_KEYBOARD_SCHEME && (int)options[OPTION_KEYBOARD_SCHEME].value == SCHEME_CUSTOM)
         DrawTextEx(mainFont, "ENTER: edit custom keys", (Vector2) {ROW_X, SCREEN_H - 50.0f}, 24, 2, (Color) {245, 220, 120, 255});
 
+    if (currentOption == OPTION_NOTE_COLORS)
+        DrawTextEx(mainFont, "ENTER: edit note colors", (Vector2) {ROW_X, SCREEN_H - 50.0f}, 24, 2, (Color) {245, 220, 120, 255});
+
     if (currentOption == OPTION_THREADS && (int)options[OPTION_THREADS].value == 1)
         DrawTextEx(mainFont, "ENTER: set thread count", (Vector2) {ROW_X, SCREEN_H - 50.0f}, 24, 2, (Color) {245, 220, 120, 255});
 
@@ -214,11 +224,14 @@ static void OptionsMenu_Draw([[maybe_unused]] RayScene* scene) {
         Capture_Draw();
     else if (threadsScreen)
         ThreadsScreen_Draw();
+    else if (noteColorScreen)
+        NoteColorScreen_Draw();
 
     Render_StopCamera();
 }
 
 static void OptionsMenu_Destroy([[maybe_unused]] RayScene* scene) {
+    NoteColorScreen_Destroy();
     bg.image = (Texture2D) {0}; // compartilhada: nao descarrega aqui
 }
 

@@ -136,6 +136,7 @@ typedef enum {
     OPTION_BOPPING_ICONS,
     OPTION_STRUM_BG,
     OPTION_STRUM_MOBILE,
+    OPTION_NOTE_COLORS,
     OPTION_ZOOMFACTOR_UI,
     OPTION_ZOOMFACTOR_GAME,
     OPTION_HEADER_OTHER,
@@ -156,6 +157,7 @@ extern bool layoutDirty;
 extern SearchBox search;
 extern bool capturing;
 extern bool threadsScreen;
+extern bool noteColorScreen;
 extern float scrollOffset;
 extern float windowLogoX;
 extern float otherLogoX;
@@ -183,6 +185,11 @@ void Capture_Draw(void);
 void ThreadsScreen_Begin(void);
 void ThreadsScreen_Update(void);
 void ThreadsScreen_Draw(void);
+/* OptionsMenuNoteColors.c */
+void NoteColorScreen_Begin(void);
+void NoteColorScreen_Update(void);
+void NoteColorScreen_Draw(void);
+void NoteColorScreen_Destroy(void);
 
 /* OptionsMenuIcons.c */
 void DrawOptionText(const char* text, float x, float y, int fontSize, Color fill, Color shadow);

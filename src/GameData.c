@@ -2,6 +2,7 @@
 #include "GameData.h" 
 #include "Log.h"
 #include <stdio.h>
+#include <string.h>
 
 #define IERR Log_Fatal("[ SAVE ] invalid data");
 #define READ(type, count, output) if(fread(&output, sizeof(type), count, saveFile) != count) IERR
@@ -25,7 +26,7 @@ int game_scheme_keys[SCHEME_COUNT][4] = {
 
 static FILE* saveFile;
 
-#define SAVE_VERSION 12  /* 12: + strumBgPercent e strumMobileVisible (no fim); 11: + menuMusic (no fim, apos as mods); 10: + healthDrainPlay e healthDrainBotplay (apos scorePosition); 9: + scorePosition (apos threadLimit); 8: + lista de mods desativados; 7: + threadLimit (no fim); 6: + hitSound e as 4 teclas do esquema Custom. v7 e v8 ainda sao lidos. */
+#define SAVE_VERSION 13  /* 13: + laneTint (12 bytes, no fim); 12: + strumBgPercent e strumMobileVisible (no fim); 11: + menuMusic (no fim, apos as mods); 10: + healthDrainPlay e healthDrainBotplay (apos scorePosition); 9: + scorePosition (apos threadLimit); 8: + lista de mods desativados; 7: + threadLimit (no fim); 6: + hitSound e as 4 teclas do esquema Custom. v7 e v8 ainda sao lidos. */
 
 static void GameData_Defaults(void) {
     game_scheme_keys[SCHEME_CUSTOM][0] = KEY_LEFT;
@@ -38,7 +39,14 @@ static void GameData_Defaults(void) {
         .scorePosition = SCORE_POS_PSYCH, .strumBgPercent = 0,
         .fps = 120,
         .zoomFactorUI = 1.0f, .zoomFactorGAME = 1.0f,
+        .laneTint = {{255, 255, 255}, {255, 255, 255}, {255, 255, 255}, {255, 255, 255}},
     };
+}
+
+Color GameData_LaneTint(int lane) {
+    if (lane < 0 || lane > 3) return WHITE;
+    const unsigned char* c = gameOptions.laneTint[lane];
+    return (Color) {c[0], c[1], c[2], 255};
 }
 
 static void GameData_Checks(void) {
@@ -115,6 +123,9 @@ void GameData_Start(void) {
         SREAD(char, gameOptions.strumBgPercent)
         SREAD(char, gameOptions.strumMobileVisible)
     }
+    memset(gameOptions.laneTint, 255, sizeof(gameOptions.laneTint));   /* saves antigos (< v13): padrao */
+    if(version >= 13)
+        READ(unsigned char, sizeof(gameOptions.laneTint), gameOptions.laneTint[0][0])
 
     GameData_Checks();
 }
@@ -147,6 +158,7 @@ void GameData_Flush(void) {
     WRITE(char, MENU_MUSIC_NAME_MAX, gameOptions.menuMusic[0])
     SWRITE(char, gameOptions.strumBgPercent)
     SWRITE(char, gameOptions.strumMobileVisible)
+    WRITE(unsigned char, sizeof(gameOptions.laneTint), gameOptions.laneTint[0][0])
 }
 
 void GameData_Stop(void) {

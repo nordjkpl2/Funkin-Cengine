@@ -16,6 +16,7 @@ static const char* ghost_names[3] = {"On", "50/50", "Off"};
 static const char* scroll_names[3] = {"Normal", "Downscroll", "Middlescroll"};
 static const char* thread_names[2] = {"Auto", "Limited"};
 static const char* score_position_names[2] = {"Cengine", "Psych"};
+static const char* note_colors_names[1] = {"Edit"};
 static const char* strum_bg_names[11] = {"Off", "10%", "20%", "30%", "40%", "50%", "60%", "70%", "80%", "90%", "100%"};
 
 int limitedThreads = 2; // ultimo numero usado no modo Limited (volta ao alternar)
@@ -46,6 +47,7 @@ Option options[OPTION_COUNT] = {
     [OPTION_BOPPING_ICONS] = {.text = "Bopping Icons", .type = OPTION_VALUE_BOOL},
     [OPTION_STRUM_BG] = {.text = "Strumline Background", .type = OPTION_VALUE_LIST, .options = strum_bg_names, .step = 1, .min = 0, .max = 10},
     [OPTION_STRUM_MOBILE] = {.text = "Keys Monitor", .type = OPTION_VALUE_BOOL},
+    [OPTION_NOTE_COLORS] = {.text = "Note Colors", .type = OPTION_VALUE_LIST, .options = note_colors_names, .step = 1, .min = 0, .max = 0},
     [OPTION_ZOOMFACTOR_UI] = {.text = "UI beat zoom", .type = OPTION_VALUE_FLOAT, .max = 3, .min = 0, .step = 0.1f, .altStep = 1},
     [OPTION_ZOOMFACTOR_GAME] = {.text = "Game beat zoom", .type = OPTION_VALUE_FLOAT, .max = 3, .min = 0, .step = 0.1f, .altStep = 1},
     [OPTION_HEADER_OTHER] = {.text = "[Other]", .type = OPTION_VALUE_HEADER},

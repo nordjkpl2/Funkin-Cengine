@@ -18,6 +18,7 @@ typedef struct GameOptions {
     char healthDrainBotplay;  /* botplay ganha/perde vida como o jogador (padrao: off; off = barra travada) */
     char strumBgPercent;      /* fundo preto atras dos receptores: 0 = off, 10..100 = opacidade em % */
     char strumMobileVisible;  /* 1 = tela dividida em 4 colunas com as cores das notas */
+    unsigned char laneTint[4][3]; /* RGB por coluna (esq, baixo, cima, dir): multiplica a skin; 255,255,255 = original */
     int scheme, fps;
     int threadLimit; /* 0 = Auto (nucleos - 1); >0 = limite de threads de fundo (1..64) */
     float zoomFactorUI, zoomFactorGAME;
@@ -28,6 +29,9 @@ typedef struct GameOptions {
 #define SCORE_POS_PSYCH   1
 
 extern GameOptions gameOptions;
+
+/* Cor de tint de uma coluna (0..3), ja com alpha 255. Branco = sem mudanca. */
+Color GameData_LaneTint(int lane);
 
 /* Esquemas de teclas: Arrows, WASD, DFJK, ASKL e Custom (teclas do jogador, salvas). */
 #define SCHEME_COUNT 5
