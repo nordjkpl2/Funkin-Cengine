@@ -6,6 +6,7 @@
 #include "scenes/api/FontLoader.h"
 #include "logic/notes/Note.h"
 #include "scenes/gameplay/PlayStateStrums.h"
+#include "scenes/gameplay/PlayStateBeat.h"
 #include "Game.h"
 #include "GameData.h"
 #include "raymath.h"
@@ -170,12 +171,18 @@ void PlayStateStrums_DrawKeyMonitor(void) {
 }
 
 void PlayStateStrums_Draw(void) {
+    // Hidden Notes (Alternate): so o receptor de quem esta cantando aparece. A animacao segue rodando.
+    const char onlySinger = gameOptions.hiddenNotesAlt;
+    const char singerBf = PlayStateBeat_SingerIsBf();
+
     for (int i = 0; i < PLAYSTATE_LANES; i++) {
         AnimatedObject_UpdateFrame(&dadStrumline[i].object);
-        RenderStrumFixedCenter(dadStrumline + i, dadStrumIdleSizes[i]);
+        if (!onlySinger || !singerBf)
+            RenderStrumFixedCenter(dadStrumline + i, dadStrumIdleSizes[i]);
 
         AnimatedObject_UpdateFrame(&bfStrumline[i].object);
-        RenderStrumFixedCenter(bfStrumline + i, bfStrumIdleSizes[i]);
+        if (!onlySinger || singerBf)
+            RenderStrumFixedCenter(bfStrumline + i, bfStrumIdleSizes[i]);
     }
 
     // Botplay: volta o BF ao idle quando a animacao de confirm termina.

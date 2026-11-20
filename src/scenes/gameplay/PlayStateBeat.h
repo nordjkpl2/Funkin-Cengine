@@ -20,6 +20,9 @@ void PlayStateBeat_Update(void);
 /* songBeat.time (segundos desde o inicio da musica; negativo na contagem). */
 double PlayStateBeat_Time(void);
 
+/* 1 = BF canta na secao atual (mustHit), 0 = Dad. Usado pelo Hidden Notes (Alternate). */
+char PlayStateBeat_SingerIsBf(void);
+
 /* Contagem regressiva ativa (songBeat.time < 0). */
 char PlayStateBeat_InCountdown(void);
 

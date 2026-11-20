@@ -107,6 +107,12 @@ void PlayStateBeat_Update(void) {
     BeatManager_Update(&songBeat, StepHit, BeatHit);
 }
 
+char PlayStateBeat_SingerIsBf(void) {
+    if (beatSong == NULL || currentSection >= beatSong->sectionCount)
+        return 1;
+    return beatSong->sections[currentSection].mustHit;
+}
+
 double PlayStateBeat_Time(void) {
     return songBeat.time;
 }
