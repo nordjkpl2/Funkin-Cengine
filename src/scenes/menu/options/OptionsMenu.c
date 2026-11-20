@@ -221,6 +221,12 @@ static void OptionsMenu_Draw([[maybe_unused]] RayScene* scene) {
             continue;
         }
 
+        if (o->type == OPTION_VALUE_LABEL) {
+            // Texto estatico: cinza, sem icones, nunca selecionado.
+            DrawOptionText(o->text, ROW_X, drawY, ROW_FONT_SIZE, (Color) {190, 190, 190, 255}, (Color) {0, 0, 0, 100});
+            continue;
+        }
+
         if (o->dirty) Option_RebuildText(o);
 
         Color fill = o->active ? WHITE : RED;

@@ -43,15 +43,19 @@ Option options[OPTION_COUNT] = {
     [OPTION_HITSOUND] = {.text = "Hit Sound", .type = OPTION_VALUE_BOOL},
     [OPTION_HEALTH_DRAIN_PLAY] = {.text = "Health Drain (Play)", .type = OPTION_VALUE_BOOL},
     [OPTION_HEADER_VISUAL] = {.text = "[Visual]", .type = OPTION_VALUE_HEADER},
+    [OPTION_SCORE_LABEL] = {.text = "Score", .type = OPTION_VALUE_LABEL},
     [OPTION_SHOW_SCORE] = {.text = "Show Score", .type = OPTION_VALUE_BOOL},
     [OPTION_SCORE_POSITION] = {.text = "Score Position", .type = OPTION_VALUE_LIST, .options = score_position_names, .step = 1, .max = 1, .min = 0},
+    [OPTION_ICONS_LABEL] = {.text = "Icons", .type = OPTION_VALUE_LABEL},
     [OPTION_BOPPING_ICONS] = {.text = "Bopping Icons", .type = OPTION_VALUE_BOOL},
+    [OPTION_ZOOM_LABEL] = {.text = "Zoom", .type = OPTION_VALUE_LABEL},
+    [OPTION_ZOOMFACTOR_UI] = {.text = "UI beat zoom", .type = OPTION_VALUE_FLOAT, .max = 3, .min = 0, .step = 0.1f, .altStep = 1},
+    [OPTION_ZOOMFACTOR_GAME] = {.text = "Game beat zoom", .type = OPTION_VALUE_FLOAT, .max = 3, .min = 0, .step = 0.1f, .altStep = 1},
+    [OPTION_NOTES_LABEL] = {.text = "Notes", .type = OPTION_VALUE_LABEL},
     [OPTION_STRUM_BG] = {.text = "Strumline Background", .type = OPTION_VALUE_LIST, .options = strum_bg_names, .step = 1, .min = 0, .max = 10},
     [OPTION_STRUM_MOBILE] = {.text = "Keys Monitor", .type = OPTION_VALUE_BOOL},
     [OPTION_HIDDEN_NOTES] = {.text = "Hidden Notes", .type = OPTION_VALUE_LIST, .options = hidden_notes_names, .step = 1, .min = 0, .max = 1},
     [OPTION_NOTE_COLORS] = {.text = "Note Colors", .type = OPTION_VALUE_LIST, .options = note_colors_names, .step = 1, .min = 0, .max = 0},
-    [OPTION_ZOOMFACTOR_UI] = {.text = "UI beat zoom", .type = OPTION_VALUE_FLOAT, .max = 3, .min = 0, .step = 0.1f, .altStep = 1},
-    [OPTION_ZOOMFACTOR_GAME] = {.text = "Game beat zoom", .type = OPTION_VALUE_FLOAT, .max = 3, .min = 0, .step = 0.1f, .altStep = 1},
     [OPTION_HEADER_OTHER] = {.text = "[Other]", .type = OPTION_VALUE_HEADER},
     [OPTION_FILL_SCREEN] = {.text = "Stretch", .type = OPTION_VALUE_BOOL},
     [OPTION_BOTPLAY] = {.text = "Botplay", .type = OPTION_VALUE_BOOL},
@@ -74,6 +78,7 @@ void Option_RebuildText(Option* o) {
     if (!o->active)
         (void)snprintf(out, size, "%s", o->text);
     else switch (o->type) {
+        case OPTION_VALUE_LABEL: (void)snprintf(out, size, "%s", o->text); break;
         case OPTION_VALUE_INT:   (void)snprintf(out, size, "%s: < %d >", o->text, (int)o->value); break;
         case OPTION_VALUE_FLOAT: (void)snprintf(out, size, "%s: < %.2f >", o->text, (double)o->value); break;
         case OPTION_VALUE_BOOL:  (void)snprintf(out, size, "%s: [%s]", o->text, o->value ? "ON" : "OFF"); break;
@@ -203,7 +208,7 @@ SearchBox search;
 /* Secao tem alguma opcao que bate com o filtro? */
 static bool Section_HasMatch(int header) {
     for (int i = header + 1; i < OPTION_COUNT && options[i].type != OPTION_VALUE_HEADER; i++)
-        if (SearchBox_Match(&search, options[i].text)) return true;
+        if (options[i].type != OPTION_VALUE_LABEL && SearchBox_Match(&search, options[i].text)) return true;
     return false;
 }
 
@@ -219,6 +224,8 @@ static bool Option_ComputeVisible(int i) {
     const bool filtering = SearchBox_HasFilter(&search);
     if (options[i].type == OPTION_VALUE_HEADER)
         return !filtering || Header_TitleMatches(i) || Section_HasMatch(i);
+    if (options[i].type == OPTION_VALUE_LABEL)  // texto estatico: some com a lupa aberta
+        return !filtering && !options[options[i].header].collapsed;
     if (filtering)
         return Header_TitleMatches(options[i].header) || SearchBox_Match(&search, options[i].text);
     return !options[options[i].header].collapsed;
@@ -246,8 +253,9 @@ bool Option_IsVisible(int i) {
     return visibleCache[i];
 }
 
-/* Cabecalhos sao selecionaveis (para abrir/recolher); opcoes, so se visiveis e ativas. */
+/* Cabecalhos sao selecionaveis (para abrir/recolher); textos estaticos nunca; opcoes, so se visiveis e ativas. */
 bool Option_IsSelectable(int i) {
+    if (options[i].type == OPTION_VALUE_LABEL) return false;
     if (options[i].type == OPTION_VALUE_HEADER) return true;
     return Option_IsVisible(i) && options[i].active;
 }
