@@ -27,10 +27,21 @@
 #define SCREEN_W 1280
 #define SCREEN_H 720
 
+/* Layout: banner grande no topo; lista de weeks embaixo a esquerda; faixas a direita. */
+#define BANNER_X -40.0f
+#define BANNER_Y 0.0f
+#define BANNER_W 1360.0f
+#define BANNER_H 380.0f
+#define DISC_CENTER_X 1236.0f
+#define DISC_CENTER_Y 350.0f
+#define DISC_RADIUS 24.0f
+#define TITLE_RIGHT 1222.0f
+#define TITLE_Y 618.0f
+
 #define LIST_X 58.0f
-#define LIST_Y 164.0f
+#define LIST_Y 392.0f
 #define LIST_W 610.0f
-#define LIST_BOTTOM 642.0f
+#define LIST_BOTTOM 644.0f
 #define ROW_H 72.0f
 #define ROW_BOX_H 62.0f
 #define VISIBLE_MARGIN 100.0f
@@ -38,22 +49,21 @@
 #define ROW_FONT_IDLE 26.0f
 #define ROW_FONT_SELECTED 29.0f
 
-#define COVER_SIZE 224.0f
-#define COVER_X 910.0f
-#define COVER_Y 124.0f
-
-#define DETAILS_X 760.0f
-#define DETAILS_Y 430.0f
-#define DETAILS_W 460.0f
-#define DETAILS_H 278.0f
-#define DETAIL_COLUMNS 3
-#define DETAIL_COLUMN_W 148.0f
-#define DETAIL_ROW_H 13.7f
+#define DETAILS_X 660.0f
+#define DETAILS_Y 392.0f
+#define DETAILS_W 558.0f
+#define DETAILS_H 220.0f
+#define DETAIL_COLUMNS 2
+#define DETAIL_COLUMN_W 250.0f
+#define DETAIL_ROW_H 27.0f
+#define DETAIL_FONT 20.0f
+#define DETAIL_LIST_TOP 38.0f
+#define DETAIL_LIST_H (DETAILS_H - DETAIL_LIST_TOP - 10.0f)
 #define DETAIL_LINE_MAX 24
 
 #define TEXT_MAX 192
 #define STATUS_SECONDS 3.0f
-#define MAX_DISPLAY_SONGS 50
+#define MAX_DISPLAY_SONGS 200
 #define SCROLL_SPEED 12.0f
 #define DISC_SPEED 0.65f
 #define TWO_PI 6.28318530718f
@@ -102,7 +112,8 @@ static char detailsCount[64];
 static char detailsLastScore[48];
 static char detailsLines[MAX_DISPLAY_SONGS][DETAIL_LINE_MAX];
 static int detailsLineCount;
-static int detailsRowsPerColumn = 1;
+static int detailsScroll; // primeira linha visivel da lista de faixas
+static char trackDragging; // arrastando a barra de rolagem com o mouse
 static bool detailsHidden; // week com mais faixas do que o painel mostra
 
 /* ------------------------------------------------------------------ */
@@ -156,8 +167,9 @@ static void Details_Build(void) {
     const int shown = week->songCount > MAX_DISPLAY_SONGS ? MAX_DISPLAY_SONGS
                     : week->songCount < 0 ? 0 : week->songCount;
 
+    // Titulo alinhado a direita, no canto inferior.
     const Vector2 titleSize = MeasureTextEx(mainFont, WeekTitle(week), 36.0f, 2.0f);
-    detailsTitleX = fmaxf(1210.0f - titleSize.x, DETAILS_X);
+    detailsTitleX = TITLE_RIGHT - titleSize.x;
 
     detailsHidden = week->songCount > MAX_DISPLAY_SONGS;
     if (detailsHidden)
@@ -166,8 +178,7 @@ static void Details_Build(void) {
         snprintf(detailsCount, sizeof(detailsCount), "%d TRACKS", week->songCount);
 
     detailsLineCount = shown;
-    detailsRowsPerColumn = (shown + DETAIL_COLUMNS - 1) / DETAIL_COLUMNS;
-    if (detailsRowsPerColumn < 1) detailsRowsPerColumn = 1;
+    detailsScroll = 0;
 
     for (int i = 0; i < shown; i++) {
         const char* name = week->songs[i].song[0] ? week->songs[i].song : "Unknown";
@@ -311,6 +322,9 @@ static void StoryMode_Create([[maybe_unused]] RayScene* scene) {
     }
 }
 
+static void ScrollTracks(int rows);
+static void UpdateTrackScrollInput(void);
+
 /* Confirmacao de apagar a week: Y confirma; N, ESC ou BACKSPACE cancelam. */
 static void UpdateDeleteConfirm(void) {
     if (IsKeyPressed(KEY_Y)) {
@@ -358,6 +372,13 @@ static void StoryMode_Update([[maybe_unused]] RayScene* scene) {
     if (weekCount <= 0)
         return;
 
+    // Roda do mouse rola a lista de faixas.
+    const float wheel = GetMouseWheelMove();
+    if (wheel != 0.0f)
+        ScrollTracks(wheel > 0.0f ? -1 : 1);
+
+    UpdateTrackScrollInput();
+
     if (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S))
         SelectWeek((selected + 1) % weekCount);
     else if (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W))
@@ -387,39 +408,37 @@ static void DrawPanel(Rectangle rect, Color fill, Color border) {
     DrawRectangleLinesEx(rect, 1.0f, border);
 }
 
-static void DrawCover(void) {
-    const Rectangle card = {COVER_X - 18.0f, COVER_Y - 18.0f, COVER_SIZE + 36.0f, COVER_SIZE + 36.0f};
-    const Rectangle destination = {COVER_X, COVER_Y, COVER_SIZE, COVER_SIZE};
-
-    DrawPanel(card, COLOR_PANEL_ALT, COLOR_BORDER);
-
-    if (StoryCover_IsLoaded()) {
-        const Texture2D texture = StoryCover_Texture();
-        Rectangle source = {0.0f, 0.0f, (float)texture.width, (float)texture.height};
-
-        // Recorte quadrado no centro, sem esticar a arte.
-        if (source.width > source.height) {
-            source.x = (source.width - source.height) * 0.5f;
-            source.width = source.height;
-        } else if (source.height > source.width) {
-            source.y = (source.height - source.width) * 0.5f;
-            source.height = source.width;
-        }
-
-        DrawTexturePro(texture, source, destination, VECTOR_ZERO, 0.0f, WHITE);
-    } else {
-        DrawRectangleRec(destination, (Color) {28, 33, 52, 255});
-        DrawTextEx(mainFont, "NO WEEK ART", (Vector2) {COVER_X + 43.0f, COVER_Y + 98.0f}, 19.0f, 1.0f, COLOR_MUTED);
-    }
-
-    DrawRectangleLinesEx(destination, 3.0f, (Color) {235, 220, 180, 230});
+/* Maior retangulo com a proporcao de (srcW x srcH) que cabe inteiro em `box`, centralizado. */
+static Rectangle FitContain(float srcW, float srcH, Rectangle box) {
+    const float scale = fminf(box.width / srcW, box.height / srcH);
+    const float w = srcW * scale;
+    const float h = srcH * scale;
+    return (Rectangle) {box.x + (box.width - w) * 0.5f, box.y + (box.height - h) * 0.5f, w, h};
 }
 
-/* Vinil pequeno abaixo da capa. */
+/* Banner da week inteiro (sem recorte), no topo ocupando a largura da tela. */
+static void DrawCover(void) {
+    const Rectangle slot = {BANNER_X, BANNER_Y, BANNER_W, BANNER_H};
+
+    if (StoryCover_IsLoaded() && StoryCover_Texture().width > 0 && StoryCover_Texture().height > 0) {
+        const Texture2D texture = StoryCover_Texture();
+        const Rectangle art = FitContain((float)texture.width, (float)texture.height, slot);
+
+        DrawTexturePro(texture, (Rectangle) {0.0f, 0.0f, (float)texture.width, (float)texture.height},
+                       art, VECTOR_ZERO, 0.0f, WHITE);
+        DrawRectangleLinesEx(art, 3.0f, (Color) {235, 220, 180, 230});
+    } else {
+        DrawRectangleRec(slot, (Color) {28, 33, 52, 255});
+        DrawTextEx(mainFont, "NO WEEK ART", (Vector2) {BANNER_X + BANNER_W * 0.5f - 60.0f, BANNER_Y + 150.0f},
+                   19.0f, 1.0f, COLOR_MUTED);
+    }
+}
+
+/* Vinil pequeno no canto do banner. */
 static void DrawDisc(void) {
-    const Vector2 center = {COVER_X + COVER_SIZE * 0.5f, 390.0f};
-    const float radius = 29.0f;
-    const Vector2 marker = {center.x + 24.0f * cosf(discAngle), center.y + 24.0f * sinf(discAngle)};
+    const Vector2 center = {DISC_CENTER_X, DISC_CENTER_Y};
+    const float radius = DISC_RADIUS;
+    const Vector2 marker = {center.x + 20.0f * cosf(discAngle), center.y + 20.0f * sinf(discAngle)};
 
     DrawCircleV(center, radius + 4.0f, (Color) {4, 6, 13, 150});
     DrawCircleV(center, radius, (Color) {19, 22, 35, 255});
@@ -434,7 +453,8 @@ static void DrawDisc(void) {
 
 static void DrawWeekRow(int i) {
     const float y = LIST_Y + ((float)i - listOffset) * ROW_H;
-    if (y + ROW_BOX_H < LIST_Y - VISIBLE_MARGIN || y > LIST_BOTTOM + VISIBLE_MARGIN)
+    // So desenha linhas inteiras dentro da area da lista (nao invade o banner).
+    if (y < LIST_Y || y + ROW_BOX_H > LIST_BOTTOM)
         return;
 
     const Rectangle row = {LIST_X, y, LIST_W, ROW_BOX_H};
@@ -468,30 +488,107 @@ static void DrawWeekList(void) {
         DrawWeekRow(i);
 }
 
+static int TrackRowsTotal(void) {
+    return (detailsLineCount + DETAIL_COLUMNS - 1) / DETAIL_COLUMNS;
+}
+
+static int TrackRowsVisible(void) {
+    const int visible = (int)(DETAIL_LIST_H / DETAIL_ROW_H);
+    return visible < 1 ? 1 : visible;
+}
+
+static int TrackScrollMax(void) {
+    const int max = TrackRowsTotal() - TrackRowsVisible();
+    return max > 0 ? max : 0;
+}
+
+static void ScrollTracks(int rows) {
+    detailsScroll += rows;
+    if (detailsScroll < 0) detailsScroll = 0;
+    if (detailsScroll > TrackScrollMax()) detailsScroll = TrackScrollMax();
+}
+
+static float TrackThumbH(void) {
+    return fmaxf(28.0f, DETAIL_LIST_H * (float)TrackRowsVisible() / (float)TrackRowsTotal());
+}
+
+/* Area clicavel da barra (mais larga que a barra desenhada, para pegar com o mouse). */
+static Rectangle TrackBarHit(void) {
+    return (Rectangle) {DETAILS_X + DETAILS_W - 20.0f, DETAILS_Y + DETAIL_LIST_TOP, 22.0f, DETAIL_LIST_H};
+}
+
+/*
+ * Rolagem das faixas: mouse arrastando a barra, roda do mouse e teclas O (sobe) / L (desce).
+ * O e L nao sao usadas em outro lugar desta aba.
+ */
+static void UpdateTrackScrollInput(void) {
+    const int maxScroll = TrackScrollMax();
+    if (maxScroll <= 0) {
+        trackDragging = 0;
+        return;
+    }
+
+    const Vector2 mouse = RayGame_MouseWorld();
+    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && CheckCollisionPointRec(mouse, TrackBarHit()))
+        trackDragging = 1;
+    if (!IsMouseButtonDown(MOUSE_BUTTON_LEFT))
+        trackDragging = 0;
+
+    if (trackDragging) {
+        const float thumbH = TrackThumbH();
+        const float span = DETAIL_LIST_H - thumbH;
+        if (span > 0.0f) {
+            float t = (mouse.y - (DETAILS_Y + DETAIL_LIST_TOP) - thumbH * 0.5f) / span;
+            t = fminf(fmaxf(t, 0.0f), 1.0f);
+            detailsScroll = (int)lroundf(t * (float)maxScroll);
+        }
+    }
+
+    if (IsKeyPressed(KEY_O)) ScrollTracks(-1);
+    if (IsKeyPressed(KEY_L)) ScrollTracks(1);
+}
+
+/* Lista de faixas em colunas, com barra de rolagem quando nao cabe tudo. */
+static void DrawTrackList(void) {
+    const float listX = DETAILS_X + 18.0f;
+    const float listY = DETAILS_Y + DETAIL_LIST_TOP;
+    const int visible = TrackRowsVisible();
+    const int total = TrackRowsTotal();
+
+    for (int i = 0; i < detailsLineCount; ++i) {
+        const int row = i / DETAIL_COLUMNS - detailsScroll;
+        const int column = i % DETAIL_COLUMNS;
+        if (row < 0 || row >= visible) continue;
+
+        DrawTextEx(mainFont, detailsLines[i],
+                   (Vector2) {listX + (float)column * DETAIL_COLUMN_W, listY + (float)row * DETAIL_ROW_H},
+                   DETAIL_FONT, 1.0f, COLOR_TEXT);
+    }
+
+    if (total > visible) {
+        const float barX = DETAILS_X + DETAILS_W - 14.0f;
+        const float thumbH = TrackThumbH();
+        const float thumbY = listY + (DETAIL_LIST_H - thumbH) * (float)detailsScroll / (float)TrackScrollMax();
+
+        DrawRectangleRounded((Rectangle) {barX, listY, 6.0f, DETAIL_LIST_H}, 0.5f, 4, (Color) {40, 48, 70, 200});
+        DrawRectangleRounded((Rectangle) {barX, thumbY, 6.0f, thumbH}, 0.5f, 4, COLOR_ACCENT);
+    }
+}
+
 static void DrawWeekDetails(void) {
     const float firstX = DETAILS_X + 18.0f;
-    const float firstY = DETAILS_Y + 35.0f;
 
     const char* title = WeekTitle(weeks + selected);
-    DrawTextEx(mainFont, title, (Vector2) {detailsTitleX + 2.0f, 48.0f}, 36.0f, 2.0f, (Color) {0, 0, 0, 180});
-    DrawTextEx(mainFont, title, (Vector2) {detailsTitleX, 46.0f}, 36.0f, 2.0f, COLOR_TEXT);
+    DrawTextEx(mainFont, title, (Vector2) {detailsTitleX + 2.0f, TITLE_Y + 2.0f}, 36.0f, 2.0f, (Color) {0, 0, 0, 180});
+    DrawTextEx(mainFont, title, (Vector2) {detailsTitleX, TITLE_Y}, 36.0f, 2.0f, COLOR_TEXT);
 
     DrawPanel((Rectangle) {DETAILS_X, DETAILS_Y, DETAILS_W, DETAILS_H}, COLOR_PANEL, COLOR_BORDER);
     DrawTextEx(mainFont, detailsCount, (Vector2) {firstX, DETAILS_Y + 10.0f}, 14.0f, 1.0f, COLOR_ACCENT);
 
-    // Tres colunas compactas: cabem ate 50 faixas dentro do painel.
-    for (int i = 0; i < detailsLineCount; ++i) {
-        const int column = i / detailsRowsPerColumn;
-        const int row = i % detailsRowsPerColumn;
-        if (column >= DETAIL_COLUMNS) break;
-
-        DrawTextEx(mainFont, detailsLines[i],
-                   (Vector2) {firstX + (float)column * DETAIL_COLUMN_W, firstY + (float)row * DETAIL_ROW_H},
-                   12.5f, 1.0f, COLOR_TEXT);
-    }
+    DrawTrackList();
 
     if (detailsHidden)
-        DrawTextEx(mainFont, "Additional tracks hidden (limit: 50)",
+        DrawTextEx(mainFont, "Additional tracks hidden (limit: 200)",
                    (Vector2) {firstX, DETAILS_Y + DETAILS_H - 17.0f}, 10.0f, 1.0f, COLOR_MUTED);
 
     if (detailsLastScore[0])
@@ -509,55 +606,63 @@ static void DrawDeleteModal(void) {
     DrawTextEx(mainFont, "N  CANCEL", (Vector2) {650.0f, 365.0f}, 19.0f, 1.0f, COLOR_GREEN);
 }
 
+/* Fundo: a capa da week (ou o padrao) preenchendo a tela, recortado no centro sem esticar. */
+static void DrawBackdrop(void) {
+    const Texture2D background = StoryCover_IsLoaded() ? StoryCover_Texture() : backgroundTexture;
+    if (background.id == 0) return;
+
+    Rectangle source = {0.0f, 0.0f, (float)background.width, (float)background.height};
+    const float screenAspect = (float)SCREEN_W / (float)SCREEN_H; // float: SCREEN_W / SCREEN_H daria 1
+    const float textureAspect = source.width / source.height;
+    if (textureAspect > screenAspect) {
+        source.width = source.height * screenAspect;
+        source.x = ((float)background.width - source.width) * 0.5f;
+    } else {
+        source.height = source.width / screenAspect;
+        source.y = ((float)background.height - source.height) * 0.5f;
+    }
+    DrawTexturePro(background, source, (Rectangle) {0.0f, 0.0f, SCREEN_W, SCREEN_H},
+                   VECTOR_ZERO, 0.0f, (Color) {115, 125, 160, 90});
+}
+
+static void DrawEmptyState(void) {
+    DrawPanel((Rectangle) {250.0f, 245.0f, 780.0f, 190.0f}, COLOR_PANEL, COLOR_BORDER);
+    DrawTextEx(mainFont, "NO WEEKS FOUND", (Vector2) {470.0f, 285.0f}, 34.0f, 2.0f, COLOR_TEXT);
+    DrawTextEx(mainFont, "Add week JSON files to assets/weeks or assets/mods/<mod>/weeks.",
+               (Vector2) {315.0f, 350.0f}, 18.0f, 1.0f, COLOR_MUTED);
+}
+
+static void DrawStatus(void) {
+    if (statusTimer <= 0.0f || !statusText[0]) return;
+
+    DrawPanel((Rectangle) {58.0f, 646.0f, statusWidth, 36.0f}, (Color) {23, 30, 43, 235}, COLOR_BORDER);
+    DrawTextEx(mainFont, statusText, (Vector2) {75.0f, 654.0f}, 18.0f, 1.0f, COLOR_ACCENT);
+}
+
+static void DrawHelpLine(void) {
+    DrawTextEx(mainFont, "UP / DOWN  SELECT     ENTER  PLAY     7  HIDDEN     DEL  DELETE     ESC  BACK",
+               (Vector2) {58.0f, 690.0f}, 14.0f, 1.0f, COLOR_MUTED);
+}
+
 static void StoryMode_Draw([[maybe_unused]] RayScene* scene) {
     Render_SetCamera(&storyCamera);
 
     ClearBackground((Color) {7, 9, 18, 255});
-    // Fundo da week selecionada (menu_<chave>.png); sem imagem propria, o padrao.
-    const Texture2D background = StoryCover_IsLoaded() ? StoryCover_Texture() : backgroundTexture;
-    if (background.id != 0) {
-        // Preenche a tela recortando o centro, sem esticar.
-        Rectangle source = {0.0f, 0.0f, (float)background.width, (float)background.height};
-        const float screenAspect = SCREEN_W / SCREEN_H;
-        const float textureAspect = source.width / source.height;
-        if (textureAspect > screenAspect) {
-            source.width = source.height * screenAspect;
-            source.x = ((float)background.width - source.width) * 0.5f;
-        } else {
-            source.height = source.width / screenAspect;
-            source.y = ((float)background.height - source.height) * 0.5f;
-        }
-        DrawTexturePro(background, source,
-                       (Rectangle) {0.0f, 0.0f, SCREEN_W, SCREEN_H},
-                       VECTOR_ZERO, 0.0f, (Color) {115, 125, 160, 90});
-    }
+    DrawBackdrop();
     DrawRectangle(0, 0, SCREEN_W, SCREEN_H, (Color) {5, 7, 15, 145});
 
-    DrawTextEx(mainFont, "STORY MODE", (Vector2) {58.0f, 44.0f}, 19.0f, 2.0f, COLOR_ACCENT);
-    DrawTextEx(mainFont, "SELECT A WEEK", (Vector2) {58.0f, 72.0f}, 37.0f, 2.0f, COLOR_TEXT);
-    DrawLineEx((Vector2) {58.0f, 126.0f}, (Vector2) {1218.0f, 126.0f}, 1.0f, COLOR_BORDER);
-
     if (weekCount <= 0) {
-        DrawPanel((Rectangle) {250.0f, 245.0f, 780.0f, 190.0f}, COLOR_PANEL, COLOR_BORDER);
-        DrawTextEx(mainFont, "NO WEEKS FOUND", (Vector2) {470.0f, 285.0f}, 34.0f, 2.0f, COLOR_TEXT);
-        DrawTextEx(mainFont, "Add week JSON files to assets/weeks or assets/mods/<mod>/weeks.",
-                   (Vector2) {315.0f, 350.0f}, 18.0f, 1.0f, COLOR_MUTED);
+        DrawEmptyState();
     } else {
         DrawWeekList();
         DrawCover();
         DrawWeekDetails();
+        if (deleteConfirm)
+            DrawDeleteModal();
     }
 
-    if (deleteConfirm && weekCount > 0)
-        DrawDeleteModal();
-
-    if (statusTimer > 0.0f && statusText[0]) {
-        DrawPanel((Rectangle) {58.0f, 646.0f, statusWidth, 36.0f}, (Color) {23, 30, 43, 235}, COLOR_BORDER);
-        DrawTextEx(mainFont, statusText, (Vector2) {75.0f, 654.0f}, 18.0f, 1.0f, COLOR_ACCENT);
-    }
-
-    DrawTextEx(mainFont, "UP / DOWN  SELECT     ENTER  PLAY     7  HIDDEN     DEL  DELETE     ESC  BACK",
-               (Vector2) {58.0f, 690.0f}, 14.0f, 1.0f, COLOR_MUTED);
+    DrawStatus();
+    DrawHelpLine();
 
     Render_StopCamera();
 }

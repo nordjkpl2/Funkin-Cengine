@@ -1,4 +1,4 @@
-# ## FunkinCengine by nordjkpl2 ## #
+# ## (c) 2025 FunkinCengine by nordjkpl2 ## #
 cmake_minimum_required(VERSION 3.21)
 
 # COMPILADOR
