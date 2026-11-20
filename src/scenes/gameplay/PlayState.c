@@ -38,9 +38,10 @@
 
 #define SCREEN_W 1280.0f
 #define SCREEN_H 720.0f
+#define PAUSE_SEEK_SECS 5.0   /* passo das setas na opcao Skip time da pausa */
 
 /* ------------------------------------------------------------------ */
-/* Estado                                                              */
+/* Estado                                                             */
 /* ------------------------------------------------------------------ */
 
 // cena
@@ -394,6 +395,20 @@ static void FinishWeekSong(void) {
 /* Update                                                              */
 /* ------------------------------------------------------------------ */
 
+// Seek pedido pela pausa (Skip time). Nao age na contagem nem sem musica; limita a [0, duracao).
+static void SeekBy(double deltaSecs) {
+    const float length = PlayStateAudio_Length();
+    if (PlayStateBeat_InCountdown() || length <= 0.0f) return;
+
+    double target = PlayStateBeat_Time() + deltaSecs;
+    if (target < 0.0) target = 0.0;
+    if (target > (double)length - 0.05) target = (double)length - 0.05;
+
+    PlayStateAudio_SeekTo(target);            // inst e vozes; mantem a pausa
+    PlayStateBeat_SeekTo(target);             // passo, secao, bpm e camera
+    PlayStateNoteSpawn_SeekTo((float)target); // notas: anteriores resolvidas sem score
+}
+
 // Retorna 1 se a cena mudou (fim da musica).
 static char UpdateSong(void) {
     PlayStateAudio_Update();
@@ -401,7 +416,8 @@ static char UpdateSong(void) {
     PlayStateBeat_Update();
 
     if (!PlayStateAudio_IsPlaying()) {
-        if (!LeavesToEditor(1)) {
+        // Na semana a musica do menu continua pausada entre as musicas (e na tela da semana).
+        if (!LeavesToEditor(1) && !returnToWeek) {
             RayGame_ResetMusic();
             RayGame_ToggleMusic(1);
         }
@@ -447,12 +463,16 @@ static void PlayState_Update([[maybe_unused]] RayScene* scene) {
             PlayState_SetScene();
         }
         else if (action == PLAYSTATE_PAUSE_EXIT) {
-            if (!LeavesToEditor(1)) {
+            if (!LeavesToEditor(1) && !returnToWeek) {
                 RayGame_ResetMusic();
                 RayGame_ToggleMusic(1);
             }
             LeaveGameplay(1);
         }
+        else if (action == PLAYSTATE_PAUSE_SEEK_BACK)
+            SeekBy(-PAUSE_SEEK_SECS);
+        else if (action == PLAYSTATE_PAUSE_SEEK_FORWARD)
+            SeekBy(PAUSE_SEEK_SECS);
         return;
     }
 
@@ -523,6 +543,12 @@ static void DrawHud(float dt) {
         PlayStateText_DrawBotplayMark();
 }
 
+// Menu de pausa com o tempo atual e total (Skip time).
+static void DrawPause(void) {
+    const double now = PlayStateBeat_Time();
+    PlayStatePause_Draw(LeavesToEditor(1), now > 0.0 ? (float)now : 0.0f, PlayStateAudio_Length());
+}
+
 // Modo "so receptores" (F6 no chart editor): fundo preto, so receptores e notas. Sem HUD/personagens.
 static void DrawReceptorsOnly(void) {
     ClearBackground(BLACK);
@@ -531,7 +557,7 @@ static void DrawReceptorsOnly(void) {
     const PlayStateNoteView view = NoteView();
     PlayStateNoteSpawn_Draw(&view);
     if (PlayStatePause_IsPaused())
-        PlayStatePause_Draw(LeavesToEditor(1));
+        DrawPause();
     Render_StopCamera();
 }
 
@@ -562,7 +588,7 @@ static void PlayState_Draw([[maybe_unused]] RayScene* scene) {
     DrawHud(dt);
 
     if (PlayStatePause_IsPaused())
-        PlayStatePause_Draw(LeavesToEditor(1));
+        DrawPause();
     if (warnScreen)
         WarnScreen_Draw();
     Render_StopCamera();

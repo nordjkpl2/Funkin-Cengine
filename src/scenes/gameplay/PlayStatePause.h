@@ -12,7 +12,9 @@
 typedef enum {
     PLAYSTATE_PAUSE_NONE,
     PLAYSTATE_PAUSE_RESTART,
-    PLAYSTATE_PAUSE_EXIT
+    PLAYSTATE_PAUSE_EXIT,
+    PLAYSTATE_PAUSE_SEEK_BACK,      /* seta esquerda na opcao Skip time */
+    PLAYSTATE_PAUSE_SEEK_FORWARD    /* seta direita na opcao Skip time */
 } PlayStatePauseAction;
 
 /* Zera a pausa. Chamar em todo Create. */
@@ -26,7 +28,8 @@ char PlayStatePause_IsPaused(void);
 /* Uma vez por frame com a pausa aberta: input e animacao da selecao. */
 PlayStatePauseAction PlayStatePause_Update(float deltaTime);
 
-/* So desenho. exitToEditor muda o texto da ultima opcao. Chamar dentro da camera do HUD. */
-void PlayStatePause_Draw(char exitToEditor);
+/* So desenho. exitToEditor muda o texto da ultima opcao; current/total (segundos) vao na opcao Skip time.
+   Chamar dentro da camera do HUD. */
+void PlayStatePause_Draw(char exitToEditor, float currentSecs, float totalSecs);
 
 #endif /* PLAYSTATE_PAUSE_H */

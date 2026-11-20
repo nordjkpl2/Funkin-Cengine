@@ -33,6 +33,10 @@ char PlayStatePause_IsPaused(void) {
     return isPaused;
 }
 
+/* Opcoes: 0 Resume, 1 Skip time, 2 Restart, 3 Exit. */
+#define OPTION_COUNT 4
+#define OPTION_SKIP 1
+
 PlayStatePauseAction PlayStatePause_Update(float dt) {
     pauseTimer += dt;
 
@@ -40,18 +44,24 @@ PlayStatePauseAction PlayStatePause_Update(float dt) {
 
     if (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S)) {
         currentOption++;
-        if (currentOption >= 3)
+        if (currentOption >= OPTION_COUNT)
             currentOption = 0;
     }
     else if (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W)) {
         currentOption--;
         if (currentOption < 0)
-            currentOption = 2;
+            currentOption = OPTION_COUNT - 1;
     }
-    else if (pauseTimer > 0 && (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE))) {
+    else if (currentOption == OPTION_SKIP && IsKeyPressed(KEY_LEFT)) {
+        action = PLAYSTATE_PAUSE_SEEK_BACK;
+    }
+    else if (currentOption == OPTION_SKIP && IsKeyPressed(KEY_RIGHT)) {
+        action = PLAYSTATE_PAUSE_SEEK_FORWARD;
+    }
+    else if (pauseTimer > 0 && currentOption != OPTION_SKIP && (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE))) {
         if (currentOption == 0)
             isPaused = 0;
-        else if (currentOption == 1)
+        else if (currentOption == 2)
             action = PLAYSTATE_PAUSE_RESTART;
         else
             action = PLAYSTATE_PAUSE_EXIT;
@@ -105,26 +115,38 @@ static void DrawExitIcon(float x0, float cy, Color color) {
     DrawArrowHead((Vector2) {ax1 + 2.0f, cy}, (Vector2) {1.0f, 0.0f}, ICON_SIZE * 0.45f, color);
 }
 
-void PlayStatePause_Draw(char exitToEditor) {
-    const char* const options[3] = {"Resume", "Restart", exitToEditor ? "Exit to Chart Editor" : "Exit to Menu"};
+/* mm:ss (segundos negativos viram 00:00). */
+static void FormatClock(char out[12], float secs) {
+    if (!(secs > 0.0f)) secs = 0.0f;
+    const int total = (int)secs;
+    snprintf(out, 12, "%02d:%02d", total / 60, total % 60);
+}
+
+void PlayStatePause_Draw(char exitToEditor, float currentSecs, float totalSecs) {
+    char cur[12], tot[12], skipLabel[48];
+    FormatClock(cur, currentSecs);
+    FormatClock(tot, totalSecs);
+    snprintf(skipLabel, sizeof(skipLabel), "Skip time  %s / %s", cur, tot);
+
+    const char* const options[OPTION_COUNT] = {"Resume", skipLabel, "Restart", exitToEditor ? "Exit to Chart Editor" : "Exit to Menu"};
     const int fontSize = 85;
 
     DrawRectangle(0, 0, (int)SCREEN_W, (int)SCREEN_H, (Color) {0, 0, 0, 100});
 
     Color color = WHITE;
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < OPTION_COUNT; i++) {
         Vector2 pos = {150.0f + fabsf(i - optionOffset) * -30, SCREEN_H / 2 + (i - optionOffset) * (15 + fontSize)};
         color.a = currentOption == i ? 255 : 150;
         DrawTextEx(mainFont, options[i], pos, fontSize, 5, color);
 
-        if (i == 0) continue; // Resume: sem icone
+        if (i <= OPTION_SKIP) continue; // Resume e Skip time: sem icone
 
         // Icone logo depois do texto, centralizado na linha.
         const Vector2 textSize = MeasureTextEx(mainFont, options[i], fontSize, 5);
         const float x0 = pos.x + textSize.x + ICON_GAP;
         const float cy = pos.y + fontSize * 0.5f;
 
-        if (i == 1) DrawRestartIcon(x0, cy, color);
+        if (i == 2) DrawRestartIcon(x0, cy, color);
         else DrawExitIcon(x0, cy, color);
     }
 }

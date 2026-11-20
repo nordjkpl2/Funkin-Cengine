@@ -206,3 +206,20 @@
 34	68	8169143755269353	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
 73	188	8169143755659346	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/menu/storymode/StoryMode.c.obj	f354f25bfdfa9a4f
 188	3552	8169143756813230	D:/dev/funkin c/FNF_C_ENGINE.exe	66a7bc324f7725aa
+43	79	8169146902793803	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+84	280	8169146903212725	CMakeFiles/FNF_C_ENGINE.dir/src/logic/beatmanager/BeatManager.c.obj	cf162088de4b7399
+95	292	8169146903316947	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayStateBeat.c.obj	6341b293d119a31b
+92	302	8169146903282248	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayStateAudio.c.obj	83bcaf4f00de0fb6
+107	312	8169146903434968	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayStatePause.c.obj	f70e3d13acbaa91d
+98	314	8169146903346404	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayStateDeath.c.obj	932b762b9217132e
+88	324	8169146903242887	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayState.c.obj	8672b856be64d16e
+102	326	8169146903389809	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayStateNoteSpawn.c.obj	9c6a3d1a4a880680
+125	333	8169146903616882	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayStateText.c.obj	9e2a917203f78468
+112	348	8169146903494992	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayStatePlayerInput.c.obj	a4a9fe31c58e15c2
+131	361	8169146903677025	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/menu/EnterToPlay.c.obj	3504a4b76e26b5b8
+138	362	8169146903747316	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/menu/options/OptionsMenuNoteColors.c.obj	fe4753d632bbc001
+118	368	8169146903551769	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayStateStrums.c.obj	f87e230d63ff7550
+368	3802	8169146906052701	D:/dev/funkin c/FNF_C_ENGINE.exe	66a7bc324f7725aa
+38	83	8169148891955425	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+90	222	8169148892472109	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayState.c.obj	8672b856be64d16e
+222	4742	8169148893799965	D:/dev/funkin c/FNF_C_ENGINE.exe	66a7bc324f7725aa

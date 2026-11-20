@@ -46,6 +46,9 @@ void PlayStateAudio_SyncVoices(void);
 
 void PlayStateAudio_SetVolume(float volume);
 
+/* Posiciona inst e vozes no mesmo tempo (segundos), sem mudar pausa/volume. Limitado a [0, duracao). */
+void PlayStateAudio_SeekTo(double seconds);
+
 /* Instrumental para o BeatManager (songBeat.music). */
 Music* PlayStateAudio_Inst(void);
 

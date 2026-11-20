@@ -4,6 +4,7 @@
  */
 
 #include "scenes/gameplay/PlayStateBeat.h"
+#include <math.h>
 #include "scenes/gameplay/PlayStateAnimations.h"
 #include "scenes/gameplay/PlayStateAudio.h"
 #include "scenes/gameplay/PlayStateCamera.h"
@@ -105,6 +106,50 @@ void PlayStateBeat_Start(const Song* song) {
 
 void PlayStateBeat_Update(void) {
     BeatManager_Update(&songBeat, StepHit, BeatHit);
+}
+
+/* Duracao de um step (1/4 de batida) para um bpm. Protegido contra bpm invalido. */
+static double StepSeconds(float bpm) {
+    return 15.0 / (double)(bpm >= 1.0f ? bpm : 1.0f);
+}
+
+/* Reposiciona o relogio em t (segundos). Percorre as secoes para achar secao, step e bpm
+   corretos, e atualiza camera e bpm como se a musica tivesse chegado ali. Nao toca em notas. */
+void PlayStateBeat_SeekTo(double t) {
+    if (beatSong == NULL || !isfinite(t) || t < 0.0)
+        return;
+
+    double sectionStart = 0.0;   /* tempo em que a secao atual comeca */
+    int globalStep = 0;          /* steps completos antes da secao atual */
+    int section = 0;
+    int localSteps = 0;
+    double stepSecs = StepSeconds(beatSong->bpm);
+
+    for (; section < beatSong->sectionCount; section++) {
+        const Section* s = beatSong->sections + section;
+        stepSecs = StepSeconds(s->bpm);
+        const double span = (double)s->len * stepSecs;
+
+        if (t < sectionStart + span) {
+            localSteps = (int)floor((t - sectionStart) / stepSecs);
+            break;
+        }
+        sectionStart += span;
+        globalStep += s->len;
+    }
+
+    // Depois da ultima secao: fica no fim, sem novos steps.
+    if (section >= beatSong->sectionCount)
+        localSteps = 0;
+
+    currentSection = section;
+    currentSteps = localSteps;
+
+    const int step = globalStep + localSteps;
+    const double btime = sectionStart + (double)localSteps * stepSecs;
+    BeatManager_SeekTo(&songBeat, t, btime, step);
+
+    UpdateSection();   // ajusta camera e bpm da secao alvo (no-op se passou do fim)
 }
 
 char PlayStateBeat_SingerIsBf(void) {

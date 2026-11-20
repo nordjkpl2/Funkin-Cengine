@@ -172,6 +172,19 @@ void PlayStateAudio_SyncVoices(void) {
     if (synced) lastVoiceSync = time;
 }
 
+/* Seek de todas as faixas juntas. Mantem o estado de pausa (quem pausou continua pausado). */
+void PlayStateAudio_SeekTo(double seconds) {
+    const float length = PlayStateAudio_Length();
+    if (!instOk || length <= 0.0f || !isfinite(seconds)) return;
+
+    const float time = (float)fmax(0.0, fmin(seconds, (double)length - 0.05));
+    if (instOk) SeekMusicStream(inst, time);
+    for (int i = 0; i < VOX_COUNT; i++)
+        if (voxOk[i]) SeekMusicStream(vox[i], time);
+
+    lastVoiceSync = time; // ja alinhadas: o SyncVoices so volta a checar depois de 0.5s
+}
+
 void PlayStateAudio_SetVolume(float volume) {
     appliedVolume = volume;
     ApplyVolumes();

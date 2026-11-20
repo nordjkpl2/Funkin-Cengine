@@ -17,6 +17,9 @@ void PlayStateBeat_Start(const Song* song);
 /* Uma vez por frame, com a musica tocando: dispara passos e batidas. */
 void PlayStateBeat_Update(void);
 
+/* Seek: posiciona passo, secao, bpm, camera e songBeat.time em t (segundos, >= 0). Notas ficam com PlayStateNoteSpawn_SeekTo. */
+void PlayStateBeat_SeekTo(double t);
+
 /* songBeat.time (segundos desde o inicio da musica; negativo na contagem). */
 double PlayStateBeat_Time(void);
 

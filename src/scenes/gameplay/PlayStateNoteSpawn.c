@@ -102,6 +102,24 @@ void PlayStateNoteSpawn_Reset(void) {
     }
 }
 
+/* Seek para o tempo `time`. Regra de pontuacao: notas com cabeca antes do alvo ficam
+   "resolvidas" (pressed), sem acerto, miss ou score. As do alvo em diante voltam a zero.
+   firstNote vai para a primeira nota que ainda pode estar ativa (sustain que cruza o alvo incluso). */
+void PlayStateNoteSpawn_SeekTo(float time) {
+    size_t first = noteCount;
+
+    for (size_t i = 0; i < noteCount; i++) {
+        Note* note = notes + i;
+        note->pressed = note->time < time;
+        note->missed = 0;
+
+        if (first == noteCount && note->time + note->length >= time - 0.4f)
+            first = i;
+    }
+
+    firstNote = first;
+}
+
 static void UnloadRecolorShader(void);
 
 void PlayStateNoteSpawn_Unload(void) {

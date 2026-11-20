@@ -42,6 +42,9 @@ void PlayStateNoteSpawn_Load(const Song* song);
 /* Restart: volta o culling e limpa pressed/missed. */
 void PlayStateNoteSpawn_Reset(void);
 
+/* Seek para `time` (segundos): notas anteriores viram resolvidas sem pontuar; firstNote e reposicionado. */
+void PlayStateNoteSpawn_SeekTo(float time);
+
 void PlayStateNoteSpawn_Unload(void);
 
 /* Acesso para o input (NoteHits). */

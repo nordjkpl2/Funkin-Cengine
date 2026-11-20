@@ -19,6 +19,9 @@ typedef struct {
 
 void BeatManager_New(BeatManager* restrict mng);
 void BeatManager_Update(BeatManager* restrict manager, void (*onStepHit)(void), void (*onBeatHit)(void));
+/* Reposiciona o relogio (seek). time = tempo da musica; btime = tempo do ultimo step; step = steps ja dados.
+   Nao dispara callbacks: quem chama recalcula secao/bpm. */
+void BeatManager_SeekTo(BeatManager* restrict mng, double time, double btime, int step);
 static inline void BeatManager_SetBPM(BeatManager* restrict mng, float bpm);
 
 static inline void BeatManager_SetBPM(BeatManager* restrict mng, float bpm) {

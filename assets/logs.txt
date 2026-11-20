@@ -17,3 +17,7 @@ LOAD [agony] init: 0.7 ms, chart: 17.3 ms, sounds: 293.6 ms, characters: 401.0 m
 --- SESSION LOG START ---
 LOAD [apostrophe] init: 0.7 ms, chart: 23.0 ms, sounds: 114.9 ms, characters: 417.5 ms, stage: 9.0 ms, song audio: 2.0 ms, notes: 1.1 ms, ui: 8.8 ms, warmup: 0.2 ms, (textures on main thread: 387.1 ms) total: 577.1 ms
 LOAD [apostrophe] init: 0.0 ms, chart: 19.5 ms, sounds: 0.9 ms, characters: 525.5 ms, stage: 2.8 ms, song audio: 1.9 ms, notes: 0.9 ms, ui: 0.0 ms, warmup: 0.3 ms, (textures on main thread: 526.9 ms) total: 551.8 ms
+
+--- SESSION LOG START ---
+LOAD [insane] init: 20.6 ms, chart: 17.6 ms, sounds: 95.9 ms, characters: 471.1 ms, stage: 23.0 ms, song audio: 1.9 ms, notes: 0.4 ms, ui: 9.3 ms, warmup: 0.4 ms, (textures on main thread: 497.6 ms) total: 640.3 ms
+LOAD [unstable] init: 0.0 ms, chart: 19.6 ms, sounds: 5.3 ms, characters: 431.4 ms, stage: 4.3 ms, song audio: 1.7 ms, notes: 0.3 ms, ui: 0.0 ms, warmup: 0.1 ms, (textures on main thread: 433.7 ms) total: 462.8 ms

@@ -44,6 +44,18 @@ static void BeatManager_Reset(BeatManager* restrict manager) {
         SeekMusicStream(*manager->music, 0.0f);
 }
 
+void BeatManager_SeekTo(BeatManager* restrict mng, double time, double btime, int step) {
+    if(mng == NULL)
+        return;
+
+    if(step < 0)
+        step = 0;
+    mng->time = time;
+    mng->btime = btime;
+    mng->step = step;
+    mng->beat = step >> 2; /* beat sobe a cada 4 steps: mesma regra do Update */
+}
+
 /* Executado uma vez por frame. O relógio da música é a fonte de tempo. */
 void BeatManager_Update(
     BeatManager* restrict manager,
