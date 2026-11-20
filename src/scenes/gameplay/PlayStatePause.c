@@ -37,10 +37,49 @@ char PlayStatePause_IsPaused(void) {
 #define OPTION_COUNT 4
 #define OPTION_SKIP 1
 
+/* Segurar LEFT/RIGHT repete o seek: espera SEEK_REPEAT_DELAY e depois repete a cada SEEK_REPEAT_INTERVAL. */
+#define SEEK_REPEAT_DELAY 0.4f
+#define SEEK_REPEAT_INTERVAL 0.08f
+
+typedef struct {
+    float held;   /* tempo segurando a tecla */
+    float acc;    /* acumulador do intervalo de repeticao */
+} SeekHold;
+
+static SeekHold seekHoldLeft, seekHoldRight;
+
+/* Retorna 1 quando a tecla deve disparar um seek neste frame (aperto inicial ou repeticao). */
+static char SeekFires(SeekHold* h, int key, float dt) {
+    if (IsKeyPressed(key)) {
+        h->held = 0.0f;
+        h->acc = 0.0f;
+        return 1;
+    }
+    if (!IsKeyDown(key)) {
+        h->held = 0.0f;
+        h->acc = 0.0f;
+        return 0;
+    }
+
+    h->held += dt;
+    if (h->held < SEEK_REPEAT_DELAY) return 0;
+
+    h->acc += dt;
+    if (h->acc >= SEEK_REPEAT_INTERVAL) {
+        h->acc -= SEEK_REPEAT_INTERVAL;
+        return 1;
+    }
+    return 0;
+}
+
 PlayStatePauseAction PlayStatePause_Update(float dt) {
     pauseTimer += dt;
 
     PlayStatePauseAction action = PLAYSTATE_PAUSE_NONE;
+
+    /* Avalia os dois lados sempre, para o estado de segurar acompanhar a tecla. */
+    const char seekBack = SeekFires(&seekHoldLeft, KEY_LEFT, dt);
+    const char seekForward = SeekFires(&seekHoldRight, KEY_RIGHT, dt);
 
     if (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S)) {
         currentOption++;
@@ -52,10 +91,10 @@ PlayStatePauseAction PlayStatePause_Update(float dt) {
         if (currentOption < 0)
             currentOption = OPTION_COUNT - 1;
     }
-    else if (currentOption == OPTION_SKIP && IsKeyPressed(KEY_LEFT)) {
+    else if (currentOption == OPTION_SKIP && seekBack) {
         action = PLAYSTATE_PAUSE_SEEK_BACK;
     }
-    else if (currentOption == OPTION_SKIP && IsKeyPressed(KEY_RIGHT)) {
+    else if (currentOption == OPTION_SKIP && seekForward) {
         action = PLAYSTATE_PAUSE_SEEK_FORWARD;
     }
     else if (pauseTimer > 0 && currentOption != OPTION_SKIP && (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE))) {

@@ -223,3 +223,7 @@
 38	83	8169148891955425	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
 90	222	8169148892472109	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayState.c.obj	8672b856be64d16e
 222	4742	8169148893799965	D:/dev/funkin c/FNF_C_ENGINE.exe	66a7bc324f7725aa
+43	96	8169150041753973	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+101	189	8169150042331167	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayStatePause.c.obj	f70e3d13acbaa91d
+190	3424	8169150043217463	D:/dev/funkin c/FNF_C_ENGINE.exe	66a7bc324f7725aa
+23	59	8169150547004544	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218

@@ -21,3 +21,9 @@ LOAD [apostrophe] init: 0.0 ms, chart: 19.5 ms, sounds: 0.9 ms, characters: 525.
 --- SESSION LOG START ---
 LOAD [insane] init: 20.6 ms, chart: 17.6 ms, sounds: 95.9 ms, characters: 471.1 ms, stage: 23.0 ms, song audio: 1.9 ms, notes: 0.4 ms, ui: 9.3 ms, warmup: 0.4 ms, (textures on main thread: 497.6 ms) total: 640.3 ms
 LOAD [unstable] init: 0.0 ms, chart: 19.6 ms, sounds: 5.3 ms, characters: 431.4 ms, stage: 4.3 ms, song audio: 1.7 ms, notes: 0.3 ms, ui: 0.0 ms, warmup: 0.1 ms, (textures on main thread: 433.7 ms) total: 462.8 ms
+
+--- SESSION LOG START ---
+LOAD [insane] init: 18.9 ms, chart: 17.7 ms, sounds: 86.3 ms, characters: 377.5 ms, stage: 5.5 ms, song audio: 1.9 ms, notes: 0.4 ms, ui: 7.6 ms, warmup: 0.4 ms, (textures on main thread: 406.5 ms) total: 516.2 ms
+
+--- SESSION LOG START ---
+LOAD [insane] init: 18.8 ms, chart: 17.4 ms, sounds: 74.7 ms, characters: 399.1 ms, stage: 5.4 ms, song audio: 1.8 ms, notes: 0.4 ms, ui: 8.1 ms, warmup: 0.4 ms, (textures on main thread: 428.0 ms) total: 526.0 ms
