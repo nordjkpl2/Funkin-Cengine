@@ -71,7 +71,7 @@ static const Color COLOR_DANGER = {255, 105, 115, 255};
 typedef struct {
     char idleTitle[TEXT_MAX];     // cortado para caber, fonte normal
     char selectedTitle[TEXT_MAX]; // cortado para caber, fonte da selecionada
-    char count[16];               // "3 SONGS"
+    char count[32];               // "3 SONGS" ou "HIDDEN  3 SONGS"
 } WeekRowText;
 
 static WeekEntry* weeks;
@@ -79,6 +79,11 @@ static WeekRowText* rowTexts;
 static int weekCount;
 static int selected;
 static float listOffset;
+
+/* Tecla 7: mostra as weeks com hideStoryMode. Volta para escondido ao entrar na cena. */
+static bool showHidden;
+static char anchorFile[64];  // week a manter selecionada ao recarregar a lista
+static char anchorDir[256];
 
 static Texture2D backgroundTexture;
 static Camera2D storyCamera;
@@ -136,7 +141,10 @@ static void RowTexts_Build(void) {
         const char* title = WeekTitle(weeks + i);
         FitTitle(title, ROW_FONT_IDLE, rowTexts[i].idleTitle);
         FitTitle(title, ROW_FONT_SELECTED, rowTexts[i].selectedTitle);
-        snprintf(rowTexts[i].count, sizeof(rowTexts[i].count), "%d SONGS", weeks[i].songCount);
+        if (weeks[i].hidden)
+            snprintf(rowTexts[i].count, sizeof(rowTexts[i].count), "HIDDEN  %d SONGS", weeks[i].songCount);
+        else
+            snprintf(rowTexts[i].count, sizeof(rowTexts[i].count), "%d SONGS", weeks[i].songCount);
     }
 }
 
@@ -188,10 +196,19 @@ static void RefreshWeekList(void) {
     free(rowTexts);
     rowTexts = NULL;
 
-    weekCount = WeekList_Scan(&weeks);
+    weekCount = WeekList_Scan(&weeks, showHidden);
     if (weekCount < 0) weekCount = 0;
 
     StoryCover_Reset(weekCount);
+
+    if (anchorFile[0]) {
+        for (int i = 0; i < weekCount; i++) {
+            if (strcmp(weeks[i].file, anchorFile) == 0 && strcmp(weeks[i].dir, anchorDir) == 0) {
+                selected = i;
+                break;
+            }
+        }
+    }
 
     if (selected >= weekCount) selected = weekCount - 1;
     if (selected < 0) selected = 0;
@@ -210,6 +227,23 @@ static void RefreshWeekList(void) {
 
     RowTexts_Build();
     SelectWeek(selected);
+}
+
+/* Tecla 7: alterna as weeks escondidas, mantendo a week atual selecionada. */
+static void ToggleHiddenWeeks(void) {
+    anchorFile[0] = '\0';
+    anchorDir[0] = '\0';
+    if (weeks && selected >= 0 && selected < weekCount) {
+        snprintf(anchorFile, sizeof(anchorFile), "%s", weeks[selected].file);
+        snprintf(anchorDir, sizeof(anchorDir), "%s", weeks[selected].dir);
+    }
+
+    showHidden = !showHidden;
+    RefreshWeekList();
+
+    anchorFile[0] = '\0';
+    anchorDir[0] = '\0';
+    SetStatus(showHidden ? "HIDDEN WEEKS: ON" : "HIDDEN WEEKS: OFF");
 }
 
 static void StartSelectedWeek(void) {
@@ -264,6 +298,9 @@ static void StoryMode_Create([[maybe_unused]] RayScene* scene) {
     discAngle = 0.0f;
     statusText[0] = '\0';
     statusTimer = 0.0f;
+    showHidden = false;
+    anchorFile[0] = '\0';
+    anchorDir[0] = '\0';
 
     RefreshWeekList();
 
@@ -310,6 +347,11 @@ static void StoryMode_Update([[maybe_unused]] RayScene* scene) {
 
     if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_BACKSPACE)) {
         MenuState_SetScene();
+        return;
+    }
+
+    if (IsKeyPressed(KEY_SEVEN)) {
+        ToggleHiddenWeeks();
         return;
     }
 
@@ -471,9 +513,21 @@ static void StoryMode_Draw([[maybe_unused]] RayScene* scene) {
     Render_SetCamera(&storyCamera);
 
     ClearBackground((Color) {7, 9, 18, 255});
-    if (backgroundTexture.id != 0) {
-        DrawTexturePro(backgroundTexture,
-                       (Rectangle) {0.0f, 0.0f, (float)backgroundTexture.width, (float)backgroundTexture.height},
+    // Fundo da week selecionada (menu_<chave>.png); sem imagem propria, o padrao.
+    const Texture2D background = StoryCover_IsLoaded() ? StoryCover_Texture() : backgroundTexture;
+    if (background.id != 0) {
+        // Preenche a tela recortando o centro, sem esticar.
+        Rectangle source = {0.0f, 0.0f, (float)background.width, (float)background.height};
+        const float screenAspect = SCREEN_W / SCREEN_H;
+        const float textureAspect = source.width / source.height;
+        if (textureAspect > screenAspect) {
+            source.width = source.height * screenAspect;
+            source.x = ((float)background.width - source.width) * 0.5f;
+        } else {
+            source.height = source.width / screenAspect;
+            source.y = ((float)background.height - source.height) * 0.5f;
+        }
+        DrawTexturePro(background, source,
                        (Rectangle) {0.0f, 0.0f, SCREEN_W, SCREEN_H},
                        VECTOR_ZERO, 0.0f, (Color) {115, 125, 160, 90});
     }
@@ -502,7 +556,7 @@ static void StoryMode_Draw([[maybe_unused]] RayScene* scene) {
         DrawTextEx(mainFont, statusText, (Vector2) {75.0f, 654.0f}, 18.0f, 1.0f, COLOR_ACCENT);
     }
 
-    DrawTextEx(mainFont, "UP / DOWN  SELECT     ENTER  PLAY     DEL  DELETE     ESC  BACK",
+    DrawTextEx(mainFont, "UP / DOWN  SELECT     ENTER  PLAY     7  HIDDEN     DEL  DELETE     ESC  BACK",
                (Vector2) {58.0f, 690.0f}, 14.0f, 1.0f, COLOR_MUTED);
 
     Render_StopCamera();

@@ -48,8 +48,9 @@ static char Week_ParseFile(const char* path, const char* dir, const char* fileBa
     yyjson_doc* doc=yyjson_read(buf,(size_t)sz,0); free(buf); if(!doc) return 0;
     yyjson_val* root=yyjson_doc_get_root(doc); if(!root){ yyjson_doc_free(doc); return 0; }
 
+    /* hideStoryMode: week fica fora da lista normal; o Story Mode mostra com a tecla 7. */
     yyjson_val* jhide=yyjson_obj_get(root,"hideStoryMode");
-    if(yyjson_is_bool(jhide) && yyjson_get_bool(jhide)){ yyjson_doc_free(doc); return 0; }
+    out->hidden = yyjson_is_bool(jhide) && yyjson_get_bool(jhide);
 
     yyjson_val* jstory=yyjson_obj_get(root,"storyName");
     yyjson_val* jweek=yyjson_obj_get(root,"weekName");
@@ -137,7 +138,7 @@ static void Scan_WeeksDir(const char* base, const char* listFile, char fromMods)
     }
     UnloadDirectoryFiles(list);
 }
-int WeekList_Scan(WeekEntry** outEntries){
+int WeekList_Scan(WeekEntry** outEntries, char includeHidden){
     *outEntries=NULL; free(entries); entries=NULL; entryCount=0; entryCap=0;
     Scan_WeeksDir("assets/weeks","weekList.txt",0);
     if(DirectoryExists("assets/mods")){
@@ -147,6 +148,11 @@ int WeekList_Scan(WeekEntry** outEntries){
     }
     /* Mod "direto" (assets/mods como raiz, igual ao ModList "(direto)"): weeks/ fica em assets/mods/weeks. */
     Scan_WeeksDir("assets/mods/weeks",NULL,1);
+    if(!includeHidden){
+        int kept=0;
+        for(int i=0;i<entryCount;i++) if(!entries[i].hidden) entries[kept++]=entries[i];
+        entryCount=kept;
+    }
     *outEntries=entries; int n=entryCount; entries=NULL; entryCount=0; entryCap=0; return n;
 }
 void WeekList_Free(WeekEntry* list){ free(list); }

@@ -22,6 +22,8 @@
 #define MAX_WEEK_JSON_SIZE (256 * 1024)
 #define DEFAULT_COVER "assets/images/freeplay/menuBGBlue.png"
 
+static int PathFits(int n) { return n > 0 && (size_t)n < PATH_MAX_LEN; }
+
 typedef struct {
     char attempted;
     char path[PATH_MAX_LEN];
@@ -171,15 +173,17 @@ static int MakeTitleKey(const char* title, char out[KEY_MAX_LEN]) {
     return used > 0;
 }
 
-/* Le "weekBackground" de <weekDir>/week-<chave>.json (formato Psych). Um unico arquivo. */
-static int ReadWeekBackgroundKey(const char* weekDir, const char* titleKey, char out[KEY_MAX_LEN]) {
+/* "weekspaci" -> "spaci": tira o prefixo "week" do nome do arquivo da week. */
+static int MakeFileKey(const char* file, char out[KEY_MAX_LEN]) {
     out[0] = '\0';
-    if (!weekDir || !weekDir[0] || !titleKey || !titleKey[0]) return 0;
+    if (!file || !file[0]) return 0;
+    if (StartsWithNoCase(file, "week")) file += 4;
+    return MakeTitleKey(file, out);
+}
 
-    char path[PATH_MAX_LEN];
-    const int n = snprintf(path, sizeof(path), "%s/week-%s.json", weekDir, titleKey);
-    if (n <= 0 || (size_t)n >= sizeof(path)) return 0;
-
+/* Le "weekBackground" do arquivo JSON indicado (a propria week ou week-<chave>.json do Psych). */
+static int ReadBackgroundKeyFile(const char* path, char out[KEY_MAX_LEN]) {
+    out[0] = '\0';
     FILE* file = fopen(path, "rb");
     if (!file) return 0;
 
@@ -220,13 +224,29 @@ static int ReadWeekBackgroundKey(const char* weekDir, const char* titleKey, char
     return found;
 }
 
+/* weekBackground da propria week (<weekDir>/<arquivo>.json) ou, no formato Psych, de week-<chave>.json. */
+static int ReadWeekBackgroundKey(const WeekEntry* week, const char* titleKey, char out[KEY_MAX_LEN]) {
+    char path[PATH_MAX_LEN];
+    out[0] = '\0';
+    if (!week->dir[0]) return 0;
+
+    if (week->file[0] && PathFits(snprintf(path, sizeof(path), "%s/%s.json", week->dir, week->file)) &&
+        ReadBackgroundKeyFile(path, out))
+        return 1;
+
+    if (!titleKey[0] || !PathFits(snprintf(path, sizeof(path), "%s/week-%s.json", week->dir, titleKey)))
+        return 0;
+    return ReadBackgroundKeyFile(path, out);
+}
+
 /* ------------------------------------------------------------------ */
 /* Caminho da capa                                                     */
 /* ------------------------------------------------------------------ */
 
-static int PathFits(int n) { return n > 0 && (size_t)n < PATH_MAX_LEN; }
-
-/* Testa a capa no mod dono da week e depois nos assets base. */
+/*
+ * Testa a imagem no mod dono da week, depois em assets/mods/images/menubackgrounds
+ * (fundos por week) e por ultimo nos assets base.
+ */
 static int TryCoverPath(const char* weekDir, const char* key, char out[PATH_MAX_LEN]) {
     char modRoot[PATH_MAX_LEN];
 
@@ -237,7 +257,10 @@ static int TryCoverPath(const char* weekDir, const char* key, char out[PATH_MAX_
         if (PathFits(n) && FileExists(out)) return 1;
     }
 
-    const int n = snprintf(out, PATH_MAX_LEN, "assets/images/menubackgrounds/menu_%s.png", key);
+    int n = snprintf(out, PATH_MAX_LEN, "assets/mods/images/menubackgrounds/menu_%s.png", key);
+    if (PathFits(n) && FileExists(out)) return 1;
+
+    n = snprintf(out, PATH_MAX_LEN, "assets/images/menubackgrounds/menu_%s.png", key);
     return PathFits(n) && FileExists(out);
 }
 
@@ -249,7 +272,7 @@ static int FindCoverPath(const WeekEntry* week, char out[PATH_MAX_LEN]) {
     MakeTitleKey(week->title, titleKey);
 
     // 1) weekBackground explicito no JSON da week.
-    if (titleKey[0] && ReadWeekBackgroundKey(week->dir, titleKey, backgroundKey) &&
+    if (ReadWeekBackgroundKey(week, titleKey, backgroundKey) &&
         TryCoverPath(week->dir, backgroundKey, out))
         return 1;
 
@@ -263,7 +286,11 @@ static int FindCoverPath(const WeekEntry* week, char out[PATH_MAX_LEN]) {
     // 3) titulo da week.
     if (titleKey[0] && TryCoverPath(week->dir, titleKey, out)) return 1;
 
-    // 4) imagem padrao.
+    // 4) nome do arquivo da week sem o prefixo "week" (weekspaci -> menu_spaci.png).
+    char fileKey[KEY_MAX_LEN] = {0};
+    if (MakeFileKey(week->file, fileKey) && TryCoverPath(week->dir, fileKey, out)) return 1;
+
+    // 5) imagem padrao.
     if (FileExists(DEFAULT_COVER)) {
         snprintf(out, PATH_MAX_LEN, "%s", DEFAULT_COVER);
         return 1;

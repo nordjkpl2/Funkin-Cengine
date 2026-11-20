@@ -10,6 +10,8 @@
 
 #if defined(_WIN32) || defined(_WIN64)
   #include <windows.h>
+#else
+  #include <sched.h> /* sched_yield (Linux/POSIX) */
 #endif
 
 // Trava simples (spin) para o log poder ser usado por threads de fundo.

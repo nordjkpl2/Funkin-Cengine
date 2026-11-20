@@ -17,11 +17,12 @@ typedef struct {
     char flavor[192];
     char dir[256];
     char fromMods;
+    char hidden;              /* hideStoryMode: so aparece com includeHidden */
     WeekSong songs[WEEK_MAX_SONGS];
     int songCount;
 } WeekEntry;
 
-int WeekList_Scan(WeekEntry** outEntries);
+int WeekList_Scan(WeekEntry** outEntries, char includeHidden);
 void WeekList_Free(WeekEntry* entries);
 char Week_Delete(const WeekEntry* e);
 void WeekRun_Start(const WeekEntry* e, int diff);
