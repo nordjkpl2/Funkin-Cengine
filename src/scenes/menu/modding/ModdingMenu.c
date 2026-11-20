@@ -4,7 +4,6 @@
  * ficam em ModdingMenuDraw.c e ModdingMenuInput.c.
  */
 
-#include "scenes/api/FontLoader.h"
 #include "scenes/modding/charactereditor/CharEditor.h"
 #include "scenes/modding/charteditor/ChartEditor.h"
 #include "scenes/modding/stageeditor/StageEditor.h"
@@ -15,9 +14,7 @@
 #include "scenes/menu/modding/ModdingMenuInternal.h"
 #include "data/modimport/ModImport.h"
 
-#include <math.h>
 #include <stdio.h>
-#include <string.h>
 #include "Game.h"
 
 /* ------------------------------------------------------------------------- */

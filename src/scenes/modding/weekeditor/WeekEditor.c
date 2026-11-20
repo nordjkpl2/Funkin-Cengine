@@ -197,11 +197,6 @@ static int SongOfRow(int r)
     return (r - WK_ROW_SONGS) / 3;
 }
 
-static bool IsBoolRow(int r)
-{
-    return r == WK_ROW_UNLOCK || r == WK_ROW_HIDE_ST || r == WK_ROW_HIDE_FP;
-}
-
 /* Campo de texto da linha (NULL para booleanos). cap recebe o tamanho do buffer. */
 static char *RowText(int r, size_t *cap)
 {

@@ -5,17 +5,13 @@
  * AnimSetCharacterXML.c - Parser de XML de personagem estilo Codename (<character><anim/></character>).
  */
 
-#include "std.h"
 #include "logic/animations/AnimSetCharacterXML.h"
 #include "logic/animations/AnimSetParseUtil.h"
 #include "logic/animations/AnimSetSparrow.h"
-#include "Log.h"
 #include "yxml.h"
 
-#include <ctype.h>
 #include <errno.h>
 #include <limits.h>
-#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

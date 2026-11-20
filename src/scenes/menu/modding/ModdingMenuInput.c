@@ -4,7 +4,6 @@
  */
 #include "scenes/menu/modding/ModdingMenuInternal.h"
 #include "data/modimport/ModImport.h"
-#include "Game.h"
 
 #include <stdio.h>
 #include <string.h>

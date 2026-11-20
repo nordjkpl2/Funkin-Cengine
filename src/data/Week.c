@@ -181,9 +181,13 @@ char Week_Delete(const WeekEntry* e){
 // ---------- campanha ----------
 static WeekEntry runWeek;
 static char runActive=0;
-static int runDiff=1, runPos=0, runTotal=0, lastTotal=0;
+static int runDiff=1, runPos=0, runTotal=0;
 static char runDirs[WEEK_MAX_SONGS][256];
 static char runMissing[64];
+/* Ultimo score de cada week concluida (chave: e->file). So em memoria, como antes. */
+#define WEEK_SCORE_SLOTS 64
+static struct { char file[64]; int score; } weekScores[WEEK_SCORE_SLOTS];
+static int weekScoreCount=0;
 
 static inline int DirBaseMatch(const char* dirPath, const char* songName){
     const char* b=WK_Base(dirPath);
@@ -207,6 +211,19 @@ const char* WeekRun_Char(void){ SkipMissing(); return runPos<runWeek.songCount?r
 const char* WeekRun_DiffSuffix(void){ return DIFFS[runDiff]; }
 int WeekRun_Advance(void){ runPos++; SkipMissing(); return runPos<runWeek.songCount; }
 void WeekRun_AddScore(int s){ runTotal+=s; }
-int WeekRun_LastTotal(void){ return lastTotal; }
 const char* WeekRun_Missing(void){ return runMissing; }
-void WeekRun_Finish(void){ lastTotal=runTotal; runActive=0; }
+int WeekRun_LastTotal(const WeekEntry* e){
+    if(!e) return 0;
+    for(int i=0;i<weekScoreCount;i++) if(strcmp(weekScores[i].file,e->file)==0) return weekScores[i].score;
+    return 0;
+}
+void WeekRun_Finish(void){
+    runActive=0;
+    for(int i=0;i<weekScoreCount;i++) if(strcmp(weekScores[i].file,runWeek.file)==0){ weekScores[i].score=runTotal; return; }
+    if(weekScoreCount<WEEK_SCORE_SLOTS){
+        strncpy(weekScores[weekScoreCount].file,runWeek.file,sizeof(weekScores[0].file)-1);
+        weekScores[weekScoreCount].file[sizeof(weekScores[0].file)-1]=0;
+        weekScores[weekScoreCount].score=runTotal;
+        weekScoreCount++;
+    }
+}

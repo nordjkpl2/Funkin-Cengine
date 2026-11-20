@@ -185,8 +185,9 @@ static void Details_Build(void) {
         snprintf(detailsLines[i], DETAIL_LINE_MAX, "%02d  %.17s", i + 1, name);
     }
 
-    if (WeekRun_LastTotal() > 0)
-        snprintf(detailsLastScore, sizeof(detailsLastScore), "LAST SCORE  %d", WeekRun_LastTotal());
+    const int lastScore = WeekRun_LastTotal(week);
+    if (lastScore > 0)
+        snprintf(detailsLastScore, sizeof(detailsLastScore), "LAST SCORE  %d", lastScore);
     else
         detailsLastScore[0] = '\0';
 }

@@ -10,13 +10,7 @@
 #include "data/modimport/ModImportInternal.h"
 #include "data/modimport/ModImportPath.h"
 
-#include "core/DirWalk.h"
-#include "threads/cpu/Jobs.h"
-#include "threads/Thread.h"
-#include "yyjson.h"
 
-#include <ctype.h>
-#include <errno.h>
 #include <limits.h>
 #include <stdint.h>
 #include <stdatomic.h>

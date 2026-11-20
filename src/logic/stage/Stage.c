@@ -5,7 +5,6 @@
  * Stage.c - Busca de arquivos do stage (.lua / .json) e validacao de nome.
  */
 
-#include "std.h"
 #include "logic/stage/Stage.h"
 #include "core/ModPath.h"
 

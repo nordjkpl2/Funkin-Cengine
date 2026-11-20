@@ -2,15 +2,8 @@
 /* Chart Editor: dados do chart (notas, trechos, undo) e leitura/gravacao em arquivo. */
 
 #include"data/Song.h"
-#include"data/SongList.h"
 #include "core/ModPath.h"
-#include "characters/Character.h"
-#include"logic/stage/Stage.h"
-#include"logic/notes/Note.h"
 #include"yyjson.h"
-#include "Game.h"
-#include "GameData.h"
-#include "raymath.h"
 #include "scenes/modding/charteditor/data/EditorDataAndIO.h"
 
 // helpers yyjson -> corrige bug do int vs double

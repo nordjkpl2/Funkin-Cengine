@@ -32,7 +32,7 @@ const char* WeekRun_Char(void);
 const char* WeekRun_DiffSuffix(void);
 int WeekRun_Advance(void);
 void WeekRun_AddScore(int s);
-int WeekRun_LastTotal(void);
 const char* WeekRun_Missing(void);
+int WeekRun_LastTotal(const WeekEntry* e);
 void WeekRun_Finish(void);
 #endif

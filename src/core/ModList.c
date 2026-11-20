@@ -68,11 +68,6 @@ int ModList_Count(void)
     return modCount;
 }
 
-const char* ModList_Name(int index)
-{
-    EnsureScanned();
-    return (index >= 0 && index < modCount) ? mods[index].name : "";
-}
 
 const char* ModList_Root(int index)
 {
@@ -96,23 +91,6 @@ bool ModList_Enabled(int index)
     return DisabledIndex(mods[index].name) < 0;
 }
 
-void ModList_SetEnabled(int index, bool enabled)
-{
-    EnsureScanned();
-    if (index < 0 || index >= modCount)
-        return;
-    const int at = DisabledIndex(mods[index].name);
-    if (enabled && at >= 0) {
-        memmove(gameDisabledMods[at], gameDisabledMods[at + 1],
-                (size_t)(gameDisabledModCount - at - 1) * MOD_NAME_MAX);
-        gameDisabledModCount--;
-    } else if (!enabled && at < 0 && gameDisabledModCount < MOD_DISABLED_MAX) {
-        strcpy(gameDisabledMods[gameDisabledModCount++], mods[index].name);
-    } else {
-        return;
-    }
-    GameData_Flush();
-}
 
 static bool Exists(const char* root, const char* fmt, const char* name)
 {

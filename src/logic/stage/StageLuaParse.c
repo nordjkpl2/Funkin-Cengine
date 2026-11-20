@@ -5,7 +5,6 @@
  * StageLuaParse.c - Parser de subset de stage .lua (Psych) para sprites. Sem VM Lua.
  */
 
-#include "std.h"
 #include "logic/stage/StageLuaParse.h"
 
 #include <ctype.h>

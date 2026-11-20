@@ -5,25 +5,15 @@
  * Girlfriend.c - Carregamento da namorada (GF) e poses de danca.
  */
 
-#include "std.h"
 #include "characters/Character.h"
 #include "characters/CharacterInternal.h"
 #include "logic/animations/CharacterAnims.h"
 #include "characters/CharacterJson.h"
 #include "characters/CharacterXML.h"
-#include "core/ModPath.h"
-#include "core/ModList.h"
-#include "logic/animations/AnimationSets_XML.h"
 #include "Log.h"
-#include "rendering/cpu/ImagePrefetch.h"
-#include "yyjson.h"
-#include "yxml.h"
 
-#include <math.h>
 #include <stdarg.h>
 #include <stdbool.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 /* ------------------------------------------------------------------------- */

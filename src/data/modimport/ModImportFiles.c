@@ -14,10 +14,7 @@
 #include "core/DirWalk.h"
 #include "threads/cpu/Jobs.h"
 #include "threads/Thread.h"
-#include "yyjson.h"
 
-#include <ctype.h>
-#include <errno.h>
 #include <limits.h>
 #include <stdint.h>
 #include <stdatomic.h>
@@ -129,10 +126,6 @@ atomic_llong mi_deferredBytes; /* bytes dos workers ainda nao somados nas estati
 
 #define MI_DEFER_MIN       (2LL * 1024 * 1024)
 
-int ModImport_SkippedDuplicates(void)
-{
-    return atomic_load(&mi_dupSkipped);
-}
 
 /* destino ja existe com mesmo tamanho: considera o mesmo arquivo */
 /* Destino ja existe com o mesmo tamanho: considera o mesmo arquivo. */

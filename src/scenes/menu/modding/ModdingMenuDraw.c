@@ -5,7 +5,6 @@
 #include "scenes/api/FontLoader.h"
 #include "scenes/menu/modding/ModdingMenuInternal.h"
 #include "data/modimport/ModImport.h"
-#include "Game.h"
 
 #include <math.h>
 #include <stdio.h>

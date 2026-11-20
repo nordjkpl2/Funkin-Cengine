@@ -59,6 +59,7 @@ set(FNF_COMPILE_FLAGS
     -fomit-frame-pointer
     -fno-math-errno
     -fno-common
+    -fno-ident
     -DNDEBUG
     -DPLATFORM_DESKTOP
     -DGRAPHICS_API_OPENGL_33
@@ -74,7 +75,14 @@ else()
     set(FNF_NOLTO_FLAGS -fno-lto)
 endif()
 list(APPEND FNF_NOLTO_FLAGS -ffunction-sections -fdata-sections -funroll-loops -fomit-frame-pointer
-     -fno-math-errno -fno-stack-protector -fno-common -DNDEBUG)
+     -fno-math-errno -fno-stack-protector -fno-common -fno-ident -DNDEBUG)
+
+# Strip (opcional): remove a tabela de simbolos do exe. Menor, mas stack traces ficam sem nomes.
+# Ligar: cmake -DFNF_STRIP=ON (reconfigurar o cache).
+option(FNF_STRIP "Remove simbolos do executavel (menor, sem nomes em crash)" OFF)
+if(FNF_STRIP)
+    list(APPEND FNF_LINK_FLAGS -Wl,--strip-all)
+endif()
 
 # ## Raylib by Ramon Santamaria ## #
 set(RAYLIB_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/lib/raylib55")

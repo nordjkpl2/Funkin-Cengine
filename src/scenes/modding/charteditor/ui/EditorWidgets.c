@@ -2,11 +2,7 @@
 /* Chart Editor: caixas de texto/numero, botoes, listas e bloqueio do mouse. */
 #include "scenes/api/FontLoader.h"
 #include"data/Song.h"
-#include"data/SongList.h"
 #include "core/ModPath.h"
-#include "characters/Character.h"
-#include"logic/stage/Stage.h"
-#include"logic/notes/Note.h"
 #include "Game.h"
 #include "GameData.h"
 #include "raymath.h"
@@ -206,19 +202,6 @@ char EdButton(Rectangle r, const char* label, int fs) {
 }
 
 // Igual ao EdButton, mas com "ok = 0" (arquivo ausente) fica com borda e texto vermelhos.
-char EdButtonOk(Rectangle r, const char* label, int fs, char ok) {
-    if(ceDlg != DLG_NONE || activeDrop || menuOpen)
-        return 0;
-    Vector2 m = EdMouseWorld();
-    char hov = (m.x >= r.x && m.x <= r.x + r.width && m.y >= r.y && m.y <= r.y + r.height);
-    const Color edge = ok ? (hov ? GREEN : GRAY) : RED;
-    DrawRectangleRec(r, hov ? (Color) {60, 60, 60, 255} : (Color) {30, 30, 30, 255});
-    DrawRectangleLinesEx(r, 1, edge);
-    Vector2 s = MeasureTextEx(mainFont, label, fs, 1);
-    Ed_DrawText(mainFont, label, (Vector2) {r.x + (r.width - s.x) / 2, r.y + (r.height - s.y) / 2}, fs, 1,
-        ok ? WHITE : RED);
-    return hov && IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
-}
 
 // setinha que abre lista (desenha o triangulo na mao)
 TxtBox* dropBox = NULL;

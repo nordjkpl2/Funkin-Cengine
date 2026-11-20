@@ -5,7 +5,6 @@
  * RayGame.c - Estado global, áudio, janela e loop principal.
  */
 
-#include "std.h"
 #include "Game.h"
 #include "GameData.h"
 #include "Log.h"

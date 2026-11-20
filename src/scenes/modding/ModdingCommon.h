@@ -30,7 +30,6 @@ bool ModEd_BackupOnce(const char *path);
 
 /* Escrita em objeto yyjson: remove a chave antes de adicionar (substitui o valor). */
 void ModEd_PutReal(yyjson_mut_doc *doc, yyjson_mut_val *obj, const char *key, double value);
-void ModEd_PutInt(yyjson_mut_doc *doc, yyjson_mut_val *obj, const char *key, int value);
 void ModEd_PutBool(yyjson_mut_doc *doc, yyjson_mut_val *obj, const char *key, bool value);
 void ModEd_PutStr(yyjson_mut_doc *doc, yyjson_mut_val *obj, const char *key, const char *value);
 void ModEd_PutRealArr2(yyjson_mut_doc *doc, yyjson_mut_val *obj, const char *key, float x, float y);

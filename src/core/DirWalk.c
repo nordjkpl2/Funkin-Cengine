@@ -7,7 +7,6 @@
 #include "core/DirWalk.h"
 
 #include <stdio.h>
-#include <string.h>
 
 #define DW_PATH_MAX 1100
 #define DW_NAME_MAX 520

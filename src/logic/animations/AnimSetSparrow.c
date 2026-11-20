@@ -5,10 +5,8 @@
  * AnimSetSparrow.c - Loader de atlas Sparrow/Starling TextureAtlas XML para RayAnimationHandler.
  */
 
-#include "std.h"
 #include "logic/animations/AnimSetSparrow.h"
 #include "logic/animations/AnimSetParseUtil.h"
-#include "Log.h"
 #include "yxml.h"
 
 #include <ctype.h>

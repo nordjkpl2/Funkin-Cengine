@@ -6,7 +6,6 @@
 #include "std.h"
 #include "data/Song.h"
 #include "data/SongInternal.h"
-#include "Log.h"
 
 #include <stdio.h>
 #include <string.h>

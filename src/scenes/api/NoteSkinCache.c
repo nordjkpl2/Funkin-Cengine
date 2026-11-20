@@ -9,7 +9,6 @@
 #include "scenes/api/NoteSkinCache.h"
 #include <string.h>
 #include <stdbool.h>
-#include "Game.h"
 #include "data/Song.h"
 #include "core/ModPath.h"
 #include "core/ModList.h"

@@ -13,10 +13,8 @@
 
 void        ModList_Rescan(void);
 int         ModList_Count(void);
-const char* ModList_Name(int index);
 const char* ModList_Root(int index);          /* ex.: "assets/mods/MeuMod" */
 bool        ModList_Enabled(int index);
-void        ModList_SetEnabled(int index, bool enabled);   /* salva no save.data */
 
 /* Raiz do 1o mod ATIVO que tem o personagem (animset, xml ou json). false = nenhum. */
 bool        ModList_FindCharacterRoot(const char* name, char* out, size_t capacity);

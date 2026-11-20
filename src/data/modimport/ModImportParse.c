@@ -12,9 +12,6 @@
 #include "data/modimport/ModImportPath.h"
 #include "data/modimport/ModImportFiles.h"
 
-#include "core/DirWalk.h"
-#include "threads/cpu/Jobs.h"
-#include "threads/Thread.h"
 #include "yyjson.h"
 
 #include <ctype.h>

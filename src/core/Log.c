@@ -6,7 +6,6 @@
 #include <stdarg.h>
 #include <stdatomic.h>
 #include <unistd.h>
-#include <sys/stat.h>
 
 #if defined(_WIN32) || defined(_WIN64)
   #include <windows.h>
@@ -126,7 +125,6 @@ static void EmitF(int fd, int fatal, const char* fmt, va_list ap) {
 }
 
 void Log_Info(const char* msg)  { LogLock(); Emit(STDOUT_FILENO, msg, 0); LogUnlock(); }
-void Log_Error(const char* msg) { LogLock(); Emit(STDERR_FILENO, msg, 1); LogUnlock(); }
 
 void Log_Fatal(const char* msg) {
     LogLock(); // nao destrava: o processo vai sair
@@ -139,14 +137,6 @@ void Log_Fatal(const char* msg) {
     exit(1); 
 }
 
-void Log_ErrorF(const char* fmt, ...) {
-    va_list ap; 
-    va_start(ap, fmt);
-    LogLock();
-    EmitF(STDERR_FILENO, 0, fmt, ap);
-    LogUnlock();
-    va_end(ap);
-}
 
 static char warnText[LOG_WARN_MAX][LOG_WARN_LEN];
 static int warnTotal = 0;

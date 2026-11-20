@@ -1,14 +1,8 @@
 /* // * Friday Night Funkin´ c engine (c) 2026 nordjkpl */
 /* Chart Editor: a grade (notas, linhas de tempo, cursor, mouse) e seu layout. */
 
-#include"data/Song.h"
-#include"data/SongList.h"
-#include "core/ModPath.h"
 #include "characters/Character.h"
-#include"logic/stage/Stage.h"
 #include"logic/notes/Note.h"
-#include "Game.h"
-#include "GameData.h"
 #include "raymath.h"
 #include "scenes/modding/charteditor/grid/EditorGrid.h"
 #include "scenes/modding/charteditor/data/EditorDataAndIO.h"

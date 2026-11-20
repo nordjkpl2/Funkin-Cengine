@@ -4,7 +4,6 @@
  */
 
 
-#include "characters/Character.h"
 #include "scenes/gameplay/PlayStateIntro.h"
 #include "raymath.h"
 

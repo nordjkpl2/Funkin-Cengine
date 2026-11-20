@@ -4,7 +4,6 @@
  */
 #include "scenes/api/FontLoader.h"
 #include "scenes/menu/options/OptionsMenuInternal.h"
-#include "raymath.h"
 #include <math.h>
 
 /* Texto com sombra deslocada para cima/esquerda. */

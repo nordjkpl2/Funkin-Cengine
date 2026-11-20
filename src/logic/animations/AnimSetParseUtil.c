@@ -5,9 +5,7 @@
  * AnimSetParseUtil.c - Helpers de parse compartilhados pelos loaders de animset (XML Sparrow/Codename, yxml).
  */
 
-#include "std.h"
 #include "logic/animations/AnimSetParseUtil.h"
-#include "Log.h"
 #include "yxml.h"
 
 #include <ctype.h>

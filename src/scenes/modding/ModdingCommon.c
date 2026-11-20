@@ -131,11 +131,6 @@ void ModEd_PutReal(yyjson_mut_doc *doc, yyjson_mut_val *obj, const char *key, do
     yyjson_mut_obj_add_real(doc, obj, key, value);
 }
 
-void ModEd_PutInt(yyjson_mut_doc *doc, yyjson_mut_val *obj, const char *key, int value)
-{
-    yyjson_mut_obj_remove_key(obj, key);
-    yyjson_mut_obj_add_int(doc, obj, key, value);
-}
 
 void ModEd_PutBool(yyjson_mut_doc *doc, yyjson_mut_val *obj, const char *key, bool value)
 {

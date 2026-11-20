@@ -22,7 +22,6 @@ static float s_savedZoom = 1.0f;
 static Vector2 s_savedOffset = {0.0f, 0.0f};
 
 /* Cache do Target da Câmera ativo para evitar indireções de ponteiro */
-static Vector2 s_activeCamTarget = {0.0f, 0.0f};
 
 /* =========================================================
    CAMERA CONTROL
@@ -38,7 +37,6 @@ void Render_SetCamera(Camera2D *camera)
     {
         if (s_target == camera)
         {
-            s_activeCamTarget = camera->target;
             return;
         }
         Render_StopCamera();
@@ -47,7 +45,6 @@ void Render_SetCamera(Camera2D *camera)
     s_target = camera;
     s_savedZoom = camera->zoom;
     s_savedOffset = camera->offset;
-    s_activeCamTarget = camera->target;
 
     camera->zoom = s_savedZoom * RayGame_ZoomFactor();
     camera->offset = (Vector2){
@@ -65,7 +62,6 @@ void Render_StopCamera(void)
         s_target->zoom = s_savedZoom;
         s_target->offset = s_savedOffset;
         s_target = NULL;
-        s_activeCamTarget = VEC_ZERO;
 
         EndMode2D();
     }

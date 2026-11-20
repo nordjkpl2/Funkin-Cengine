@@ -235,6 +235,9 @@ FNF_C_ENGINE_SOURCE_DIR:STATIC=D:/dev/funkin c
 //F3 overlay with frame times and draw calls
 FNF_DEBUG_STATS:BOOL=ON
 
+//Remove simbolos do executavel (menor, sem nomes em crash)
+FNF_STRIP:BOOL=OFF
+
 
 ########################
 # INTERNAL cache entries

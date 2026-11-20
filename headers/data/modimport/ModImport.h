@@ -19,7 +19,6 @@ typedef struct ModImportStats {
 } ModImportStats;
 
 /* arquivos pulados no ultimo ModImport_Run (mesmo caminho e tamanho no destino) */
-int ModImport_SkippedDuplicates(void);
 
 typedef struct ModImportUsage {
     int mods;

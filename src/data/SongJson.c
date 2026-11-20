@@ -2,7 +2,6 @@
 /*
  * SongJson.c - parser do chart JSON (formato Psych/FNF, com ou sem o objeto "song").
  */
-#include "std.h"
 #include "data/Song.h"
 #include "data/SongInternal.h"
 #include "yyjson.h"

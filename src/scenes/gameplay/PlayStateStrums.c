@@ -7,12 +7,9 @@
 #include "logic/notes/Note.h"
 #include "scenes/gameplay/PlayStateStrums.h"
 #include "scenes/gameplay/PlayStateBeat.h"
-#include "Game.h"
 #include "GameData.h"
-#include "raymath.h"
 
 #define SCREEN_W 1280.0f
-#define SCREEN_H 720.0f
 #define LANE_SPACING 110.0f
 #define STRUM_BG_HEIGHT 150   // faixa preta atras dos receptores (Strumline Background)
 // Monitor de teclas (Keys Monitor): quadradinhos no canto superior direito.

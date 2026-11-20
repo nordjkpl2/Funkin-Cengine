@@ -5,7 +5,6 @@
  * StageJson.c - Leitura do <stage>.json (formato Psych): zoom, posicoes e camera.
  */
 
-#include "std.h"
 #include "logic/stage/StageJson.h"
 
 #include <math.h>

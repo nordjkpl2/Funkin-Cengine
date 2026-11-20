@@ -5,8 +5,6 @@
  * AnimationSets.c - Despacho de animsets: escolhe Sparrow XML ou binario e libera os recursos.
  */
 
-#include "std.h"
-#include "logic/animations/AnimationSets_XML.h"
 #include "logic/animations/AnimSetParseUtil.h"
 #include "logic/animations/AnimSetSparrow.h"
 #include "logic/animations/AnimSetBinary.h"

@@ -4,7 +4,6 @@
  */
 #include "scenes/api/FontLoader.h"
 #include "scenes/menu/options/OptionsMenuInternal.h"
-#include "Game.h"
 #include "GameData.h"
 #include "threads/Thread.h"
 #include "threads/cpu/Jobs.h"

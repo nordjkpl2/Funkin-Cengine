@@ -5,10 +5,8 @@
  * AnimSetBinary.c - Loader do formato binario .animset.
  */
 
-#include "std.h"
 #include "logic/animations/AnimSetBinary.h"
 #include "logic/animations/AnimSetParseUtil.h"
-#include "Log.h"
 
 #include <stdio.h>
 #include <stdlib.h>

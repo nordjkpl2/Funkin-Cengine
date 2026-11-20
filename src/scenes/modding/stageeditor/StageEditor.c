@@ -71,7 +71,6 @@ static int pickTop;
 
 /* stage aberto */
 static StageEdEntry current;
-static bool hasCurrent;
 static StageSprite sprites[STAGE_MAX_SPRITES];
 static Texture2D tex[STAGE_MAX_SPRITES];
 static int spriteCount;
@@ -312,10 +311,8 @@ static void OpenEntry(const StageEdEntry *entry)
     char msg[160] = {0};
 
     current = *entry;
-    hasCurrent = true;
     if (!StageEd_Load(&current, sprites, STAGE_MAX_SPRITES, &spriteCount, &meta, msg, sizeof(msg))) {
         SetStatus("nao consegui ler o stage");
-        hasCurrent = false;
         return;
     }
 
@@ -739,7 +736,6 @@ static void Edit_Update(void)
             return;
         }
         Textures_FreeAll();
-        hasCurrent = false;
         dirty = false;
         escArmed = false;
         mode = SE_PICK;
@@ -1096,7 +1092,6 @@ static void StageEditor_Create([[maybe_unused]] RayScene *scene)
     spriteCount = 0;
     sel = -1;
     listTop = 0;
-    hasCurrent = false;
     dirty = false;
     escArmed = false;
     dragging = false;
@@ -1121,7 +1116,6 @@ static void StageEditor_Create([[maybe_unused]] RayScene *scene)
 static void StageEditor_Destroy([[maybe_unused]] RayScene *scene)
 {
     Textures_FreeAll();
-    hasCurrent = false;
     bg.image = (Texture2D){0}; /* compartilhada: nao descarrega aqui */
 }
 
