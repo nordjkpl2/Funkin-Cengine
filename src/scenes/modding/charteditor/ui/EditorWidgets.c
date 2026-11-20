@@ -7,6 +7,7 @@
 #include "GameData.h"
 #include "raymath.h"
 #include "scenes/modding/charteditor/ui/EditorWidgets.h"
+#include "rendering/TextMeasure.h"
 #include "scenes/modding/charteditor/data/EditorDataAndIO.h"
 #include "scenes/modding/charteditor/grid/EditorTimeline.h"
 
@@ -189,6 +190,14 @@ Vector2 EdMouseWorld(void) {
 }
 
 // ---------- botoes e textos ----------
+/* Cache de medida dos rotulos dos botoes (indexado pelo texto; colisao so refaz a medida). */
+static TextMeasure btnMeasure[32];
+static TextMeasure* BtnMeasureSlot(const char* label) {
+    unsigned h = 0;
+    for (const unsigned char* p = (const unsigned char*)label; *p; ++p) h = h * 31u + *p;
+    return &btnMeasure[h & 31u];
+}
+
 char EdButton(Rectangle r, const char* label, int fs) {
     if(ceDlg != DLG_NONE || activeDrop || menuOpen)
         return 0;
@@ -196,7 +205,7 @@ char EdButton(Rectangle r, const char* label, int fs) {
     char hov = (m.x >= r.x && m.x <= r.x + r.width && m.y >= r.y && m.y <= r.y + r.height);
     DrawRectangleRec(r, hov ? (Color) {60, 60, 60, 255} : (Color) {30, 30, 30, 255});
     DrawRectangleLinesEx(r, 1, hov ? GREEN : GRAY);
-    Vector2 s = MeasureTextEx(mainFont, label, fs, 1);
+    Vector2 s = TextMeasure_Get(BtnMeasureSlot(label), mainFont, label, fs, 1);
     Ed_DrawText(mainFont, label, (Vector2) {r.x + (r.width - s.x) / 2, r.y + (r.height - s.y) / 2}, fs, 1, WHITE);
     return hov && IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
 }
@@ -240,7 +249,7 @@ char EdDlgButton(Rectangle r, const char* label, Color edge) {
     char hov = (m.x >= r.x && m.x <= r.x + r.width && m.y >= r.y && m.y <= r.y + r.height);
     DrawRectangleRec(r, hov ? (Color) {60, 60, 60, 255} : (Color) {30, 30, 30, 255});
     DrawRectangleLinesEx(r, 2, hov ? WHITE : edge);
-    Vector2 sz = MeasureTextEx(mainFont, label, 24, 1);
+    Vector2 sz = TextMeasure_Get(BtnMeasureSlot(label), mainFont, label, 24, 1);
     Ed_DrawText(mainFont, label, (Vector2) {r.x + (r.width - sz.x) / 2, r.y + (r.height - sz.y) / 2}, 24, 1, WHITE);
     return hov && IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
 }

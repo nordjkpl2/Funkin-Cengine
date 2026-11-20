@@ -13,6 +13,7 @@
 #include "data/SongList.h"
 #include "scenes/menu/freeplay/FreeplayIcon.h"
 #include "widgets-and-menus-ui/SearchBox.h"
+#include "rendering/TextMeasure.h"
 #include <stdlib.h>
 
 #include <math.h>
@@ -243,7 +244,8 @@ static void DrawIconFrame(void) {
 
     DrawRectangle((int)ICON_X, (int)ICON_Y, (int)ICON_SIZE, (int)ICON_SIZE, ICON_EMPTY_BG);
     static const char* const missing = "NO ICON";
-    const Vector2 size = MeasureTextEx(mainFont, missing, 25.0f, 2.0f);
+    static TextMeasure missingMeasure;
+    const Vector2 size = TextMeasure_Get(&missingMeasure, mainFont, missing, 25.0f, 2.0f);
     DrawTextEx(mainFont, missing,
                (Vector2) {ICON_X + (ICON_SIZE - size.x) * 0.5f, ICON_Y + (ICON_SIZE - size.y) * 0.5f},
                25.0f, 2.0f, ICON_EMPTY_TEXT);

@@ -7,6 +7,7 @@
 #include "scenes/gameplay/PlayStatePause.h"
 #include "scenes/gameplay/PlayStateAudio.h"
 #include "raymath.h"
+#include "rendering/TextMeasure.h"
 #include <math.h>
 
 #define SCREEN_W 1280.0f
@@ -169,6 +170,7 @@ void PlayStatePause_Draw(char exitToEditor, float currentSecs, float totalSecs) 
 
     const char* const options[OPTION_COUNT] = {"Resume", skipLabel, "Restart", exitToEditor ? "Exit to Chart Editor" : "Exit to Menu"};
     const int fontSize = 85;
+    static TextMeasure optionMeasure[OPTION_COUNT]; // so refaz a medida quando o rotulo muda (ex.: o tempo do Skip)
 
     DrawRectangle(0, 0, (int)SCREEN_W, (int)SCREEN_H, (Color) {0, 0, 0, 100});
 
@@ -181,7 +183,7 @@ void PlayStatePause_Draw(char exitToEditor, float currentSecs, float totalSecs) 
         if (i <= OPTION_SKIP) continue; // Resume e Skip time: sem icone
 
         // Icone logo depois do texto, centralizado na linha.
-        const Vector2 textSize = MeasureTextEx(mainFont, options[i], fontSize, 5);
+        const Vector2 textSize = TextMeasure_Get(&optionMeasure[i], mainFont, options[i], fontSize, 5);
         const float x0 = pos.x + textSize.x + ICON_GAP;
         const float cy = pos.y + fontSize * 0.5f;
 

@@ -8,6 +8,7 @@
 #include "scenes/gameplay/PlayStateStrums.h"
 #include "scenes/gameplay/PlayStateBeat.h"
 #include "GameData.h"
+#include "rendering/TextMeasure.h"
 
 #define SCREEN_W 1280.0f
 #define LANE_SPACING 110.0f
@@ -141,6 +142,7 @@ void PlayStateStrums_DrawKeyMonitor(void) {
     const float total = PLAYSTATE_LANES * MONITOR_KEY + (PLAYSTATE_LANES - 1) * MONITOR_GAP;
     const float x0 = SCREEN_W - MONITOR_MARGIN - total;
     const float y = MONITOR_TOP;
+    static TextMeasure labelMeasure[PLAYSTATE_LANES]; // rotulo da coluna muda so com o esquema de teclas
 
     for (int i = 0; i < PLAYSTATE_LANES; i++) {
         const Rectangle box = {x0 + i * (MONITOR_KEY + MONITOR_GAP), y, MONITOR_KEY, MONITOR_KEY};
@@ -161,7 +163,7 @@ void PlayStateStrums_DrawKeyMonitor(void) {
 
         char label[4];
         MonitorLabel(game_scheme_keys[gameOptions.scheme][i], i, label);
-        const Vector2 ts = MeasureTextEx(mainFont, label, MONITOR_FONT, 1.0f);
+        const Vector2 ts = TextMeasure_Get(&labelMeasure[i], mainFont, label, MONITOR_FONT, 1.0f);
         DrawTextEx(mainFont, label, (Vector2) {box.x + (MONITOR_KEY - ts.x) * 0.5f, box.y + (MONITOR_KEY - ts.y) * 0.5f},
                    MONITOR_FONT, 1.0f, WHITE);
     }

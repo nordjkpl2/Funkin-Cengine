@@ -10,6 +10,7 @@
 #include "logic/notes/Note.h"
 #include "scenes/api/NoteSkinCache.h"
 #include "scenes/gameplay/PlayStateNoteSpawn.h"
+#include "rendering/TextMeasure.h"
 #include <math.h>
 #include <stdio.h>
 
@@ -48,6 +49,7 @@ static Color swatches[NC_SW_ROWS * NC_SW_COLS];
 static bool swatchesReady;
 
 static const char* const laneNames[4] = {"LEFT", "DOWN", "UP", "RIGHT"};
+static TextMeasure laneNameMeasure[4]; // nomes fixos: medidos uma vez
 
 /* Botoes das colunas em cima da roda (canto superior direito). */
 static Rectangle LaneButton(int i) { return (Rectangle) {700.0f + (float)i * 108.0f, 72.0f, 96.0f, 44.0f}; }
@@ -265,7 +267,7 @@ void NoteColorScreen_Draw(void) {
         const Color c = GameData_LaneTint(i);
         DrawRectangleRec(r, (Color) {c.r / 3, c.g / 3, c.b / 3, 255});
         DrawRectangleLinesEx(r, i == lane ? 4.0f : 2.0f, i == lane ? WHITE : GRAY);
-        const Vector2 ts = MeasureTextEx(mainFont, laneNames[i], 26, 1.0f);
+        const Vector2 ts = TextMeasure_Get(&laneNameMeasure[i], mainFont, laneNames[i], 26, 1.0f);
         DrawTextEx(mainFont, laneNames[i], (Vector2) {r.x + (r.width - ts.x) * 0.5f, r.y + (r.height - ts.y) * 0.5f},
                    26, 1.0f, WHITE);
     }

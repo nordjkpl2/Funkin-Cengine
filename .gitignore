@@ -16,6 +16,7 @@ headers.rar
 build/
 dist/
 .claude/
+claude/
 assets/mods
 assets/weeks
 CLAUDE.md

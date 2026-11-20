@@ -118,6 +118,7 @@ set(OLD_GLOB
   "D:/dev/funkin c/src/logic/stage/Stage.c"
   "D:/dev/funkin c/src/logic/stage/StageJson.c"
   "D:/dev/funkin c/src/logic/stage/StageLuaParse.c"
+  "D:/dev/funkin c/src/rendering/TextMeasure.c"
   "D:/dev/funkin c/src/rendering/cpu/ImagePrefetch.c"
   "D:/dev/funkin c/src/rendering/cpu/PngDecode.c"
   "D:/dev/funkin c/src/scenes/LoadingState.c"

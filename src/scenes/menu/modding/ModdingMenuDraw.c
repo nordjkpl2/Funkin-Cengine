@@ -5,6 +5,7 @@
 #include "scenes/api/FontLoader.h"
 #include "scenes/menu/modding/ModdingMenuInternal.h"
 #include "data/modimport/ModImport.h"
+#include "rendering/TextMeasure.h"
 
 #include <math.h>
 #include <stdio.h>
@@ -144,18 +145,22 @@ static void Imp_Panel(Rectangle r, const char *title)
     DrawRectangle((int)r.x + 20, (int)r.y + 46, (int)r.width - 40, 1, (Color){255, 255, 255, 40});
 }
 
-/* Tecla + rotulo; devolve o x onde termina. */
-static float Imp_Chip(float x, float y, const char *key, const char *label,
+#define IMP_CHIP_SLOTS 5
+
+/* Tecla + rotulo; devolve o x onde termina. `slot` (0..IMP_CHIP_SLOTS-1) identifica o chip: cada um
+ * guarda a medida do proprio texto, que e fixo, entao nao mede de novo a cada frame. */
+static float Imp_Chip(int slot, float x, float y, const char *key, const char *label,
                       Color accent, char active)
 {
-    const float kw = MeasureTextEx(mainFont, key, 17, 1).x + 20;
+    static TextMeasure keyM[IMP_CHIP_SLOTS], labelM[IMP_CHIP_SLOTS];
+    const float kw = TextMeasure_Get(&keyM[slot], mainFont, key, 17, 1).x + 20;
     const Color text = active ? fontColor : (Color){130, 130, 140, 255};
 
     DrawRectangle((int)x, (int)y, (int)kw, 30, active ? (Color){accent.r, accent.g, accent.b, 70} : (Color){40, 40, 48, 255});
     DrawRectangleLinesEx((Rectangle){x, y, kw, 30}, 1, active ? accent : (Color){70, 70, 80, 255});
     DrawTextEx(mainFont, key, (Vector2){x + 10, y + 6}, 17, 1, text);
     DrawTextEx(mainFont, label, (Vector2){x + kw + 8, y + 5}, 19, 1, text);
-    return x + kw + 8 + MeasureTextEx(mainFont, label, 19, 1).x + 22;
+    return x + kw + 8 + TextMeasure_Get(&labelM[slot], mainFont, label, 19, 1).x + 22;
 }
 
 static void Imp_StatCard(float x, float y, int kind, const char *value, const char *label)
@@ -182,6 +187,7 @@ void Modding_DrawImport(void)
     const char importing = ModImport_Busy();
     char a[96], b[96], msg[MODDING_MSG_CAP];
     float y, x;
+    static TextMeasure ellipsisM, pathM, rightM; // textos de medida variavel: so refazem quando mudam
 
     Modding_DrawBackground();
     DrawRectangle(0, 0, 1280, 720, (Color){0, 0, 0, 120});
@@ -206,10 +212,10 @@ void Modding_DrawImport(void)
         if (impPath[0]) {
             if (shown != impPath) {
                 DrawTextEx(mainFont, "...", (Vector2){tx, box.y + 12}, 20, 1, muted);
-                tx += MeasureTextEx(mainFont, "...", 20, 1).x + 4;
+                tx += TextMeasure_Get(&ellipsisM, mainFont, "...", 20, 1).x + 4;
             }
             DrawTextEx(mainFont, shown, (Vector2){tx, box.y + 12}, 20, 1, WHITE);
-            tx += MeasureTextEx(mainFont, shown, 20, 1).x + 3;
+            tx += TextMeasure_Get(&pathM, mainFont, shown, 20, 1).x + 3;
         } else {
             DrawTextEx(mainFont, "C:/.../mod-folder", (Vector2){tx, box.y + 12}, 20, 1, (Color){110, 110, 120, 255});
         }
@@ -218,9 +224,9 @@ void Modding_DrawImport(void)
     }
     x = left.x + 20;
     y = left.y + 156;
-    x = Imp_Chip(x, y, "ENTER", "Import", selectedColor, impPath[0] != '\0' && !importing);
-    x = Imp_Chip(x, y, "CTRL+V", "Paste path", selectedColor, 1);
-    (void)Imp_Chip(x, y, "BKSP", "Erase", selectedColor, impPath[0] != '\0');
+    x = Imp_Chip(0, x, y, "ENTER", "Import", selectedColor, impPath[0] != '\0' && !importing);
+    x = Imp_Chip(1, x, y, "CTRL+V", "Paste path", selectedColor, 1);
+    (void)Imp_Chip(2, x, y, "BKSP", "Erase", selectedColor, impPath[0] != '\0');
 
     DrawRectangle((int)left.x + 20, (int)left.y + 206, (int)left.width - 40, 1, (Color){255, 255, 255, 30});
     y = Imp_DrawWrapped(IMP_WRAP_INTRO, "Imports charts, music, weeks, stages, images, characters and icons.",
@@ -288,12 +294,12 @@ void Modding_DrawImport(void)
         Imp_FormatSize(impProg.bytesDone, a, sizeof(a));
         snprintf(msg, sizeof(msg), "%s copied", a);
         DrawTextEx(mainFont, msg,
-                   (Vector2){1230 - MeasureTextEx(mainFont, msg, 19, 1).x, 586}, 19, 1, muted);
+                   (Vector2){1230 - TextMeasure_Get(&rightM, mainFont, msg, 19, 1).x, 586}, 19, 1, muted);
     } else if (impLastValid && !busy) {
         Imp_FormatSize(impLast.bytes, a, sizeof(a));
         snprintf(msg, sizeof(msg), "Last import: %s", a);
         DrawTextEx(mainFont, msg,
-                   (Vector2){1230 - MeasureTextEx(mainFont, msg, 19, 1).x, 586}, 19, 1, muted);
+                   (Vector2){1230 - TextMeasure_Get(&rightM, mainFont, msg, 19, 1).x, 586}, 19, 1, muted);
     }
     {
         const Rectangle bar = {50, 616, 1180, 14};
@@ -316,8 +322,8 @@ void Modding_DrawImport(void)
         }
         DrawRectangleLinesEx(bar, 1, (Color){255, 255, 255, 60});
     }
-    x = Imp_Chip(50, 650, "ESC", importing ? "Cancel import" : "Back", selectedColor, 1);
-    (void)Imp_Chip(x, 650, "DELETE x2", impConfirmDel ? "Press again to remove all mods" : "Remove all mods",
+    x = Imp_Chip(3, 50, 650, "ESC", importing ? "Cancel import" : "Back", selectedColor, 1);
+    (void)Imp_Chip(4, x, 650, "DELETE x2", impConfirmDel ? "Press again to remove all mods" : "Remove all mods",
                    warning, impMods > 0 && impPath[0] == '\0' && !importing);
 
     Render_StopCamera();
@@ -327,7 +333,8 @@ void Modding_DrawStub(void)
 {
     const char *message = "COMING SOON";
     const Vector2 center = {640.0f, 360.0f};
-    const Vector2 size = MeasureTextEx(mainFont, message, 80, 5);
+    static TextMeasure messageM, subM; // textos fixos da tela de stub
+    const Vector2 size = TextMeasure_Get(&messageM, mainFont, message, 80, 5);
 
     Modding_DrawBackground();
     DrawTextEx(mainFont, message,
@@ -336,7 +343,7 @@ void Modding_DrawStub(void)
                80, 5, fontColor);
 
     if (stubTitle) {
-        const Vector2 sub = MeasureTextEx(mainFont, stubTitle, 32, 4);
+        const Vector2 sub = TextMeasure_Get(&subM, mainFont, stubTitle, 32, 4);
         DrawTextEx(mainFont, stubTitle,
                    (Vector2){center.x - sub.x * 0.5f, center.y + 80.0f},
                    32, 4, fontColor);
@@ -399,6 +406,7 @@ static void Modding_DrawTabIcon(int tab, float x, float y, float size, Color c)
 
 void Modding_DrawList(void)
 {
+    static TextMeasure tabMeasure[TAB_COUNT]; // nomes das abas sao fixos
     Modding_DrawBackground();
 
     for (int i = 0; i < TAB_COUNT; ++i) {
@@ -421,7 +429,7 @@ void Modding_DrawList(void)
             textColor.a = 150;
         shadowColor.a = selectedItem ? 255 : 100;
 
-        const float iconX = position.x - shadow + MeasureTextEx(mainFont, tabs[i], fontSize, 5).x + 24.0f;
+        const float iconX = position.x - shadow + TextMeasure_Get(&tabMeasure[i], mainFont, tabs[i], fontSize, 5).x + 24.0f;
         DrawTextEx(mainFont, tabs[i], position, fontSize, 5, shadowColor);
         Modding_DrawTabIcon(i, iconX + shadow, position.y + 6.0f, fontSize * 0.8f, shadowColor);
         position.x -= shadow;

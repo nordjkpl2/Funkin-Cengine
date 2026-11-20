@@ -22,12 +22,5 @@ void BeatManager_Update(BeatManager* restrict manager, void (*onStepHit)(void), 
 /* Reposiciona o relogio (seek). time = tempo da musica; btime = tempo do ultimo step; step = steps ja dados.
    Nao dispara callbacks: quem chama recalcula secao/bpm. */
 void BeatManager_SeekTo(BeatManager* restrict mng, double time, double btime, int step);
-static inline void BeatManager_SetBPM(BeatManager* restrict mng, float bpm);
-
-static inline void BeatManager_SetBPM(BeatManager* restrict mng, float bpm) {
-    if (bpm < 1.0f) bpm = 1.0f;
-    mng->bpm = bpm;
-    mng->stepCrochet = 60.0 / (double)bpm / 4.0;
-}
 
 #endif

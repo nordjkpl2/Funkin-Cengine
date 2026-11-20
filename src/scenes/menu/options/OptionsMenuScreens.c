@@ -7,10 +7,13 @@
 #include "GameData.h"
 #include "threads/Thread.h"
 #include "threads/cpu/Jobs.h"
+#include "rendering/TextMeasure.h"
 #include <stdio.h>
 
 
 static const char* const LANE_NAMES[4] = {"LEFT", "DOWN", "UP", "RIGHT"};
+static TextMeasure laneNameMeasure[4]; // nomes fixos
+static TextMeasure keyNameMeasure[4];  // tecla escolhida: muda so ao capturar
 
 bool capturing;           // tela preta de captura aberta
 static int captureStep;          // 0..3 = esperando a tecla dessa direcao; 4 = confirmar
@@ -109,7 +112,7 @@ void Capture_Draw(void) {
 
         // Nome da coluna, acima da nota.
         const Color nameColor = current ? WHITE : (done ? GREEN : GRAY);
-        const Vector2 ts = MeasureTextEx(mainFont, LANE_NAMES[k], 30, 2);
+        const Vector2 ts = TextMeasure_Get(&laneNameMeasure[k], mainFont, LANE_NAMES[k], 30, 2);
         DrawTextEx(mainFont, LANE_NAMES[k], (Vector2) {cx - ts.x * 0.5f, CAP_CY - 150.0f}, 30, 2, nameColor);
 
         // Nota real da skin; a coluna atual aparece maior.
@@ -121,7 +124,7 @@ void Capture_Draw(void) {
         const Rectangle box = {cx - CAP_BOX_W * 0.5f, CAP_CY + 120.0f, CAP_BOX_W, CAP_BOX_H};
         DrawRectangleRec(box, (Color) {30, 30, 30, 255});
         DrawRectangleLinesEx(box, current ? 4.0f : 2.0f, current ? WHITE : (done ? GREEN : GRAY));
-        const Vector2 ks = MeasureTextEx(mainFont, name, 34, 2);
+        const Vector2 ks = TextMeasure_Get(&keyNameMeasure[k], mainFont, name, 34, 2);
         DrawTextEx(mainFont, name, (Vector2) {cx - ks.x * 0.5f, box.y + (CAP_BOX_H - ks.y) * 0.5f}, 34, 2,
                    done ? WHITE : GRAY);
     }

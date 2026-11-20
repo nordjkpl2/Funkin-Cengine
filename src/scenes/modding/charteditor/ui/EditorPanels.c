@@ -10,6 +10,7 @@
 #include "scenes/modding/charteditor/ui/EditorWidgets.h"
 #include "scenes/modding/charteditor/grid/EditorGrid.h"
 #include "scenes/modding/charteditor/ui/EditorPanels.h"
+#include "rendering/TextMeasure.h"
 #include "scenes/modding/charteditor/data/EditorCharactersAndLists.h"
 #include "scenes/modding/charteditor/ui/EditorPicker.h"
 
@@ -204,6 +205,7 @@ void Edit_DrawTabs(void) {
     float x0 = PANEL_X;
     float y0 = 34;
     float tw = 102;
+    static TextMeasure tabM[TAB_COUNT]; // nomes das abas sao fixos: medidos uma vez
     Vector2 m = EdMouseWorld();
     for(int t = 0; t < TAB_COUNT; t++) {
         Rectangle r = {x0 + t * (tw + 4), y0, tw, 26};
@@ -211,7 +213,7 @@ void Edit_DrawTabs(void) {
         char hov = (m.x >= r.x && m.x <= r.x + r.width && m.y >= r.y && m.y <= r.y + r.height);
         DrawRectangleRec(r, active ? (Color){45,90,45,255} : hov ? (Color){60,60,60,255} : (Color){28,28,28,255});
         DrawRectangleLinesEx(r, 1, active ? GREEN : GRAY);
-        Vector2 s = MeasureTextEx(mainFont, ChartTab_Name(t), 18, 1);
+        Vector2 s = TextMeasure_Get(&tabM[t], mainFont, ChartTab_Name(t), 18, 1);
         Ed_DrawText(mainFont, ChartTab_Name(t), (Vector2){r.x + (r.width - s.x) / 2, r.y + 4}, 18, 1, active ? GREEN : WHITE);
         // com menu aberto, as abas ficam por baixo dele: o clique e do menu (senao troca de aba e fecha o menu)
         if(hov && IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && ceDlg == DLG_NONE && !activeDrop && menuOpen == 0) {
@@ -261,9 +263,10 @@ static float SongFieldWidth(void) {
         stageBox.buf[0] ? stageBox.buf : "stage",
         skinBox.buf[0] ? skinBox.buf : "default",
     };
+    static TextMeasure fieldM[5]; // cada caixa tem seu cache: so remede quando o texto muda
     float width = 140;
     for(int i = 0; i < 5; i++) {
-        const float w = MeasureTextEx(mainFont, texts[i], 20, 1).x + 24;
+        const float w = TextMeasure_Get(&fieldM[i], mainFont, texts[i], 20, 1).x + 24;
         if(w > width) width = w;
     }
     return width > 240 ? 240 : width;
@@ -418,8 +421,9 @@ void Edit_DrawPanel(void) {
     char titleBuf[96];
     snprintf(titleBuf, sizeof(titleBuf), "%s%s", chart.name, chart.dirty ? "*" : "");
     // trunca nome longo p/ nao invadir OPEN nem a grade
+    static TextMeasure titleM;
     for(int guard = 0; guard < 32; guard++) {
-        Vector2 ts = MeasureTextEx(mainFont, titleBuf, 24, 2);
+        Vector2 ts = TextMeasure_Get(&titleM, mainFont, titleBuf, 24, 2);
         if(ts.x <= 280 || titleBuf[0] == 0) break;
         size_t L = strlen(titleBuf);
         if(L > 4) { titleBuf[L - 4] = '.'; titleBuf[L - 3] = '.'; titleBuf[L - 2] = '.'; titleBuf[L - 1] = 0; }

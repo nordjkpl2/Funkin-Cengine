@@ -13,6 +13,7 @@
 #include "raymath.h"
 #include "widgets-and-menus-ui/SearchBox.h"
 #include "scenes/menu/MenuMusic.h"
+#include "rendering/TextMeasure.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -92,6 +93,7 @@ static void DrawTabLogo(int header, float x, float rowY, Color fill, Color shado
 
 /* Barra de titulos do menu horizontal. Com draw desenha; senao so devolve o titulo sob o ponto m (ou -1). */
 static int TabBarRun(bool draw, Vector2 m) {
+    static TextMeasure tabMeasure[OPTION_COUNT]; // a barra e desenhada todo frame; o titulo de cada aba e fixo
     int hit = -1;
     float x = TAB_X;
     bool first = true;
@@ -113,7 +115,7 @@ static int TabBarRun(bool draw, Vector2 m) {
         char label[64];
         (void)snprintf(label, sizeof(label), "%.*s", (int)len, src);
 
-        const Vector2 size = MeasureTextEx(mainFont, label, TAB_FONT_SIZE, TEXT_SPACING);
+        const Vector2 size = TextMeasure_Get(&tabMeasure[i], mainFont, label, TAB_FONT_SIZE, TEXT_SPACING);
         if (!draw) {
             if (m.y >= TAB_BAR_Y && m.y < TAB_BAR_Y + TAB_FONT_SIZE && m.x >= x - TEXT_SHADOW && m.x < x + size.x)
                 hit = i;
