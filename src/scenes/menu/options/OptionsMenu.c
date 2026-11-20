@@ -14,6 +14,7 @@
 #include "widgets-and-menus-ui/SearchBox.h"
 #include "scenes/menu/MenuMusic.h"
 #include <stdio.h>
+#include <string.h>
 
 float scrollOffset; // posicao suavizada da lista (em linhas)
 float windowLogoX;  // calculado uma vez no Create
@@ -62,8 +63,10 @@ static void ActivateCurrent(void) {
         ApplyBoolValue();
     }
     else if (cur->type == OPTION_VALUE_HEADER) {
-        cur->collapsed = !cur->collapsed;
-        layoutDirty = true;
+        if (!Option_HorizontalMode()) {   // no menu horizontal o titulo so abre a aba (ja aberta ao selecionar)
+            cur->collapsed = !cur->collapsed;
+            layoutDirty = true;
+        }
     }
     else if (currentOption == OPTION_KEYBOARD_SCHEME && (int)cur->value == SCHEME_CUSTOM)
         Capture_Begin();
@@ -71,6 +74,60 @@ static void ActivateCurrent(void) {
         ThreadsScreen_Begin();
     else if (currentOption == OPTION_NOTE_COLORS)
         NoteColorScreen_Begin();
+}
+
+/* Icone do titulo (o mesmo da lista) em cima do nome, alinhado a esquerda do titulo. */
+static void DrawTabLogo(int header, float x, float rowY, Color fill, Color shadow) {
+    const float saved[5] = {windowLogoX, otherLogoX, gameplayLogoX, visualLogoX, musicLogoX};
+    windowLogoX = otherLogoX = gameplayLogoX = visualLogoX = musicLogoX = x;
+
+    if (header == OPTION_HEADER_WINDOW) DrawWindowLogo(rowY, fill, shadow);
+    else if (header == OPTION_HEADER_GAMEPLAY) DrawGameplayLogo(rowY, fill, shadow);
+    else if (header == OPTION_HEADER_VISUAL) DrawVisualLogo(rowY, fill, shadow);
+    else if (header == OPTION_HEADER_OTHER) DrawOtherLogo(rowY, fill, shadow);
+    else if (header == OPTION_HEADER_MUSIC) DrawMusicLogo(rowY, fill, shadow);
+
+    windowLogoX = saved[0]; otherLogoX = saved[1]; gameplayLogoX = saved[2]; visualLogoX = saved[3]; musicLogoX = saved[4];
+}
+
+/* Barra de titulos do menu horizontal. Com draw desenha; senao so devolve o titulo sob o ponto m (ou -1). */
+static int TabBarRun(bool draw, Vector2 m) {
+    int hit = -1;
+    float x = TAB_X;
+    bool first = true;
+
+    for (int i = 0; i < OPTION_COUNT; i++) {
+        if (options[i].type != OPTION_VALUE_HEADER) continue;
+
+        if (!first) {   // separador "|" entre os titulos
+            if (draw) DrawTextEx(mainFont, "|", (Vector2) {x + TAB_GAP * 0.5f - 6.0f, TAB_BAR_Y}, TAB_FONT_SIZE, TEXT_SPACING, GRAY);
+            x += TAB_GAP;
+        }
+        first = false;
+
+        // "[Gameplay]" -> "Gameplay"
+        const char* src = options[i].text;
+        size_t len = strlen(src);
+        if (src[0] == '[') { src++; len--; }
+        if (len > 0 && src[len - 1] == ']') len--;
+        char label[64];
+        (void)snprintf(label, sizeof(label), "%.*s", (int)len, src);
+
+        const Vector2 size = MeasureTextEx(mainFont, label, TAB_FONT_SIZE, TEXT_SPACING);
+        if (!draw) {
+            if (m.y >= TAB_BAR_Y && m.y < TAB_BAR_Y + TAB_FONT_SIZE && m.x >= x - TEXT_SHADOW && m.x < x + size.x)
+                hit = i;
+        } else {
+            const bool open = options[currentOption].header == i;   // aba aberta
+            Color fill = YELLOW, shadow = BLACK;
+            fill.a = open ? 255 : HEADER_DIM_ALPHA;
+            shadow.a = open ? 255 : 100;
+            DrawOptionText(label, x, TAB_BAR_Y, TAB_FONT_SIZE, fill, shadow);
+            DrawTabLogo(i, x, TAB_BAR_Y - TAB_LOGO_LIFT, fill, shadow);
+        }
+        x += size.x;
+    }
+    return hit;
 }
 
 /* Indice da linha sob o ponto m (mesma conta de y que o Draw), ou -1. So roda no clique. */
@@ -146,7 +203,12 @@ static void OptionsMenu_Update([[maybe_unused]] RayScene* scene) {
 
     // Clique esquerdo: seleciona a linha e faz o mesmo que ENTER nela.
     if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-        const int row = RowAtPoint(RayGame_MouseWorld());
+        const Vector2 mouse = RayGame_MouseWorld();
+        if (Option_HorizontalMode()) {
+            const int tab = TabBarRun(false, mouse);
+            if (tab >= 0) { currentOption = tab; return; }
+        }
+        const int row = RowAtPoint(mouse);
         if (row >= 0 && Option_IsSelectable(row)) {
             currentOption = row;
             ActivateCurrent();
@@ -159,7 +221,13 @@ static void OptionsMenu_Update([[maybe_unused]] RayScene* scene) {
     if (IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_ENTER)) {
         ActivateCurrent();
     }
-    else if (cur->type != OPTION_VALUE_BOOL && cur->type != OPTION_VALUE_HEADER) {
+    else if (cur->type == OPTION_VALUE_HEADER) {
+        if (Option_HorizontalMode()) {   // titulo selecionado: Left/Right troca de aba
+            if (IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_A)) Tab_Step(-1);
+            else if (IsKeyPressed(KEY_RIGHT) || IsKeyPressed(KEY_D)) Tab_Step(1);
+        }
+    }
+    else if (cur->type != OPTION_VALUE_BOOL) {
         const float step = IsKeyDown(KEY_LEFT_ALT) ? cur->altStep : cur->step;
 
         if (IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_A)) {
@@ -174,7 +242,9 @@ static void OptionsMenu_Update([[maybe_unused]] RayScene* scene) {
 }
 
 static void DrawHint(const char* text) {
-    DrawTextEx(mainFont, text, (Vector2) {ROW_X, SCREEN_H - 50.0f}, 24, 2, (Color) {245, 220, 120, 255});
+    const Vector2 pos = {ROW_X, SCREEN_H - 50.0f};
+    DrawTextEx(mainFont, text, (Vector2) {pos.x + 2.0f, pos.y + 2.0f}, 24, 2, (Color) {0, 0, 0, 200});   // sombra
+    DrawTextEx(mainFont, text, pos, 24, 2, (Color) {245, 220, 120, 255});
 }
 
 static void OptionsMenu_Draw([[maybe_unused]] RayScene* scene) {
@@ -223,7 +293,9 @@ static void OptionsMenu_Draw([[maybe_unused]] RayScene* scene) {
 
         if (o->type == OPTION_VALUE_LABEL) {
             // Texto estatico: cinza, sem icones, nunca selecionado.
-            DrawOptionText(o->text, ROW_X, drawY, ROW_FONT_SIZE, (Color) {190, 190, 190, 255}, (Color) {0, 0, 0, 100});
+            // Fonte menor, centralizada na altura da linha (o layout continua o mesmo).
+            const float labelY = drawY + (ROW_FONT_SIZE - LABEL_FONT_SIZE) * 0.5f;
+            DrawOptionText(o->text, ROW_X, labelY, LABEL_FONT_SIZE, (Color) {190, 190, 190, 255}, (Color) {0, 0, 0, 100});
             continue;
         }
 
@@ -243,10 +315,15 @@ static void OptionsMenu_Draw([[maybe_unused]] RayScene* scene) {
         const bool isHealthDrain = i == OPTION_HEALTH_DRAIN_PLAY || i == OPTION_HEALTH_DRAIN_BOTPLAY;
         if (isHealthDrain) DrawHealthIcons(drawY, fill, shadow);
 
-        const bool hasKeyArrows = i == OPTION_KEYBOARD_SCHEME || i == OPTION_SCROLL_STYLE || i == OPTION_GHOST;
+        const bool hasKeyArrows = i == OPTION_KEYBOARD_SCHEME || i == OPTION_GHOST;
         if (hasKeyArrows) DrawKeyArrow(drawY, fill, shadow);
 
         DrawExtraIcon(i, drawY, fill, shadow);
+    }
+
+    if (Option_HorizontalMode()) {
+        DrawRectangle(0, 0, 1280, (int)TAB_BAND_H, (Color) {0, 0, 0, 180});   // faixa da barra (a lista passa por baixo)
+        TabBarRun(true, (Vector2) {0.0f, 0.0f});
     }
 
     // Dica da opcao atual, no rodape.

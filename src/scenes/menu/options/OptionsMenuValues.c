@@ -17,7 +17,7 @@ static const char* scroll_names[3] = {"Normal", "Downscroll", "Middlescroll"};
 static const char* thread_names[2] = {"Auto", "Limited"};
 static const char* score_position_names[2] = {"Cengine", "Psych"};
 static const char* note_colors_names[1] = {"Edit"};
-static const char* hidden_notes_names[2] = {"Off", "Alternate"};
+static const char* hidden_notes_names[4] = {"Off", "Alternate", "Only Playable", "Alternate Playable"};
 static const char* strum_bg_names[11] = {"Off", "10%", "20%", "30%", "40%", "50%", "60%", "70%", "80%", "90%", "100%"};
 
 int limitedThreads = 2; // ultimo numero usado no modo Limited (volta ao alternar)
@@ -48,18 +48,20 @@ Option options[OPTION_COUNT] = {
     [OPTION_SCORE_POSITION] = {.text = "Score Position", .type = OPTION_VALUE_LIST, .options = score_position_names, .step = 1, .max = 1, .min = 0},
     [OPTION_ICONS_LABEL] = {.text = "Icons", .type = OPTION_VALUE_LABEL},
     [OPTION_BOPPING_ICONS] = {.text = "Bopping Icons", .type = OPTION_VALUE_BOOL},
+    [OPTION_LOSE_ICON] = {.text = "Losing Icon", .type = OPTION_VALUE_BOOL},
     [OPTION_ZOOM_LABEL] = {.text = "Zoom", .type = OPTION_VALUE_LABEL},
     [OPTION_ZOOMFACTOR_UI] = {.text = "UI beat zoom", .type = OPTION_VALUE_FLOAT, .max = 3, .min = 0, .step = 0.1f, .altStep = 1},
     [OPTION_ZOOMFACTOR_GAME] = {.text = "Game beat zoom", .type = OPTION_VALUE_FLOAT, .max = 3, .min = 0, .step = 0.1f, .altStep = 1},
     [OPTION_NOTES_LABEL] = {.text = "Notes", .type = OPTION_VALUE_LABEL},
     [OPTION_STRUM_BG] = {.text = "Strumline Background", .type = OPTION_VALUE_LIST, .options = strum_bg_names, .step = 1, .min = 0, .max = 10},
     [OPTION_STRUM_MOBILE] = {.text = "Keys Monitor", .type = OPTION_VALUE_BOOL},
-    [OPTION_HIDDEN_NOTES] = {.text = "Hidden Notes", .type = OPTION_VALUE_LIST, .options = hidden_notes_names, .step = 1, .min = 0, .max = 1},
+    [OPTION_HIDDEN_NOTES] = {.text = "Hidden Notes", .type = OPTION_VALUE_LIST, .options = hidden_notes_names, .step = 1, .min = 0, .max = 3},
     [OPTION_NOTE_COLORS] = {.text = "Note Colors", .type = OPTION_VALUE_LIST, .options = note_colors_names, .step = 1, .min = 0, .max = 0},
     [OPTION_HEADER_OTHER] = {.text = "[Other]", .type = OPTION_VALUE_HEADER},
     [OPTION_FILL_SCREEN] = {.text = "Stretch", .type = OPTION_VALUE_BOOL},
     [OPTION_BOTPLAY] = {.text = "Botplay", .type = OPTION_VALUE_BOOL},
     [OPTION_HEALTH_DRAIN_BOTPLAY] = {.text = "Health Drain (Botplay)", .type = OPTION_VALUE_BOOL},
+    [OPTION_HORIZONTAL_MENU] = {.text = "Horizontal Menu", .type = OPTION_VALUE_BOOL},
     [OPTION_HEADER_MUSIC] = {.text = "[Musica]", .type = OPTION_VALUE_HEADER},
     [OPTION_MENU_MUSIC] = {.text = "Track", .type = OPTION_VALUE_LIST, .step = 1, .min = 0}, // options/max: Create
 };
@@ -187,12 +189,17 @@ void ApplyBoolValue(void) {
             options[OPTION_SCORE_POSITION].dirty = true;
             break;
         case OPTION_BOPPING_ICONS: gameOptions.bopIcons = on; break;
+        case OPTION_LOSE_ICON:     gameOptions.loseIcon = on; break;
         case OPTION_STRUM_MOBILE:  gameOptions.strumMobileVisible = on; break;
         case OPTION_FILL_SCREEN:   gameOptions.fillScreen = on; break;
         case OPTION_BOTPLAY:       gameOptions.botplay = on; break;
         case OPTION_HITSOUND:      gameOptions.hitSound = on; break;
         case OPTION_HEALTH_DRAIN_PLAY:    gameOptions.healthDrainPlay = on; break;
         case OPTION_HEALTH_DRAIN_BOTPLAY: gameOptions.healthDrainBotplay = on; break;
+        case OPTION_HORIZONTAL_MENU:
+            gameOptions.horizontalMenu = on;
+            layoutDirty = true;   // lista vertical <-> uma secao por vez
+            break;
     }
 
     Option_RebuildText(o);
@@ -220,8 +227,18 @@ static bool Header_TitleMatches(int header) {
 /* Com filtro, aparecem as secoes cujo titulo ou alguma opcao bate (mesmo recolhidas),
    e dentro delas: todas as opcoes se o titulo bateu, senao so as que batem.
    Sem filtro: cabecalhos sempre; opcoes somem quando a secao esta recolhida. */
+/* Menu horizontal ligado e sem filtro da lupa (com filtro, a lista volta a ser vertical). */
+bool Option_HorizontalMode(void) {
+    return gameOptions.horizontalMenu && !SearchBox_HasFilter(&search);
+}
+
+/* Secao da opcao selecionada = aba aberta (o titulo selecionado tambem abre a sua). */
 static bool Option_ComputeVisible(int i) {
     const bool filtering = SearchBox_HasFilter(&search);
+    if (Option_HorizontalMode()) {
+        if (options[i].type == OPTION_VALUE_HEADER) return false;   // titulos ficam na barra
+        return options[i].header == options[currentOption].header;
+    }
     if (options[i].type == OPTION_VALUE_HEADER)
         return !filtering || Header_TitleMatches(i) || Section_HasMatch(i);
     if (options[i].type == OPTION_VALUE_LABEL)  // texto estatico: some com a lupa aberta
@@ -237,7 +254,11 @@ static bool visibleCache[OPTION_COUNT];
 static int visualRowCache[OPTION_COUNT]; // linhas visiveis antes de cada opcao
 
 static void Layout_Refresh(void) {
-    if (!layoutDirty) return;
+    // Modo horizontal: o layout depende da aba aberta, entao refaz quando ela muda.
+    static int layoutTab = -1;
+    const int tab = Option_HorizontalMode() ? options[currentOption].header : -1;
+    if (!layoutDirty && tab == layoutTab) return;
+    layoutTab = tab;
 
     int row = 0;
     for (int i = 0; i < OPTION_COUNT; i++) {
@@ -266,8 +287,44 @@ int Option_VisualIndex(int index) {
     return visualRowCache[index];
 }
 
+/* Menu horizontal: Left/Right no titulo troca de aba (so a aba aberta aparece). */
+void Tab_Step(int dir) {
+    for (int i = options[currentOption].header + dir; i >= 0 && i < OPTION_COUNT; i += dir) {
+        if (options[i].type == OPTION_VALUE_HEADER) {
+            currentOption = i;
+            return;
+        }
+    }
+}
+
+/* Menu horizontal: Down do titulo entra na aba; Up/Down dentro dela; Up no 1o item volta ao titulo. */
+static void MoveSelectionTabbed(int dir) {
+    const int cur = currentOption;
+
+    if (options[cur].type == OPTION_VALUE_HEADER) {
+        if (dir > 0)
+            for (int i = cur + 1; i < OPTION_COUNT && options[i].type != OPTION_VALUE_HEADER; i++)
+                if (Option_IsSelectable(i)) { currentOption = i; return; }
+        return;
+    }
+
+    const int head = options[cur].header;
+    if (dir > 0) {
+        for (int i = cur + 1; i < OPTION_COUNT && options[i].type != OPTION_VALUE_HEADER; i++)
+            if (Option_IsSelectable(i)) { currentOption = i; return; }
+    } else {
+        for (int i = cur - 1; i > head; i--)
+            if (Option_IsSelectable(i)) { currentOption = i; return; }
+        currentOption = head;
+    }
+}
+
 /* Anda para a proxima linha selecionavel. */
 void MoveSelection(int dir) {
+    if (Option_HorizontalMode()) {
+        MoveSelectionTabbed(dir);
+        return;
+    }
     for (int i = 0; i < OPTION_COUNT; i++) {
         currentOption = (currentOption + dir + OPTION_COUNT) % OPTION_COUNT;
         if (Option_IsSelectable(currentOption)) break;
@@ -299,6 +356,7 @@ void Options_LoadValues(void) {
     options[OPTION_SCORE_POSITION].value = gameOptions.scorePosition;
     options[OPTION_SCORE_POSITION].active = gameOptions.showScore;
     options[OPTION_BOPPING_ICONS].value = gameOptions.bopIcons;
+    options[OPTION_LOSE_ICON].value = gameOptions.loseIcon;
     options[OPTION_STRUM_BG].value = gameOptions.strumBgPercent / 10;
     options[OPTION_STRUM_MOBILE].value = gameOptions.strumMobileVisible;
     options[OPTION_HIDDEN_NOTES].value = gameOptions.hiddenNotesAlt;
@@ -315,6 +373,7 @@ void Options_LoadValues(void) {
     options[OPTION_ZOOMFACTOR_UI].value = gameOptions.zoomFactorUI;
     options[OPTION_FILL_SCREEN].value = gameOptions.fillScreen;
     options[OPTION_BOTPLAY].value = gameOptions.botplay;
+    options[OPTION_HORIZONTAL_MENU].value = gameOptions.horizontalMenu;
 
     // Faixas de assets/music/menu, com Auto no fim. A aba comeca na faixa salva.
     const int trackCount = MenuMusic_Count();

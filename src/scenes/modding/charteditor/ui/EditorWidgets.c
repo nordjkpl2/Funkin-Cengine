@@ -205,6 +205,21 @@ char EdButton(Rectangle r, const char* label, int fs) {
     return hov && IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
 }
 
+// Igual ao EdButton, mas com "ok = 0" (arquivo ausente) fica com borda e texto vermelhos.
+char EdButtonOk(Rectangle r, const char* label, int fs, char ok) {
+    if(ceDlg != DLG_NONE || activeDrop || menuOpen)
+        return 0;
+    Vector2 m = EdMouseWorld();
+    char hov = (m.x >= r.x && m.x <= r.x + r.width && m.y >= r.y && m.y <= r.y + r.height);
+    const Color edge = ok ? (hov ? GREEN : GRAY) : RED;
+    DrawRectangleRec(r, hov ? (Color) {60, 60, 60, 255} : (Color) {30, 30, 30, 255});
+    DrawRectangleLinesEx(r, 1, edge);
+    Vector2 s = MeasureTextEx(mainFont, label, fs, 1);
+    Ed_DrawText(mainFont, label, (Vector2) {r.x + (r.width - s.x) / 2, r.y + (r.height - s.y) / 2}, fs, 1,
+        ok ? WHITE : RED);
+    return hov && IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
+}
+
 // setinha que abre lista (desenha o triangulo na mao)
 TxtBox* dropBox = NULL;
 char (*dropNames)[SONG_NAME_MAX] = NULL;

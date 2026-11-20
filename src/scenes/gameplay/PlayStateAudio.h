@@ -8,7 +8,19 @@
 
 #include "Render.h"
 
-/* Carrega Inst e Voices (ogg, mp3 ou wav) de songDir. Voices e opcional. */
+/* Quais faixas ficam audiveis (test play). As outras seguem tocando em volume 0. */
+typedef enum PlayStateAudioMix {
+    PSA_MIX_FULL = 0,   /* inst + vozes (Voices.ogg, ou o par Player/Opponent) */
+    PSA_MIX_INST,       /* so o instrumental */
+    PSA_MIX_VOCALS,     /* so as vozes (Voices.ogg, ou o par separado) */
+    PSA_MIX_BF,         /* so Voices-Player */
+    PSA_MIX_OPP         /* so Voices-Opponent */
+} PlayStateAudioMix;
+
+/* Chamar antes de Load (ou depois, a troca vale na hora). */
+void PlayStateAudio_SetMix(PlayStateAudioMix mix);
+
+/* Carrega Inst, Voices, Voices-Player e Voices-Opponent (ogg, mp3 ou wav) de songDir. Vozes sao opcionais. */
 void PlayStateAudio_Load(const char* songDir);
 void PlayStateAudio_Unload(void);
 

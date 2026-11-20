@@ -290,6 +290,15 @@ void Character_Load(Character *restrict character,
     Log_Fatal("Character_Load: could not load character assets");
 }
 
+/* Frame de derrota (2o frame do icone). Sem ele, cai no frame normal. */
+Rectangle Character_IconLoseFrame(Texture2D icon)
+{
+    Rectangle r = Character_IconFrame(icon);
+    if (icon.id != 0 && icon.height > 0 && (float)icon.width >= 2.0f * (float)icon.height)
+        r.x = r.width;
+    return r;
+}
+
 Rectangle Character_IconFrame(Texture2D icon)
 {
     if (icon.id == 0 || icon.height <= 0)

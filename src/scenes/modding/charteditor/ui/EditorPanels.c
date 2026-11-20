@@ -95,20 +95,44 @@ static void Edit_DoPaste(void) {
     EdStatusMsg("COLADO NO FIM");
 }
 
-static void Edit_DoTestPlay(void) {
+/* Salva e abre o test play com o modo pedido (FULL = F5, RECEPTORS = F6, PLAY ONLY = botoes). */
+void Edit_StartTest(PlayStateTestMode mode) {
     Audio_StopPlay();
     Editor_Save();
-    PlayState_SetSongDir(chart.dir);
+    PlayState_SetSongDir(chart.dir);   // zera o modo; SetTestMode vem depois
+    PlayState_SetTestMode(mode);
     PlayState_SetReturnEditor(1);
     PlayState_SetScene();
+}
+
+static void Edit_DoTestPlay(void) {
+    Edit_StartTest(PLAYSTATE_TEST_FULL);
+}
+
+/* Item do menu Play: com ok = 0 (arquivo ausente) o texto fica vermelho e o clique so avisa. */
+static char PlayMenuItem(Rectangle r, const char* label, char ok, const char* missing) {
+    Vector2 m = EdMouseWorld();
+    char hov = (m.x >= r.x && m.x <= r.x + r.width && m.y >= r.y && m.y <= r.y + r.height);
+    DrawRectangleRec(r, hov ? (Color){60,60,60,255} : (Color){18,18,18,255});
+    Ed_DrawText(mainFont, label, (Vector2){r.x + 8, r.y + 5}, 20, 1, ok ? WHITE : RED);
+    if(!(hov && IsMouseButtonPressed(MOUSE_BUTTON_LEFT))) return 0;
+    if(!ok) EdStatusMsg(missing);
+    return 1;
+}
+
+/* Sound > Play only X: deixa so essa faixa audivel e toca no editor (nao abre a gameplay). */
+static void Edit_PlaySolo(int mix, char ok) {
+    if(!ok) return;
+    Audio_SetSolo(mix);
+    if(!playing) Audio_Toggle();
 }
 
 void Edit_DrawMenuBar(void) {
     DrawRectangle(0, 0, 1280, (int)MENU_H, (Color){16,16,16,255});
     DrawLine(0, (int)MENU_H, 1280, (int)MENU_H, (Color){60,60,60,255});
     Vector2 m = EdMouseWorld();
-    const char* names[3] = {"File", "Edit", "View"};
-    for(int i = 0; i < 3; i++) {
+    const char* names[5] = {"File", "Edit", "View", "Sound", "Play"};
+    for(int i = 0; i < 5; i++) {
         Rectangle r = {(float)(PANEL_X + i * 70), 0, 68, MENU_H};
         char hov = (m.x >= r.x && m.x <= r.x + r.width && m.y >= r.y && m.y <= r.y + r.height);
         char open = (menuOpen == i + 1);
@@ -124,14 +148,13 @@ void Edit_DrawMenuBar(void) {
     if(menuOpen == 0) return;
     float mx = (float)(PANEL_X + (menuOpen - 1) * 70);
     if(menuOpen == 1) {
-        Rectangle box = {mx, MENU_H, 230, 5 * 30 + 8};
+        Rectangle box = {mx, MENU_H, 230, 4 * 30 + 8};
         DrawRectangleRec(box, (Color){15,15,15,245});
         DrawRectangleLinesEx(box, 1, GREEN);
         if(EdMenuItem((Rectangle){box.x + 4, box.y + 4, 222, 28}, "Save  Ctrl+S")) { menuOpen = 0; Editor_Save(); }
         else if(EdMenuItem((Rectangle){box.x + 4, box.y + 32, 222, 28}, "Save As...")) { menuOpen = 0; saveAsBox.buf[0] = 0; importPath[0] = 0; ceDlg = DLG_SAVEAS; focusBox = &saveAsBox; }
         else if(EdMenuItem((Rectangle){box.x + 4, box.y + 60, 222, 28}, "Save Compressed")) { menuOpen = 0; EdChart_SaveCompressed(&chart); EdStatusMsg("SALVO COMPRIMIDO"); }
-        else if(EdMenuItem((Rectangle){box.x + 4, box.y + 88, 222, 28}, "Test Play  F5")) { menuOpen = 0; Edit_DoTestPlay(); }
-        else if(EdMenuItem((Rectangle){box.x + 4, box.y + 116, 222, 28}, "Back to list  ESC")) { menuOpen = 0; Editor_RequestLeave(); }
+        else if(EdMenuItem((Rectangle){box.x + 4, box.y + 88, 222, 28}, "Back to list  ESC")) { menuOpen = 0; Editor_RequestLeave(); }
         else if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             if(!(m.x >= box.x && m.x <= box.x + box.width && m.y >= 0 && m.y <= box.y + box.height)) menuOpen = 0;
         }
@@ -147,13 +170,36 @@ void Edit_DrawMenuBar(void) {
         else if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             if(!(m.x >= box.x && m.x <= box.x + box.width && m.y >= 0 && m.y <= box.y + box.height)) menuOpen = 0;
         }
-    } else {
+    } else if(menuOpen == 3) {
         Rectangle box = {mx, MENU_H, 230, 2 * 30 + 8};
         DrawRectangleRec(box, (Color){15,15,15,245});
         DrawRectangleLinesEx(box, 1, GREEN);
         const char* followName = playFollow ? "Note player : ON" : "Note player : OFF";
         if(EdMenuItem((Rectangle){box.x + 4, box.y + 4, 222, 28}, followName)) { menuOpen = 0; playFollow = !playFollow; }
         else if(EdMenuItem((Rectangle){box.x + 4, box.y + 32, 222, 28}, "Go to part start")) { menuOpen = 0; cursorMs = SecStartMs(secIdx); }
+        else if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+            if(!(m.x >= box.x && m.x <= box.x + box.width && m.y >= 0 && m.y <= box.y + box.height)) menuOpen = 0;
+        }
+    } else if(menuOpen == 4) {
+        // Sound: escuta so uma faixa dentro do editor (sem abrir a gameplay). Vermelho = arquivo ausente.
+        Rectangle box = {mx, MENU_H, 260, 5 * 30 + 8};
+        DrawRectangleRec(box, (Color){15,15,15,245});
+        DrawRectangleLinesEx(box, 1, GREEN);
+        if(PlayMenuItem((Rectangle){box.x + 4, box.y + 4, 252, 28}, "All sounds", 1, "")) { menuOpen = 0; Audio_SetSolo(0); }
+        else if(PlayMenuItem((Rectangle){box.x + 4, box.y + 32, 252, 28}, "Play only inst", edPlayHasInst, "NAO TEM Inst.ogg (ou mp3/wav)")) { menuOpen = 0; Edit_PlaySolo(1, edPlayHasInst); }
+        else if(PlayMenuItem((Rectangle){box.x + 4, box.y + 60, 252, 28}, "Play only vocals", edPlayHasVocals, "NAO TEM Voices (ou Voices-Player/Opponent)")) { menuOpen = 0; Edit_PlaySolo(2, edPlayHasVocals); }
+        else if(PlayMenuItem((Rectangle){box.x + 4, box.y + 88, 252, 28}, "Play only bf vocals", edPlayHasBf, "NAO TEM Voices-Player.ogg")) { menuOpen = 0; Edit_PlaySolo(3, edPlayHasBf); }
+        else if(PlayMenuItem((Rectangle){box.x + 4, box.y + 116, 252, 28}, "Play only opponent vocals", edPlayHasOpp, "NAO TEM Voices-Opponent.ogg")) { menuOpen = 0; Edit_PlaySolo(4, edPlayHasOpp); }
+        else if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+            if(!(m.x >= box.x && m.x <= box.x + box.width && m.y >= 0 && m.y <= box.y + box.height)) menuOpen = 0;
+        }
+    } else {
+        // Play: testes do chart (abrem a gameplay).
+        Rectangle box = {mx, MENU_H, 230, 2 * 30 + 8};
+        DrawRectangleRec(box, (Color){15,15,15,245});
+        DrawRectangleLinesEx(box, 1, GREEN);
+        if(PlayMenuItem((Rectangle){box.x + 4, box.y + 4, 222, 28}, "Test Play  F5", 1, "")) { menuOpen = 0; Edit_DoTestPlay(); }
+        else if(PlayMenuItem((Rectangle){box.x + 4, box.y + 32, 222, 28}, "Only note receptor  F6", 1, "")) { menuOpen = 0; Edit_StartTest(PLAYSTATE_TEST_RECEPTORS); }
         else if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             if(!(m.x >= box.x && m.x <= box.x + box.width && m.y >= 0 && m.y <= box.y + box.height)) menuOpen = 0;
         }
@@ -174,7 +220,8 @@ void Edit_DrawTabs(void) {
         DrawRectangleLinesEx(r, 1, active ? GREEN : GRAY);
         Vector2 s = MeasureTextEx(mainFont, ChartTab_Name(t), 18, 1);
         Ed_DrawText(mainFont, ChartTab_Name(t), (Vector2){r.x + (r.width - s.x) / 2, r.y + 4}, 18, 1, active ? GREEN : WHITE);
-        if(hov && IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && ceDlg == DLG_NONE && !activeDrop) {
+        // com menu aberto, as abas ficam por baixo dele: o clique e do menu (senao troca de aba e fecha o menu)
+        if(hov && IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && ceDlg == DLG_NONE && !activeDrop && menuOpen == 0) {
             activeTab = t;
             menuOpen = 0;
             focusBox = NULL;
@@ -344,8 +391,6 @@ static void Edit_DrawPanel_Charting(float x, float y) {
     Ed_DrawText(mainFont, "CHARTING", (Vector2){x, y}, 22, 1, GREEN);
     y += 34;
     if(EdButton((Rectangle){x, y, 190, 40}, playing ? "PAUSAR" : "OUVIR", 22)) Audio_Toggle();
-    y += 50;
-    if(EdButton((Rectangle){x, y, 190, 40}, "play (F5)", 22)) Edit_DoTestPlay();
     y += 50;
     // arquivos de audio achados (flags ja existem, custo zero)
     Ed_DrawText(mainFont, edHasAudio ? "inst.ogg: yes" : "inst.ogg: no", (Vector2){x, y}, 18, 1,

@@ -208,11 +208,11 @@ static void Edit_UpdateKeys(void) {
         return;
     }
     if(IsKeyPressed(KEY_F5)) {
-        Audio_StopPlay();
-        Editor_Save();
-        PlayState_SetSongDir(chart.dir);
-        PlayState_SetReturnEditor(1);
-        PlayState_SetScene();
+        Edit_StartTest(PLAYSTATE_TEST_FULL);
+        return;
+    }
+    if(IsKeyPressed(KEY_F6)) {
+        Edit_StartTest(PLAYSTATE_TEST_RECEPTORS);
         return;
     }
     if(IsKeyPressed(KEY_TAB)) {

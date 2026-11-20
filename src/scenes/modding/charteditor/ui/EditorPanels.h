@@ -13,8 +13,12 @@
 #include "scenes/modding/charteditor/ui/EditorWidgets.h"
 #include "scenes/modding/charteditor/grid/EditorGrid.h"
 
+#include "scenes/gameplay/PlayState.h"
+
 void Edit_DrawMenuBar(void);
 void Edit_DrawTabs(void);
 void Edit_DrawPanel(void);
+/* Salva e abre o test play no modo dado (F5 = FULL, F6 = RECEPTORS). */
+void Edit_StartTest(PlayStateTestMode mode);
 
 #endif

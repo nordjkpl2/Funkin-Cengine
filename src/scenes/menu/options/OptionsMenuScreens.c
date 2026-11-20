@@ -42,6 +42,7 @@ static void KeyName(int key, char* out, size_t size) {
 }
 
 void Capture_Begin(void) {
+    NoteColors_ReleaseFx();   /* recarrega a previa com a skin padrao */
     capturing = true;
     captureStep = 0;
     captureMessage = "";
@@ -90,31 +91,56 @@ void Capture_Update(void) {
     captureMessage = "";
 }
 
+/* Tela de teclas Custom: 4 colunas com as notas reais (cor da coluna), tecla embaixo de cada uma.
+   Coluna atual destacada; as ja confirmadas ficam verdes. */
+#define CAP_CX0 220.0f
+#define CAP_STEP 260.0f
+#define CAP_CY 330.0f
+#define CAP_BOX_W 200.0f
+#define CAP_BOX_H 56.0f
+
 void Capture_Draw(void) {
-    DrawRectangle(0, 0, 1280, 720, BLACK);
-    DrawTextEx(mainFont, "CUSTOM KEYS", (Vector2) {80, 50}, 70, TEXT_SPACING, YELLOW);
+    DrawRectangle(0, 0, 1280, 720, (Color) {0, 0, 0, 225});
+    DrawTextEx(mainFont, "CUSTOM KEYS", (Vector2) {80, 14}, 40, TEXT_SPACING, YELLOW);
 
     for (int k = 0; k < 4; k++) {
-        char name[24] = "...";
-        if (captureKeys[k] != 0 && k < captureStep) KeyName(captureKeys[k], name, sizeof(name));
+        const float cx = CAP_CX0 + (float)k * CAP_STEP;
+        const bool current = k == captureStep;
+        const bool done = k < captureStep;
 
-        char line[64];
-        (void)snprintf(line, sizeof(line), "%-6s  %s", LANE_NAMES[k], name);
-        Color color = k < captureStep ? GREEN : (k == captureStep ? WHITE : GRAY);
-        DrawTextEx(mainFont, line, (Vector2) {120, 190.0f + (float)k * 80.0f}, 56, TEXT_SPACING, color);
+        // Nome da coluna, acima da nota.
+        const Color nameColor = current ? WHITE : (done ? GREEN : GRAY);
+        const Vector2 ts = MeasureTextEx(mainFont, LANE_NAMES[k], 30, 2);
+        DrawTextEx(mainFont, LANE_NAMES[k], (Vector2) {cx - ts.x * 0.5f, CAP_CY - 150.0f}, 30, 2, nameColor);
+
+        // Nota real da skin; a coluna atual aparece maior.
+        NoteColors_DrawLanePreview(k, cx, CAP_CY, current ? 0.85f : 0.6f);
+
+        // Caixa com a tecla escolhida (ou "...").
+        char name[24] = "...";
+        if (captureKeys[k] != 0 && done) KeyName(captureKeys[k], name, sizeof(name));
+        const Rectangle box = {cx - CAP_BOX_W * 0.5f, CAP_CY + 120.0f, CAP_BOX_W, CAP_BOX_H};
+        DrawRectangleRec(box, (Color) {30, 30, 30, 255});
+        DrawRectangleLinesEx(box, current ? 4.0f : 2.0f, current ? WHITE : (done ? GREEN : GRAY));
+        const Vector2 ks = MeasureTextEx(mainFont, name, 34, 2);
+        DrawTextEx(mainFont, name, (Vector2) {cx - ks.x * 0.5f, box.y + (CAP_BOX_H - ks.y) * 0.5f}, 34, 2,
+                   done ? WHITE : GRAY);
     }
 
     if (captureStep < 4) {
         char prompt[48];
         (void)snprintf(prompt, sizeof(prompt), "Press the key for %s", LANE_NAMES[captureStep]);
-        DrawTextEx(mainFont, prompt, (Vector2) {80, 540}, 36, 3, WHITE);
-        DrawTextEx(mainFont, "BACKSPACE back     ESC cancel", (Vector2) {80, 650}, 24, 2, GRAY);
+        DrawTextEx(mainFont, prompt, (Vector2) {80, 560}, 36, 3, WHITE);
     } else {
-        DrawTextEx(mainFont, "ENTER to confirm", (Vector2) {80, 540}, 36, 3, GREEN);
-        DrawTextEx(mainFont, "BACKSPACE back     ESC cancel", (Vector2) {80, 650}, 24, 2, GRAY);
+        DrawTextEx(mainFont, "ENTER to confirm", (Vector2) {80, 560}, 36, 3, GREEN);
     }
     if (captureMessage[0] != 0)
-        DrawTextEx(mainFont, captureMessage, (Vector2) {80, 595}, 28, 2, RED);
+        DrawTextEx(mainFont, captureMessage, (Vector2) {80, 610}, 28, 2, RED);
+
+    DrawTextEx(mainFont, "Press the key for each note, in order.",
+               (Vector2) {80, 662}, 22, 1, GRAY);
+    DrawTextEx(mainFont, "BACKSPACE: back     ESC: cancel",
+               (Vector2) {80, 688}, 22, 1, GRAY);
 }
 
 /* ------------------------------------------------------------------ */

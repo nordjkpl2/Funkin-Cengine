@@ -1,1 +1,19 @@
 
+
+--- SESSION LOG START ---
+LOAD [moribund] init: 7.1 ms, chart: 245.6 ms, sounds: 231.5 ms, characters: 324.9 ms, stage: 7.9 ms, song audio: 1.8 ms, notes: 2.4 ms, ui: 18.8 ms, warmup: 0.2 ms, (textures on main thread: 315.1 ms) total: 840.0 ms
+LOAD [moribund] init: 0.0 ms, chart: 283.0 ms, sounds: 7.5 ms, characters: 420.9 ms, stage: 3.5 ms, song audio: 1.7 ms, notes: 2.5 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 422.9 ms) total: 719.2 ms
+LOAD [unstable] init: 0.0 ms, chart: 16.2 ms, sounds: 121.2 ms, characters: 416.1 ms, stage: 10.1 ms, song audio: 1.9 ms, notes: 0.3 ms, ui: 0.0 ms, warmup: 0.1 ms, (textures on main thread: 401.5 ms) total: 565.9 ms
+
+--- SESSION LOG START ---
+LOAD [moribund-3] init: 19.9 ms, chart: 150.1 ms, sounds: 158.2 ms, characters: 413.8 ms, stage: 6.1 ms, song audio: 2.0 ms, notes: 3.3 ms, ui: 7.5 ms, warmup: 0.2 ms, (textures on main thread: 416.2 ms) total: 761.1 ms
+
+--- SESSION LOG START ---
+LOAD [moribund-3] init: 1.4 ms, chart: 142.1 ms, sounds: 59.1 ms, characters: 420.0 ms, stage: 4.2 ms, song audio: 1.6 ms, notes: 3.3 ms, ui: 7.3 ms, warmup: 0.2 ms, (textures on main thread: 430.0 ms) total: 639.3 ms
+
+--- SESSION LOG START ---
+LOAD [agony] init: 0.7 ms, chart: 17.3 ms, sounds: 293.6 ms, characters: 401.0 ms, stage: 15.8 ms, song audio: 1.9 ms, notes: 0.6 ms, ui: 9.9 ms, warmup: 0.2 ms, (textures on main thread: 402.7 ms) total: 740.9 ms
+
+--- SESSION LOG START ---
+LOAD [apostrophe] init: 0.7 ms, chart: 23.0 ms, sounds: 114.9 ms, characters: 417.5 ms, stage: 9.0 ms, song audio: 2.0 ms, notes: 1.1 ms, ui: 8.8 ms, warmup: 0.2 ms, (textures on main thread: 387.1 ms) total: 577.1 ms
+LOAD [apostrophe] init: 0.0 ms, chart: 19.5 ms, sounds: 0.9 ms, characters: 525.5 ms, stage: 2.8 ms, song audio: 1.9 ms, notes: 0.9 ms, ui: 0.0 ms, warmup: 0.3 ms, (textures on main thread: 526.9 ms) total: 551.8 ms

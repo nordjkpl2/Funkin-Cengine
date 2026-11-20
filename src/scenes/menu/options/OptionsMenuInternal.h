@@ -17,12 +17,13 @@
 // texto e header ta tudo aqui
 #define SCROLL_LERP_SPEED 09.0f
 #define WHEEL_ROWS_PER_NOTCH 1 // linhas puladas a cada clique da roda do mouse
-#define ROW_FONT_SIZE 60
-#define ROW_PADDING 18
+#define ROW_FONT_SIZE 59
+#define LABEL_FONT_SIZE 40 // subtitulos estaticos (ex.: Score, Zoom), menores que as opcoes
+#define ROW_PADDING 14
 #define HEADER_FONT_SIZE 87
 #define HEADER_PADDING 6
 #define TEXT_SHADOW 6
-#define TEXT_SPACING 2.0f
+#define TEXT_SPACING 1.8f
 #define ROW_X 150.0f
 #define HEADER_X 50.0f
 #define ROW_HEIGHT (ROW_FONT_SIZE + ROW_PADDING)
@@ -94,6 +95,14 @@
 
 #define THREADS_MAX JOBS_MAX_THREADS
 
+// Menu horizontal: titulos numa barra no topo; so a secao selecionada aparece embaixo.
+#define TAB_BAR_Y 100.0f
+#define TAB_LOGO_LIFT 92.0f      // altura do icone acima do titulo (a partir da linha do texto)
+#define TAB_FONT_SIZE 50
+#define TAB_GAP 34.0f            // espaco em volta de cada separador "|"
+#define TAB_BAND_H 180.0f        // faixa escura atras da barra (a lista rola por baixo dela)
+#define TAB_X 50.0f
+
 typedef enum {
     OPTION_VALUE_INT,
     OPTION_VALUE_FLOAT,
@@ -137,6 +146,7 @@ typedef enum {
     OPTION_SCORE_POSITION,
     OPTION_ICONS_LABEL,
     OPTION_BOPPING_ICONS,
+    OPTION_LOSE_ICON,
     OPTION_ZOOM_LABEL,
     OPTION_ZOOMFACTOR_UI,
     OPTION_ZOOMFACTOR_GAME,
@@ -149,6 +159,7 @@ typedef enum {
     OPTION_FILL_SCREEN,
     OPTION_BOTPLAY,
     OPTION_HEALTH_DRAIN_BOTPLAY,
+    OPTION_HORIZONTAL_MENU,
     OPTION_HEADER_MUSIC,
     OPTION_MENU_MUSIC,
     OPTION_COUNT
@@ -183,6 +194,8 @@ bool Option_IsVisible(int i);
 bool Option_IsSelectable(int i);
 int Option_VisualIndex(int index);
 void MoveSelection(int dir);
+bool Option_HorizontalMode(void);
+void Tab_Step(int dir);
 
 /* OptionsMenuScreens.c */
 void Capture_Begin(void);
@@ -196,6 +209,9 @@ void NoteColorScreen_Begin(void);
 void NoteColorScreen_Update(void);
 void NoteColorScreen_Draw(void);
 void NoteColorScreen_Destroy(void);
+void NoteColors_DrawLanePreview(int lane, float cx, float cy, float scale);  /* nota + receptor reais da skin */
+void NoteColors_ReleaseFx(void);
+void NoteColors_DrawNoteIcon(int lane, float cx, float cy, float scale);   /* so a nota (com a cor da coluna) */
 
 /* OptionsMenuIcons.c */
 void DrawOptionText(const char* text, float x, float y, int fontSize, Color fill, Color shadow);

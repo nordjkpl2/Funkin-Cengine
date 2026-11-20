@@ -4,6 +4,7 @@
  */
 
 #include "scenes/gameplay/PlayStateHealth.h"
+#include "GameData.h"
 #include <math.h>
 
 static float health;          /* 0 - 1; abaixo de 0 = morte */
@@ -93,8 +94,14 @@ float PlayStateHealth_CenterX(float width) {
     return healthbar.x + (healthbar.width - width) * 0.5f;
 }
 
+/* Opcao Losing Icon: o icone troca para o de derrota quando o lado esta perdendo (so visual). */
+#define ICON_LOSE_BF 0.2f   /* BF perdendo: vida abaixo disso */
+#define ICON_LOSE_DAD 0.8f  /* oponente perdendo: vida acima disso */
+
 void PlayStateHealth_Draw(Texture2D dadIcon, Texture2D bfIcon) {
     const int C = 35;
+    const bool dadLosing = gameOptions.loseIcon && health > ICON_LOSE_DAD;
+    const bool bfLosing = gameOptions.loseIcon && health < ICON_LOSE_BF;
     DrawRectangleRec(healthbar, BLACK);
 
     /* so a morte (health < 0) precisa cortar em 0 */
@@ -111,14 +118,14 @@ void PlayStateHealth_Draw(Texture2D dadIcon, Texture2D bfIcon) {
     const float iconCY = healthbar.y + healthbar.height / 2;
     const float iconX = innerX + middle;
 
-    DrawTexturePro(dadIcon, Character_IconFrame(dadIcon), (Rectangle) {
+    DrawTexturePro(dadIcon, dadLosing ? Character_IconLoseFrame(dadIcon) : Character_IconFrame(dadIcon), (Rectangle) {
         .x = iconX + C - 75 - iconHalf - sway,
         .y = iconCY - iconHalf + bobY,
         .width = 130 * bop,
         .height = 130 * bop
     }, (Vector2) {0, 0}, 0, WHITE);
 
-    DrawTexturePro(bfIcon, Character_IconFrame(bfIcon), (Rectangle) {
+    DrawTexturePro(bfIcon, bfLosing ? Character_IconLoseFrame(bfIcon) : Character_IconFrame(bfIcon), (Rectangle) {
         .x = iconX - C + 75 - iconHalf + sway,
         .y = iconCY - iconHalf - bobY,
         .width = 145 * bop,

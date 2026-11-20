@@ -18,7 +18,9 @@ typedef struct GameOptions {
     char healthDrainBotplay;  /* botplay ganha/perde vida como o jogador (padrao: off; off = barra travada) */
     char strumBgPercent;      /* fundo preto atras dos receptores: 0 = off, 10..100 = opacidade em % */
     char strumMobileVisible;  /* 1 = tela dividida em 4 colunas com as cores das notas */
-    char hiddenNotesAlt;      /* Hidden Notes: 0 = Off, 1 = Alternate (so desenha as notas de quem esta cantando na secao) */
+    char hiddenNotesAlt;      /* Hidden Notes: 0 Off, 1 Alternate, 2 Only Playable, 3 Alternate Playable (ver GameData_HiddenShowsSide) */
+    char loseIcon;            /* Losing Icon: icone troca para o de derrota quando o lado perde (so visual) */
+    char horizontalMenu;      /* menu de opcoes: 0 = lista vertical, 1 = titulos em barra horizontal (uma secao por vez) */
     unsigned char laneTint[4][3]; /* RGB por coluna (esq, baixo, cima, dir): multiplica a skin; 255,255,255 = original */
     int scheme, fps;
     int threadLimit; /* 0 = Auto (nucleos - 1); >0 = limite de threads de fundo (1..64) */
@@ -33,6 +35,9 @@ extern GameOptions gameOptions;
 
 /* Cor de tint de uma coluna (0..3), ja com alpha 255. Branco = sem mudanca. */
 Color GameData_LaneTint(int lane);
+
+/* Hidden Notes: 1 se o lado (bfSide: 1 = BF) deve ser desenhado; singerBf = quem canta na secao. */
+char GameData_HiddenShowsSide(char bfSide, char singerBf);
 
 /* Esquemas de teclas: Arrows, WASD, DFJK, ASKL e Custom (teclas do jogador, salvas). */
 #define SCHEME_COUNT 5

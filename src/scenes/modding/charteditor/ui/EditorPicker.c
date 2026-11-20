@@ -142,6 +142,17 @@ static Rectangle Picker_SquareCrop(Texture2D t) {
     return (Rectangle) {0.0f, 0.0f, side, side};
 }
 
+// Existe <dir>/<base>.(ogg|mp3|wav)? Mesma regra da gameplay (PlayStateAudio).
+static char PlayFileExists(const char* dir, const char* base) {
+    static const char* const exts[] = {"ogg", "mp3", "wav"};
+    char p[300];
+    for(size_t i = 0; i < sizeof(exts) / sizeof(exts[0]); i++) {
+        snprintf(p, sizeof(p), "%s/%s.%s", dir, base, exts[i]);
+        if(FileExists(p)) return 1;
+    }
+    return 0;
+}
+
 void Editor_EnterDir(const char* dir) {
     if(!EdChart_OpenDir(&chart, dir)) {
         EdStatusMsg("NAO ABRIU ESSA MUSICA");
@@ -220,6 +231,17 @@ void Editor_EnterDir(const char* dir) {
             if(fo != NULL) fclose(fo);
             if(fp != NULL) fclose(fp);
         }
+    }
+    // arquivos do test play (mesmas extensoes que a gameplay aceita): so pintam os botoes PLAY ONLY
+    edSoloMix = 0;
+    {
+        const char hasMain = PlayFileExists(dir, "Voices");
+        const char hasPlayer = PlayFileExists(dir, "Voices-Player");
+        const char hasOpp = PlayFileExists(dir, "Voices-Opponent");
+        edPlayHasInst = PlayFileExists(dir, "Inst");
+        edPlayHasVocals = hasMain || hasPlayer || hasOpp;
+        edPlayHasBf = hasPlayer;
+        edPlayHasOpp = hasOpp;
     }
     ceMode = CE_EDIT;
     ceDlg = DLG_NONE;

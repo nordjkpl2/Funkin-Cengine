@@ -55,4 +55,8 @@ void PlayStateNoteSpawn_Update(const PlayStateNoteView* view);
 /* So desenho (le o estado). Chamar dentro da camera do HUD. */
 void PlayStateNoteSpawn_Draw(const PlayStateNoteView* view);
 
+/* Menu de opcoes: nota desenhada com a cor da coluna (tint branco = skin original). */
+void PlayStateNoteSpawn_DrawTinted(RayAnimatedObject* obj, Color tint);
+void PlayStateNoteSpawn_ReleaseTint(void);
+
 #endif /* PLAYSTATE_NOTESPAWN_H */

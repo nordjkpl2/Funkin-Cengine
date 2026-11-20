@@ -50,6 +50,7 @@ static const Vector2 versionPos = {12.0f, 694.0f};
 static const char* const versionText = "v0040";
 static const char* const moddingText = "Modding";
 static Vector2 moddingPos; // calculado uma vez no Create
+static Vector2 moddingSize;
 
 // Cores fixas (nao recria struct a cada frame).
 static const Color MODDING_FILL_ON = {42, 209, 86, 255};
@@ -117,8 +118,8 @@ static void MenuState_Create([[maybe_unused]] RayScene* scene) {
 
     Buttons_Load();
 
-    const Vector2 size = MeasureTextEx(mainFont, moddingText, MODDING_FONT_SIZE, MODDING_SPACING);
-    moddingPos = (Vector2) {(SCREEN_W - size.x) / 2.0f, MODDING_Y};
+    moddingSize = MeasureTextEx(mainFont, moddingText, MODDING_FONT_SIZE, MODDING_SPACING);
+    moddingPos = (Vector2) {(SCREEN_W - moddingSize.x) / 2.0f, MODDING_Y};
 }
 
 /* Abre a cena do item escolhido. */
@@ -134,8 +135,25 @@ static void OpenSelected(void) {
     }
 }
 
+/* Indice do item sob o mouse (botoes ou texto Modding), ou -1. */
+static int ItemAtMouse(void) {
+    const Vector2 mouse = RayGame_MouseWorld();
+
+    for (int i = 0; i < BUTTON_COUNT; i++) {
+        const Vector2 size = AnimatedObject_Sizes(&buttons[i].object);
+        const Rectangle rect = {buttons[i].object.position.x, buttons[i].object.position.y, size.x, size.y};
+        if (CheckCollisionPointRec(mouse, rect)) return i;
+    }
+
+    const Rectangle moddingRect = {moddingPos.x, moddingPos.y, moddingSize.x, moddingSize.y};
+    if (CheckCollisionPointRec(mouse, moddingRect)) return MODDING_INDEX;
+
+    return -1;
+}
+
 static void MenuState_Update([[maybe_unused]] RayScene* scene) {
     int newItem = selectedItem;
+    int open = 0;
 
     if (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W)) {
         if (newItem > 0) newItem--;
@@ -144,14 +162,32 @@ static void MenuState_Update([[maybe_unused]] RayScene* scene) {
         if (newItem < MODDING_INDEX) newItem++;
     }
     else if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)) {
-        OpenSelected();
-        return;
+        open = 1;
+    }
+
+    // Roda do mouse: cima sobe, baixo desce.
+    const float wheel = GetMouseWheelMove();
+    if (wheel > 0.0f && newItem > 0) newItem--;
+    else if (wheel < 0.0f && newItem < MODDING_INDEX) newItem++;
+
+    // Clique esquerdo em um item: seleciona e abre (igual ao Enter).
+    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+        const int hit = ItemAtMouse();
+        if (hit >= 0) {
+            newItem = hit;
+            open = 1;
+        }
     }
 
     if (newItem != selectedItem) {
         if (selectedItem < BUTTON_COUNT) Button_SetSelected(selectedItem, 0);
         if (newItem < BUTTON_COUNT) Button_SetSelected(newItem, 1);
         selectedItem = newItem;
+    }
+
+    if (open) {
+        OpenSelected();
+        return;
     }
 
     // Fundo suave; encosta no alvo quando chega perto (para de recalcular).

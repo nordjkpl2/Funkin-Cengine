@@ -44,6 +44,8 @@ void Character_PrefetchTexture(const char* name, CharRole role);
 /* Primeiro frame (normal) do icone. Frames sao quadrados da altura da imagem:
    150x150 padrao, 300x300 em icone hi-res; 450x150 = 3 frames (com vitoria). */
 Rectangle Character_IconFrame(Texture2D icon);
+/* Frame de derrota (2o frame): usado quando a vida esta perto de zero (so visual). */
+Rectangle Character_IconLoseFrame(Texture2D icon);
 
 /* anims[0..2] = morrer, loop, confirmar (usa a idle quando o personagem nao tem). */
 void Character_LoadDeathAnimations(Character* restrict character, int* restrict anims);

@@ -18,7 +18,15 @@ extern char edHasVoices;
 extern Music edSplitO;
 extern Music edSplitP;
 extern char edHasSplit;
+/* Arquivos que o test play consegue carregar (ogg/mp3/wav): pintam de vermelho os botoes PLAY ONLY. */
+extern char edPlayHasInst;
+extern char edPlayHasVocals;
+extern char edPlayHasBf;
+extern char edPlayHasOpp;
+extern int edSoloMix;
 void Audio_SetVolume(float v);
+void Audio_ApplyVolumes(void);
+void Audio_SetSolo(int mix);
 void Audio_Update(void);
 void Audio_SeekAll(double ms);
 void Audio_StopPlay(void);

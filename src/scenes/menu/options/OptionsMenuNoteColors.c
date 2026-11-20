@@ -7,6 +7,9 @@
 #include "scenes/menu/options/OptionsMenuInternal.h"
 #include "Game.h"
 #include "GameData.h"
+#include "logic/notes/Note.h"
+#include "scenes/api/NoteSkinCache.h"
+#include "scenes/gameplay/PlayStateNoteSpawn.h"
 #include <math.h>
 #include <stdio.h>
 
@@ -26,6 +29,11 @@
 #define NC_SW_X 80.0f
 #define NC_SW_Y 540.0f
 #define NC_DEG2RAD 0.01745329252f
+// Coluna de preview (receptor + nota reais da skin), lado esquerdo, de cima para baixo: LEFT, DOWN, UP, RIGHT.
+#define NC_PREV_CX 200.0f
+#define NC_PREV_Y0 150.0f
+#define NC_PREV_STEP 100.0f
+#define NC_PREV_HALF 52.0f
 
 bool noteColorScreen;
 
@@ -40,7 +48,6 @@ static Color swatches[NC_SW_ROWS * NC_SW_COLS];
 static bool swatchesReady;
 
 static const char* const laneNames[4] = {"LEFT", "DOWN", "UP", "RIGHT"};
-static const float laneRot[4] = {-90.0f, 180.0f, 0.0f, 90.0f}; // graus: a seta base aponta para cima
 
 /* Botoes das colunas em cima da roda (canto superior direito). */
 static Rectangle LaneButton(int i) { return (Rectangle) {700.0f + (float)i * 108.0f, 72.0f, 96.0f, 44.0f}; }
@@ -52,28 +59,6 @@ static Rectangle BarRect(void) { return (Rectangle) {NC_BAR_X, NC_BAR_Y, NC_BAR_
 static Rectangle SwatchRect(int r, int c) {
     return (Rectangle) {NC_SW_X + (float)c * NC_SW_STEP, NC_SW_Y + (float)r * NC_SW_ROW_STEP, NC_SW_W, NC_SW_H};
     /* (paleta compacta: ver NC_SW_* acima) */
-}
-
-/* Triangulo com a ordem de vertices que o raylib espera (anti-horario visto na tela). */
-static void DrawTri(Vector2 a, Vector2 b, Vector2 c, Color color) {
-    const float cross = (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
-    if (cross > 0.0f) DrawTriangle(a, c, b, color);
-    else DrawTriangle(a, b, c, color);
-}
-
-/* Seta de nota desenhada na hora (sem sprite): aponta para a coluna, centrada em (cx, cy). */
-static void DrawArrow(int i, float cx, float cy, float s, Color color) {
-    const float a = laneRot[i] * NC_DEG2RAD;
-    const float ca = cosf(a), sa = sinf(a);
-    #define ARROW_P(x, y) ((Vector2) {cx + (x) * ca - (y) * sa, cy + (x) * sa + (y) * ca})
-    const float sh = 0.45f * s;
-    const Vector2 tip = ARROW_P(0, -s), hl = ARROW_P(-s, 0), hr = ARROW_P(s, 0);
-    const Vector2 il = ARROW_P(-sh, 0), ir = ARROW_P(sh, 0);
-    const Vector2 bl = ARROW_P(-sh, s), br = ARROW_P(sh, s);
-    #undef ARROW_P
-    DrawTri(tip, hl, hr, color);
-    DrawTri(il, bl, br, color);
-    DrawTri(il, br, ir, color);
 }
 
 static void BuildWheel(void) {
@@ -135,6 +120,7 @@ static void SelectLane(int i) {
 }
 
 void NoteColorScreen_Begin(void) {
+    NoteColors_ReleaseFx();   /* recarrega a previa com a skin padrao */
     if (!wheelReady) BuildWheel();
     if (!swatchesReady) BuildSwatches();
     noteColorScreen = true;
@@ -176,6 +162,11 @@ void NoteColorScreen_Update(void) {
         else {
             for (int i = 0; i < 4; i++)
                 if (CheckCollisionPointRec(m, LaneButton(i))) SelectLane(i);
+            for (int i = 0; i < 4; i++) {
+                const Rectangle pr = {NC_PREV_CX - NC_PREV_HALF, NC_PREV_Y0 + (float)i * NC_PREV_STEP - NC_PREV_HALF,
+                                      NC_PREV_HALF * 2.0f, NC_PREV_HALF * 2.0f};
+                if (CheckCollisionPointRec(m, pr)) SelectLane(i);
+            }
             for (int r = 0; r < NC_SW_ROWS; r++)
                 for (int c = 0; c < NC_SW_COLS; c++)
                     if (CheckCollisionPointRec(m, SwatchRect(r, c))) {
@@ -209,6 +200,58 @@ void NoteColorScreen_Update(void) {
     }
 }
 
+/* Receptor + nota reais da skin (a nota ja vai com a cor da coluna), centrados em (cx, cy).
+   Usado aqui e na tela de teclas Custom. */
+static StrumNote laneStrum[4];
+static RayAnimatedObject laneNote[4];
+static bool laneFxReady;
+
+static void EnsureLaneFx(void) {
+    if (laneFxReady) return;
+    Note_SetCurrentSkin(Cache_GetDefaultNoteSkinPtr());   /* so o arquivo da skin padrao, nao a da ultima musica */
+    for (int i = 0; i < 4; i++) {
+        StrumNote_Load(laneStrum + i, i);          /* tambem carrega as animacoes da skin */
+        Render_DefaultAnimated(laneNote + i);
+        laneNote[i].animationSet = *Note_GetCurrentSkin();
+        AnimatedObject_SetAnimation(laneNote + i, Note_Animation(i));
+    }
+    laneFxReady = true;
+}
+
+void NoteColors_DrawLanePreview(int lane, float cx, float cy, float scale) {
+    EnsureLaneFx();
+    StrumNote* s = laneStrum + lane;
+    RayAnimatedObject* n = laneNote + lane;
+
+    s->object.scaleX = s->object.scaleY = scale;
+    n->scaleX = n->scaleY = scale;
+    AnimatedObject_UpdateFrame(&s->object);
+    AnimatedObject_UpdateFrame(n);
+
+    const Vector2 ss = AnimatedObject_Sizes(&s->object);
+    s->object.position = (Vector2) {cx - ss.x * 0.5f, cy - ss.y * 0.5f};
+    const Vector2 ns = AnimatedObject_Sizes(n);
+    n->position = (Vector2) {cx - ns.x * 0.5f, cy - ns.y * 0.5f};
+
+    Render_DrawAnimatedObject(&s->object);
+    PlayStateNoteSpawn_DrawTinted(n, GameData_LaneTint(lane));
+}
+
+void NoteColors_DrawNoteIcon(int lane, float cx, float cy, float scale) {
+    EnsureLaneFx();
+    RayAnimatedObject* n = laneNote + lane;
+    n->scaleX = n->scaleY = scale;
+    AnimatedObject_UpdateFrame(n);
+    const Vector2 ns = AnimatedObject_Sizes(n);
+    n->position = (Vector2) {cx - ns.x * 0.5f, cy - ns.y * 0.5f};
+    PlayStateNoteSpawn_DrawTinted(n, GameData_LaneTint(lane));
+}
+
+void NoteColors_ReleaseFx(void) {
+    PlayStateNoteSpawn_ReleaseTint();
+    laneFxReady = false;
+}
+
 void NoteColorScreen_Draw(void) {
     DrawRectangle(0, 0, 1280, 720, (Color) {0, 0, 0, 225});
     DrawTextEx(mainFont, "NOTE COLORS", (Vector2) {80, 14}, 40, TEXT_SPACING, YELLOW);
@@ -227,9 +270,9 @@ void NoteColorScreen_Draw(void) {
                    26, 1.0f, WHITE);
     }
 
-    // Pre-visualizacao: seta da coluna atual com a cor escolhida.
-    DrawArrow(lane, 210.0f, 300.0f, 96.0f, BLACK);
-    DrawArrow(lane, 210.0f, 300.0f, 84.0f, tint);
+    // Pre-visualizacao: as 4 colunas com a skin real; a selecionada aparece maior.
+    for (int i = 0; i < 4; i++)
+        NoteColors_DrawLanePreview(i, NC_PREV_CX, NC_PREV_Y0 + (float)i * NC_PREV_STEP, i == lane ? 0.85f : 0.6f);
 
     // Leitura HEX e RGB.
     char line[64];
@@ -288,4 +331,5 @@ void NoteColorScreen_Draw(void) {
 void NoteColorScreen_Destroy(void) {
     if (wheelReady) UnloadTexture(wheelTex);
     wheelReady = false;
+    NoteColors_ReleaseFx();
 }

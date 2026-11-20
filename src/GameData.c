@@ -26,7 +26,7 @@ int game_scheme_keys[SCHEME_COUNT][4] = {
 
 static FILE* saveFile;
 
-#define SAVE_VERSION 14  /* 14: + hiddenNotesAlt (1 byte, no fim); 13: + laneTint (12 bytes, no fim); 12: + strumBgPercent e strumMobileVisible (no fim); 11: + menuMusic (no fim, apos as mods); 10: + healthDrainPlay e healthDrainBotplay (apos scorePosition); 9: + scorePosition (apos threadLimit); 8: + lista de mods desativados; 7: + threadLimit (no fim); 6: + hitSound e as 4 teclas do esquema Custom. v7 e v8 ainda sao lidos. */
+#define SAVE_VERSION 16  /* 16: + loseIcon (1 byte, no fim); 15: + horizontalMenu (1 byte, no fim); hiddenNotesAlt aceita 0..3; 14: + hiddenNotesAlt (1 byte, no fim); 13: + laneTint (12 bytes, no fim); 12: + strumBgPercent e strumMobileVisible (no fim); 11: + menuMusic (no fim, apos as mods); 10: + healthDrainPlay e healthDrainBotplay (apos scorePosition); 9: + scorePosition (apos threadLimit); 8: + lista de mods desativados; 7: + threadLimit (no fim); 6: + hitSound e as 4 teclas do esquema Custom. v7 e v8 ainda sao lidos. */
 
 static void GameData_Defaults(void) {
     game_scheme_keys[SCHEME_CUSTOM][0] = KEY_LEFT;
@@ -41,6 +41,17 @@ static void GameData_Defaults(void) {
         .zoomFactorUI = 1.0f, .zoomFactorGAME = 1.0f,
         .laneTint = {{255, 255, 255}, {255, 255, 255}, {255, 255, 255}, {255, 255, 255}},
     };
+}
+
+/* Hidden Notes: a lado (BF ou oponente) aparece? bfSide = 1 para BF; singerBf = quem canta na secao.
+   0 Off: tudo. 1 Alternate: so quem canta. 2 Only Playable: so BF. 3 Alternate Playable: BF sempre + oponente quando ele canta. */
+char GameData_HiddenShowsSide(char bfSide, char singerBf) {
+    switch (gameOptions.hiddenNotesAlt) {
+        case 1:  return (bfSide != 0) == (singerBf != 0);
+        case 2:  return bfSide != 0;
+        case 3:  return bfSide != 0 || !singerBf;
+        default: return 1;
+    }
 }
 
 Color GameData_LaneTint(int lane) {
@@ -61,7 +72,7 @@ static void GameData_Checks(void) {
     if(gameOptions.scorePosition < SCORE_POS_CENGINE || gameOptions.scorePosition > SCORE_POS_PSYCH) IERR
     if(gameOptions.strumBgPercent < 0 || gameOptions.strumBgPercent > 100) IERR
     if(gameOptions.strumMobileVisible < 0 || gameOptions.strumMobileVisible > 1) IERR
-    if(gameOptions.hiddenNotesAlt < 0 || gameOptions.hiddenNotesAlt > 1) IERR
+    if(gameOptions.hiddenNotesAlt < 0 || gameOptions.hiddenNotesAlt > 3) IERR
     for(int k = 0; k < 4; k++)
         if(game_scheme_keys[SCHEME_CUSTOM][k] <= 0) IERR
 }
@@ -130,6 +141,12 @@ void GameData_Start(void) {
     gameOptions.hiddenNotesAlt = 0;      /* saves antigos (< v14): padrao */
     if(version >= 14)
         SREAD(char, gameOptions.hiddenNotesAlt)
+    gameOptions.horizontalMenu = 0;      /* saves antigos (< v15): padrao */
+    if(version >= 15)
+        SREAD(char, gameOptions.horizontalMenu)
+    gameOptions.loseIcon = 0;            /* saves antigos (< v16): padrao */
+    if(version >= 16)
+        SREAD(char, gameOptions.loseIcon)
 
     GameData_Checks();
 }
@@ -164,6 +181,8 @@ void GameData_Flush(void) {
     SWRITE(char, gameOptions.strumMobileVisible)
     WRITE(unsigned char, sizeof(gameOptions.laneTint), gameOptions.laneTint[0][0])
     SWRITE(char, gameOptions.hiddenNotesAlt)
+    SWRITE(char, gameOptions.horizontalMenu)
+    SWRITE(char, gameOptions.loseIcon)
 }
 
 void GameData_Stop(void) {

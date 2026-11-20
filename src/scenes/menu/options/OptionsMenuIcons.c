@@ -265,6 +265,23 @@ static void DrawSquareIcon(float cx, float cy, Color color) {
 void DrawExtraIcon(int i, float rowY, Color fill, Color shadow) {
     const float cy = rowY + ROW_FONT_SIZE * 0.5f;
 
+    // Setas de nota reais da skin (sem sombra propria: a nota ja tem contorno).
+    if (i == OPTION_SCROLL_STYLE) {   // Normal = cima, Downscroll = baixo, Middlescroll = as duas
+        const int v = (int)options[OPTION_SCROLL_STYLE].value;
+        if (v == 0) NoteColors_DrawNoteIcon(2, EXTRA_ICON_CX, cy, 0.2f);
+        else if (v == 1) NoteColors_DrawNoteIcon(1, EXTRA_ICON_CX, cy, 0.2f);
+        else {
+            NoteColors_DrawNoteIcon(2, EXTRA_ICON_CX, cy - 16.0f, 0.16f);
+            NoteColors_DrawNoteIcon(1, EXTRA_ICON_CX, cy + 16.0f, 0.16f);
+        }
+        return;
+    }
+    if (i == OPTION_STRUM_BG) {       // as 4 notas lado a lado, na cor de cada coluna
+        for (int k = 0; k < 4; k++)
+            NoteColors_DrawNoteIcon(k, 26.0f + 32.0f * (float)k, cy, 0.2f);
+        return;
+    }
+
     for (int pass = 0; pass < 2; pass++) {
         const Color color = pass == 0 ? shadow : fill;
         const float shift = pass == 0 ? TEXT_SHADOW : 0.0f;

@@ -49,6 +49,7 @@ static char returnToEditor, returnToWeek, diffSuf[16], overrideP2[SONG_NAME_MAX]
 static char restarted;
 static char warnScreen;   // tela de avisos aberta (antes da contagem)
 static float lastAppliedMusicVolume = -1.0f;
+static PlayStateTestMode testMode = PLAYSTATE_TEST_FULL;  // so o test play do chart editor muda isto
 
 // musica (a batida e o tempo ficam em PlayStateBeat)
 static Song song;
@@ -522,6 +523,18 @@ static void DrawHud(float dt) {
         PlayStateText_DrawBotplayMark();
 }
 
+// Modo "so receptores" (F6 no chart editor): fundo preto, so receptores e notas. Sem HUD/personagens.
+static void DrawReceptorsOnly(void) {
+    ClearBackground(BLACK);
+    PlayStateCamera_BeginHUD();
+    PlayStateStrums_Draw();
+    const PlayStateNoteView view = NoteView();
+    PlayStateNoteSpawn_Draw(&view);
+    if (PlayStatePause_IsPaused())
+        PlayStatePause_Draw(LeavesToEditor(1));
+    Render_StopCamera();
+}
+
 static void PlayState_Draw([[maybe_unused]] RayScene* scene) {
     if (PlayStateHealth_IsDead()) {
         Character* bf = PlayStateAnimations_Bf();
@@ -531,6 +544,11 @@ static void PlayState_Draw([[maybe_unused]] RayScene* scene) {
         AnimatedObject_UpdateFrame(&bf->object);
         Render_DrawAnimatedObject(&bf->object);
         Render_StopCamera();
+        return;
+    }
+
+    if (testMode == PLAYSTATE_TEST_RECEPTORS) {
+        DrawReceptorsOnly();
         return;
     }
 
@@ -560,6 +578,20 @@ void PlayState_SetSongDir(const char* dir) {
     returnToWeek = 0;
     diffSuf[0] = 0;
     overrideP2[0] = 0;
+    PlayState_SetTestMode(PLAYSTATE_TEST_FULL);
+}
+
+void PlayState_SetTestMode(PlayStateTestMode mode) {
+    testMode = mode;
+    switch (mode) {
+        case PLAYSTATE_TEST_INST:       PlayStateAudio_SetMix(PSA_MIX_INST); break;
+        case PLAYSTATE_TEST_VOCALS:     PlayStateAudio_SetMix(PSA_MIX_VOCALS); break;
+        case PLAYSTATE_TEST_BF_VOCALS:  PlayStateAudio_SetMix(PSA_MIX_BF); break;
+        case PLAYSTATE_TEST_OPP_VOCALS: PlayStateAudio_SetMix(PSA_MIX_OPP); break;
+        case PLAYSTATE_TEST_FULL:
+        case PLAYSTATE_TEST_RECEPTORS:
+        default:                        PlayStateAudio_SetMix(PSA_MIX_FULL); break;
+    }
 }
 
 void PlayState_SetSongDirKeep(const char* dir) {

@@ -194,6 +194,16 @@ static void UnloadRecolorShader(void) {
     recolorReady = false;
 }
 
+/* Menu de opcoes (preview): mesmo desenho de nota com a cor da coluna. */
+void PlayStateNoteSpawn_DrawTinted(RayAnimatedObject* obj, Color tint) {
+    noteTint = tint;
+    DrawNoteObj(obj);
+}
+
+void PlayStateNoteSpawn_ReleaseTint(void) {
+    UnloadRecolorShader();
+}
+
 static void DrawSustainFull(char fullyAbove) {
     if (fullyAbove) return;
     DrawNoteObj(&trail);
@@ -375,7 +385,7 @@ void PlayStateNoteSpawn_Draw(const PlayStateNoteView* view) {
             break;
 
         // Hidden Notes: so desenha as notas de quem esta cantando na secao. So muda o desenho; o hit segue igual.
-        if (gameOptions.hiddenNotesAlt && note->mustHit != note->sectionMustHit)
+        if (!GameData_HiddenShowsSide(note->mustHit, note->sectionMustHit))
             continue;
 
         const StrumNote* strum = (note->mustHit ? view->bfStrums : view->dadStrums) + note->id;

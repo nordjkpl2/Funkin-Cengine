@@ -172,16 +172,15 @@ void PlayStateStrums_DrawKeyMonitor(void) {
 
 void PlayStateStrums_Draw(void) {
     // Hidden Notes (Alternate): so o receptor de quem esta cantando aparece. A animacao segue rodando.
-    const char onlySinger = gameOptions.hiddenNotesAlt;
     const char singerBf = PlayStateBeat_SingerIsBf();
 
     for (int i = 0; i < PLAYSTATE_LANES; i++) {
         AnimatedObject_UpdateFrame(&dadStrumline[i].object);
-        if (!onlySinger || !singerBf)
+        if (GameData_HiddenShowsSide(0, singerBf))
             RenderStrumFixedCenter(dadStrumline + i, dadStrumIdleSizes[i]);
 
         AnimatedObject_UpdateFrame(&bfStrumline[i].object);
-        if (!onlySinger || singerBf)
+        if (GameData_HiddenShowsSide(1, singerBf))
             RenderStrumFixedCenter(bfStrumline + i, bfStrumIdleSizes[i]);
     }
 
