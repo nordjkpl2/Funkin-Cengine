@@ -101,7 +101,10 @@ void PlayStateNoteSpawn_Reset(void) {
     }
 }
 
+static void UnloadRecolorShader(void);
+
 void PlayStateNoteSpawn_Unload(void) {
+    UnloadRecolorShader();
     free(notes);
     notes = NULL;
     noteCount = 0;
@@ -124,10 +127,76 @@ static void SetAnimIfChanged(RayAnimatedObject* object, int anim) {
 }
 
 /* Sustain ainda nao pressionado/perdido: desenha inteiro, sem clip. */
+/* Recolor da skin: troca so o matiz de cada pixel (saturacao e brilho originais ficam),
+   assim um amarelo nao vira marrom escuro como aconteceria com um simples multiplicador. */
+static const char* const recolorFS =
+    "#version 330\n"
+    "in vec2 fragTexCoord;\n"
+    "in vec4 fragColor;\n"
+    "uniform sampler2D texture0;\n"
+    "uniform vec4 colDiffuse;\n"
+    "uniform vec3 targetHSV;\n"   /* matiz 0..1, saturacao 0..1, brilho 0..1 */
+    "out vec4 finalColor;\n"
+    "vec3 rgb2hsv(vec3 c) {\n"
+    "    vec4 K = vec4(0.0, -1.0/3.0, 2.0/3.0, -1.0);\n"
+    "    vec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));\n"
+    "    vec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r));\n"
+    "    float d = q.x - min(q.w, q.y);\n"
+    "    float e = 1.0e-10;\n"
+    "    return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);\n"
+    "}\n"
+    "vec3 hsv2rgb(vec3 c) {\n"
+    "    vec4 K = vec4(1.0, 2.0/3.0, 1.0/3.0, 3.0);\n"
+    "    vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);\n"
+    "    return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);\n"
+    "}\n"
+    "void main() {\n"
+    "    vec4 texel = texture(texture0, fragTexCoord) * colDiffuse * fragColor;\n"
+    "    vec3 hsv = rgb2hsv(texel.rgb);\n"
+    "    hsv.x = targetHSV.x;\n"
+    "    hsv.y *= targetHSV.y;\n"
+    "    hsv.z *= targetHSV.z;\n"
+    "    finalColor = vec4(hsv2rgb(hsv), texel.a);\n"
+    "}\n";
+
+static Shader recolorShader;
+static int recolorLoc = -1;
+static bool recolorReady;
+static Color noteTint = {255, 255, 255, 255}; /* cor da coluna da nota que esta sendo desenhada */
+
+static void EnsureRecolorShader(void) {
+    if (recolorReady) return;
+    recolorShader = LoadShaderFromMemory(NULL, recolorFS);
+    recolorLoc = GetShaderLocation(recolorShader, "targetHSV");
+    recolorReady = true;
+}
+
+/* Desenha um objeto de nota com a cor da coluna (branco = skin original, sem shader). */
+static void DrawNoteObj(RayAnimatedObject* obj) {
+    if (noteTint.r == 255 && noteTint.g == 255 && noteTint.b == 255) {
+        Render_DrawAnimatedObject(obj);
+        return;
+    }
+    EnsureRecolorShader();
+    const Vector3 hsv = ColorToHSV(noteTint);
+    const float target[3] = {hsv.x / 360.0f, hsv.y, hsv.z};
+    rlDrawRenderBatchActive();   /* o lote pendente usa o uniform antigo */
+    SetShaderValue(recolorShader, recolorLoc, target, SHADER_UNIFORM_VEC3);
+    BeginShaderMode(recolorShader);
+    Render_DrawAnimatedObject(obj);
+    EndShaderMode();
+}
+
+static void UnloadRecolorShader(void) {
+    if (!recolorReady) return;
+    UnloadShader(recolorShader);
+    recolorReady = false;
+}
+
 static void DrawSustainFull(char fullyAbove) {
     if (fullyAbove) return;
-    Render_DrawAnimatedObject(&trail);
-    Render_DrawAnimatedObject(&end);
+    DrawNoteObj(&trail);
+    DrawNoteObj(&end);
 }
 
 /* Sustain em andamento: corta a parte que ja passou do receptor. */
@@ -140,9 +209,9 @@ static void DrawSustainClipped(const StrumNote* strum, float k) {
         if (trailBottom > receptorY)
             trail.scaleY = fmaxf(0.0f, (receptorY - trail.position.y) / TRAIL_SEGMENT_H);
         if (trail.scaleY > 0.0f)
-            Render_DrawAnimatedObject(&trail);
+            DrawNoteObj(&trail);
         if (end.position.y < receptorY)
-            Render_DrawAnimatedObject(&end);
+            DrawNoteObj(&end);
         return;
     }
 
@@ -153,9 +222,9 @@ static void DrawSustainClipped(const StrumNote* strum, float k) {
     }
 
     if (trail.scaleY > 0.0f)
-        Render_DrawAnimatedObject(&trail);
+        DrawNoteObj(&trail);
     if (trailBottom >= receptorY)
-        Render_DrawAnimatedObject(&end);
+        DrawNoteObj(&end);
 }
 
 /* Tecla da lane segurada neste frame (botplay conta como sempre segurada). So e consultada quando ha sustain ativo. */
@@ -200,14 +269,13 @@ static void DrawSustain(const Note* note, const StrumNote* strum, float endHeigh
     trail.scaleX = end.scaleX = NOTE_SCALE * k;
     trail.position.x = strum->object.position.x + trailOffset.x * k;
     trail.scaleY = fmaxf(0.01f, (lengthPx - endHeight) / TRAIL_SEGMENT_H);
-    const Color tint = GameData_LaneTint(note->id);
-    const Color body = {tint.r, tint.g, tint.b, normalColor.a};
-    trail.color = body;
+    noteTint = GameData_LaneTint(note->id);
+    trail.color = normalColor;
 
     SetAnimIfChanged(&end, Note_EndAnimation(note->id));
     end.position.x = trail.position.x;
     end.scaleY = endHeight / END_SEGMENT_H;
-    end.color = body;
+    end.color = normalColor;
 
     // Cauda vai no sentido do futuro: para baixo no normal, para cima no downscroll.
     if (gameOptions.scroll == 1) {
@@ -338,8 +406,9 @@ void PlayStateNoteSpawn_Draw(const PlayStateNoteView* view) {
 
         if (!note->pressed) {
             renderNote.scaleX = renderNote.scaleY = HeadScale(note);
-            renderNote.color = GameData_LaneTint(note->id);
-            Render_DrawAnimatedObject(&renderNote);
+            noteTint = GameData_LaneTint(note->id);
+            renderNote.color = WHITE;
+            DrawNoteObj(&renderNote);
         }
     }
 

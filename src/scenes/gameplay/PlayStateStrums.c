@@ -148,10 +148,14 @@ void PlayStateStrums_DrawKeyMonitor(void) {
         const Rectangle box = {x0 + i * (MONITOR_KEY + MONITOR_GAP), y, MONITOR_KEY, MONITOR_KEY};
 
         DrawRectangleRec(box, (Color) {0, 0, 0, 150});
+        /* Cor da coluna: matiz escolhido em brilho total (a barra escura nao apaga o monitor). */
         const Color tint = GameData_LaneTint(i);
-        const Color base = {
-            (unsigned char)(laneColors[i].r * tint.r / 255), (unsigned char)(laneColors[i].g * tint.g / 255),
-            (unsigned char)(laneColors[i].b * tint.b / 255), 255};
+        Color base = laneColors[i];
+        if (tint.r != 255 || tint.g != 255 || tint.b != 255) {
+            const Vector3 hsv = ColorToHSV(tint);
+            base = ColorFromHSV(hsv.x, hsv.y > 0.0f ? 1.0f : 0.0f, 1.0f);
+        }
+        base.a = 255;
         Color lit = base;
         lit.a = (unsigned char)(255.0f * mobileGlow[i]);
         DrawRectangleRec(box, lit);

@@ -77,3 +77,14 @@ LOAD [moribund-3] init: 0.0 ms, chart: 142.7 ms, sounds: 98.5 ms, characters: 49
 
 --- SESSION LOG START ---
 LOAD [Astray] init: 20.6 ms, chart: 26.6 ms, sounds: 83.0 ms, characters: 374.2 ms, stage: 8.1 ms, song audio: 1.8 ms, notes: 0.3 ms, ui: 7.5 ms, warmup: 0.2 ms, (textures on main thread: 413.9 ms) total: 522.3 ms
+
+--- SESSION LOG START ---
+LOAD [moribund-3] init: 31.8 ms, chart: 150.6 ms, sounds: 98.0 ms, characters: 473.9 ms, stage: 4.6 ms, song audio: 1.8 ms, notes: 3.7 ms, ui: 8.5 ms, warmup: 0.3 ms, (textures on main thread: 515.3 ms) total: 773.1 ms
+LOAD [moribund-3] init: 0.0 ms, chart: 110.5 ms, sounds: 7.0 ms, characters: 472.6 ms, stage: 4.1 ms, song audio: 1.7 ms, notes: 3.6 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 475.3 ms) total: 599.7 ms
+LOAD [moribund-3] init: 0.0 ms, chart: 149.4 ms, sounds: 1.6 ms, characters: 459.5 ms, stage: 2.8 ms, song audio: 1.7 ms, notes: 3.8 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 460.7 ms) total: 618.9 ms
+LOAD [unstable] init: 0.0 ms, chart: 9.1 ms, sounds: 131.1 ms, characters: 434.1 ms, stage: 10.0 ms, song audio: 2.2 ms, notes: 0.3 ms, ui: 0.0 ms, warmup: 0.1 ms, (textures on main thread: 416.1 ms) total: 587.0 ms
+LOAD [unstable] init: 0.0 ms, chart: 12.8 ms, sounds: 1.8 ms, characters: 449.4 ms, stage: 5.8 ms, song audio: 1.8 ms, notes: 0.3 ms, ui: 0.0 ms, warmup: 0.1 ms, (textures on main thread: 452.5 ms) total: 472.0 ms
+LOAD [apostrophe] init: 0.0 ms, chart: 26.4 ms, sounds: 47.2 ms, characters: 450.1 ms, stage: 8.3 ms, song audio: 4.0 ms, notes: 0.8 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 447.0 ms) total: 537.1 ms
+
+--- SESSION LOG START ---
+LOAD [triklizo-koooled] init: 18.3 ms, chart: 18.0 ms, sounds: 153.3 ms, characters: 383.9 ms, stage: 6.7 ms, song audio: 2.1 ms, notes: 0.4 ms, ui: 8.0 ms, warmup: 0.2 ms, (textures on main thread: 396.5 ms) total: 590.9 ms
