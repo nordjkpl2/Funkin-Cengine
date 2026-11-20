@@ -14,9 +14,13 @@ void PlayStateText_Unload(void);
 /* Em todo Create: forca o texto a ser refeito. */
 void PlayStateText_Reset(void);
 
-/* Tempo, titulo, score e misses. songTime < 0 conta como 0:00.
+/* Atualiza tempo, score e misses e rasteriza so o que mudou. Chamar no Update, NUNCA no Draw
+   (usa render para textura, que nao pode aninhar com o render target da cena). songTime < 0 conta como 0:00.
    scorePosition: SCORE_POS_CENGINE (canto direito) ou SCORE_POS_PSYCH (centro sob a barra). */
-void PlayStateText_Draw(int score, int misses, float songTime, char showScore, char scorePosition);
+void PlayStateText_Refresh(int score, int misses, float songTime, char showScore, char scorePosition);
+
+/* Blit dos textos do HUD (tempo, titulo, score/misses). Dentro da camera do HUD. */
+void PlayStateText_Draw(char showScore, char scorePosition);
 
 /* Marca d'agua fixa; desenhar por ultimo. */
 void PlayStateText_DrawBotplayMark(void);

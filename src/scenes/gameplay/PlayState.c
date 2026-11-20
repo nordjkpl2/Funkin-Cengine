@@ -446,6 +446,11 @@ static void PlayState_Update([[maybe_unused]] RayScene* scene) {
 
     ApplyMusicVolume();
 
+    // Textos do HUD rasterizam aqui (so os que mudaram). Nao pode ser no Draw: la a cena
+    // ja esta dentro de render target (tela cheia) e o raster aninhado quebra o framebuffer.
+    PlayStateText_Refresh(PlayStatePlayerInput_Score(), PlayStatePlayerInput_Misses(), (float)PlayStateBeat_Time(),
+                          gameOptions.showScore, gameOptions.scorePosition);
+
     if (warnScreen) {
         if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)) warnScreen = 0;
         return;
@@ -530,8 +535,7 @@ static void DrawHud(float dt) {
     PlayStateStrums_DrawKeyMonitor();
 
     PlayStateHealth_Draw(PlayStateAnimations_Dad()->icon, PlayStateAnimations_Bf()->icon);
-    PlayStateText_Draw(PlayStatePlayerInput_Score(), PlayStatePlayerInput_Misses(), (float)PlayStateBeat_Time(),
-                       gameOptions.showScore, gameOptions.scorePosition);
+    PlayStateText_Draw(gameOptions.showScore, gameOptions.scorePosition);
 
     if (PlayStateBeat_InCountdown())
         PlayStateIntro_Draw();

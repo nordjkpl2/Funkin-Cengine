@@ -1342,6 +1342,14 @@ int GetGlyphIndex(Font font, int codepoint)
 
 #define SUPPORT_UNORDERED_CHARSET
 #if defined(SUPPORT_UNORDERED_CHARSET)
+    // Atalho O(1): fontes com charset ASCII em ordem (LoadFontEx padrao) tem o glifo
+    // de codepoint 32..126 no indice codepoint-32. Se nao bater, cai na busca linear.
+    if (codepoint >= 32 && codepoint <= 126 && font.glyphCount > (codepoint - 32) &&
+        font.glyphs[codepoint - 32].value == codepoint)
+    {
+        return codepoint - 32;
+    }
+
     int fallbackIndex = 0;      // Get index of fallback glyph '?'
 
     // Look for character index in the unordered charset

@@ -15,6 +15,7 @@
 #include "rlgl.h"
 #endif
 
+#include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
 
@@ -299,8 +300,20 @@ int RayGame_GetTargetFPS(void)
    5. INICIALIZAÇÃO
    ================================================================ */
 
+/* Logs do raylib (TraceLog) passam pelo Log.c: write direto + arquivo, em vez
+   do vprintf/fflush padrao do raylib. Fatal continua saindo do processo. */
+static void RaylibTraceToLog(int logType, const char *text, va_list args)
+{
+    char buf[512];
+    vsnprintf(buf, sizeof(buf), text, args);
+
+    if (logType == LOG_FATAL) Log_Fatal(buf);   /* nao retorna */
+    else                      Log_Info(buf);
+}
+
 void RayGame_Start(const char *gameTitle)
 {
+    SetTraceLogCallback(RaylibTraceToLog);
     SetConfigFlags(FLAG_WINDOW_ALWAYS_RUN | FLAG_WINDOW_RESIZABLE | FLAG_VSYNC_HINT);
 
     InitWindow(RAYGAME_CANVAS_WIDTH, RAYGAME_CANVAS_HEIGHT, gameTitle);

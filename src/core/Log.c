@@ -5,12 +5,14 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdatomic.h>
-#include <unistd.h>
 
 #if defined(_WIN32) || defined(_WIN64)
   #include <windows.h>
+  #include <io.h>     /* _write */
 #else
-  #include <sched.h> /* sched_yield (Linux/POSIX) */
+  #include <sched.h>    /* sched_yield (POSIX) */
+  #include <sys/stat.h> /* mkdir (POSIX) */
+  #include <unistd.h>   /* write (POSIX) */
 #endif
 
 // Trava simples (spin) para o log poder ser usado por threads de fundo.
@@ -45,6 +47,7 @@ static void EnsureLogFileOpen(void) {
     mkdir("assets", 0755);
 #endif
 
+
     logFile = fopen("assets/logs.txt", "a");
     if (logFile) {
         fprintf(logFile, "\n--- SESSION LOG START ---\n");
@@ -63,7 +66,11 @@ static void WriteToFile(const char* buf, size_t len, int flush) {
 
 static void RawWrite(int fd, const char* s, size_t n) {
     while(n > 0) {
+#if defined(_WIN32) || defined(_WIN64)
+        int w = _write(fd, s, (unsigned)n);
+#else
         long w = (long)write(fd, s, n);
+#endif
         if(w <= 0) break;
         s += (size_t)w;
         n -= (size_t)w;

@@ -13,6 +13,7 @@
 #include "data/modimport/ModImportFiles.h"
 #include "data/modimport/ModImportCharacters.h"
 
+#include "Log.h"
 #include "core/DirWalk.h"
 #include "threads/cpu/Jobs.h"
 #include "threads/Thread.h"
@@ -30,7 +31,9 @@
 /* ------------------------------------------------------------------------- */
 
 #define MI_TICK(name) do { const double now_ = GetTime(); \
-    printf("[import] %-14s %7.0f ms\n", name, (now_ - tickT) * 1000.0); fflush(stdout); tickT = now_; } while (0)
+    char tickBuf_[96]; \
+    (void)snprintf(tickBuf_, sizeof(tickBuf_), "[import] %-14s %7.0f ms", name, (now_ - tickT) * 1000.0); \
+    Log_Info(tickBuf_); tickT = now_; } while (0)
 
 static char MI_ImportSingle(const char *srcMod, const char *destModPath,
                             const char *modName, char *msg, size_t msgSize,
