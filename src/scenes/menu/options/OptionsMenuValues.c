@@ -17,6 +17,7 @@ static const char* scroll_names[3] = {"Normal", "Downscroll", "Middlescroll"};
 static const char* thread_names[2] = {"Auto", "Limited"};
 static const char* score_position_names[2] = {"Cengine", "Psych"};
 static const char* note_colors_names[1] = {"Edit"};
+static const char* hidden_notes_names[2] = {"Off", "Alternate"};
 static const char* strum_bg_names[11] = {"Off", "10%", "20%", "30%", "40%", "50%", "60%", "70%", "80%", "90%", "100%"};
 
 int limitedThreads = 2; // ultimo numero usado no modo Limited (volta ao alternar)
@@ -47,6 +48,7 @@ Option options[OPTION_COUNT] = {
     [OPTION_BOPPING_ICONS] = {.text = "Bopping Icons", .type = OPTION_VALUE_BOOL},
     [OPTION_STRUM_BG] = {.text = "Strumline Background", .type = OPTION_VALUE_LIST, .options = strum_bg_names, .step = 1, .min = 0, .max = 10},
     [OPTION_STRUM_MOBILE] = {.text = "Keys Monitor", .type = OPTION_VALUE_BOOL},
+    [OPTION_HIDDEN_NOTES] = {.text = "Hidden Notes", .type = OPTION_VALUE_LIST, .options = hidden_notes_names, .step = 1, .min = 0, .max = 1},
     [OPTION_NOTE_COLORS] = {.text = "Note Colors", .type = OPTION_VALUE_LIST, .options = note_colors_names, .step = 1, .min = 0, .max = 0},
     [OPTION_ZOOMFACTOR_UI] = {.text = "UI beat zoom", .type = OPTION_VALUE_FLOAT, .max = 3, .min = 0, .step = 0.1f, .altStep = 1},
     [OPTION_ZOOMFACTOR_GAME] = {.text = "Game beat zoom", .type = OPTION_VALUE_FLOAT, .max = 3, .min = 0, .step = 0.1f, .altStep = 1},
@@ -140,6 +142,7 @@ void ApplyNumValue(void) {
         case OPTION_KEYBOARD_SCHEME:   gameOptions.scheme = (int)o->value; break;
         case OPTION_SCROLL_STYLE:     gameOptions.scroll = (char)(int)o->value; break;
         case OPTION_GHOST:             gameOptions.ghost = (char)(int)o->value; break;
+        case OPTION_HIDDEN_NOTES:      gameOptions.hiddenNotesAlt = (char)(int)o->value; break;
         case OPTION_ZOOMFACTOR_GAME:   gameOptions.zoomFactorGAME = o->value; break;
         case OPTION_ZOOMFACTOR_UI:     gameOptions.zoomFactorUI = o->value; break;
         case OPTION_SCORE_POSITION:    gameOptions.scorePosition = (char)(int)o->value; break;
@@ -290,6 +293,7 @@ void Options_LoadValues(void) {
     options[OPTION_BOPPING_ICONS].value = gameOptions.bopIcons;
     options[OPTION_STRUM_BG].value = gameOptions.strumBgPercent / 10;
     options[OPTION_STRUM_MOBILE].value = gameOptions.strumMobileVisible;
+    options[OPTION_HIDDEN_NOTES].value = gameOptions.hiddenNotesAlt;
     options[OPTION_VSYNC].value = gameOptions.vsync;
     if (gameOptions.threadLimit > 0) limitedThreads = gameOptions.threadLimit;
     options[OPTION_THREADS].value = gameOptions.threadLimit > 0;

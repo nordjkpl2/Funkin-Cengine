@@ -88,3 +88,12 @@ LOAD [apostrophe] init: 0.0 ms, chart: 26.4 ms, sounds: 47.2 ms, characters: 450
 
 --- SESSION LOG START ---
 LOAD [triklizo-koooled] init: 18.3 ms, chart: 18.0 ms, sounds: 153.3 ms, characters: 383.9 ms, stage: 6.7 ms, song audio: 2.1 ms, notes: 0.4 ms, ui: 8.0 ms, warmup: 0.2 ms, (textures on main thread: 396.5 ms) total: 590.9 ms
+
+--- SESSION LOG START ---
+LOAD [macrosm] init: 19.1 ms, chart: 15.8 ms, sounds: 155.2 ms, characters: 463.3 ms, stage: 9.3 ms, song audio: 2.7 ms, notes: 0.2 ms, ui: 9.0 ms, warmup: 0.2 ms, (textures on main thread: 481.3 ms) total: 674.9 ms
+LOAD [macrosm] init: 0.0 ms, chart: 17.4 ms, sounds: 1.1 ms, characters: 497.2 ms, stage: 3.9 ms, song audio: 1.8 ms, notes: 0.2 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 499.5 ms) total: 521.8 ms
+LOAD [ampersand] init: 0.0 ms, chart: 16.5 ms, sounds: 32.0 ms, characters: 422.8 ms, stage: 17.2 ms, song audio: 12.2 ms, notes: 0.3 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 417.2 ms) total: 501.2 ms
+LOAD [central] init: 0.0 ms, chart: 13.5 ms, sounds: 107.8 ms, characters: 489.3 ms, stage: 5.6 ms, song audio: 2.1 ms, notes: 0.4 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 476.9 ms) total: 618.8 ms
+
+--- SESSION LOG START ---
+LOAD [obfuscation] init: 20.7 ms, chart: 53.3 ms, sounds: 96.5 ms, characters: 353.0 ms, stage: 9.5 ms, song audio: 4.4 ms, notes: 0.6 ms, ui: 8.1 ms, warmup: 0.2 ms, (textures on main thread: 389.4 ms) total: 546.5 ms

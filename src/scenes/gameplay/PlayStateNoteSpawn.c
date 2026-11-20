@@ -81,6 +81,7 @@ void PlayStateNoteSpawn_Load(const Song* song) {
     for (size_t i = 0; i < song->sectionCount; i++) {
         for (size_t j = 0; j < song->sections[i].noteCount; j++) {
             Note_Load(notes + noteIndex, song->sections[i].notes + j);
+            notes[noteIndex].sectionMustHit = song->sections[i].mustHit;
             noteIndex++;
         }
     }
@@ -372,6 +373,10 @@ void PlayStateNoteSpawn_Draw(const PlayStateNoteView* view) {
 
         if (note->time > cutoffTime)
             break;
+
+        // Hidden Notes: so desenha as notas de quem esta cantando na secao. So muda o desenho; o hit segue igual.
+        if (gameOptions.hiddenNotesAlt && note->mustHit != note->sectionMustHit)
+            continue;
 
         const StrumNote* strum = (note->mustHit ? view->bfStrums : view->dadStrums) + note->id;
 

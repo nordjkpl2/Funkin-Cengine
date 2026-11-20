@@ -18,6 +18,7 @@ typedef struct GameOptions {
     char healthDrainBotplay;  /* botplay ganha/perde vida como o jogador (padrao: off; off = barra travada) */
     char strumBgPercent;      /* fundo preto atras dos receptores: 0 = off, 10..100 = opacidade em % */
     char strumMobileVisible;  /* 1 = tela dividida em 4 colunas com as cores das notas */
+    char hiddenNotesAlt;      /* 1 = so desenha as notas de quem esta cantando na secao (padrao: off) */
     unsigned char laneTint[4][3]; /* RGB por coluna (esq, baixo, cima, dir): multiplica a skin; 255,255,255 = original */
     int scheme, fps;
     int threadLimit; /* 0 = Auto (nucleos - 1); >0 = limite de threads de fundo (1..64) */

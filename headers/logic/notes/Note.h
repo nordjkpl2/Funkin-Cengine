@@ -18,6 +18,7 @@ typedef struct {
     char mustHit;
     char pressed;
     char missed;
+    char sectionMustHit; /* quem canta na secao desta nota (mustHit da secao); usado por Hidden Notes */
 } Note;
 
 /* // * Animações */
