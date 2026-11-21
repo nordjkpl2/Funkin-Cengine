@@ -63,7 +63,12 @@ static int MI_PeakNps(const float *times, int count)
 static int MI_PushTime(float **times, int *count, int *cap, float value)
 {
     if (*count == *cap) {
-        const int newCap = *cap > 0 ? *cap * 2 : 1024;
+        int newCap;
+        if (*cap == 0) newCap = 1024;
+        else if (*cap > INT_MAX / 2) {          /* *cap * 2 estouraria int */
+            if (*cap == INT_MAX) return 0;
+            newCap = INT_MAX;
+        } else newCap = *cap * 2;
         float *grown = (float *)realloc(*times, sizeof(float) * (size_t)newCap);
         if (grown == NULL) return 0;
         *times = grown;

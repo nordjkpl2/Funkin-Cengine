@@ -4,11 +4,13 @@
  */
 
 #include "scenes/api/NoteSkinCache.h"
+#include "scenes/gameplay/PlayStateNoteAtlas.h"
 #include "scenes/gameplay/PlayStateNoteSpawn.h"
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
 #include "GameData.h"
+#include "Log.h"
 #include "rlgl.h"
 
 static RayAnimatedObject trail;
@@ -62,34 +64,55 @@ void PlayStateNoteSpawn_SetEvents(const PlayStateNoteEvents* newEvents) {
     events = *newEvents;
 }
 
+/* Cor de cada lane fixa durante a musica: calculada uma vez aqui, nao por nota/frame. */
+static Color laneColor[4] = {{255, 255, 255, 255}, {255, 255, 255, 255}, {255, 255, 255, 255}, {255, 255, 255, 255}};
+static Vector3 laneTargetHSV[4];
+
+static bool IsWhiteColor(Color c) {
+    return c.r == 255 && c.g == 255 && c.b == 255;
+}
+
 void PlayStateNoteSpawn_Load(const Song* song) {
     firstNote = 0;
     noteCount = 0;
     for (size_t i = 0; i < song->sectionCount; i++)
         noteCount += song->sections[i].noteCount;
 
+    for (int lane = 0; lane < 4; lane++) {
+        laneColor[lane] = GameData_LaneTint(lane);
+        laneTargetHSV[lane] = ColorToHSV(laneColor[lane]);
+    }
+    {
+        const RayAnimationHandler skin = Cache_GetNoteAnimations();
+        const Color tints[4] = {laneColor[0], laneColor[1], laneColor[2], laneColor[3]};
+        NoteAtlas_Build(&skin, tints);   /* false = sem cor customizada ou skin grande: cai no shader */
+    }
+
     notes = NULL;
     if (noteCount == 0) return;
 
     notes = malloc(sizeof(Note) * noteCount);
-    if (notes == NULL) {
-        noteCount = 0;
-        return;
-    }
+    if (notes == NULL)
+        Log_FatalF("PlayStateNoteSpawn_Load: sem memoria para %zu notas", noteCount);
+
     size_t noteIndex = 0;
+    char sorted = 1;
 
     for (size_t i = 0; i < song->sectionCount; i++) {
         for (size_t j = 0; j < song->sections[i].noteCount; j++) {
-            Note_Load(notes + noteIndex, song->sections[i].notes + j);
-            notes[noteIndex].sectionMustHit = song->sections[i].mustHit;
+            Note* note = notes + noteIndex;
+            Note_Load(note, song->sections[i].notes + j);
+            note->sectionMustHit = song->sections[i].mustHit != 0;
+            if (noteIndex > 0 && note->time < notes[noteIndex - 1].time)
+                sorted = 0;
             noteIndex++;
         }
     }
 
-    // Ordenar e critico: o culling e o break do Draw assumem ordem cronologica.
-    if (noteCount > 0) {
+    // Ordenar e critico (culling e break do Draw assumem ordem cronologica), mas so quando preciso:
+    // charts normais ja vem em ordem e pulam o qsort.
+    if (!sorted)
         qsort(notes, noteCount, sizeof(Note), Note_CompareChronological);
-    }
 }
 
 void PlayStateNoteSpawn_Reset(void) {
@@ -123,6 +146,7 @@ void PlayStateNoteSpawn_SeekTo(float time) {
 static void UnloadRecolorShader(void);
 
 void PlayStateNoteSpawn_Unload(void) {
+    NoteAtlas_Free();
     UnloadRecolorShader();
     free(notes);
     notes = NULL;
@@ -181,7 +205,6 @@ static const char* const recolorFS =
 static Shader recolorShader;
 static int recolorLoc = -1;
 static bool recolorReady;
-static Color noteTint = {255, 255, 255, 255}; /* cor da coluna da nota que esta sendo desenhada */
 
 static void EnsureRecolorShader(void) {
     if (recolorReady) return;
@@ -190,46 +213,78 @@ static void EnsureRecolorShader(void) {
     recolorReady = true;
 }
 
-/* Desenha um objeto de nota com a cor da coluna (branco = skin original, sem shader). */
-static void DrawNoteObj(RayAnimatedObject* obj) {
-    if (noteTint.r == 255 && noteTint.g == 255 && noteTint.b == 255) {
-        Render_DrawAnimatedObject(obj);
-        return;
-    }
-    EnsureRecolorShader();
-    const Vector3 hsv = ColorToHSV(noteTint);
-    const float target[3] = {hsv.x / 360.0f, hsv.y, hsv.z};
-    rlDrawRenderBatchActive();   /* o lote pendente usa o uniform antigo */
-    SetShaderValue(recolorShader, recolorLoc, target, SHADER_UNIFORM_VEC3);
-    BeginShaderMode(recolorShader);
-    Render_DrawAnimatedObject(obj);
-    EndShaderMode();
-}
-
 static void UnloadRecolorShader(void) {
     if (!recolorReady) return;
     UnloadShader(recolorShader);
     recolorReady = false;
 }
 
-/* Menu de opcoes (preview): mesmo desenho de nota com a cor da coluna. */
+/* Desenha `obj` com o conjunto de animacao `set` (a textura do atlas), sem mexer no resto do objeto. */
+static void DrawInSet(RayAnimatedObject* obj, const RayAnimationHandler* set) {
+    const RayAnimationHandler saved = obj->animationSet;
+    obj->animationSet = *set;
+    Render_DrawAnimatedObject(obj);
+    obj->animationSet = saved;
+}
+
+/* Desenha a(s) parte(s) de uma nota da lane `lane` (b pode ser NULL; a e b juntos = sustain).
+   Com atlas: cada objeto usa a variante da lane na mesma textura, entao o lote segue unico.
+   Sem atlas: lane branca desenha direto; lane colorida usa o shader de matiz, com um
+   begin/end so para as partes (dedup: cabeca/sustain nao repetem a troca de shader). */
+static void DrawLaneObjs(int lane, RayAnimatedObject* a, RayAnimatedObject* b) {
+    if (a == NULL && b == NULL) return;
+    if (lane < 0 || lane > 3) return;
+
+    const RayAnimationHandler* variant = NoteAtlas_Lane(lane);
+    if (variant != NULL) {
+        if (a != NULL) DrawInSet(a, variant);
+        if (b != NULL) DrawInSet(b, variant);
+        return;
+    }
+
+    if (IsWhiteColor(laneColor[lane])) {
+        if (a != NULL) Render_DrawAnimatedObject(a);
+        if (b != NULL) Render_DrawAnimatedObject(b);
+        return;
+    }
+
+    EnsureRecolorShader();
+    const float target[3] = {laneTargetHSV[lane].x / 360.0f, laneTargetHSV[lane].y, laneTargetHSV[lane].z};
+    rlDrawRenderBatchActive();   /* o lote pendente usa o uniform antigo */
+    SetShaderValue(recolorShader, recolorLoc, target, SHADER_UNIFORM_VEC3);
+    BeginShaderMode(recolorShader);
+    if (a != NULL) Render_DrawAnimatedObject(a);
+    if (b != NULL) Render_DrawAnimatedObject(b);
+    EndShaderMode();
+}
+
+/* Menu de opcoes (preview): mesmo desenho de nota com uma cor qualquer (sempre shader, sem atlas). */
 void PlayStateNoteSpawn_DrawTinted(RayAnimatedObject* obj, Color tint) {
-    noteTint = tint;
-    DrawNoteObj(obj);
+    if (IsWhiteColor(tint)) {
+        Render_DrawAnimatedObject(obj);
+        return;
+    }
+    EnsureRecolorShader();
+    const Vector3 hsv = ColorToHSV(tint);
+    const float target[3] = {hsv.x / 360.0f, hsv.y, hsv.z};
+    rlDrawRenderBatchActive();
+    SetShaderValue(recolorShader, recolorLoc, target, SHADER_UNIFORM_VEC3);
+    BeginShaderMode(recolorShader);
+    Render_DrawAnimatedObject(obj);
+    EndShaderMode();
 }
 
 void PlayStateNoteSpawn_ReleaseTint(void) {
     UnloadRecolorShader();
 }
 
-static void DrawSustainFull(char fullyAbove) {
+static void DrawSustainFull(int lane, char fullyAbove) {
     if (fullyAbove) return;
-    DrawNoteObj(&trail);
-    DrawNoteObj(&end);
+    DrawLaneObjs(lane, &trail, &end);
 }
 
 /* Sustain em andamento: corta a parte que ja passou do receptor. */
-static void DrawSustainClipped(const StrumNote* strum, float k) {
+static void DrawSustainClipped(int lane, const StrumNote* strum, float k) {
     const float receptorY = strum->object.position.y + trailOffset.y * k;
 
     if (gameOptions.scroll == 1) {
@@ -237,10 +292,9 @@ static void DrawSustainClipped(const StrumNote* strum, float k) {
         const float trailBottom = trail.position.y + trail.scaleY * TRAIL_SEGMENT_H;
         if (trailBottom > receptorY)
             trail.scaleY = fmaxf(0.0f, (receptorY - trail.position.y) / TRAIL_SEGMENT_H);
-        if (trail.scaleY > 0.0f)
-            DrawNoteObj(&trail);
-        if (end.position.y < receptorY)
-            DrawNoteObj(&end);
+        DrawLaneObjs(lane,
+                     trail.scaleY > 0.0f ? &trail : NULL,
+                     end.position.y < receptorY ? &end : NULL);
         return;
     }
 
@@ -250,10 +304,9 @@ static void DrawSustainClipped(const StrumNote* strum, float k) {
         trail.position.y = receptorY;
     }
 
-    if (trail.scaleY > 0.0f)
-        DrawNoteObj(&trail);
-    if (trailBottom >= receptorY)
-        DrawNoteObj(&end);
+    DrawLaneObjs(lane,
+                 trail.scaleY > 0.0f ? &trail : NULL,
+                 trailBottom >= receptorY ? &end : NULL);
 }
 
 /* Tecla da lane segurada neste frame (botplay conta como sempre segurada). So e consultada quando ha sustain ativo. */
@@ -298,7 +351,6 @@ static void DrawSustain(const Note* note, const StrumNote* strum, float endHeigh
     trail.scaleX = end.scaleX = NOTE_SCALE * k;
     trail.position.x = strum->object.position.x + trailOffset.x * k;
     trail.scaleY = fmaxf(0.01f, (lengthPx - endHeight) / TRAIL_SEGMENT_H);
-    noteTint = GameData_LaneTint(note->id);
     trail.color = normalColor;
 
     SetAnimIfChanged(&end, Note_EndAnimation(note->id));
@@ -317,17 +369,17 @@ static void DrawSustain(const Note* note, const StrumNote* strum, float endHeigh
 
     if (note->missed) {
         trail.color = end.color = missedColor;
-        DrawSustainFull(fullyAbove);
+        DrawSustainFull(note->id, fullyAbove);
         return;
     }
 
     // Jogador ainda nao acertou a cabeca: sustain inteiro, sem corte.
     if (note->mustHit && !gameOptions.botplay && !note->pressed) {
-        DrawSustainFull(fullyAbove);
+        DrawSustainFull(note->id, fullyAbove);
         return;
     }
 
-    DrawSustainClipped(strum, k);
+    DrawSustainClipped(note->id, strum, k);
 }
 
 /* Avanca firstNote sobre notas ja resolvidas e bem atras do receptor. */
@@ -439,9 +491,8 @@ void PlayStateNoteSpawn_Draw(const PlayStateNoteView* view) {
 
         if (!note->pressed) {
             renderNote.scaleX = renderNote.scaleY = HeadScale(note);
-            noteTint = GameData_LaneTint(note->id);
             renderNote.color = WHITE;
-            DrawNoteObj(&renderNote);
+            DrawLaneObjs(note->id, &renderNote, NULL);
         }
     }
 

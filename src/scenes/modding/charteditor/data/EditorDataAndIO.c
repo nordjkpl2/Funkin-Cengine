@@ -4,6 +4,7 @@
 #include"data/Song.h"
 #include "core/ModPath.h"
 #include"yyjson.h"
+#include <limits.h>
 #include "scenes/modding/charteditor/data/EditorDataAndIO.h"
 
 // helpers yyjson -> corrige bug do int vs double
@@ -162,6 +163,13 @@ static int EdSec_UpperBound(const EdSec* s, float time) {   /* 1o indice com tim
     return lo;
 }
 
+/* Proxima capacidade (dobra) sem estourar int. Retorna 0 se ja nao ha como crescer. */
+static int EdSec_NextCap(int cap, int first) {
+    if (cap == 0) return first;
+    if (cap > INT_MAX / 2) return cap < INT_MAX ? INT_MAX : 0;
+    return cap * 2;
+}
+
 void EdSec_Add(EdSec* s, float time, int lane, float len) {
     // tira duplicada (mesma casa, <2ms) igual ao jogo: so os vizinhos dentro de 2 ms importam
     for(int i = EdSec_LowerBound(s, time - 2.0f); i < s->count && s->notes[i].time < time + 2.0f; i++) {
@@ -169,8 +177,8 @@ void EdSec_Add(EdSec* s, float time, int lane, float len) {
             return;
     }
     if(s->count >= s->cap) {
-        int nc = (s->cap == 0) ? 8 : s->cap * 2;
-        EdNote* g = realloc(s->notes, sizeof(EdNote) * (size_t)nc);
+        int nc = EdSec_NextCap(s->cap, 8);
+        EdNote* g = nc > 0 ? realloc(s->notes, sizeof(EdNote) * (size_t)nc) : NULL;
         if(g == NULL) return;
         s->notes = g;
         s->cap = nc;
@@ -187,8 +195,8 @@ void EdSec_Add(EdSec* s, float time, int lane, float len) {
 // bulk: anexa sem dedup/sort (import/paste em massa). Fecha com FinishBulk.
 void EdSec_AddBulk(EdSec* s, float time, int lane, float len) {
     if(s->count >= s->cap) {
-        int nc = (s->cap == 0) ? 1024 : s->cap * 2;
-        EdNote* g = realloc(s->notes, sizeof(EdNote) * (size_t)nc);
+        int nc = EdSec_NextCap(s->cap, 1024);
+        EdNote* g = nc > 0 ? realloc(s->notes, sizeof(EdNote) * (size_t)nc) : NULL;
         if(g == NULL) return;
         s->notes = g;
         s->cap = nc;

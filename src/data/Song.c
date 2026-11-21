@@ -106,6 +106,16 @@ void Song_Parse(Song *song, const char *songDataPath)
     fclose(file);
 }
 
+void Song_ReleaseNotes(Song *song)
+{
+    if (song == NULL || song->sections == NULL) return;
+    for (int i = 0; i < song->sectionCount; ++i) {
+        free(song->sections[i].notes);
+        song->sections[i].notes = NULL;
+        song->sections[i].noteCount = 0;
+    }
+}
+
 void Song_Free(Song *song)
 {
     if (song == NULL) return;

@@ -312,6 +312,7 @@ static void PlayState_Create([[maybe_unused]] RayScene* scene) {
     PlayStateAudio_Load(songDir);
     LoadMark("song audio");
     PlayStateNoteSpawn_Load(&song);
+    Song_ReleaseNotes(&song);   /* as notas agora vivem no array da gameplay */
     PlayStateAudio_StartPaused();
     LoadMark("notes");
 

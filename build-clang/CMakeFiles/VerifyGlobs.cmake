@@ -137,6 +137,7 @@ set(OLD_GLOB
   "D:/dev/funkin c/src/scenes/gameplay/PlayStateEventsInGameplay.c"
   "D:/dev/funkin c/src/scenes/gameplay/PlayStateHealth.c"
   "D:/dev/funkin c/src/scenes/gameplay/PlayStateIntro.c"
+  "D:/dev/funkin c/src/scenes/gameplay/PlayStateNoteAtlas.c"
   "D:/dev/funkin c/src/scenes/gameplay/PlayStateNoteSpawn.c"
   "D:/dev/funkin c/src/scenes/gameplay/PlayStatePause.c"
   "D:/dev/funkin c/src/scenes/gameplay/PlayStatePlayerInput.c"

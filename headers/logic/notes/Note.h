@@ -3,22 +3,24 @@
 #ifndef NOTE_H
 #define NOTE_H
 
+#include <stdint.h>
 #include "Render.h"
 #include "data/Song.h"
 
 typedef struct {
-    RayAnimatedObject object;  
+    RayAnimatedObject object;
     int id;
 } StrumNote;
 
-typedef struct { 
-    int id;
+/* 12 bytes: os flags ficam em bits (0/1) e a lane (-1..3) cabe em int8. */
+typedef struct {
     float time;
     float length;
-    char mustHit;
-    char pressed;
-    char missed;
-    char sectionMustHit; /* quem canta na secao desta nota (mustHit da secao); usado por Hidden Notes */
+    int8_t id;                          /* lane 0..3, -1 = invalida */
+    unsigned char mustHit : 1;
+    unsigned char pressed : 1;
+    unsigned char missed : 1;
+    unsigned char sectionMustHit : 1;   /* quem canta na secao desta nota (mustHit da secao); usado por Hidden Notes */
 } Note;
 
 /* // * Animações */

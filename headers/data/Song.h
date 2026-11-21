@@ -37,4 +37,7 @@ void Song_LoadSongFromDir(Song* song, const char* dirPath);
 void Song_LoadSongFromDirDiff(Song* song, const char* dirPath, const char* diff);
 char Song_HasChart(const char* dirPath);
 void Song_Free(Song* song);
+/* Libera so as notas crus de cada secao (ja copiadas para o array de notas da gameplay).
+   Mantem sectionCount, bpm, mustHit e len, que o beat ainda usa. */
+void Song_ReleaseNotes(Song* song);
 #endif
