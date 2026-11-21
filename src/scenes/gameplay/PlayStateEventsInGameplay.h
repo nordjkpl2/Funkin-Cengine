@@ -6,7 +6,8 @@
  * Fade In: tela preta -> imagem. v1 = duracao (ms), v2 = alpha final (%).
  * Fade Out: imagem -> tela preta. v1 = duracao (ms), v2 = alpha final (%).
  * Show Image: mostra images/<s1>.png. v1 = x, v2 = y (px a partir do centro da tela, 0,0 = centralizado),
- *             v3 = escala (%). Fica visivel ate o proximo Show Image (ou fim da musica).
+ *             v3 = escala (%). Fica visivel ate o proximo Show Image ou Hide Image.
+ * Hide Image: esconde a imagem atual. Sem valores.
  */
 #pragma once
 #ifndef PLAYSTATE_EVENTS_IN_GAMEPLAY_H

@@ -233,3 +233,11 @@
 100	370	8169337342898808	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/modding/charteditor/ui/EditorPanels.c.obj	66937c1a640c4446
 79	587	8169337342688798	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/modding/charteditor/data/EditorDataAndIO.c.obj	97bda65b360aaea0
 587	5587	8169337347768111	D:/dev/funkin c/FNF_C_ENGINE.exe	c78a4490ff64be3a
+26	90	8169339281634479	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+97	377	8169339282349919	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayState.c.obj	4d49e48b2e806a05
+103	420	8169339282405120	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayStateEventsInGameplay.c.obj	2a0b1db6e3f01df5
+108	431	8169339282455218	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/modding/charteditor/ui/EditorPanels.c.obj	66937c1a640c4446
+431	5619	8169339285694871	D:/dev/funkin c/FNF_C_ENGINE.exe	c78a4490ff64be3a
+63	106	8169343982941886	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+112	213	8169343983433940	CMakeFiles/FNF_C_ENGINE.dir/src/GameData.c.obj	c323c494a1c6a8eb
+213	5295	8169343984454733	D:/dev/funkin c/FNF_C_ENGINE.exe	c78a4490ff64be3a

@@ -17,12 +17,14 @@
 #define SCREEN_W 1280.0f
 #define SCREEN_H 720.0f
 #define SHOW_IMAGE_NAME "Show Image"
+#define HIDE_IMAGE_NAME "Hide Image"
 #define IMG_MAX 8  /* imagens distintas por musica */
 
 const PlayStateEventType playStateEventTypes[] = {
     {"Fade In",       "tela preta -> imagem (duracao ms, alpha final %)", 1000, 0,   0,   "tempo", "fade",     NULL,       0},
     {"Fade Out",      "imagem -> tela preta (duracao ms, alpha final %)", 1000, 100, 0,   "tempo", "fade",     NULL,       0},
     {SHOW_IMAGE_NAME, "mostra imagem (x, y a partir do centro em px; escala %)", 0, 0, 100, "x (px):", "y (px):", "escala %:", 1},
+    {HIDE_IMAGE_NAME, "esconde a imagem mostrada (sem valores)", 0, 0, 0, NULL, NULL, NULL, 0},
 };
 const int playStateEventTypeCount = (int)(sizeof(playStateEventTypes) / sizeof(playStateEventTypes[0]));
 
@@ -100,6 +102,10 @@ static void Fire(const PsEvent* e) {
         curX = e->v1;
         curY = e->v2;
         curScale = e->v3 > 0.0 ? e->v3 : 100.0;
+        return;
+    }
+    if (strcmp(e->name, HIDE_IMAGE_NAME) == 0) {
+        curImg = -1;
         return;
     }
 

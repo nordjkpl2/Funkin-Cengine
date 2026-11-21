@@ -1,2 +1,4 @@
 
 LOAD [moribund] init: 0.7 ms, chart: 220.5 ms, sounds: 70.2 ms, characters: 466.8 ms, stage: 3.3 ms, song audio: 3.7 ms, notes: 0.0 ms, ui: 7.7 ms, warmup: 0.2 ms, (textures on main thread: 472.6 ms) total: 773.2 ms
+LOAD [ingratiating] init: 21.9 ms, chart: 197.2 ms, sounds: 125.0 ms, characters: 41.1 ms, stage: 6.3 ms, song audio: 2.0 ms, notes: 0.0 ms, ui: 7.9 ms, warmup: 0.3 ms, (textures on main thread: 47.2 ms) total: 401.8 ms
+LOAD [ingratiating] init: 0.0 ms, chart: 179.7 ms, sounds: 1.2 ms, characters: 45.9 ms, stage: 1.8 ms, song audio: 1.9 ms, notes: 0.0 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 46.4 ms) total: 230.8 ms

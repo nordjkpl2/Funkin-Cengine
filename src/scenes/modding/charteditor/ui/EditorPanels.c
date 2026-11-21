@@ -548,6 +548,14 @@ static void Edit_DrawPanel_Events(float x, float y) {
 
         // Show Image: x/y aceitam negativo (a partir do centro) e passos de 10 px
         const PlayStateEventType* t = EvTypeOf(e->name);
+        if(t != NULL && t->label1 == NULL) {
+            // tipo sem valores (ex.: Hide Image): so informa
+            Ed_DrawText(mainFont, "(sem valores)", (Vector2){x, y + 4}, 18, 1, YELLOW);
+            y += 40;
+            snprintf(tb, sizeof(tb), "%d evento(s) no total", edEventCount);
+            Ed_DrawText(mainFont, tb, (Vector2){x, y}, 18, 1, YELLOW);
+            return;
+        }
         const char img = (t != NULL && t->usesImage);
         const char* lab1 = (t != NULL) ? t->label1 : "valor 1:";
         const char* lab2 = (t != NULL) ? t->label2 : "valor 2:";
