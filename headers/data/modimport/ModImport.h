@@ -16,6 +16,12 @@ typedef struct ModImportStats {
     long long bytes;
     int skippedEvents;
     int skippedLua;
+    /* analise do mod: formato detectado e custo de rodar os charts importados */
+    char format[24];      /* "Psych", "FNF (base)", "V-Slice", "misto" ou "" (nao detectado) */
+    int notes;            /* notas somadas em todos os charts */
+    int sustains;         /* notas longas (sustain) */
+    int peakNps;          /* maior pico de notas por segundo entre os charts */
+    int costLevel;        /* 0 baixo, 1 medio, 2 alto (pior chart do import) */
 } ModImportStats;
 
 /* arquivos pulados no ultimo ModImport_Run (mesmo caminho e tamanho no destino) */

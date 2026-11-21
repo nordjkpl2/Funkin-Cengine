@@ -14,8 +14,8 @@
 #define SCREEN_H 720.0f
 
 const PlayStateEventType playStateEventTypes[] = {
-    {"Fade In",  "tela preta -> imagem (duracao ms, alpha final %)", 1000, 0},
-    {"Fade Out", "imagem -> tela preta (duracao ms, alpha final %)", 1000, 100},
+    {"Fade In",  "tela preta -> imagem (duracao ms, alpha final %)", 1000, 0,   "tempo", "fade"},
+    {"Fade Out", "imagem -> tela preta (duracao ms, alpha final %)", 1000, 100, "tempo", "fade"},
 };
 const int playStateEventTypeCount = (int)(sizeof(playStateEventTypes) / sizeof(playStateEventTypes[0]));
 

@@ -591,7 +591,9 @@ static char EdChart_SaveEx(const EdChart* c, char compressed) {
 
     yyjson_mut_obj_add_str(doc, js, "song", c->name);
     if(!compressed || c->bpm != 100.0f) yyjson_mut_obj_add_real(doc, js, "bpm", c->bpm);
-    if(!compressed || c->speed != 1.0f) yyjson_mut_obj_add_real(doc, js, "speed", c->speed);
+    /* speed gravado com no maximo 1 casa decimal (1.0, 1.5...), sem o lixo do float */
+    if(!compressed || c->speed != 1.0f)
+        yyjson_mut_obj_add_real(doc, js, "speed", (double)(int)(c->speed * 10.0f + 0.5f) / 10.0);
     yyjson_mut_obj_add_str(doc, js, "player1", c->p1);
     yyjson_mut_obj_add_str(doc, js, "player2", c->p2);
     yyjson_mut_obj_add_str(doc, js, "stage", c->stage);

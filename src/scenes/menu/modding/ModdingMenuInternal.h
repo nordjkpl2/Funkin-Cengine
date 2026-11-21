@@ -21,7 +21,7 @@ typedef enum {
 
 /* Importer: origem do mod -> assets/mods/<nome>. */
 #define MODDING_PATH_CAP 512
-#define MODDING_MSG_CAP  256
+#define MODDING_MSG_CAP  384
 
 /* Estado (definido em ModdingMenu.c). */
 extern const char *const tabs[TAB_COUNT];

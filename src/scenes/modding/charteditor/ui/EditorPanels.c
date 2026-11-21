@@ -467,6 +467,19 @@ static void Edit_DrawEventPicker(float x, float y) {
     if(shown == 0) Ed_DrawText(mainFont, "nenhum evento encontrado", (Vector2){x, y + 4}, 18, 1, YELLOW);
 }
 
+// rotulos dos campos v1/v2 conforme o tipo do evento (padrao: "valor 1/2")
+static void EvLabels(const char* name, const char** l1, const char** l2) {
+    *l1 = "valor 1:";
+    *l2 = "valor 2:";
+    for(int i = 0; i < playStateEventTypeCount; i++) {
+        if(strcmp(playStateEventTypes[i].name, name) == 0) {
+            *l1 = playStateEventTypes[i].label1;
+            *l2 = playStateEventTypes[i].label2;
+            return;
+        }
+    }
+}
+
 // valor inteiro do evento (v1/v2 sao texto no events.json)
 static void EvStepInt(char* field, size_t n, int delta, int lo, int hi) {
     int v = atoi(field) + delta;
@@ -537,14 +550,17 @@ static void Edit_DrawPanel_Events(float x, float y) {
         Ed_DrawText(mainFont, tb, (Vector2){x, y}, 20, 1, GREEN);
         y += 34;
 
-        Ed_DrawText(mainFont, "valor 1:", (Vector2){x, y + 4}, 20, 1, WHITE);
+        const char* lab1;
+        const char* lab2;
+        EvLabels(e->name, &lab1, &lab2);
+        Ed_DrawText(mainFont, lab1, (Vector2){x, y + 4}, 20, 1, WHITE);
         if(EdButton((Rectangle){x + 110, y, 36, 32}, "-", 22)) EvStepInt(e->v1, sizeof(e->v1), -50, 0, 60000);
         if(EdButton((Rectangle){x + 250, y, 36, 32}, "+", 22)) EvStepInt(e->v1, sizeof(e->v1), 50, 0, 60000);
         snprintf(tb, sizeof(tb), "%s", e->v1);
         Ed_DrawText(mainFont, tb, (Vector2){x + 156, y + 4}, 20, 1, WHITE);
         y += 40;
 
-        Ed_DrawText(mainFont, "valor 2:", (Vector2){x, y + 4}, 20, 1, WHITE);
+        Ed_DrawText(mainFont, lab2, (Vector2){x, y + 4}, 20, 1, WHITE);
         if(EdButton((Rectangle){x + 110, y, 36, 32}, "-", 22)) EvStepInt(e->v2, sizeof(e->v2), -10, 0, 100);
         if(EdButton((Rectangle){x + 250, y, 36, 32}, "+", 22)) EvStepInt(e->v2, sizeof(e->v2), 10, 0, 100);
         snprintf(tb, sizeof(tb), "%s", e->v2);

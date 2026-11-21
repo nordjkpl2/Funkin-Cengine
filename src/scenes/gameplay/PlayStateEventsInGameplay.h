@@ -16,6 +16,8 @@ typedef struct {
     const char* description;
     int defaultDurMs;
     int defaultAlphaPct;
+    const char* label1; /* rotulo do campo v1 no editor */
+    const char* label2; /* rotulo do campo v2 no editor */
 } PlayStateEventType;
 
 extern const PlayStateEventType playStateEventTypes[];

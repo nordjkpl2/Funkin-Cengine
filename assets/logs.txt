@@ -1676,3 +1676,48 @@ TEXTURE: [ID 2] Unloaded texture data from VRAM (GPU)
 SHADER: [ID 3] Default shader unloaded successfully
 TEXTURE: [ID 1] Default texture unloaded successfully
 Window closed successfully
+
+--- SESSION LOG START ---
+[import] songs                0 ms
+[import] weeks+stages         0 ms
+[import] images (queue)       0 ms
+[import] audio+scripts        0 ms
+[import] characters           0 ms
+[import] icons                0 ms
+[import] wait workers         0 ms
+
+--- SESSION LOG START ---
+[import] songs                0 ms
+[import] weeks+stages         0 ms
+[import] images (queue)       0 ms
+[import] audio+scripts        0 ms
+[import] characters           0 ms
+[import] icons                0 ms
+[import] wait workers         0 ms
+
+--- SESSION LOG START ---
+[import] songs                0 ms
+[import] weeks+stages         0 ms
+[import] images (queue)       0 ms
+[import] audio+scripts        0 ms
+[import] characters           0 ms
+[import] icons                0 ms
+[import] wait workers         0 ms
+
+--- SESSION LOG START ---
+[import] songs                0 ms
+[import] weeks+stages         0 ms
+[import] images (queue)       0 ms
+[import] audio+scripts        0 ms
+[import] characters           0 ms
+[import] icons                0 ms
+[import] wait workers         0 ms
+
+--- SESSION LOG START ---
+[import] songs                0 ms
+[import] weeks+stages         0 ms
+[import] images (queue)       0 ms
+[import] audio+scripts        0 ms
+[import] characters           0 ms
+[import] icons                0 ms
+[import] wait workers         0 ms

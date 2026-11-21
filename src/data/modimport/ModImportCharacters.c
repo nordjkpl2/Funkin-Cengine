@@ -9,6 +9,8 @@
 #include "data/modimport/ModImport.h"
 #include "data/modimport/ModImportInternal.h"
 #include "data/modimport/ModImportCharacters.h"
+#include "data/modimport/ModImportAnalyze.h"
+#include "data/modimport/ModImportVSlice.h"
 #include "data/modimport/ModImportPath.h"
 #include "data/modimport/ModImportFiles.h"
 #include "data/modimport/ModImportParse.h"
@@ -146,6 +148,13 @@ int MI_CopyStagesRecursive(const char *sourceDir, const char *destinationDir,
     return ok;
 }
 
+/* Soma o custo do chart copiado nas estatisticas do import. */
+static void MI_AnalyzeCopied(const char *chartPath, MI_ImportContext *context)
+{
+    MI_ChartCost cost;
+    if (MI_AnalyzeChart(chartPath, &cost)) MI_AddChartCost(context->stats, &cost);
+}
+
 static int MI_CopyChartsFromDirectory(const char *sourceDir, const char *destinationSong,
                                      MI_ImportContext *context, int *chartCount)
 {
@@ -167,6 +176,8 @@ static int MI_CopyChartsFromDirectory(const char *sourceDir, const char *destina
             ++context->stats->skippedEvents;
             continue;
         }
+        /* V-Slice (chart/metadata) e convertido depois por MI_ImportVSliceCharts. */
+        if (MI_VSliceFileKind(entries.paths[i]) != 0) continue;
         if (!MI_IsSafeComponent(base) || !MI_Join(destination, sizeof(destination), destinationSong, base)) {
             ok = 0;
             continue;
@@ -175,12 +186,14 @@ static int MI_CopyChartsFromDirectory(const char *sourceDir, const char *destina
             /* Reimport atualiza arquivos existentes sem duplicar a estatistica. */
             (void)MI_CopyFile(entries.paths[i], destination, &context->stats->bytes);
             MI_ParseChartActors(entries.paths[i], &context->iconNames);
+            MI_AnalyzeCopied(destination, context);
             continue;
         }
         if (MI_CopyFile(entries.paths[i], destination, &context->stats->bytes)) {
             ++context->stats->charts;
             if (chartCount != NULL) ++*chartCount;
             MI_ParseChartActors(entries.paths[i], &context->iconNames);
+            MI_AnalyzeCopied(destination, context);
         } else {
             ok = 0;
         }
@@ -275,6 +288,7 @@ static void MI_ImportLooseSongCharts(const char *sourceSongs, const char *destin
             ++context->stats->skippedEvents;
             continue;
         }
+        if (MI_VSliceFileKind(entries.paths[i]) != 0) continue;
         MI_GetStem(base, songName, sizeof(songName));
         if (!MI_IsSafeComponent(songName) || songName[0] == '\0' ||
             !MI_Join(destinationSong, sizeof(destinationSong), destinationSongs, songName)) continue;
@@ -289,6 +303,7 @@ static void MI_ImportLooseSongCharts(const char *sourceSongs, const char *destin
                     ++context->stats->songs;
                 }
                 MI_ParseChartActors(entries.paths[i], &context->iconNames);
+                MI_AnalyzeCopied(destination, context);
             }
         }
     }

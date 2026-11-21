@@ -38,6 +38,17 @@ void MI_StatsAdd(ModImportStats *dst, const ModImportStats *src)
         dst->bytes += src->bytes;
     dst->skippedEvents += src->skippedEvents;
     dst->skippedLua += src->skippedLua;
+    dst->notes += src->notes;
+    dst->sustains += src->sustains;
+    if (src->peakNps > dst->peakNps) dst->peakNps = src->peakNps;
+    if (src->costLevel > dst->costLevel) dst->costLevel = src->costLevel;
+    if (src->format[0] != '\0') {
+        if (dst->format[0] == '\0') {
+            MI_CopyString(dst->format, sizeof(dst->format), src->format);
+        } else if (strcmp(dst->format, src->format) != 0) {
+            MI_CopyString(dst->format, sizeof(dst->format), "misto");
+        }
+    }
 }
 
 void MI_GetStem(const char *path, char *out, size_t outSize)

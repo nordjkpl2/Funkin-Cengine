@@ -12,6 +12,9 @@
 #include "data/ModLayout.h"
 #include "data/modimport/ModImportFiles.h"
 #include "data/modimport/ModImportCharacters.h"
+#include "data/modimport/ModImportFormat.h"
+#include "data/modimport/ModImportVSlice.h"
+#include "data/modimport/ModImportAnalyze.h"
 
 #include "Log.h"
 #include "core/DirWalk.h"
@@ -90,7 +93,12 @@ static char MI_ImportSingle(const char *srcMod, const char *destModPath,
     }
 
     double tickT = GetTime();
+    /* Formato do mod (so rotulo + analise; a copia e a mesma para todos). */
+    snprintf(localStats.format, sizeof(localStats.format), "%s",
+             MI_FormatName(MI_DetectFormat(srcMod)));
     if (!MI_ImportSongs(srcMod, destModPath, &context)) ok = 0;
+    /* V-Slice: charts por dificuldade viram songs/<musica>/<dificuldade>.json do engine. */
+    if (!MI_ImportVSliceCharts(srcMod, destModPath, &context)) ok = 0;
     MI_TICK("songs");
 
     if (DirectoryExists(sourceWeeks) &&
@@ -136,11 +144,14 @@ static char MI_ImportSingle(const char *srcMod, const char *destModPath,
     MI_TICK("wait workers");
     if (stats != NULL) *stats = localStats;
     if (msg != NULL && msgSize > 0) {
+        size_t used;
         (void)snprintf(msg, msgSize,
             "import %s: %d musicas, %d charts, %d weeks, %d stages, %d arquivos de imagem, %d personagens, %d animsets, %d icones (%lld KB)",
             modNameSafe, localStats.songs, localStats.charts, localStats.weeks,
             localStats.stages, localStats.images, localStats.characters,
             localStats.animsets, localStats.icons, localStats.bytes / 1024LL);
+        used = strlen(msg);
+        if (used < msgSize) MI_FormatAnalysisLine(msg + used, msgSize - used, &localStats);
     }
 
     /* Mods sem songs tambem podem conter stages/personagens/imagens validos. */
@@ -209,11 +220,14 @@ static char MI_RunImpl(const char *srcMod, const char *dstRoot, const char *modN
         UnloadDirectoryFiles(children);
         if (stats != NULL) *stats = total;
         if (msg != NULL && msgSize > 0) {
+            size_t used;
             (void)snprintf(msg, msgSize,
                 "import mods: %d mods, %d musicas, %d charts, %d weeks, %d stages, %d imagens, %d personagens, %d animsets, %d icones (%lld KB)",
                 imported, total.songs, total.charts, total.weeks, total.stages,
                 total.images, total.characters, total.animsets, total.icons,
                 total.bytes / 1024LL);
+            used = strlen(msg);
+            if (used < msgSize) MI_FormatAnalysisLine(msg + used, msgSize - used, &total);
         }
         return (char)(imported > 0 && ok);
     }
@@ -249,7 +263,7 @@ static struct {
     atomic_int state;
     atomic_int filesTotal;
     atomic_llong bytesTotal;
-    char msg[256];
+    char msg[384];   /* cabe a mensagem do import + analise (formato, notas, pico, custo) */
     ModImportStats stats;
     char ok;
 } mi_run;
