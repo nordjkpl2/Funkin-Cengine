@@ -13,6 +13,7 @@
 #include "rendering/TextMeasure.h"
 #include "scenes/modding/charteditor/data/EditorCharactersAndLists.h"
 #include "scenes/modding/charteditor/ui/EditorPicker.h"
+#include "scenes/gameplay/PlayStateEventsInGameplay.h"
 
 // ---------- acoes de trecho (usadas no menu e nas abas, sem duplicar) ----------
 static void Edit_DoNewPart(void) {
@@ -402,14 +403,157 @@ static void Edit_DrawPanel_Charting(float x, float y) {
     Ed_DrawText(mainFont, "W/S or wheel = scroll", (Vector2){x, y}, 18, 1, YELLOW);
 }
 
+// ---------- eventos: picker com busca + edicao do selecionado ----------
+static char evPickOpen;
+static TxtBox evSearchBox;
+static int evSelected = -1; // indice em edEvents (-1 = nenhum)
+
+// busca sem diferenciar maiusculas (needle vazio casa tudo)
+static char EvContainsCI(const char* hay, const char* needle) {
+    const size_t n = strlen(needle);
+    if(n == 0) return 1;
+    for(size_t i = 0; hay[i] != 0; i++) {
+        size_t k = 0;
+        while(k < n && hay[i + k] != 0) {
+            char a = hay[i + k], b = needle[k];
+            if(a >= 'A' && a <= 'Z') a = (char)(a + 32);
+            if(b >= 'A' && b <= 'Z') b = (char)(b + 32);
+            if(a != b) break;
+            k++;
+        }
+        if(k == n) return 1;
+    }
+    return 0;
+}
+
+static void EvClosePicker(void) {
+    evPickOpen = 0;
+    if(focusBox == &evSearchBox) focusBox = NULL;
+}
+
+static void EvAddFromType(const PlayStateEventType* t) {
+    char v1[16], v2[16];
+    snprintf(v1, sizeof(v1), "%d", t->defaultDurMs);
+    snprintf(v2, sizeof(v2), "%d", t->defaultAlphaPct);
+    evSelected = EdEvent_Add((float)cursorMs, t->name, v1, v2);
+    chart.dirty = 1;
+    EdStatusMsg("EVENTO ADICIONADO (CTRL+S salva events.json)");
+}
+
+// lista filtrada pela busca; clicar adiciona no cursor
+static void Edit_DrawEventPicker(float x, float y) {
+    const char blocked = (ceDlg != DLG_NONE || activeDrop || menuOpen);
+    Ed_DrawText(mainFont, "pesquisar evento:", (Vector2){x, y + 4}, 20, 1, WHITE);
+    y += 28;
+    Rectangle sr = {x, y, 250, 32};
+    TxtBox_Update(&evSearchBox, sr, blocked);
+    TxtBox_Draw(&evSearchBox, sr, "fade in / out");
+    if(EdButton((Rectangle){x + 260, y, 90, 32}, "fechar", 18)) EvClosePicker();
+    y += 44;
+
+    int shown = 0;
+    for(int i = 0; i < playStateEventTypeCount; i++) {
+        const PlayStateEventType* t = &playStateEventTypes[i];
+        if(!EvContainsCI(t->name, evSearchBox.buf) && !EvContainsCI(t->description, evSearchBox.buf)) continue;
+        if(EdButton((Rectangle){x, y, 350, 32}, t->name, 20)) {
+            EvAddFromType(t);
+            EvClosePicker();
+            return;
+        }
+        Ed_DrawText(mainFont, t->description, (Vector2){x + 4, y + 36}, 16, 1, YELLOW);
+        y += 58;
+        shown++;
+    }
+    if(shown == 0) Ed_DrawText(mainFont, "nenhum evento encontrado", (Vector2){x, y + 4}, 18, 1, YELLOW);
+}
+
+// valor inteiro do evento (v1/v2 sao texto no events.json)
+static void EvStepInt(char* field, size_t n, int delta, int lo, int hi) {
+    int v = atoi(field) + delta;
+    if(v < lo) v = lo;
+    if(v > hi) v = hi;
+    char nv[16];
+    snprintf(nv, sizeof(nv), "%d", v);
+    if(strcmp(nv, field) != 0) {
+        snprintf(field, n, "%s", nv);
+        chart.dirty = 1;
+    }
+}
+
 static void Edit_DrawPanel_Events(float x, float y) {
+    char tb[96];
     Ed_DrawText(mainFont, "EVENTS", (Vector2){x, y}, 22, 1, GREEN);
     y += 34;
-    Ed_DrawText(mainFont, "events.json ignorado", (Vector2){x, y}, 20, 1, YELLOW);
-    y += 30;
-    Ed_DrawText(mainFont, "(Song.c nao le events,", (Vector2){x, y}, 18, 1, YELLOW);
-    y += 24;
-    Ed_DrawText(mainFont, "compat Psych so p/ notes)", (Vector2){x, y}, 18, 1, YELLOW);
+    EdTimeFmt(tb, sizeof(tb), cursorMs);
+    char curBuf[96];
+    snprintf(curBuf, sizeof(curBuf), "cursor: %s", tb);
+    Ed_DrawText(mainFont, curBuf, (Vector2){x, y + 4}, 20, 1, WHITE);
+    y += 34;
+
+    // lista trocada (outra musica / novo chart): o indice guardado nao vale mais
+    static int evSelGen = -1;
+    if(evSelGen != edEventsGen) {
+        evSelGen = edEventsGen;
+        evSelected = -1;
+    }
+    if(evSelected >= edEventCount) evSelected = -1;
+
+    if(!evPickOpen) {
+        if(EdButton((Rectangle){x, y, 350, 36}, "+ Adicionar evento...", 20)) {
+            evPickOpen = 1;
+            evSearchBox.buf[0] = 0;
+            focusBox = &evSearchBox;
+        }
+        y += 50;
+    } else {
+        Edit_DrawEventPicker(x, y);
+        return;
+    }
+
+    Ed_DrawText(mainFont, "eventos a partir do cursor:", (Vector2){x, y}, 20, 1, GREEN);
+    y += 28;
+    int shown = 0;
+    for(int i = 0; i < edEventCount && shown < 6; i++) {
+        if(edEvents[i].time < (float)cursorMs) continue;
+        char row[120];
+        snprintf(row, sizeof(row), "%.0fms  %s", edEvents[i].time, edEvents[i].name);
+        if(EdButton((Rectangle){x, y, 300, 28}, row, 18)) evSelected = (evSelected == i) ? -1 : i;
+        if(EdButton((Rectangle){x + 310, y, 36, 28}, "X", 18)) {
+            EdEvent_RemoveAt(i);
+            if(evSelected == i) evSelected = -1;
+            else if(evSelected > i) evSelected--;
+            chart.dirty = 1;
+            return;
+        }
+        y += 32;
+        shown++;
+    }
+    if(shown == 0) Ed_DrawText(mainFont, "(nenhum)", (Vector2){x, y + 4}, 18, 1, YELLOW);
+    y += 40;
+
+    if(evSelected >= 0) {
+        EdEvent* e = &edEvents[evSelected];
+        snprintf(tb, sizeof(tb), "editando: %s", e->name);
+        Ed_DrawText(mainFont, tb, (Vector2){x, y}, 20, 1, GREEN);
+        y += 34;
+
+        Ed_DrawText(mainFont, "valor 1:", (Vector2){x, y + 4}, 20, 1, WHITE);
+        if(EdButton((Rectangle){x + 110, y, 36, 32}, "-", 22)) EvStepInt(e->v1, sizeof(e->v1), -50, 0, 60000);
+        if(EdButton((Rectangle){x + 250, y, 36, 32}, "+", 22)) EvStepInt(e->v1, sizeof(e->v1), 50, 0, 60000);
+        snprintf(tb, sizeof(tb), "%s", e->v1);
+        Ed_DrawText(mainFont, tb, (Vector2){x + 156, y + 4}, 20, 1, WHITE);
+        y += 40;
+
+        Ed_DrawText(mainFont, "valor 2:", (Vector2){x, y + 4}, 20, 1, WHITE);
+        if(EdButton((Rectangle){x + 110, y, 36, 32}, "-", 22)) EvStepInt(e->v2, sizeof(e->v2), -10, 0, 100);
+        if(EdButton((Rectangle){x + 250, y, 36, 32}, "+", 22)) EvStepInt(e->v2, sizeof(e->v2), 10, 0, 100);
+        snprintf(tb, sizeof(tb), "%s", e->v2);
+        Ed_DrawText(mainFont, tb, (Vector2){x + 156, y + 4}, 20, 1, WHITE);
+        y += 44;
+    }
+
+    snprintf(tb, sizeof(tb), "%d evento(s) no total", edEventCount);
+    Ed_DrawText(mainFont, tb, (Vector2){x, y}, 18, 1, YELLOW);
 }
 
 void Edit_DrawPanel(void) {

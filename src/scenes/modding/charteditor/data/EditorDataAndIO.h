@@ -40,8 +40,25 @@ typedef struct {
     char dirty;
 } EdChart;
 
+// evento da musica (events.json). Formato Psych: [tempo, [[nome, v1, v2]]]
+// fade: nome "Fade In"/"Fade Out", v1 = duracao (ms), v2 = alpha alvo (%)
+typedef struct {
+    float time; // ms
+    char name[48];
+    char v1[64];
+    char v2[64];
+} EdEvent;
+
 extern EdChart chart;
 extern char chartLoaded;
+extern EdEvent* edEvents;
+extern int edEventCount;
+extern int edEventsGen; /* muda a cada limpeza/recarga: quem guarda indices deve reiniciar */
+int EdEvent_Add(float time, const char* name, const char* v1, const char* v2); /* devolve o indice inserido, -1 = falhou */
+void EdEvent_RemoveAt(int idx);
+void EdEvent_ClearAll(void);
+void EdEvents_Load(const char* dir);
+char EdEvents_Save(const char* dir);
 void EdChart_Free(EdChart* c);
 void Undo_Clear(void);
 void Undo_Pop(void);

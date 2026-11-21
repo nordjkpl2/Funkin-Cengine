@@ -67,11 +67,11 @@ set(FNF_COMPILE_FLAGS
 # LTO e linker: thin/lld/icf so no clang; gcc usa -flto normal e o ld padrao.
 if(FNF_TOOLCHAIN STREQUAL "clang")
     list(APPEND FNF_COMPILE_FLAGS -flto=thin)
-    set(FNF_LINK_FLAGS -Os -flto=thin -fuse-ld=lld -Wl,--gc-sections,--icf=all,-O3)
+    set(FNF_LINK_FLAGS -Os -flto=thin -fuse-ld=lld -Wl,--gc-sections,--icf=all,-O12)
     set(FNF_NOLTO_FLAGS -fno-lto -fuse-ld=lld)
 else()
     list(APPEND FNF_COMPILE_FLAGS -flto)
-    set(FNF_LINK_FLAGS -Os -flto -Wl,--gc-sections)
+    set(FNF_LINK_FLAGS -Os -flto -Wl,--gc-sections,--icf=all,-O12)
     set(FNF_NOLTO_FLAGS -fno-lto)
 endif()
 list(APPEND FNF_NOLTO_FLAGS -ffunction-sections -fdata-sections -funroll-loops -fomit-frame-pointer

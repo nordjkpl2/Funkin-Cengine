@@ -515,6 +515,7 @@ static void Picker_OpenSelected(void) {
 
 static void Picker_NewSong(void) {
     EdChart_Default(&chart, "new-song");
+    EdEvent_ClearAll();
     chart.dir[0] = 0;
     Picker_FreeIcons();
     chartLoaded = 1;

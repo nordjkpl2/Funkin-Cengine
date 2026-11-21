@@ -27,6 +27,7 @@
 #include "scenes/gameplay/PlayStateBeat.h"
 #include "scenes/gameplay/PlayStateAnimations.h"
 #include "scenes/gameplay/PlayStateRatingPopups.h"
+#include "scenes/gameplay/PlayStateEventsInGameplay.h"
 #include "Log.h"
 #include "rendering/cpu/ImagePrefetch.h"
 #include <stdlib.h>
@@ -185,6 +186,7 @@ static void Restart(void) {
     PlayStateAudio_StartPaused();
 
     PlayStateBeat_Start(&song);
+    PlayStateEvents_Reset();
 
     const Vector2 dad = DadPosition();
     PlayStateCamera_SetPosition(dad.x + SCREEN_W / 2, dad.y + SCREEN_H / 2);
@@ -283,6 +285,7 @@ static void PlayState_Create([[maybe_unused]] RayScene* scene) {
     LoadMark("init");
 
     LoadSong();
+    PlayStateEvents_Load(songDir);
     // Skin de notas desta musica (vazia = padrao). Sempre definida, para nao herdar a da anterior.
     // noteSkin (nosso) tem prioridade; senao o arrowSkin do Psych ("@" = imagem em images/).
     char skinName[SONG_NAME_MAX + 2] = "";
@@ -406,6 +409,7 @@ static void SeekBy(double deltaSecs) {
 
     PlayStateAudio_SeekTo(target);            // inst e vozes; mantem a pausa
     PlayStateBeat_SeekTo(target);             // passo, secao, bpm e camera
+    PlayStateEvents_SeekTo(target);           // eventos (fades) do events.json
     PlayStateNoteSpawn_SeekTo((float)target); // notas: anteriores resolvidas sem score
 }
 
@@ -414,6 +418,7 @@ static char UpdateSong(void) {
     PlayStateAudio_Update();
 
     PlayStateBeat_Update();
+    PlayStateEvents_Update(PlayStateBeat_Time());
 
     if (!PlayStateAudio_IsPlaying()) {
         // Na semana a musica do menu continua pausada entre as musicas (e na tela da semana).
@@ -590,6 +595,7 @@ static void PlayState_Draw([[maybe_unused]] RayScene* scene) {
 
     PlayStateCamera_BeginHUD();
     DrawHud(dt);
+    PlayStateEvents_Draw(); // fades do events.json cobrem a tela (HUD incluso)
 
     if (PlayStatePause_IsPaused())
         DrawPause();
@@ -665,6 +671,7 @@ static void PlayState_Destroy([[maybe_unused]] RayScene* scene) {
     PlayStateDeath_Stop();
 
     PlayStateNoteSpawn_Unload();
+    PlayStateEvents_Unload();
     Song_Free(&song);
 
     PlayStateAnimations_Unload();
