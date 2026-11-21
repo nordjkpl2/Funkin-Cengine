@@ -1,0 +1,3 @@
+LOAD [macrosm] init: 5.8 ms, chart: 4.1 ms, sounds: 193.8 ms, characters: 363.0 ms, stage: 9.4 ms, song audio: 1.6 ms, notes: 0.0 ms, ui: 17.5 ms, warmup: 0.2 ms, (textures on main thread: 366.2 ms) total: 595.4 ms
+LOAD [absolute-zero] init: 0.0 ms, chart: 1039.5 ms, sounds: 108.8 ms, characters: 463.0 ms, stage: 1493.1 ms, song audio: 2.7 ms, notes: 0.0 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 1919.6 ms) total: 3107.2 ms
+LOAD [Astray] init: 0.0 ms, chart: 20.2 ms, sounds: 104.2 ms, characters: 427.2 ms, stage: 8.1 ms, song audio: 1.8 ms, notes: 0.0 ms, ui: 0.0 ms, warmup: 0.1 ms, (textures on main thread: 409.1 ms) total: 561.7 ms

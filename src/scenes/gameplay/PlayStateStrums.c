@@ -28,7 +28,7 @@ static const Color laneColors[PLAYSTATE_LANES] = {
 };
 static const char* const laneLetters[PLAYSTATE_LANES] = {"L", "D", "U", "R"};
 
-/* gameOptions.scroll: 0 = up, 1 = down, 2 = middle */
+/* gameOptions.scroll: SCROLL_UP, SCROLL_DOWN, SCROLL_MIDDLE, SCROLL_MIDDLEDOWN (ver GameData.h) */
 static StrumNote dadStrumline[PLAYSTATE_LANES];
 static StrumNote bfStrumline[PLAYSTATE_LANES];
 static Vector2 dadStrumIdleSizes[PLAYSTATE_LANES];
@@ -37,13 +37,13 @@ static float bfMiddleX = 475.0f; // middlescroll: X do 1o receptor do BF (centra
 static float mobileGlow[PLAYSTATE_LANES]; // 0..1, sobe suave ao apertar a coluna e desce devagar (sem pisca)
 
 static float StrumY(void) {
-    if (gameOptions.scroll == 2) return 20.0f;
-    if (gameOptions.scroll == 1) return 600.0f;
+    if (SCROLL_IS_DOWN(gameOptions.scroll)) return 600.0f;
+    if (SCROLL_IS_MIDDLE(gameOptions.scroll)) return 20.0f;
     return 50.0f;
 }
 
 static float StrumX(char mustHit, int lane) {
-    if (gameOptions.scroll != 2)
+    if (!SCROLL_IS_MIDDLE(gameOptions.scroll))
         return (mustHit ? 700.0f : 50.0f) + LANE_SPACING * lane;
 
     return mustHit ? bfMiddleX + LANE_SPACING * lane : 50.0f + 55.0f * lane;
@@ -53,7 +53,7 @@ StrumNote* PlayStateStrums_Dad(void) { return dadStrumline; }
 StrumNote* PlayStateStrums_Bf(void) { return bfStrumline; }
 
 void PlayStateStrums_Load(void) {
-    const char middle = gameOptions.scroll == 2;
+    const char middle = SCROLL_IS_MIDDLE(gameOptions.scroll);
 
     for (int i = 0; i < PLAYSTATE_LANES; i++) {
         StrumNote_Load(dadStrumline + i, i);

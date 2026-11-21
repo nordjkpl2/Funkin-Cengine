@@ -64,7 +64,7 @@ static float oppDrain;   // perda por nota do oponente (0 = drain desligado)
 static float botGain;    // ganho por nota do botplay (0 = desligado)
 
 static float NoteVelocity(void) {
-    return gameOptions.scroll == 1 ? 450.0f : -450.0f;
+    return SCROLL_IS_DOWN(gameOptions.scroll) ? 450.0f : -450.0f;
 }
 
 static PlayStateNoteView NoteView(void) {
@@ -277,7 +277,7 @@ static void PlayState_Create([[maybe_unused]] RayScene* scene) {
     LoadMark_Begin();
     Log_WarnClear();
     // Botplay nunca morre (com ou sem drain): a vida so cai ate 0.
-    PlayStateHealth_Init(gameOptions.scroll == 1, !gameOptions.botplay);
+    PlayStateHealth_Init(SCROLL_IS_DOWN(gameOptions.scroll),!gameOptions.botplay);
     PlayStateText_Init(songDir);
 
     PlayStateNoteSpawn_Init();

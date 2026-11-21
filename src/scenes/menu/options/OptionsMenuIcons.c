@@ -316,7 +316,7 @@ void DrawExtraIcon(int i, float rowY, Color fill, Color shadow) {
     const float cy = rowY + ROW_FONT_SIZE * 0.5f + ROW_ICON_DY;
 
     // Setas de nota reais da skin (sem sombra propria: a nota ja tem contorno).
-    if (i == OPTION_SCROLL_STYLE) {   // Normal = cima, Downscroll = baixo, Middlescroll = as duas
+    if (i == OPTION_SCROLL_STYLE) {   // Normal = cima, Downscroll = baixo, Middlescroll/Middledown = as duas
         const int v = (int)options[OPTION_SCROLL_STYLE].value;
         if (v == 0) NoteColors_DrawNoteIcon(2, EXTRA_ICON_CX, cy, 0.2f);
         else if (v == 1) NoteColors_DrawNoteIcon(1, EXTRA_ICON_CX, cy, 0.2f);

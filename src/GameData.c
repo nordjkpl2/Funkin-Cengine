@@ -83,7 +83,7 @@ static void GameData_Checks(void) {
     if(gameOptions.threadLimit < 0 || gameOptions.threadLimit > 64) IERR
     if(gameDisabledModCount < 0 || gameDisabledModCount > MOD_DISABLED_MAX) IERR
     if(gameOptions.ghost < 0 || gameOptions.ghost > 2) IERR
-    if(gameOptions.scroll < 0 || gameOptions.scroll > 2) IERR
+    if(gameOptions.scroll < 0 || gameOptions.scroll > SCROLL_MIDDLEDOWN) IERR
     if(gameOptions.hitSound < 0 || gameOptions.hitSound > 1) IERR
     if(gameOptions.showFps < 0 || gameOptions.showFps > 1) IERR
     if(gameOptions.scorePosition < SCORE_POS_CENGINE || gameOptions.scorePosition > SCORE_POS_PSYCH) IERR

@@ -32,6 +32,14 @@ typedef struct GameOptions {
 #define SCORE_POS_CENGINE 0
 #define SCORE_POS_PSYCH   1
 
+/* Estilo de scroll (gameOptions.scroll): Middledown = middlescroll + downscroll ao mesmo tempo. */
+#define SCROLL_UP         0
+#define SCROLL_DOWN       1
+#define SCROLL_MIDDLE     2
+#define SCROLL_MIDDLEDOWN 3
+#define SCROLL_IS_DOWN(s)   ((s) == SCROLL_DOWN || (s) == SCROLL_MIDDLEDOWN)
+#define SCROLL_IS_MIDDLE(s) ((s) == SCROLL_MIDDLE || (s) == SCROLL_MIDDLEDOWN)
+
 extern GameOptions gameOptions;
 
 /* Cor de tint de uma coluna (0..3), ja com alpha 255. Branco = sem mudanca. */

@@ -13,7 +13,7 @@
 #include <stdio.h>
 
 static const char* ghost_names[3] = {"On", "50/50", "Off"};
-static const char* scroll_names[3] = {"Normal", "Downscroll", "Middlescroll"};
+static const char* scroll_names[4] = {"Normal", "Downscroll", "Middlescroll", "Middledown"};
 static const char* thread_names[2] = {"Auto", "Limited"};
 static const char* score_position_names[2] = {"Cengine", "Psych"};
 static const char* note_colors_names[1] = {"Edit"};
@@ -40,7 +40,7 @@ Option options[OPTION_COUNT] = {
     [OPTION_STREAM_JSON] = {.text = "Streaming JSON Parse (notes)", .type = OPTION_VALUE_BOOL},
     [OPTION_HEADER_GAMEPLAY] = {.text = "[Gameplay]", .type = OPTION_VALUE_HEADER},
     [OPTION_KEYBOARD_SCHEME] = {.text = "Scheme", .type = OPTION_VALUE_LIST, .options = game_available_schemes, .step = 1, .max = SCHEME_COUNT - 1, .min = 0},
-    [OPTION_SCROLL_STYLE] = {.text = "Scroll Style", .type = OPTION_VALUE_LIST, .options = scroll_names, .step = 1, .max = 2, .min = 0},
+    [OPTION_SCROLL_STYLE] = {.text = "Scroll Style", .type = OPTION_VALUE_LIST, .options = scroll_names, .step = 1, .max = 3, .min = 0},
     [OPTION_GHOST] = {.text = "Ghost Tapping", .type = OPTION_VALUE_LIST, .options = ghost_names, .step = 1, .max = 2, .min = 0},
     [OPTION_HITSOUND] = {.text = "Hit Sound", .type = OPTION_VALUE_BOOL},
     [OPTION_HEALTH_DRAIN_PLAY] = {.text = "Health Drain (Play)", .type = OPTION_VALUE_BOOL},

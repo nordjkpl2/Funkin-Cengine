@@ -266,7 +266,7 @@ size_t PlayStateNoteSpawn_First(void) { return firstNote; }
 
 /* Escala da cabeca da nota conforme o modo de scroll. */
 static float HeadScale(const Note* note) {
-    if (gameOptions.scroll == 2 && !note->mustHit) return 0.4f;
+    if (SCROLL_IS_MIDDLE(gameOptions.scroll) && !note->mustHit) return 0.4f;
     return NOTE_SCALE;
 }
 
@@ -393,7 +393,7 @@ static void DrawSustainFull(int lane, char fullyAbove) {
 static void DrawSustainClipped(int lane, const StrumNote* strum, float k) {
     const float receptorY = strum->object.position.y + trailOffset.y * k;
 
-    if (gameOptions.scroll == 1) {
+    if (SCROLL_IS_DOWN(gameOptions.scroll)) {
         // Downscroll: a cauda fica acima da cabeca; o que ja passou do receptor (abaixo dele) some.
         const float trailBottom = trail.position.y + trail.scaleY * TRAIL_SEGMENT_H;
         if (trailBottom > receptorY)
@@ -448,7 +448,7 @@ static void UpdateSustain(Note* note, const PlayStateNoteView* view) {
 static void DrawSustain(const Note* note, const StrumNote* strum, float endHeight,
                         float scrollSpeed, char fullyAbove) {
     // Middlescroll: sustain do oponente acompanha a escala menor do receptor.
-    const float k = (gameOptions.scroll == 2 && !note->mustHit) ? (0.4f / NOTE_SCALE) : 1.0f;
+    const float k = (SCROLL_IS_MIDDLE(gameOptions.scroll) && !note->mustHit) ? (0.4f / NOTE_SCALE) : 1.0f;
 
     const float lengthPx = scrollSpeed * note->length;
     const float headY = renderNote.position.y + trailOffset.y * k;
@@ -465,7 +465,7 @@ static void DrawSustain(const Note* note, const StrumNote* strum, float endHeigh
     end.color = normalColor;
 
     // Cauda vai no sentido do futuro: para baixo no normal, para cima no downscroll.
-    if (gameOptions.scroll == 1) {
+    if (SCROLL_IS_DOWN(gameOptions.scroll)) {
         end.position.y = headY - lengthPx;
         trail.position.y = end.position.y + endHeight;
     } else {
@@ -576,7 +576,7 @@ void PlayStateNoteSpawn_Draw(const PlayStateNoteView* view) {
         renderNote.position.x = strum->object.position.x;
         renderNote.position.y = strum->object.position.y - speedMult * (note->time - time);
 
-        const char fullyAbove = (gameOptions.scroll == 1) ? (renderNote.position.y > 900.0f)
+        const char fullyAbove = SCROLL_IS_DOWN(gameOptions.scroll) ? (renderNote.position.y > 900.0f)
                                                            : (renderNote.position.y < -200.0f);
 
         if (note->pressed && fullyAbove && time >= note->time + note->length)
