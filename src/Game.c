@@ -11,6 +11,7 @@
 #include "threads/cpu/Jobs.h"
 #include "data/modimport/ModImport.h"
 #include "threads/Thread.h"
+#include "rendering/Display.h"
 #if defined(FNF_DEBUG_STATS)
 #include "rlgl.h"
 #endif
@@ -93,7 +94,7 @@ static void RayGame_UpdateViewport(bool force)
 
 #if defined(FNF_DEBUG_STATS)
 /* Overlay de debug (F3): so existe se compilar com -DFNF_DEBUG_STATS (cmake -DFNF_DEBUG_STATS=ON). */
-static struct { char on; double upd, draw, end; unsigned int calls, flushes; } dbg;
+static struct { char on; double upd, draw, end; unsigned int calls, flushes; } dbg = { .on = 1 };
 
 static inline void RayGame_EndFrame(double tDraw0)
 {
@@ -120,16 +121,59 @@ static inline void RayGame_UpdateOverlay(float frameDelta)
     }
 }
 
+/* Textura do rotulo de FPS (ver RayGame_DrawOverlay). */
+#define FPS_LABEL_W 96
+#define FPS_LABEL_H 36
+static RenderTexture2D fpsLabel = {0};
+static bool fpsLabelReady = false;
+
 static inline void RayGame_DrawOverlay(void)
 {
     if (gameOptions.showFps)
-        DrawFPS(10, 3);
+    {
+        /* O rotulo (texto + sombra) so e desenhado de novo na textura quando o valor de FPS muda.
+           Nos outros quadros so se desenha essa textura: nenhum DrawText. */
+        static int fpsShown = -1;
+
+        if (!fpsLabelReady)
+        {
+            fpsLabel = LoadRenderTexture(FPS_LABEL_W, FPS_LABEL_H);
+            fpsLabelReady = (fpsLabel.id != 0);
+        }
+
+        const int fps = GetFPS();
+        if (fpsLabelReady && fps != fpsShown)
+        {
+            fpsShown = fps;
+            Color fpsColor = SKYBLUE;   /* mesma logica de cor do DrawFPS do raylib */
+            if (fps < 30 && fps >= 15) fpsColor = ORANGE;
+            else if (fps < 15) fpsColor = RED;
+
+            char fpsText[16];
+            (void)snprintf(fpsText, sizeof(fpsText), "%2i FPS", fps);
+
+            BeginTextureMode(fpsLabel);
+            ClearBackground((Color){0, 0, 0, 0});
+            DrawText(fpsText, 2, 2, 20, (Color){0, 0, 0, 160});
+            DrawText(fpsText, 0, 0, 20, fpsColor);
+            EndTextureMode();
+        }
+
+        if (fpsLabelReady)
+            DrawTextureRec(fpsLabel.texture, (Rectangle){0.0f, 0.0f, (float)FPS_LABEL_W, -(float)FPS_LABEL_H},
+                           (Vector2){10.0f, 3.0f}, WHITE);
+    }
 
 #if defined(FNF_DEBUG_STATS)
     if (dbg.on)
     {
-        DrawText(TextFormat("upd %.2f  draw %.2f  end %.2f ms", dbg.upd, dbg.draw, dbg.end), 10, 70, 18, YELLOW);
-        DrawText(TextFormat("draw calls %u  flushes %u", dbg.calls, dbg.flushes), 10, 92, 18, YELLOW);
+        const Color dbgShadow = {0, 0, 0, 160};
+        const char *dbgLine1 = TextFormat("upd %.2f  draw %.2f  end %.2f ms", dbg.upd, dbg.draw, dbg.end);
+        const char *dbgLine2 = TextFormat("draw calls %u  flushes %u", dbg.calls, dbg.flushes);
+        DrawText(dbgLine1, 12, 72, 18, dbgShadow);
+        DrawText(dbgLine1, 10, 70, 18, YELLOW);
+        DrawText(dbgLine2, 12, 94, 18, dbgShadow);
+        DrawText(dbgLine2, 10, 92, 18, YELLOW);
     }
 #endif
 
@@ -274,21 +318,27 @@ void RayGame_SetFPS(int fps)
         SetTargetFPS(targetFps);
 }
 
+/* Taxa de atualizacao do monitor da janela (Hz). Windows: EnumDisplaySettings; senao o raylib. */
+static int RayGame_RefreshHz(void)
+{
+    int hz = Display_RefreshHz(GetWindowHandle());
+    if (hz <= 0) hz = GetMonitorRefreshRate(GetCurrentMonitor());
+    return hz > 0 ? hz : 60;
+}
+
+/* V-SYNC: liga/desliga o swap interval da janela (o FLAG_VSYNC_HINT so vale na criacao).
+   Com V-SYNC, o FPS tambem fica limitado a taxa do monitor, mesmo se o driver ignorar o pedido. */
 void RayGame_SetVsync(char on)
 {
     vsyncEnabled = (on != 0);
     gameOptions.vsync = vsyncEnabled;
 
+    Display_SetSwapInterval(vsyncEnabled);
+
     if (vsyncEnabled)
-    {
-        SetWindowState(FLAG_VSYNC_HINT);
-        SetTargetFPS(0);
-    }
+        SetTargetFPS(RayGame_RefreshHz());
     else
-    {
-        ClearWindowState(FLAG_VSYNC_HINT);
         SetTargetFPS(targetFps);
-    }
 }
 
 int RayGame_GetTargetFPS(void)
@@ -300,10 +350,12 @@ int RayGame_GetTargetFPS(void)
    5. INICIALIZAÇÃO
    ================================================================ */
 
-/* Logs do raylib (TraceLog) passam pelo Log.c: write direto + arquivo, em vez
-   do vprintf/fflush padrao do raylib. Fatal continua saindo do processo. */
+/* Logs do raylib (TraceLog) passam pelo Log.c. INFO/DEBUG/TRACE (texturas carregadas, subidas para
+   a GPU, etc.) sao descartados: so avisos e erros entram no log. Fatal continua saindo do processo. */
 static void RaylibTraceToLog(int logType, const char *text, va_list args)
 {
+    if (logType == LOG_INFO || logType == LOG_DEBUG || logType == LOG_TRACE) return;
+
     char buf[512];
     vsnprintf(buf, sizeof(buf), text, args);
 
@@ -314,7 +366,7 @@ static void RaylibTraceToLog(int logType, const char *text, va_list args)
 void RayGame_Start(const char *gameTitle)
 {
     SetTraceLogCallback(RaylibTraceToLog);
-    SetConfigFlags(FLAG_WINDOW_ALWAYS_RUN | FLAG_WINDOW_RESIZABLE | FLAG_VSYNC_HINT);
+    SetConfigFlags(FLAG_WINDOW_ALWAYS_RUN | FLAG_WINDOW_RESIZABLE);
 
     InitWindow(RAYGAME_CANVAS_WIDTH, RAYGAME_CANVAS_HEIGHT, gameTitle);
 
@@ -532,6 +584,13 @@ void RayGame_Destroy(void)
         gameMusic = (Music){0};
         musicLoaded = false;
         playingMusic = false;
+    }
+
+    if (fpsLabelReady)
+    {
+        UnloadRenderTexture(fpsLabel);
+        fpsLabel = (RenderTexture2D){0};
+        fpsLabelReady = false;
     }
 
     if (stretchReady)

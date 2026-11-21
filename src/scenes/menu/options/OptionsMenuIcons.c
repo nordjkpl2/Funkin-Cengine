@@ -281,6 +281,26 @@ static void DrawSquareIcon(float cx, float cy, Color color) {
     DrawRectangleLinesEx((Rectangle) {cx - h, cy - h, h * 2.0f, h * 2.0f}, 5.0f, color);
 }
 
+/* Circulo com setinha (mesmo desenho do Restart da pausa), centrado em (cx, cy). */
+void DrawResetIcon(float cx, float cy, Color color) {
+    const float size = 36.0f, stroke = 5.0f;
+    const float r = size * 0.5f - stroke * 0.5f;
+    const float endDeg = 330.0f, rad = endDeg * DEG2RAD;
+    const Vector2 c = {cx, cy};
+
+    DrawRing(c, r - stroke * 0.5f, r + stroke * 0.5f, 30.0f, endDeg, 32, color);
+
+    const Vector2 p = {c.x + r * cosf(rad), c.y + r * sinf(rad)};
+    const Vector2 dir = {-sinf(rad), cosf(rad)};          // tangente no sentido do arco
+    const Vector2 tip = {p.x + dir.x * 6.0f, p.y + dir.y * 6.0f};
+    const Vector2 n = {-dir.y, dir.x};
+    const float head = size * 0.45f;
+    const Vector2 back = {tip.x - dir.x * head, tip.y - dir.y * head};
+    DrawLineEx(tip, (Vector2) {back.x + n.x * head * 0.6f, back.y + n.y * head * 0.6f}, stroke, color);
+    DrawLineEx(tip, (Vector2) {back.x - n.x * head * 0.6f, back.y - n.y * head * 0.6f}, stroke, color);
+    DrawCircleV(tip, stroke * 0.5f, color);
+}
+
 /* Icone da linha (so para as opcoes que tem), com a mesma sombra do texto. */
 void DrawExtraIcon(int i, float rowY, Color fill, Color shadow) {
     const float cy = rowY + ROW_FONT_SIZE * 0.5f;
@@ -314,6 +334,7 @@ void DrawExtraIcon(int i, float rowY, Color fill, Color shadow) {
             case OPTION_SCORE_POSITION: DrawTextIcon(cx, y, color); break;
             case OPTION_BOPPING_ICONS:  DrawBopIcon(cx, y, color); break;
             case OPTION_STRUM_MOBILE:   DrawSquareIcon(cx, y, color); break;
+            case OPTION_RESET_CONFIG:   DrawResetIcon(cx, y, color); break;
             default: return;
         }
     }

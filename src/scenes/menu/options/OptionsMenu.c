@@ -57,11 +57,19 @@ static void OptionsMenu_Create([[maybe_unused]] RayScene* scene) {
 
 #define ROW_CLICK_W 1280.0f // largura clicavel da linha (a tela inteira)
 
+/* Reset pede confirmacao: o primeiro ENTER arma, o segundo executa. Mover a selecao desarma. */
+static bool resetArmed;
+
 /* Acao de ENTER/clique na opcao atual: liga/desliga, recolhe secao ou abre a tela da opcao. */
 static void ActivateCurrent(void) {
     Option* cur = options + currentOption;
 
-    if (cur->type == OPTION_VALUE_BOOL) {
+    if (cur->type == OPTION_VALUE_ACTION) {
+        if (!resetArmed) { resetArmed = true; return; }
+        resetArmed = false;
+        Options_ResetToDefault();
+    }
+    else if (cur->type == OPTION_VALUE_BOOL) {
         cur->value = !cur->value;
         ApplyBoolValue();
     }
@@ -206,6 +214,7 @@ static void OptionsMenu_Update([[maybe_unused]] RayScene* scene) {
     }
 
     scrollOffset = Lerp(scrollOffset, (float)Option_VisualIndex(currentOption), RayGame_DeltaTime() * SCROLL_LERP_SPEED);
+    if (currentOption != OPTION_RESET_CONFIG) resetArmed = false;
 
     if (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S)) MoveSelection(1);
     else if (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W)) MoveSelection(-1);
@@ -358,6 +367,8 @@ static void OptionsMenu_Draw([[maybe_unused]] RayScene* scene) {
         DrawHint("ENTER: edit note colors");
     else if (currentOption == OPTION_THREADS && (int)options[OPTION_THREADS].value == 1)
         DrawHint("ENTER: set thread count");
+    else if (currentOption == OPTION_RESET_CONFIG)
+        DrawHint(resetArmed ? "ENTER again to confirm: resets every option" : "ENTER: reset all options to default");
 
     SearchBox_Draw(&search, mainFont);
 

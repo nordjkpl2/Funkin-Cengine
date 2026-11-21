@@ -50,8 +50,6 @@ static void EnsureLogFileOpen(void) {
 
     logFile = fopen("assets/logs.txt", "a");
     if (logFile) {
-        fprintf(logFile, "\n--- SESSION LOG START ---\n");
-        fflush(logFile);
     }
 }
 

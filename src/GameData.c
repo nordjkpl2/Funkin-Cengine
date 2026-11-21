@@ -60,6 +60,22 @@ Color GameData_LaneTint(int lane) {
     return (Color) {c[0], c[1], c[2], 255};
 }
 
+void GameData_ResetOptions(void) {
+    /* Mods desativados e o esquema Custom nao sao config: ficam como estao. */
+    char mods[MOD_DISABLED_MAX][MOD_NAME_MAX];
+    int modCount = gameDisabledModCount;
+    memcpy(mods, gameDisabledMods, sizeof(mods));
+
+    int customKeys[4];
+    memcpy(customKeys, game_scheme_keys[SCHEME_CUSTOM], sizeof(customKeys));
+
+    GameData_Defaults();
+
+    gameDisabledModCount = modCount;
+    memcpy(gameDisabledMods, mods, sizeof(mods));
+    memcpy(game_scheme_keys[SCHEME_CUSTOM], customKeys, sizeof(customKeys));
+}
+
 static void GameData_Checks(void) {
     if(gameOptions.scheme < 0 || gameOptions.scheme >= SCHEME_COUNT) IERR
     if(gameOptions.fps < 0) IERR

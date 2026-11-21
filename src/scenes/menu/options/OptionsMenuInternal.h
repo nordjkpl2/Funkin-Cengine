@@ -117,7 +117,8 @@ typedef enum {
     OPTION_VALUE_BOOL,
     OPTION_VALUE_LIST,
     OPTION_VALUE_HEADER,
-    OPTION_VALUE_LABEL // texto estatico: so mostra o text, nao seleciona nem tem valor
+    OPTION_VALUE_LABEL, // texto estatico: so mostra o text, nao seleciona nem tem valor
+    OPTION_VALUE_ACTION // acao: ENTER executa (sem valor)
 } OptionValueType;
 
 typedef struct {
@@ -172,6 +173,7 @@ typedef enum {
     OPTION_HORIZONTAL_MENU,
     OPTION_HEADER_MUSIC,
     OPTION_MENU_MUSIC,
+    OPTION_RESET_CONFIG,
     OPTION_COUNT
 } OptionOrder;
 
@@ -207,6 +209,7 @@ int Option_VisualIndex(int index);
 void MoveSelection(int dir);
 bool Option_HorizontalMode(void);
 void Tab_Step(int dir);
+void Options_ResetToDefault(void);
 
 /* OptionsMenuScreens.c */
 void Capture_Begin(void);
@@ -237,5 +240,6 @@ void DrawTvIcon(float rowY, Color fill, Color shadow);
 void DrawHealthIcons(float rowY, Color fill, Color shadow);
 void DrawKeyArrow(float rowY, Color fill, Color shadow);
 void DrawExtraIcon(int i, float rowY, Color fill, Color shadow);
+void DrawResetIcon(float cx, float cy, Color color);
 
 #endif

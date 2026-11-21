@@ -52,6 +52,9 @@ extern int         game_scheme_keys[SCHEME_COUNT][4];   /* a linha SCHEME_CUSTOM
 extern char gameDisabledMods[MOD_DISABLED_MAX][MOD_NAME_MAX];
 extern int  gameDisabledModCount;
 
+/* Volta as opcoes para o padrao (mantem mods desativados e teclas do esquema Custom). Nao grava sozinho. */
+void GameData_ResetOptions(void);
+
 void GameData_Start(void);
 void GameData_Flush(void);
 void GameData_Stop(void);

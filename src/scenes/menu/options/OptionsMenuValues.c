@@ -66,6 +66,7 @@ Option options[OPTION_COUNT] = {
     [OPTION_HORIZONTAL_MENU] = {.text = "Horizontal Menu", .type = OPTION_VALUE_BOOL},
     [OPTION_HEADER_MUSIC] = {.text = "[Musica]", .type = OPTION_VALUE_HEADER},
     [OPTION_MENU_MUSIC] = {.text = "Track", .type = OPTION_VALUE_LIST, .step = 1, .min = 0}, // options/max: Create
+    [OPTION_RESET_CONFIG] = {.text = "Reset Config to Default", .type = OPTION_VALUE_ACTION},
 };
 
 int currentOption = OPTION_FPS; // comeca na primeira opcao, nao no cabecalho
@@ -82,7 +83,8 @@ void Option_RebuildText(Option* o) {
     if (!o->active)
         (void)snprintf(out, size, "%s", o->text);
     else switch (o->type) {
-        case OPTION_VALUE_LABEL: (void)snprintf(out, size, "%s", o->text); break;
+        case OPTION_VALUE_LABEL:
+        case OPTION_VALUE_ACTION: (void)snprintf(out, size, "%s", o->text); break;
         case OPTION_VALUE_INT:   (void)snprintf(out, size, "%s: < %d >", o->text, (int)o->value); break;
         case OPTION_VALUE_FLOAT: (void)snprintf(out, size, "%s: < %.2f >", o->text, (double)o->value); break;
         case OPTION_VALUE_BOOL:  (void)snprintf(out, size, "%s: [%s]", o->text, o->value ? "ON" : "OFF"); break;
@@ -332,6 +334,27 @@ void MoveSelection(int dir) {
         currentOption = (currentOption + dir + OPTION_COUNT) % OPTION_COUNT;
         if (Option_IsSelectable(currentOption)) break;
     }
+}
+
+/* Reseta tudo para o padrao (ENTER duas vezes no reset): aplica no jogo e recarrega a lista. */
+void Options_ResetToDefault(void) {
+    GameData_ResetOptions();
+    GameData_Flush();
+
+    RayGame_SetVsync(gameOptions.vsync);
+    if (!gameOptions.vsync) RayGame_SetFPS(gameOptions.fps);
+    Jobs_SetThreads(gameOptions.threadLimit);
+
+    Options_LoadValues();
+
+    // Mesmas regras do VSYNC: com V-SYNC ligado, o framerate fica travado.
+    options[OPTION_UNCAPPED_FPS].active = !gameOptions.vsync;
+    options[OPTION_FPS].active = !gameOptions.vsync && !options[OPTION_UNCAPPED_FPS].value;
+    options[OPTION_SHOW_FPS].active = 1;
+    for (int i = OPTION_FPS; i <= OPTION_SHOW_FPS; i++) options[i].dirty = true;
+
+    MenuMusic_Play(MenuMusic_SavedIndex(), 1);
+    layoutDirty = true;
 }
 
 /* Carrega os valores atuais nas opcoes (chamado no Create da cena). */

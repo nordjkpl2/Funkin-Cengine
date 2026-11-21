@@ -77,6 +77,36 @@ endif()
 list(APPEND FNF_NOLTO_FLAGS -ffunction-sections -fdata-sections -funroll-loops -fomit-frame-pointer
      -fno-math-errno -fno-stack-protector -fno-common -fno-ident -DNDEBUG)
 
+# PGO (so clang): o compilador mede onde o jogo gasta tempo e decide inline/layout com esses dados.
+#   1) cmake -B build-pgo -G Ninja -DCMAKE_C_COMPILER=clang -DFNF_PGO_GEN=ON
+#      cmake --build build-pgo ; rodar o jogo, jogar algumas musicas (gera *.profraw)
+#   2) llvm-profdata merge -output=engine.profdata <*.profraw>
+#   3) cmake -B build-pgo-use -G Ninja -DCMAKE_C_COMPILER=clang -DFNF_PGO_USE=<caminho>/engine.profdata
+#      cmake --build build-pgo-use
+option(FNF_PGO_GEN "PGO: build instrumentado (gera perfil ao rodar)" OFF)
+set(FNF_PGO_USE "" CACHE FILEPATH "PGO: arquivo .profdata (llvm-profdata merge) para otimizar com o perfil")
+if(FNF_PGO_GEN AND FNF_PGO_USE)
+    message(FATAL_ERROR "Use FNF_PGO_GEN ou FNF_PGO_USE, nao os dois.")
+endif()
+if((FNF_PGO_GEN OR FNF_PGO_USE) AND NOT FNF_TOOLCHAIN STREQUAL "clang")
+    message(FATAL_ERROR "PGO so esta configurado para clang.")
+endif()
+if(FNF_PGO_GEN)
+    list(APPEND FNF_COMPILE_FLAGS -fprofile-instr-generate -fcoverage-mapping)
+    list(APPEND FNF_NOLTO_FLAGS -fprofile-instr-generate -fcoverage-mapping)
+    list(APPEND FNF_LINK_FLAGS -fprofile-instr-generate)
+    message(STATUS "FNF_C_ENGINE: PGO gerar perfil (instrumentado)")
+elseif(FNF_PGO_USE)
+    file(TO_CMAKE_PATH "${FNF_PGO_USE}" FNF_PGO_USE_PATH)
+    if(NOT EXISTS "${FNF_PGO_USE_PATH}")
+        message(FATAL_ERROR "FNF_PGO_USE nao encontrado: ${FNF_PGO_USE_PATH}")
+    endif()
+    list(APPEND FNF_COMPILE_FLAGS -fprofile-instr-use=${FNF_PGO_USE_PATH} -Wno-profile-instr-unprofiled -Wno-profile-instr-out-of-date)
+    list(APPEND FNF_NOLTO_FLAGS -fprofile-instr-use=${FNF_PGO_USE_PATH} -Wno-profile-instr-unprofiled -Wno-profile-instr-out-of-date)
+    list(APPEND FNF_LINK_FLAGS -fprofile-instr-use=${FNF_PGO_USE_PATH})
+    message(STATUS "FNF_C_ENGINE: PGO usando ${FNF_PGO_USE_PATH}")
+endif()
+
 # Strip (opcional): remove a tabela de simbolos do exe. Menor, mas stack traces ficam sem nomes.
 # Ligar: cmake -DFNF_STRIP=ON (reconfigurar o cache).
 option(FNF_STRIP "Remove simbolos do executavel (menor, sem nomes em crash)" OFF)
