@@ -240,10 +240,9 @@ void JsonStream_SkipValue(JsonStream *js) {
     }
     if (strcmp(tok, "true") == 0 || strcmp(tok, "false") == 0 || strcmp(tok, "null") == 0)
         return;
-    if (n == sizeof(tok) - 1) /* token longo demais para checar por inteiro: so o primeiro byte */
-        n = (tok[0] == '-' || (tok[0] >= '0' && tok[0] <= '9')) ? 0 : 1;
-    if (n != 0) {
-        js->err = 1;
+    if (n == sizeof(tok) - 1) { /* token longo demais para checar por inteiro: so o primeiro byte */
+        if (tok[0] != '-' && (tok[0] < '0' || tok[0] > '9'))
+            js->err = 1;
         return;
     }
     char *end = NULL;
