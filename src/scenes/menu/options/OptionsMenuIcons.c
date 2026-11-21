@@ -163,7 +163,7 @@ void DrawChevron(float rowY, bool collapsed, Color fill, Color shadow) {
 
 /* TV (retangulo com antenas), com a mesma sombra do texto. */
 void DrawTvIcon(float rowY, Color fill, Color shadow) {
-    const float cy = rowY + ROW_FONT_SIZE * 0.5f;
+    const float cy = rowY + ROW_FONT_SIZE * 0.5f + ROW_ICON_DY;
 
     for (int pass = 0; pass < 2; pass++) {
         const Color color = pass == 0 ? shadow : fill;
@@ -225,7 +225,7 @@ static void DrawDagger(float cx, float cy, Color color) {
 
 /* Coracao com adaga cravada, com a mesma sombra do texto. */
 void DrawHealthIcons(float rowY, Color fill, Color shadow) {
-    const float cy = rowY + ROW_FONT_SIZE * 0.5f;
+    const float cy = rowY + ROW_FONT_SIZE * 0.5f + ROW_ICON_DY;
 
     for (int pass = 0; pass < 2; pass++) {
         const Color color = pass == 0 ? shadow : fill;
@@ -239,7 +239,7 @@ void DrawHealthIcons(float rowY, Color fill, Color shadow) {
 
 /* Uma seta (triangulo apontando para a direita), com a mesma sombra do texto. */
 void DrawKeyArrow(float rowY, Color fill, Color shadow) {
-    const float cy = rowY + ROW_FONT_SIZE * 0.5f;
+    const float cy = rowY + ROW_FONT_SIZE * 0.5f + ROW_ICON_DY;
     const float s = KEY_ARROW_HALF;
 
     for (int pass = 0; pass < 2; pass++) {
@@ -281,6 +281,16 @@ static void DrawSquareIcon(float cx, float cy, Color color) {
     DrawRectangleLinesEx((Rectangle) {cx - h, cy - h, h * 2.0f, h * 2.0f}, 5.0f, color);
 }
 
+/* Mouse (corpo arredondado, divisao dos botoes e roda), para os Beat Zoom. */
+static void DrawMouseIcon(float cx, float cy, Color color) {
+    const float w = MOUSE_ICON_W, h = MOUSE_ICON_H, stroke = MOUSE_ICON_STROKE;
+    const float left = cx - w * 0.5f, top = cy - h * 0.5f;
+
+    DrawRectangleRoundedLinesEx((Rectangle) {left, top, w, h}, 0.9f, 10, stroke, color);
+    DrawLineEx((Vector2) {cx, top + stroke}, (Vector2) {cx, top + h * 0.45f}, stroke * 0.7f, color);   // divisao dos botoes
+    DrawRectangleRounded((Rectangle) {cx - stroke * 0.6f, top + h * 0.14f, stroke * 1.2f, h * 0.2f}, 1.0f, 6, color); // roda
+}
+
 /* Circulo com setinha (mesmo desenho do Restart da pausa), centrado em (cx, cy). */
 void DrawResetIcon(float cx, float cy, Color color) {
     const float size = 36.0f, stroke = 5.0f;
@@ -303,7 +313,7 @@ void DrawResetIcon(float cx, float cy, Color color) {
 
 /* Icone da linha (so para as opcoes que tem), com a mesma sombra do texto. */
 void DrawExtraIcon(int i, float rowY, Color fill, Color shadow) {
-    const float cy = rowY + ROW_FONT_SIZE * 0.5f;
+    const float cy = rowY + ROW_FONT_SIZE * 0.5f + ROW_ICON_DY;
 
     // Setas de nota reais da skin (sem sombra propria: a nota ja tem contorno).
     if (i == OPTION_SCROLL_STYLE) {   // Normal = cima, Downscroll = baixo, Middlescroll = as duas
@@ -334,6 +344,8 @@ void DrawExtraIcon(int i, float rowY, Color fill, Color shadow) {
             case OPTION_SCORE_POSITION: DrawTextIcon(cx, y, color); break;
             case OPTION_BOPPING_ICONS:  DrawBopIcon(cx, y, color); break;
             case OPTION_STRUM_MOBILE:   DrawSquareIcon(cx, y, color); break;
+            case OPTION_ZOOMFACTOR_UI:
+            case OPTION_ZOOMFACTOR_GAME: DrawMouseIcon(cx, y, color); break;
             case OPTION_RESET_CONFIG:   DrawResetIcon(cx, y, color); break;
             default: return;
         }

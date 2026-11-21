@@ -217,3 +217,10 @@
 62	136	8169843933343139	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
 140	215	8169843934123169	CMakeFiles/FNF_C_ENGINE.dir/src/data/JsonStream.c.obj	291d54e4b437ba09
 215	3480	8169843934869826	D:/dev/funkin c/FNF_C_ENGINE.exe	638134c5e73147a3
+31	69	8169844176969445	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+86	249	8169844177521103	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/menu/options/OptionsMenuScreens.c.obj	5437e8135fc63220
+78	279	8169844177429463	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/menu/options/OptionsMenuIcons.c.obj	a7b023450f229f6e
+82	292	8169844177479448	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/menu/options/OptionsMenuNoteColors.c.obj	7d7b6ea31a9a5c9c
+74	302	8169844177389728	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/menu/options/OptionsMenu.c.obj	1a1fee3d03190324
+91	316	8169844177571191	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/menu/options/OptionsMenuValues.c.obj	c03cd6cb741c2129
+316	4103	8169844179823391	D:/dev/funkin c/FNF_C_ENGINE.exe	638134c5e73147a3

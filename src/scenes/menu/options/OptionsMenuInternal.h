@@ -76,6 +76,11 @@
 #define TEXT_ICON_HALF 14.0f   // meia altura da caixa com o "T"
 #define BOP_ICON_R 7.0f        // raio de cada bolinha do Bopping
 #define KEYMON_ICON_HALF 11.0f // meia largura do quadrado do Keys Monitor
+#define MOUSE_ICON_W 22.0f     // mouse do Beat Zoom (UI / Game)
+#define MOUSE_ICON_H 34.0f
+#define MOUSE_ICON_STROKE 4.0f
+// Centro vertical dos icones de linha (um pouco abaixo do centro da caixa, para ficar na altura do texto).
+#define ROW_ICON_DY 3.0f
 
 // Nota musical ao lado de "[Musica]".
 #define NOTE_HEAD_RADIUS 13.0f
