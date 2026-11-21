@@ -17,7 +17,7 @@
 
 // ---------- acoes de trecho (usadas no menu e nas abas, sem duplicar) ----------
 static void Edit_DoNewPart(void) {
-    EdTouch();
+    EdTouchAddSec();
     EdSec* last = chart.secs + chart.nsec - 1;
     EdSec* g = realloc(chart.secs, sizeof(EdSec) * (size_t)(chart.nsec + 1));
     if(g == NULL) return;
@@ -38,7 +38,7 @@ static void Edit_DoNewPart(void) {
 
 static void Edit_DoDelPart(void) {
     if(chart.nsec <= 1) { EdStatusMsg("NOT POSSIBLE TO DELETE HAVE ONLY 1 PART"); return; }
-    EdTouch();
+    EdTouchDelSec(secIdx);
     free(chart.secs[secIdx].notes);
     memmove(chart.secs + secIdx, chart.secs + secIdx + 1, sizeof(EdSec) * (size_t)(chart.nsec - secIdx - 1));
     chart.nsec--;
@@ -67,7 +67,7 @@ static void Edit_DoCopy(void) {
 
 static void Edit_DoPaste(void) {
     if(!copyValid) { EdStatusMsg("COPIE ANTES (C)"); return; }
-    EdTouch();
+    EdTouchAddSec();
     double base = SongEndMs();
     double srcStart = SecStartMs(secIdx);
     EdSec* g = realloc(chart.secs, sizeof(EdSec) * (size_t)(chart.nsec + 1));
@@ -157,7 +157,7 @@ void Edit_DrawMenuBar(void) {
         Rectangle box = {mx, MENU_H, 230, 5 * 30 + 8};
         DrawRectangleRec(box, (Color){15,15,15,245});
         DrawRectangleLinesEx(box, 1, GREEN);
-        if(EdMenuItem((Rectangle){box.x + 4, box.y + 4, 222, 28}, "Undo  Ctrl+Z")) { menuOpen = 0; Undo_Pop(); chart.dirty = 1; }
+        if(EdMenuItem((Rectangle){box.x + 4, box.y + 4, 222, 28}, "Undo  Ctrl+Z")) { menuOpen = 0; Undo_Pop(); if(secIdx >= chart.nsec) secIdx = chart.nsec - 1; if(secIdx < 0) secIdx = 0; SecTimes_Invalidate(); chart.dirty = 1; }
         else if(EdMenuItem((Rectangle){box.x + 4, box.y + 32, 222, 28}, "Copy part  C")) { menuOpen = 0; Edit_DoCopy(); }
         else if(EdMenuItem((Rectangle){box.x + 4, box.y + 60, 222, 28}, "Paste at end  V")) { menuOpen = 0; Edit_DoPaste(); }
         else if(EdMenuItem((Rectangle){box.x + 4, box.y + 88, 222, 28}, "New part  N")) { menuOpen = 0; Edit_DoNewPart(); }
@@ -321,7 +321,7 @@ static void Edit_DrawPanel_Section(float x, float y) {
     y += 32;
     Ed_DrawText(mainFont, "turn (TAB):", (Vector2){x, y + 4}, 22, 1, WHITE);
     if(EdButton((Rectangle){x + 150, y, 180, 32}, chart.secs[secIdx].mustHit ? "boyfriend" : "opponent", 20)) {
-        EdTouch(); chart.secs[secIdx].mustHit = !chart.secs[secIdx].mustHit;
+        EdTouchSec(secIdx); chart.secs[secIdx].mustHit = !chart.secs[secIdx].mustHit;
     }
     y += 42;
     // steps = tamanho do trecho em passos (16 = padrao, 4 tempos). Era "size:".

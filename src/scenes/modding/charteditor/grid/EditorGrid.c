@@ -338,15 +338,16 @@ static void Grid_NoteMouse(Vector2 m, float ppm) {
     }
 
     if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && exist < 0) {
-        EdTouch();
+        EdTouchSec(si);
         EdSec_Add(s, snapped, raw, 0);
         secIdx = si;
         cursorMs = snapped;
     }
     if(IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) {
         int idx = EdSec_FindNear(s, (float)t, raw, beatMs);
-        if(idx >= 0 && EdSec_RemoveAt(s, idx)) {
-            EdTouch();
+        if(idx >= 0) {
+            EdTouchSec(si);   /* antes de remover: o undo precisa do estado com a nota */
+            EdSec_RemoveAt(s, idx);
             secIdx = si;
         }
     }

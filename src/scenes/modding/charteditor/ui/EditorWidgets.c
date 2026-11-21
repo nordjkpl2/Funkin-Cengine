@@ -260,28 +260,28 @@ void NumBox_Commit(void) {
     if(focusNum == &nbSecBpm) {
         float v = Clamp((float)atof(nbSecBpm.buf), 10.0f, 300.0f);
         if(v != chart.secs[secIdx].bpm) {
-            EdTouch();
+            EdTouchSec(secIdx);
             chart.secs[secIdx].bpm = v;
             SecTimes_Invalidate(); // inicio dos trechos seguintes muda
         }
     } else if(focusNum == &nbTopBpm) {
         float v = Clamp((float)atof(nbTopBpm.buf), 10.0f, 300.0f);
         if(v != chart.bpm) {
-            EdTouch();
+            EdTouchMeta();
             chart.bpm = v;
             SecTimes_Invalidate();
         }
     } else if(focusNum == &nbLen) {
         int v = (int)Clamp((float)atoi(nbLen.buf), 1.0f, 64.0f);
         if(v != chart.secs[secIdx].lenSteps) {
-            EdTouch();
+            EdTouchSec(secIdx);
             chart.secs[secIdx].lenSteps = v;
             SecTimes_Invalidate(); // duracao do trecho muda
         }
     } else if(focusNum == &nbSpeed) {
         float v = Clamp((float)atof(nbSpeed.buf), 0.2f, 5.0f);
         if(v != chart.speed) {
-            EdTouch();
+            EdTouchMeta();
             chart.speed = v;
         }
     }

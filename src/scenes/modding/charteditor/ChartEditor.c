@@ -172,6 +172,9 @@ static void Edit_UpdateKeys(void) {
     }
     if(ctrl && IsKeyPressed(KEY_Z) && focusBox == NULL && focusNum == NULL) {
         Undo_Pop();
+        if(secIdx >= chart.nsec) secIdx = chart.nsec - 1;
+        if(secIdx < 0) secIdx = 0;
+        SecTimes_Invalidate();
         chart.dirty = 1;
         EdStatusMsg("actions reverted");
         return;
@@ -212,7 +215,7 @@ static void Edit_UpdateKeys(void) {
         return;
     }
     if(IsKeyPressed(KEY_TAB)) {
-        EdTouch();
+        EdTouchSec(secIdx);
         chart.secs[secIdx].mustHit = !chart.secs[secIdx].mustHit;
         EdStatusMsg(chart.secs[secIdx].mustHit ? "Turn: You" : "Turn: Opponent");
         return;
@@ -221,7 +224,7 @@ static void Edit_UpdateKeys(void) {
         snapDiv = (snapDiv == 4) ? 1 : (snapDiv == 1) ? 2 : 4;
         return;
     }    if(IsKeyPressed(KEY_N)) {
-        EdTouch();
+        EdTouchAddSec();
         EdSec* last = chart.secs + chart.nsec - 1;
         EdSec* g = realloc(chart.secs, sizeof(EdSec) * (size_t)(chart.nsec + 1));
         if(g != NULL) {
@@ -243,7 +246,7 @@ static void Edit_UpdateKeys(void) {
     if(IsKeyPressed(KEY_X)) {
         /* // * part deleter */
         if(chart.nsec > 1) {
-            EdTouch();
+            EdTouchDelSec(secIdx);
             free(chart.secs[secIdx].notes);
             memmove(chart.secs + secIdx, chart.secs + secIdx + 1,
                 sizeof(EdSec) * (size_t)(chart.nsec - secIdx - 1));
@@ -279,7 +282,7 @@ static void Edit_UpdateKeys(void) {
             EdStatusMsg("V pressed missing Copy Before (C)");
             return;
         }
-        EdTouch();
+        EdTouchAddSec();
         double base = SongEndMs();
         double srcStart = SecStartMs(secIdx);
         EdSec* g = realloc(chart.secs, sizeof(EdSec) * (size_t)(chart.nsec + 1));
@@ -319,7 +322,7 @@ static void Edit_UpdateKeys(void) {
         return;
     }
     if(IsKeyPressed(KEY_COMMA) || IsKeyPressed(KEY_PERIOD)) {
-        EdTouch();
+        EdTouchSec(secIdx);
         float d = (IsKeyPressed(KEY_PERIOD) ? 1 : -1) * (shift ? 10 : 1);
         chart.secs[secIdx].bpm += d;
         if(chart.secs[secIdx].bpm < 10) chart.secs[secIdx].bpm = 10;
@@ -401,7 +404,7 @@ static void Edit_Update(void) {
             float beatMs = 60000.0f / s->bpm;
             for(int i = 0; i < s->count; i++) {
                 if(s->notes[i].lane == lane && fabsf(s->notes[i].time - (float)t) < beatMs / 2) {
-                    EdTouch();
+                    EdTouchSec(si);
                     s->notes[i].len += wheel * beatMs / 4;
                     if(s->notes[i].len < 0) s->notes[i].len = 0;
                     if(s->notes[i].len > 10000) s->notes[i].len = 10000;
