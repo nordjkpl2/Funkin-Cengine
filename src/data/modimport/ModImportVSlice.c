@@ -44,6 +44,10 @@ typedef struct MI_VsMeta {
 typedef struct MI_VsCollect {
     char paths[MI_VS_MAX_CHARTS][MI_PATH_MAX];
     int count;
+    /* Metadata da ultima pasta lida: os charts de uma mesma pasta nao releem o metadata. */
+    char metaDir[MI_PATH_MAX];
+    MI_VsMeta meta;
+    int metaReady;
 } MI_VsCollect;
 
 static void MI_VsMetaDefaults(MI_VsMeta *meta)
@@ -72,22 +76,14 @@ static void MI_VsString(char *dst, size_t dstSize, yyjson_val *value, const char
     MI_CopyString(dst, dstSize, yyjson_is_str(value) ? yyjson_get_str(value) : fallback);
 }
 
+/* Usa o cache de classificacao: cada .json e lido no maximo uma vez por importacao. */
 int MI_VSliceFileKind(const char *path)
 {
-    yyjson_doc *doc = MI_VsReadDoc(path);
-    int kind = 0;
-    if (doc == NULL) return 0;
-    if (yyjson_is_obj(yyjson_doc_get_root(doc))) {
-        yyjson_val *root = yyjson_doc_get_root(doc);
-        if (yyjson_is_obj(yyjson_obj_get(root, "scrollSpeed")) &&
-            yyjson_is_obj(yyjson_obj_get(root, "notes"))) {
-            kind = 1;
-        } else if (yyjson_is_obj(yyjson_obj_get(root, "playData"))) {
-            kind = 2;
-        }
+    switch (MI_ClassifyJson(path)) {
+    case MI_JK_VS_CHART: return 1;
+    case MI_JK_VS_META:  return 2;
+    default:             return 0;
     }
-    yyjson_doc_free(doc);
-    return kind;
 }
 
 /* Le o metadata (primeiro "*.json" com playData) de uma pasta. Sem metadata: padroes. */
@@ -190,6 +186,8 @@ static int MI_VsWriteDifficulty(yyjson_val *notes, double bpm, double speed,
     yyjson_mut_val *songObject;
     yyjson_mut_val *sections;
     yyjson_mut_val **noteArrays = NULL;
+    float *times = NULL;      /* tempos das notas gravadas: custo sem reler o arquivo */
+    int sustains = 0;
     int kept = 0;
     int ok = 0;
 
@@ -220,6 +218,7 @@ static int MI_VsWriteDifficulty(yyjson_val *notes, double bpm, double speed,
 
     noteArrays = (yyjson_mut_val **)calloc(sectionCount, sizeof(*noteArrays));
     if (noteArrays == NULL) goto cleanup;
+    times = (float *)malloc(sizeof(float) * yyjson_arr_size(notes));  /* NULL: so pula o custo */
     for (size_t s = 0; s < sectionCount; ++s) {
         yyjson_mut_val *section = yyjson_mut_obj(doc);
         noteArrays[s] = yyjson_mut_arr(doc);
@@ -252,6 +251,8 @@ static int MI_VsWriteDifficulty(yyjson_val *notes, double bpm, double speed,
         yyjson_mut_arr_add_int(doc, triple, psychLane);
         yyjson_mut_arr_add_real(doc, triple, len > 0.0 ? len : 0.0);
         yyjson_mut_arr_add_val(noteArrays[section], triple);
+        if (times != NULL) times[kept] = (float)t;
+        if (len > 0.0) ++sustains;
         ++kept;
     }
     if (kept == 0) goto cleanup;
@@ -259,21 +260,24 @@ static int MI_VsWriteDifficulty(yyjson_val *notes, double bpm, double speed,
     if (!MI_EnsureParent(outPath)) goto cleanup;
     if (!yyjson_mut_write_file(outPath, doc, 0, NULL, NULL)) goto cleanup;
 
-    {
+    if (times != NULL) {
         MI_ChartCost cost;
-        if (MI_AnalyzeChart(outPath, &cost)) MI_AddChartCost(context->stats, &cost);
+        MI_CostFromTimes(times, kept, sustains, &cost);
+        MI_AddChartCost(context->stats, &cost);
     }
     ++context->stats->charts;
     ok = 1;
 
 cleanup:
+    free(times);
     free(noteArrays);
     yyjson_mut_doc_free(doc);
     return ok;
 }
 
 /* Converte todas as dificuldades de um chart V-Slice (um arquivo = varias dificuldades). */
-static void MI_VsConvertChart(const char *chartPath, const char *dstMod, MI_ImportContext *context)
+static void MI_VsConvertChart(const char *chartPath, const char *dstMod,
+                              MI_ImportContext *context, MI_VsCollect *collect)
 {
     yyjson_doc *doc;
     yyjson_val *root;
@@ -285,7 +289,7 @@ static void MI_VsConvertChart(const char *chartPath, const char *dstMod, MI_Impo
     char dirPath[MI_PATH_MAX];
     char songsRoot[MI_PATH_MAX];
     char songDir[MI_PATH_MAX];
-    MI_VsMeta meta;
+    MI_VsMeta *meta = &collect->meta;
     int wrote = 0;
 
     if (!MI_VsSongName(chartPath, song, sizeof(song))) return;
@@ -297,12 +301,16 @@ static void MI_VsConvertChart(const char *chartPath, const char *dstMod, MI_Impo
     if (!yyjson_is_obj(scroll) || !yyjson_is_obj(notesByDiff)) goto done;
 
     MI_VsParentDir(chartPath, dirPath, sizeof(dirPath));
-    MI_VsReadMeta(dirPath, &meta);
+    if (!collect->metaReady || strcmp(collect->metaDir, dirPath) != 0) {
+        MI_VsReadMeta(dirPath, meta);
+        MI_CopyString(collect->metaDir, sizeof(collect->metaDir), dirPath);
+        collect->metaReady = 1;
+    }
 
     /* Os personagens do metadata viram icones do import (mesmo caminho dos charts do engine). */
-    MI_AddName(&context->iconNames, meta.player1);
-    MI_AddName(&context->iconNames, meta.player2);
-    MI_AddName(&context->iconNames, meta.gf);
+    MI_AddName(&context->iconNames, meta->player1);
+    MI_AddName(&context->iconNames, meta->player2);
+    MI_AddName(&context->iconNames, meta->gf);
 
     if (!MI_Join(songsRoot, sizeof(songsRoot), dstMod, "songs") ||
         !MI_Join(songDir, sizeof(songDir), songsRoot, song) || !MI_EnsureDirectory(songDir)) goto done;
@@ -319,7 +327,7 @@ static void MI_VsConvertChart(const char *chartPath, const char *dstMod, MI_Impo
         if (MI_CaseEqual(diff, "normal")) snprintf(fileName, sizeof(fileName), "%s.json", song);
         else snprintf(fileName, sizeof(fileName), "%s-%s.json", song, diff);
         if (!MI_IsSafeComponent(fileName) || !MI_Join(outPath, sizeof(outPath), songDir, fileName)) continue;
-        if (MI_VsWriteDifficulty(notes, meta.bpm, speed, &meta, song, outPath, context)) wrote = 1;
+        if (MI_VsWriteDifficulty(notes, meta->bpm, speed, meta, song, outPath, context)) wrote = 1;
     }
     if (wrote) ++context->stats->songs;
 
@@ -345,7 +353,7 @@ int MI_ImportVSliceCharts(const char *srcMod, const char *dstMod, MI_ImportConte
     if (collect == NULL) return 0;
     MI_WalkJson(srcMod, 0, MI_VS_DEPTH, MI_VsCollectVisit, collect);
     for (int i = 0; i < collect->count; ++i)
-        MI_VsConvertChart(collect->paths[i], dstMod, context);
+        MI_VsConvertChart(collect->paths[i], dstMod, context, collect);
     free(collect);
     return 1;
 }

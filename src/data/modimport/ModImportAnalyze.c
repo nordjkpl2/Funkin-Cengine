@@ -78,41 +78,40 @@ static int MI_PushTime(float **times, int *count, int *cap, float value)
     return 1;
 }
 
-char MI_AnalyzeChart(const char *chartPath, MI_ChartCost *out)
+void MI_CostFromTimes(float *times, int count, int sustains, MI_ChartCost *out)
 {
-    long size = 0;
-    char *buffer;
-    yyjson_doc *doc;
-    yyjson_val *root;
+    if (out == NULL) return;
+    if (count > 1 && times != NULL) qsort(times, (size_t)count, sizeof(float), MI_CmpFloat);
+    out->notes = count;
+    out->sustains = sustains;
+    out->peakNps = MI_PeakNps(times, count);
+    {
+        const int byPeak = MI_LevelByPeak(out->peakNps);
+        const int byNotes = MI_LevelByNotes(out->notes);
+        out->level = byPeak > byNotes ? byPeak : byNotes;
+    }
+}
+
+char MI_AnalyzeChartRoot(yyjson_val *root, MI_ChartCost *out)
+{
     yyjson_val *songObject;
     yyjson_val *sections;
     float *times = NULL;
     int count = 0;
     int cap = 0;
     int sustains = 0;
-    int ok = 0;
     size_t sectionIdx;
     size_t sectionMax;
     yyjson_val *section;
 
     if (out == NULL) return 0;
     memset(out, 0, sizeof(*out));
-    if (chartPath == NULL) return 0;
-
-    buffer = MI_ReadFile(chartPath, &size, MI_ANALYZE_MAX_BYTES);
-    if (buffer == NULL) return 0;
-    doc = yyjson_read(buffer, (size_t)size, 0);
-    free(buffer);
-    if (doc == NULL) return 0;
-
-    root = yyjson_doc_get_root(doc);
-    if (!yyjson_is_obj(root)) goto done;
+    if (!yyjson_is_obj(root)) return 0;
     songObject = yyjson_obj_get(root, "song");
     if (!yyjson_is_obj(songObject)) songObject = root;
     sections = yyjson_obj_get(songObject, "notes");
-    if (!yyjson_is_arr(sections)) goto done;
+    if (!yyjson_is_arr(sections)) return 0;
 
-    ok = 1;
     yyjson_arr_foreach(sections, sectionIdx, sectionMax, section) {
         yyjson_val *sectionNotes;
         size_t noteIdx;
@@ -128,28 +127,40 @@ char MI_AnalyzeChart(const char *chartPath, MI_ChartCost *out)
             timeValue = yyjson_arr_get(note, 0);
             if (!yyjson_is_num(timeValue)) continue;
             if (!MI_PushTime(&times, &count, &cap, (float)yyjson_get_num(timeValue))) {
-                ok = 0;
-                goto done;
+                free(times);
+                memset(out, 0, sizeof(*out));
+                return 0;
             }
             lengthValue = yyjson_arr_get(note, 2);
             if (yyjson_is_num(lengthValue) && yyjson_get_num(lengthValue) > 0.0) ++sustains;
         }
     }
 
-    if (count > 1) qsort(times, (size_t)count, sizeof(float), MI_CmpFloat);
-    out->notes = count;
-    out->sustains = sustains;
-    out->peakNps = MI_PeakNps(times, count);
-    {
-        const int byPeak = MI_LevelByPeak(out->peakNps);
-        const int byNotes = MI_LevelByNotes(out->notes);
-        out->level = byPeak > byNotes ? byPeak : byNotes;
-    }
-
-done:
+    MI_CostFromTimes(times, count, sustains, out);
     free(times);
+    return 1;
+}
+
+char MI_AnalyzeChart(const char *chartPath, MI_ChartCost *out)
+{
+    long size = 0;
+    char *buffer;
+    yyjson_doc *doc;
+    char ok;
+
+    if (out == NULL) return 0;
+    memset(out, 0, sizeof(*out));
+    if (chartPath == NULL) return 0;
+
+    buffer = MI_ReadFile(chartPath, &size, MI_ANALYZE_MAX_BYTES);
+    if (buffer == NULL) return 0;
+    doc = yyjson_read(buffer, (size_t)size, 0);
+    free(buffer);
+    if (doc == NULL) return 0;
+
+    ok = MI_AnalyzeChartRoot(yyjson_doc_get_root(doc), out);
     yyjson_doc_free(doc);
-    return (char)ok;
+    return ok;
 }
 
 void MI_AddChartCost(ModImportStats *stats, const MI_ChartCost *cost)

@@ -20,6 +20,20 @@ typedef enum MI_Format {
 
 const char *MI_FormatName(MI_Format format);
 
+/* Classificacao de um .json (uma leitura por arquivo na importacao toda; ver MI_ClassifyJson). */
+typedef enum MI_JsonKind {
+    MI_JK_NONE = 0,
+    MI_JK_VS_CHART,     /* V-Slice: "scrollSpeed" + "notes" por dificuldade */
+    MI_JK_VS_META,      /* V-Slice: metadata com "playData" */
+    MI_JK_PSYCH_WEEK,   /* week com "weekCharacters" */
+    MI_JK_FNF_CHART     /* chart FNF: "notes" (lista de secoes) em "song" ou na raiz */
+} MI_JsonKind;
+
+/* Classifica o .json uma vez por importacao: o resultado fica num cache por caminho.
+ * Chamar so na thread do import. MI_ClassifyCacheClear libera o cache. */
+MI_JsonKind MI_ClassifyJson(const char *path);
+void MI_ClassifyCacheClear(void);
+
 /* Callback do walker: recebe o caminho de cada .json (sem pastas de imagem/audio). */
 typedef void (*MI_JsonVisitFn)(const char *path, void *user);
 

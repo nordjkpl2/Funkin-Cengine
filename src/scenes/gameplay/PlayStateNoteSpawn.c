@@ -6,6 +6,8 @@
 #include "scenes/api/NoteSkinCache.h"
 #include "scenes/gameplay/PlayStateNoteAtlas.h"
 #include "scenes/gameplay/PlayStateNoteSpawn.h"
+#include "data/SongStream.h"
+#include <float.h>
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
@@ -17,9 +19,20 @@ static RayAnimatedObject trail;
 static RayAnimatedObject end;
 static RayAnimatedObject renderNote;
 
+/* `notes` guarda todas as notas (modo completo) ou so a janela carregada (modo streaming).
+   noteCount, firstNote e os acessos publicos sao sempre relativos a esse array. */
 static Note* notes;
 static size_t noteCount;
 static size_t firstNote;
+static size_t noteCapacity;
+
+/* Modo streaming (ver data/SongStream.h): as secoes entram na janela conforme o tempo avanca. */
+static SongStream* stream = NULL;
+static int streamNext = 0;             /* proxima secao a carregar */
+static float streamLookahead = 4.0f;   /* segundos a frente do tempo que ja devem estar carregados */
+#define STREAM_MARGIN_S 2.0f           /* folga alem do cutoff das notas (evita carregar tarde) */
+#define STREAM_COMPACT_MIN 256         /* so tira notas resolvidas do inicio da janela a partir deste numero */
+#define STREAM_MS_TO_S 0.001f
 
 static PlayStateNoteEvents events;
 
@@ -72,10 +85,66 @@ static bool IsWhiteColor(Color c) {
     return c.r == 255 && c.g == 255 && c.b == 255;
 }
 
-void PlayStateNoteSpawn_Load(const Song* song) {
+/* Janela de notas por secao (modo streaming). Ver a descricao em PlayStateNoteSpawn.h. */
+
+/* Garante espaco para `extra` notas no fim da janela. */
+static void StreamReserve(size_t extra) {
+    size_t cap;
+    Note* grown;
+    if (noteCount + extra <= noteCapacity) return;
+    cap = noteCapacity > 0 ? noteCapacity : 1024;
+    while (cap < noteCount + extra) cap *= 2;
+    grown = realloc(notes, sizeof(Note) * cap);
+    if (grown == NULL)
+        Log_FatalF("PlayStateNoteSpawn: sem memoria para a janela de notas (%zu)", cap);
+    notes = grown;
+    noteCapacity = cap;
+}
+
+/* Tira do inicio da janela as notas ja resolvidas, quando ja sao muitas e pelo menos metade da janela. */
+static void StreamCompact(void) {
+    if (firstNote < STREAM_COMPACT_MIN || firstNote * 2 < noteCount) return;
+    memmove(notes, notes + firstNote, sizeof(Note) * (noteCount - firstNote));
+    noteCount -= firstNote;
+    firstNote = 0;
+}
+
+/* Converte a secao k e a poe no fim da janela. Notas com tempo < resolveBefore (s) viram resolvidas
+   (so o seek usa isso; no andamento normal fica -1: nada resolvido). */
+static void StreamLoadSection(int k, float resolveBefore) {
+    DataNote* data = NULL;
+    char mustHit = 0;
+    const int count = SongStream_LoadSection(stream, k, &data, &mustHit);
+    if (count <= 0) {
+        free(data);
+        return;
+    }
+    StreamReserve((size_t)count);
+    for (int j = 0; j < count; j++) {
+        Note* note = notes + noteCount;
+        Note_Load(note, data + j);
+        note->sectionMustHit = mustHit != 0;
+        note->pressed = note->time < resolveBefore;
+        noteCount++;
+    }
+    free(data);
+}
+
+/* Carrega, em ordem, as secoes que comecam ate untilSec (s). */
+static void StreamFeed(float untilSec, float resolveBefore) {
+    const int total = SongStream_SectionCount(stream);
+    while (streamNext < total &&
+           SongStream_SectionLoadMs(stream, streamNext) * STREAM_MS_TO_S <= untilSec) {
+        StreamLoadSection(streamNext, resolveBefore);
+        streamNext++;
+    }
+}
+
+void PlayStateNoteSpawn_Load(Song* song) {
     firstNote = 0;
     noteCount = 0;
-    for (size_t i = 0; i < song->sectionCount; i++)
+    noteCapacity = 0;
+    for (size_t i = 0; i < (size_t)song->sectionCount; i++)
         noteCount += song->sections[i].noteCount;
 
     for (int lane = 0; lane < 4; lane++) {
@@ -88,12 +157,24 @@ void PlayStateNoteSpawn_Load(const Song* song) {
         NoteAtlas_Build(&skin, tints);   /* false = sem cor customizada ou skin grande: cai no shader */
     }
 
+    /* Streaming: a gameplay fica com o stream; as notas entram pelo Update (StreamFeed). */
+    if (song->stream != NULL) {
+        if (stream != NULL) SongStream_Close(stream);
+        stream = song->stream;
+        song->stream = NULL;
+        streamNext = 0;
+        streamLookahead = 4.0f;
+        notes = NULL;
+        return;
+    }
+
     notes = NULL;
     if (noteCount == 0) return;
 
     notes = malloc(sizeof(Note) * noteCount);
     if (notes == NULL)
         Log_FatalF("PlayStateNoteSpawn_Load: sem memoria para %zu notas", noteCount);
+    noteCapacity = noteCount;
 
     size_t noteIndex = 0;
     char sorted = 1;
@@ -118,6 +199,12 @@ void PlayStateNoteSpawn_Load(const Song* song) {
 void PlayStateNoteSpawn_Reset(void) {
     firstNote = 0;
 
+    if (stream != NULL) {   /* restart: a janela volta ao inicio; o Update carrega de novo */
+        noteCount = 0;
+        streamNext = 0;
+        return;
+    }
+
     for (size_t i = 0; i < noteCount; i++) {
         Note* note = notes + i;
         note->missed = 0;
@@ -129,6 +216,19 @@ void PlayStateNoteSpawn_Reset(void) {
    "resolvidas" (pressed), sem acerto, miss ou score. As do alvo em diante voltam a zero.
    firstNote vai para a primeira nota que ainda pode estar ativa (sustain que cruza o alvo incluso). */
 void PlayStateNoteSpawn_SeekTo(float time) {
+    if (stream != NULL) {
+        /* Mesma regra da versao completa, por secao: a primeira secao cujo maior fim ainda
+           alcanca tempo - 0.4 s. As anteriores so tem notas ja resolvidas (nunca sao carregadas). */
+        const int total = SongStream_SectionCount(stream);
+        int k = 0;
+        while (k < total && SongStream_SectionMaxEndMs(stream, k) * STREAM_MS_TO_S < time - 0.4f) k++;
+        noteCount = 0;
+        firstNote = 0;
+        streamNext = k;
+        StreamFeed(time + streamLookahead, time);
+        return;
+    }
+
     size_t first = noteCount;
 
     for (size_t i = 0; i < noteCount; i++) {
@@ -151,7 +251,13 @@ void PlayStateNoteSpawn_Unload(void) {
     free(notes);
     notes = NULL;
     noteCount = 0;
+    noteCapacity = 0;
     firstNote = 0;
+    if (stream != NULL) {
+        SongStream_Close(stream);
+        stream = NULL;
+    }
+    streamNext = 0;
 }
 
 Note* PlayStateNoteSpawn_Notes(void) { return notes; }
@@ -398,6 +504,13 @@ void PlayStateNoteSpawn_Update(const PlayStateNoteView* view) {
     const float time = view->time;
     const float scrollSpeed = 450.0f * view->songSpeed;
     const float cutoffTime = time + (900.0f / scrollSpeed);
+
+    /* Streaming: carrega as secoes que o cutoff (e a folga) ainda alcanca, antes do culling. */
+    if (stream != NULL) {
+        streamLookahead = (900.0f / scrollSpeed) + STREAM_MARGIN_S;
+        StreamCompact();
+        StreamFeed(time + streamLookahead, -1.0f);
+    }
 
     CullPassedNotes(time, 400.0f / scrollSpeed);
 

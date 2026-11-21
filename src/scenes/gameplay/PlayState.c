@@ -197,9 +197,9 @@ static void Restart(void) {
 
 static void LoadSong(void) {
     if (diffSuf[0] != 0)
-        Song_LoadSongFromDirDiff(&song, songDir, diffSuf);
+        Song_LoadSongFromDirDiff(&song, songDir, diffSuf, gameOptions.streamingJsonParse);
     else
-        Song_LoadSongFromDir(&song, songDir);
+        Song_LoadSongFromDir(&song, songDir, gameOptions.streamingJsonParse);
 
     if (strcmp(diffSuf, "easy") == 0)
         Note_SetWindow(0.240f);

@@ -22,6 +22,13 @@ typedef struct MI_ChartCost {
  * Retorna 0 se o arquivo nao puder ser lido. */
 char MI_AnalyzeChart(const char *chartPath, MI_ChartCost *out);
 
+/* Mesma analise, sobre um documento ja parseado (raiz do chart). Evita reler o arquivo. */
+char MI_AnalyzeChartRoot(yyjson_val *root, MI_ChartCost *out);
+
+/* Custo a partir dos tempos das notas (ordem qualquer; o vetor e ordenado in-place).
+ * sustains = notas com comprimento > 0. */
+void MI_CostFromTimes(float *times, int count, int sustains, MI_ChartCost *out);
+
 /* Acumula o custo de um chart nas estatisticas do import (soma e pior nivel). */
 void MI_AddChartCost(ModImportStats *stats, const MI_ChartCost *cost);
 

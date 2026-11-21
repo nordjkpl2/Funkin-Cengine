@@ -16,7 +16,8 @@ void MI_AddName(MI_NameList *list, const char *name);
 int MI_ParseCharacterJson(const char *jsonPath, const char *fallbackName,
                                  MI_CharInfo *out);
 
-void MI_ParseChartActors(const char *chartPath, MI_NameList *names);
+/* Acrescenta player1/player2 do chart (raiz ja parseada) na lista de icones. */
+void MI_CollectChartActors(yyjson_val *root, MI_NameList *names);
 
 void MI_ParseWeekIcons(const char *weekPath, MI_NameList *names);
 

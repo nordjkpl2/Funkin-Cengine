@@ -36,8 +36,11 @@ void PlayStateNoteSpawn_Init(void);
 
 void PlayStateNoteSpawn_SetEvents(const PlayStateNoteEvents* events);
 
-/* Monta e ordena a lista de notas a partir da musica. */
-void PlayStateNoteSpawn_Load(const Song* song);
+/* Monta e ordena a lista de notas a partir da musica.
+   Se song->stream existe (modo streaming), a gameplay assume o stream: as notas entram em janelas
+   por secao durante o Update, e song->stream vira NULL. Os acessos Notes/Count/First sao sempre
+   relativos a janela carregada. */
+void PlayStateNoteSpawn_Load(Song* song);
 
 /* Restart: volta o culling e limpa pressed/missed. */
 void PlayStateNoteSpawn_Reset(void);

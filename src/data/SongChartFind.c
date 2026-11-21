@@ -121,14 +121,14 @@ static int Song_IsDifficultyFile(const char *path)
            Song_EndsWithI(base, "-hard.json");
 }
 
-static int Song_TryChartFile(Song *song, const char *path)
+static int Song_TryChartFile(Song *song, const char *path, char streaming)
 {
     if (path == NULL || !FileExists(path) || Song_IsEventsFile(path)) return 0;
-    return Song_ParseJSON(song, path);
+    return Song_ParseJSON(song, path, streaming);
 }
 
 static int Song_TryLoadChartDirectory(Song *song, const char *directory,
-                                      const char *diff)
+                                      const char *diff, char streaming)
 {
     char candidate[SONG_PATH_MAX];
     char baseDiff[SONG_PATH_MAX];
@@ -143,27 +143,27 @@ static int Song_TryLoadChartDirectory(Song *song, const char *directory,
     /* Exact difficulty names first. */
     if (diff != NULL && diff[0] != '\0' && strcmp(diff, "normal") != 0) {
         (void)snprintf(candidate, sizeof(candidate), "%s/data-%s.json", directory, diff);
-        if (Song_TryChartFile(song, candidate)) return 1;
+        if (Song_TryChartFile(song, candidate, streaming)) return 1;
         if (snprintf(baseDiff, sizeof(baseDiff), "%s-%s.json", base, diff) < (int)sizeof(baseDiff)) {
             (void)snprintf(candidate, sizeof(candidate), "%s/%s", directory, baseDiff);
-            if (Song_TryChartFile(song, candidate)) return 1;
+            if (Song_TryChartFile(song, candidate, streaming)) return 1;
         }
         (void)snprintf(candidate, sizeof(candidate), "%s/%s.json", directory, diff);
-        if (Song_TryChartFile(song, candidate)) return 1;
+        if (Song_TryChartFile(song, candidate, streaming)) return 1;
     } else {
         (void)snprintf(candidate, sizeof(candidate), "%s/normal.json", directory);
-        if (Song_TryChartFile(song, candidate)) return 1;
+        if (Song_TryChartFile(song, candidate, streaming)) return 1;
         if (snprintf(baseDiff, sizeof(baseDiff), "%s-normal.json", base) < (int)sizeof(baseDiff)) {
             (void)snprintf(candidate, sizeof(candidate), "%s/%s", directory, baseDiff);
-            if (Song_TryChartFile(song, candidate)) return 1;
+            if (Song_TryChartFile(song, candidate, streaming)) return 1;
         }
     }
 
     /* Common converted/imported chart filenames. */
     (void)snprintf(candidate, sizeof(candidate), "%s/data.json", directory);
-    if (Song_TryChartFile(song, candidate)) return 1;
+    if (Song_TryChartFile(song, candidate, streaming)) return 1;
     (void)snprintf(candidate, sizeof(candidate), "%s/%s.json", directory, base);
-    if (Song_TryChartFile(song, candidate)) return 1;
+    if (Song_TryChartFile(song, candidate, streaming)) return 1;
 
     files = LoadDirectoryFilesEx(directory, ".json", false);
 
@@ -174,7 +174,7 @@ static int Song_TryLoadChartDirectory(Song *song, const char *directory,
         for (unsigned i = 0; i < files.count; ++i) {
             if (Song_IsEventsFile(files.paths[i])) continue;
             if (Song_EndsWithI(Song_BaseName(files.paths[i]), suffix) &&
-                Song_TryChartFile(song, files.paths[i])) {
+                Song_TryChartFile(song, files.paths[i], streaming)) {
                 loaded = 1;
                 break;
             }
@@ -185,7 +185,7 @@ static int Song_TryLoadChartDirectory(Song *song, const char *directory,
     if (!loaded) {
         for (unsigned i = 0; i < files.count; ++i) {
             if (Song_IsEventsFile(files.paths[i]) || Song_IsDifficultyFile(files.paths[i])) continue;
-            if (Song_TryChartFile(song, files.paths[i])) {
+            if (Song_TryChartFile(song, files.paths[i], streaming)) {
                 loaded = 1;
                 break;
             }
@@ -196,7 +196,7 @@ static int Song_TryLoadChartDirectory(Song *song, const char *directory,
     if (!loaded) {
         for (unsigned i = 0; i < files.count; ++i) {
             if (Song_IsEventsFile(files.paths[i])) continue;
-            if (Song_TryChartFile(song, files.paths[i])) {
+            if (Song_TryChartFile(song, files.paths[i], streaming)) {
                 loaded = 1;
                 break;
             }
@@ -282,7 +282,7 @@ int Song_ResolveChart(const char *dirPath, const char *diff,
     return 0;
 }
 
-int Song_TryLoadChart(const char *dirPath, const char *diff, Song *song)
+int Song_TryLoadChart(const char *dirPath, const char *diff, Song *song, char streaming)
 {
     char normalized[SONG_PATH_MAX];
     char modRoot[SONG_PATH_MAX];
@@ -293,21 +293,21 @@ int Song_TryLoadChart(const char *dirPath, const char *diff, Song *song)
     Song_NormalizePath(dirPath, normalized, sizeof(normalized));
     (void)snprintf(songName, sizeof(songName), "%s", Song_BaseName(normalized));
 
-    if (Song_TryLoadChartDirectory(song, normalized, diff)) return 1;
+    if (Song_TryLoadChartDirectory(song, normalized, diff, streaming)) return 1;
 
     Song_GetModRoot(normalized, modRoot, sizeof(modRoot));
     if (modRoot[0] != '\0') {
         if (snprintf(directory, sizeof(directory), "%s/data/%s", modRoot, songName) < (int)sizeof(directory) &&
-            Song_TryLoadChartDirectory(song, directory, diff)) return 1;
+            Song_TryLoadChartDirectory(song, directory, diff, streaming)) return 1;
     }
 
     if (Song_PathJoin(directory, sizeof(directory), normalized, "charts") &&
-        Song_TryLoadChartDirectory(song, directory, diff)) return 1;
+        Song_TryLoadChartDirectory(song, directory, diff, streaming)) return 1;
     if (Song_PathJoin(directory, sizeof(directory), normalized, "data") &&
-        Song_TryLoadChartDirectory(song, directory, diff)) return 1;
+        Song_TryLoadChartDirectory(song, directory, diff, streaming)) return 1;
 
     if (snprintf(directory, sizeof(directory), "assets/data/%s", songName) < (int)sizeof(directory) &&
-        Song_TryLoadChartDirectory(song, directory, diff)) return 1;
+        Song_TryLoadChartDirectory(song, directory, diff, streaming)) return 1;
 
     return 0;
 }

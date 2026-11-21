@@ -93,6 +93,27 @@ void DrawVisualLogo(float rowY, Color fill, Color shadow) {
     }
 }
 
+/* Engrenagem (anel com dentes), com a mesma sombra do texto. */
+void DrawRenderLogo(float rowY, Color fill, Color shadow) {
+    const float cy = rowY + LOGO_TOP + LOGO_SQUARE + LOGO_GAP * 0.5f;
+    const float cx0 = renderLogoX + GEAR_OUTER_R;
+
+    for (int pass = 0; pass < 2; pass++) {
+        const Color color = pass == 0 ? shadow : fill;
+        const float shift = pass == 0 ? TEXT_SHADOW : 0.0f;
+        const float cx = cx0 + shift;
+        const float y = cy + shift;
+
+        DrawRing((Vector2) {cx, y}, GEAR_HOLE_R, GEAR_BODY_R, 0.0f, 360.0f, 48, color);
+        for (int k = 0; k < GEAR_TEETH; k++) {
+            const float angle = 2.0f * PI * (float)k / (float)GEAR_TEETH;
+            const float d = GEAR_BODY_R + GEAR_TOOTH_LEN * 0.5f - 1.0f; // 1px de encaixe no corpo
+            const Rectangle tooth = {cx + cosf(angle) * d, y + sinf(angle) * d, GEAR_TOOTH_LEN, GEAR_TOOTH_W};
+            DrawRectanglePro(tooth, (Vector2) {GEAR_TOOTH_LEN * 0.5f, GEAR_TOOTH_W * 0.5f}, angle * RAD2DEG, color);
+        }
+    }
+}
+
 /* Nota musical (colcheia), com a mesma sombra do texto. */
 void DrawMusicLogo(float rowY, Color fill, Color shadow) {
     for (int pass = 0; pass < 2; pass++) {

@@ -1721,3 +1721,954 @@ Window closed successfully
 [import] characters           0 ms
 [import] icons                0 ms
 [import] wait workers         0 ms
+
+--- SESSION LOG START ---
+Initializing raylib 5.5
+Platform backend: DESKTOP (GLFW)
+Supported raylib modules:
+    > rcore:..... loaded (mandatory)
+    > rlgl:...... loaded (mandatory)
+    > rshapes:... loaded (optional)
+    > rtextures:. loaded (optional)
+    > rtext:..... loaded (optional)
+    > rmodels:... loaded (optional)
+    > raudio:.... loaded (optional)
+DISPLAY: Trying to enable VSYNC
+DISPLAY: Device initialized successfully
+    > Display size: 1920 x 1080
+    > Screen size:  1280 x 720
+    > Render size:  1280 x 720
+    > Viewport offsets: 0, 0
+GLAD: OpenGL extensions loaded successfully
+GL: Supported extensions count: 404
+GL: OpenGL device information:
+    > Vendor:   NVIDIA Corporation
+    > Renderer: NVIDIA GeForce RTX 3050 Laptop GPU/PCIe/SSE2
+    > Version:  3.3.0 NVIDIA 621.14
+    > GLSL:     3.30 NVIDIA via Cg compiler
+GL: VAO extension detected, VAO functions loaded successfully
+GL: NPOT textures extension detected, full NPOT textures supported
+GL: DXT compressed textures supported
+GL: ETC2/EAC compressed textures supported
+PLATFORM: DESKTOP (GLFW - Win32): Initialized successfully
+TEXTURE: [ID 1] Texture loaded successfully (1x1 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 1] Default texture loaded successfully
+SHADER: [ID 1] Vertex shader compiled successfully
+SHADER: [ID 2] Fragment shader compiled successfully
+SHADER: [ID 3] Program shader loaded successfully
+SHADER: [ID 3] Default shader loaded successfully
+RLGL: Render batch vertex buffers loaded successfully in RAM (CPU)
+RLGL: Render batch vertex buffers loaded successfully in VRAM (GPU)
+RLGL: Default OpenGL state initialized successfully
+TEXTURE: [ID 2] Texture loaded successfully (128x128 | GRAY_ALPHA | 1 mipmaps)
+FONT: Default font loaded successfully (224 glyphs)
+SYSTEM: Working Directory: D:\dev\funkin c
+AUDIO: Device initialized successfully
+    > Backend:       miniaudio | WASAPI
+    > Format:        32-bit IEEE Floating Point -> 32-bit IEEE Floating Point
+    > Channels:      2 -> 2
+    > Sample rate:   48000 -> 48000
+    > Periods size:  1440
+TIMER: Target time per frame: 16.667 milliseconds
+TIMER: Target time per frame: 10.000 milliseconds
+TEXTURE: [ID 3] Texture loaded successfully (1280x720 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 1] Depth renderbuffer loaded successfully (32 bits)
+FBO: [ID 1] Framebuffer object created successfully
+STREAM: Initialized successfully (44100 Hz, 16 bit, Stereo)
+FILEIO: [assets/music/menu/spambiverse_remix_by_shyrii.ogg] Music file loaded successfully
+    > Sample rate:   44100 Hz
+    > Sample size:   16 bits
+    > Channels:      2 (Stereo)
+    > Total frames:  6086860
+FILEIO: [assets/fonts/main.ttf] File loaded successfully
+TEXTURE: [ID 4] Texture loaded successfully (1024x512 | GRAY_ALPHA | 1 mipmaps)
+FONT: Data loaded successfully (64 pixel size | 95 glyphs)
+TEXTURE: [ID 5] Texture loaded successfully (765x458 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 6] Texture loaded successfully (4096x4096 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 6] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 5] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 5] Texture loaded successfully (1286x730 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 6] Texture loaded successfully (2048x2048 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 6] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 5] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 5] Texture loaded successfully (1286x730 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 6] Texture loaded successfully (350x200 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 6] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 6] Texture loaded successfully (1286x730 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 7] Texture loaded successfully (2048x2048 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 5] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 4] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 7] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 6] Unloaded texture data from VRAM (GPU)
+STREAM: Unloaded audio stream data from RAM
+FBO: [ID 1] Unloaded framebuffer from VRAM (GPU)
+AUDIO: Device closed successfully
+TEXTURE: [ID 2] Unloaded texture data from VRAM (GPU)
+SHADER: [ID 3] Default shader unloaded successfully
+TEXTURE: [ID 1] Default texture unloaded successfully
+Window closed successfully
+
+--- SESSION LOG START ---
+Initializing raylib 5.5
+Platform backend: DESKTOP (GLFW)
+Supported raylib modules:
+    > rcore:..... loaded (mandatory)
+    > rlgl:...... loaded (mandatory)
+    > rshapes:... loaded (optional)
+    > rtextures:. loaded (optional)
+    > rtext:..... loaded (optional)
+    > rmodels:... loaded (optional)
+    > raudio:.... loaded (optional)
+DISPLAY: Trying to enable VSYNC
+DISPLAY: Device initialized successfully
+    > Display size: 1920 x 1080
+    > Screen size:  1280 x 720
+    > Render size:  1280 x 720
+    > Viewport offsets: 0, 0
+GLAD: OpenGL extensions loaded successfully
+GL: Supported extensions count: 404
+GL: OpenGL device information:
+    > Vendor:   NVIDIA Corporation
+    > Renderer: NVIDIA GeForce RTX 3050 Laptop GPU/PCIe/SSE2
+    > Version:  3.3.0 NVIDIA 621.14
+    > GLSL:     3.30 NVIDIA via Cg compiler
+GL: VAO extension detected, VAO functions loaded successfully
+GL: NPOT textures extension detected, full NPOT textures supported
+GL: DXT compressed textures supported
+GL: ETC2/EAC compressed textures supported
+PLATFORM: DESKTOP (GLFW - Win32): Initialized successfully
+TEXTURE: [ID 1] Texture loaded successfully (1x1 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 1] Default texture loaded successfully
+SHADER: [ID 1] Vertex shader compiled successfully
+SHADER: [ID 2] Fragment shader compiled successfully
+SHADER: [ID 3] Program shader loaded successfully
+SHADER: [ID 3] Default shader loaded successfully
+RLGL: Render batch vertex buffers loaded successfully in RAM (CPU)
+RLGL: Render batch vertex buffers loaded successfully in VRAM (GPU)
+RLGL: Default OpenGL state initialized successfully
+TEXTURE: [ID 2] Texture loaded successfully (128x128 | GRAY_ALPHA | 1 mipmaps)
+FONT: Default font loaded successfully (224 glyphs)
+SYSTEM: Working Directory: D:\dev\funkin c
+AUDIO: Device initialized successfully
+    > Backend:       miniaudio | WASAPI
+    > Format:        32-bit IEEE Floating Point -> 32-bit IEEE Floating Point
+    > Channels:      2 -> 2
+    > Sample rate:   48000 -> 48000
+    > Periods size:  1440
+TIMER: Target time per frame: 16.667 milliseconds
+TIMER: Target time per frame: 10.000 milliseconds
+TEXTURE: [ID 3] Texture loaded successfully (1280x720 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 1] Depth renderbuffer loaded successfully (32 bits)
+FBO: [ID 1] Framebuffer object created successfully
+STREAM: Initialized successfully (44100 Hz, 16 bit, Stereo)
+FILEIO: [assets/music/menu/spambiverse_remix_by_shyrii.ogg] Music file loaded successfully
+    > Sample rate:   44100 Hz
+    > Sample size:   16 bits
+    > Channels:      2 (Stereo)
+    > Total frames:  6086860
+FILEIO: [assets/fonts/main.ttf] File loaded successfully
+TEXTURE: [ID 4] Texture loaded successfully (1024x512 | GRAY_ALPHA | 1 mipmaps)
+FONT: Data loaded successfully (64 pixel size | 95 glyphs)
+TEXTURE: [ID 5] Texture loaded successfully (765x458 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 6] Texture loaded successfully (4096x4096 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 6] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 5] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 5] Texture loaded successfully (1286x730 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 6] Texture loaded successfully (2048x2048 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 6] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 5] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 5] Texture loaded successfully (1286x730 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 6] Texture loaded successfully (350x200 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 6] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 6] Texture loaded successfully (1286x730 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 7] Texture loaded successfully (2048x2048 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 7] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 6] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 6] Texture loaded successfully (2048x2048 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 7] Texture loaded successfully (1286x730 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 8] Texture loaded successfully (2048x2048 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 8] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 7] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 7] Texture loaded successfully (350x200 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 8] Texture loaded successfully (300x150 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 9] Texture loaded successfully (600x300 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 10] Texture loaded successfully (300x150 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 11] Texture loaded successfully (350x200 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 12] Texture loaded successfully (300x150 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 13] Texture loaded successfully (300x150 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 14] Texture loaded successfully (600x300 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 7] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 7] Texture loaded successfully (300x150 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 9] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 9] Texture loaded successfully (350x200 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 10] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 10] Texture loaded successfully (350x150 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 7] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 8] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 9] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 10] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 11] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 12] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 13] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 14] Unloaded texture data from VRAM (GPU)
+FILEIO: [assets/fonts/vcr.ttf] File loaded successfully
+TEXTURE: [ID 7] Texture loaded successfully (512x256 | GRAY_ALPHA | 1 mipmaps)
+FONT: Data loaded successfully (32 pixel size | 95 glyphs)
+FILEIO: [assets/mods/stages/moribund 3-1.lua] Text file loaded successfully
+FILEIO: [assets/sounds/missnote1.ogg] File loaded successfully
+WAVE: Data loaded successfully (44100 Hz, 16 bit, 2 channels)
+FILEIO: [assets/sounds/missnote2.ogg] File loaded successfully
+WAVE: Data loaded successfully (44100 Hz, 16 bit, 2 channels)
+FILEIO: [assets/sounds/missnote3.ogg] File loaded successfully
+WAVE: Data loaded successfully (44100 Hz, 16 bit, 2 channels)
+FILEIO: [assets/sounds/hitosu!mania.ogg] File loaded successfully
+WAVE: Data loaded successfully (44100 Hz, 16 bit, 2 channels)
+FILEIO: [assets/sounds/intro3.ogg] File loaded successfully
+WAVE: Data loaded successfully (44100 Hz, 16 bit, 2 channels)
+FILEIO: [assets/sounds/intro2.ogg] File loaded successfully
+WAVE: Data loaded successfully (44100 Hz, 16 bit, 2 channels)
+FILEIO: [assets/sounds/intro1.ogg] File loaded successfully
+WAVE: Data loaded successfully (44100 Hz, 16 bit, 2 channels)
+FILEIO: [assets/sounds/introGo.ogg] File loaded successfully
+WAVE: Data loaded successfully (44100 Hz, 16 bit, 2 channels)
+FILEIO: [assets/sounds/fnf_loss_sfx.ogg] File loaded successfully
+WAVE: Data loaded successfully (44100 Hz, 16 bit, 2 channels)
+STREAM: Initialized successfully (44100 Hz, 16 bit, Stereo)
+FILEIO: [assets/music/gameOver.ogg] Music file loaded successfully
+    > Sample rate:   44100 Hz
+    > Sample size:   16 bits
+    > Channels:      2 (Stereo)
+    > Total frames:  1693440
+STREAM: Initialized successfully (44100 Hz, 16 bit, Stereo)
+FILEIO: [assets/music/gameOverEnd.ogg] Music file loaded successfully
+    > Sample rate:   44100 Hz
+    > Sample size:   16 bits
+    > Channels:      2 (Stereo)
+    > Total frames:  317952
+TEXTURE: [ID 8] Texture loaded successfully (2221x2947 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 9] Texture loaded successfully (350x150 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 10] Texture loaded successfully (8192x8192 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 11] Texture loaded successfully (300x150 | R8G8B8A8 | 1 mipmaps)
+FILEIO: [assets/mods/stages/moribund 3-1.lua] Text file loaded successfully
+TEXTURE: [ID 12] Texture loaded successfully (1778x1000 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 13] Texture loaded successfully (800x1000 | R8G8B8A8 | 1 mipmaps)
+STREAM: Initialized successfully (44100 Hz, 16 bit, Stereo)
+FILEIO: [assets/mods/songs/moribund-3/Inst.ogg] Music file loaded successfully
+    > Sample rate:   44100 Hz
+    > Sample size:   16 bits
+    > Channels:      2 (Stereo)
+    > Total frames:  18895225
+TEXTURE: [ID 14] Texture loaded successfully (1024x2048 | R8G8B8A8 | 1 mipmaps)
+LOAD [moribund-3] init: 1.3 ms, chart: 124.0 ms, sounds: 64.6 ms, characters: 438.3 ms, stage: 4.1 ms, song audio: 1.9 ms, notes: 0.8 ms, ui: 7.9 ms, warmup: 0.2 ms, (textures on main thread: 448.5 ms) total: 643.2 ms
+TEXTURE: [ID 15] Texture loaded successfully (230x95 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 2] Depth renderbuffer loaded successfully (32 bits)
+FBO: [ID 2] Framebuffer object created successfully
+TEXTURE: [ID 16] Texture loaded successfully (170x88 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 3] Depth renderbuffer loaded successfully (32 bits)
+FBO: [ID 3] Framebuffer object created successfully
+TEXTURE: [ID 17] Texture loaded successfully (166x91 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 4] Depth renderbuffer loaded successfully (32 bits)
+FBO: [ID 4] Framebuffer object created successfully
+TEXTURE: [ID 18] Texture loaded successfully (178x91 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 5] Depth renderbuffer loaded successfully (32 bits)
+FBO: [ID 5] Framebuffer object created successfully
+TEXTURE: [ID 19] Texture loaded successfully (304x91 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 6] Depth renderbuffer loaded successfully (32 bits)
+FBO: [ID 6] Framebuffer object created successfully
+TEXTURE: [ID 20] Texture loaded successfully (183x97 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 7] Depth renderbuffer loaded successfully (32 bits)
+FBO: [ID 7] Framebuffer object created successfully
+FBO: [ID 6] Unloaded framebuffer from VRAM (GPU)
+TEXTURE: [ID 19] Texture loaded successfully (373x91 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 6] Depth renderbuffer loaded successfully (32 bits)
+FBO: [ID 6] Framebuffer object created successfully
+TEXTURE: [ID 6] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 5] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 4] Unloaded texture data from VRAM (GPU)
+STREAM: Unloaded audio stream data from RAM
+TEXTURE: [ID 9] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 11] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 8] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 10] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 12] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 13] Unloaded texture data from VRAM (GPU)
+STREAM: Unloaded audio stream data from RAM
+FBO: [ID 1] Unloaded framebuffer from VRAM (GPU)
+AUDIO: Device closed successfully
+TEXTURE: [ID 2] Unloaded texture data from VRAM (GPU)
+SHADER: [ID 3] Default shader unloaded successfully
+TEXTURE: [ID 1] Default texture unloaded successfully
+Window closed successfully
+
+--- SESSION LOG START ---
+Initializing raylib 5.5
+Platform backend: DESKTOP (GLFW)
+Supported raylib modules:
+    > rcore:..... loaded (mandatory)
+    > rlgl:...... loaded (mandatory)
+    > rshapes:... loaded (optional)
+    > rtextures:. loaded (optional)
+    > rtext:..... loaded (optional)
+    > rmodels:... loaded (optional)
+    > raudio:.... loaded (optional)
+DISPLAY: Trying to enable VSYNC
+DISPLAY: Device initialized successfully
+    > Display size: 1920 x 1080
+    > Screen size:  1280 x 720
+    > Render size:  1280 x 720
+    > Viewport offsets: 0, 0
+GLAD: OpenGL extensions loaded successfully
+GL: Supported extensions count: 404
+GL: OpenGL device information:
+    > Vendor:   NVIDIA Corporation
+    > Renderer: NVIDIA GeForce RTX 3050 Laptop GPU/PCIe/SSE2
+    > Version:  3.3.0 NVIDIA 621.14
+    > GLSL:     3.30 NVIDIA via Cg compiler
+GL: VAO extension detected, VAO functions loaded successfully
+GL: NPOT textures extension detected, full NPOT textures supported
+GL: DXT compressed textures supported
+GL: ETC2/EAC compressed textures supported
+PLATFORM: DESKTOP (GLFW - Win32): Initialized successfully
+TEXTURE: [ID 1] Texture loaded successfully (1x1 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 1] Default texture loaded successfully
+SHADER: [ID 1] Vertex shader compiled successfully
+SHADER: [ID 2] Fragment shader compiled successfully
+SHADER: [ID 3] Program shader loaded successfully
+SHADER: [ID 3] Default shader loaded successfully
+RLGL: Render batch vertex buffers loaded successfully in RAM (CPU)
+RLGL: Render batch vertex buffers loaded successfully in VRAM (GPU)
+RLGL: Default OpenGL state initialized successfully
+TEXTURE: [ID 2] Texture loaded successfully (128x128 | GRAY_ALPHA | 1 mipmaps)
+FONT: Default font loaded successfully (224 glyphs)
+SYSTEM: Working Directory: D:\dev\funkin c
+AUDIO: Device initialized successfully
+    > Backend:       miniaudio | WASAPI
+    > Format:        32-bit IEEE Floating Point -> 32-bit IEEE Floating Point
+    > Channels:      2 -> 2
+    > Sample rate:   48000 -> 48000
+    > Periods size:  1440
+TIMER: Target time per frame: 16.667 milliseconds
+TIMER: Target time per frame: 10.000 milliseconds
+TEXTURE: [ID 3] Texture loaded successfully (1280x720 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 1] Depth renderbuffer loaded successfully (32 bits)
+FBO: [ID 1] Framebuffer object created successfully
+STREAM: Initialized successfully (44100 Hz, 16 bit, Stereo)
+FILEIO: [assets/music/menu/spambiverse_remix_by_shyrii.ogg] Music file loaded successfully
+    > Sample rate:   44100 Hz
+    > Sample size:   16 bits
+    > Channels:      2 (Stereo)
+    > Total frames:  6086860
+FILEIO: [assets/fonts/main.ttf] File loaded successfully
+TEXTURE: [ID 4] Texture loaded successfully (1024x512 | GRAY_ALPHA | 1 mipmaps)
+FONT: Data loaded successfully (64 pixel size | 95 glyphs)
+TEXTURE: [ID 5] Texture loaded successfully (765x458 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 6] Texture loaded successfully (4096x4096 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 6] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 5] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 5] Texture loaded successfully (1286x730 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 6] Texture loaded successfully (2048x2048 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 6] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 5] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 5] Texture loaded successfully (1286x730 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 6] Texture loaded successfully (2048x2048 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 7] Texture loaded successfully (1286x730 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 8] Texture loaded successfully (2048x2048 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 8] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 7] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 7] Texture loaded successfully (350x200 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 8] Texture loaded successfully (300x150 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 9] Texture loaded successfully (600x300 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 10] Texture loaded successfully (300x150 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 11] Texture loaded successfully (350x200 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 12] Texture loaded successfully (300x150 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 13] Texture loaded successfully (300x150 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 14] Texture loaded successfully (600x300 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 7] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 7] Texture loaded successfully (300x150 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 9] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 9] Texture loaded successfully (600x300 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 7] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 8] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 9] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 10] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 11] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 12] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 13] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 14] Unloaded texture data from VRAM (GPU)
+FILEIO: [assets/fonts/vcr.ttf] File loaded successfully
+TEXTURE: [ID 7] Texture loaded successfully (512x256 | GRAY_ALPHA | 1 mipmaps)
+FONT: Data loaded successfully (32 pixel size | 95 glyphs)
+FILEIO: [assets/mods/stages/abandonmentBG.lua] Text file loaded successfully
+FILEIO: [assets/sounds/missnote1.ogg] File loaded successfully
+WAVE: Data loaded successfully (44100 Hz, 16 bit, 2 channels)
+FILEIO: [assets/sounds/missnote2.ogg] File loaded successfully
+WAVE: Data loaded successfully (44100 Hz, 16 bit, 2 channels)
+FILEIO: [assets/sounds/missnote3.ogg] File loaded successfully
+WAVE: Data loaded successfully (44100 Hz, 16 bit, 2 channels)
+FILEIO: [assets/sounds/hitosu!mania.ogg] File loaded successfully
+WAVE: Data loaded successfully (44100 Hz, 16 bit, 2 channels)
+FILEIO: [assets/sounds/intro3.ogg] File loaded successfully
+WAVE: Data loaded successfully (44100 Hz, 16 bit, 2 channels)
+FILEIO: [assets/sounds/intro2.ogg] File loaded successfully
+WAVE: Data loaded successfully (44100 Hz, 16 bit, 2 channels)
+FILEIO: [assets/sounds/intro1.ogg] File loaded successfully
+WAVE: Data loaded successfully (44100 Hz, 16 bit, 2 channels)
+FILEIO: [assets/sounds/introGo.ogg] File loaded successfully
+WAVE: Data loaded successfully (44100 Hz, 16 bit, 2 channels)
+FILEIO: [assets/sounds/fnf_loss_sfx.ogg] File loaded successfully
+WAVE: Data loaded successfully (44100 Hz, 16 bit, 2 channels)
+STREAM: Initialized successfully (44100 Hz, 16 bit, Stereo)
+FILEIO: [assets/music/gameOver.ogg] Music file loaded successfully
+    > Sample rate:   44100 Hz
+    > Sample size:   16 bits
+    > Channels:      2 (Stereo)
+    > Total frames:  1693440
+STREAM: Initialized successfully (44100 Hz, 16 bit, Stereo)
+FILEIO: [assets/music/gameOverEnd.ogg] Music file loaded successfully
+    > Sample rate:   44100 Hz
+    > Sample size:   16 bits
+    > Channels:      2 (Stereo)
+    > Total frames:  317952
+TEXTURE: [ID 8] Texture loaded successfully (4096x4096 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 9] Texture loaded successfully (300x150 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 10] Texture loaded successfully (8192x8192 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 11] Texture loaded successfully (300x150 | R8G8B8A8 | 1 mipmaps)
+FILEIO: [assets/mods/stages/abandonmentBG.lua] Text file loaded successfully
+TEXTURE: [ID 12] Texture loaded successfully (11520x11520 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 13] Texture loaded successfully (217x1303 | R8G8B8A8 | 1 mipmaps)
+STREAM: Initialized successfully (44100 Hz, 16 bit, Stereo)
+FILEIO: [assets/mods/songs/abandonment/Inst.ogg] Music file loaded successfully
+    > Sample rate:   44100 Hz
+    > Sample size:   16 bits
+    > Channels:      2 (Stereo)
+    > Total frames:  11344704
+TEXTURE: [ID 14] Texture loaded successfully (1024x2048 | R8G8B8A8 | 1 mipmaps)
+LOAD [abandonment] init: 1.3 ms, chart: 57.5 ms, sounds: 91.9 ms, characters: 366.7 ms, stage: 1437.4 ms, song audio: 3.1 ms, notes: 0.0 ms, ui: 8.9 ms, warmup: 0.2 ms, (textures on main thread: 1779.1 ms) total: 1967.0 ms
+TEXTURE: [ID 15] Texture loaded successfully (230x95 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 2] Depth renderbuffer loaded successfully (32 bits)
+FBO: [ID 2] Framebuffer object created successfully
+TEXTURE: [ID 16] Texture loaded successfully (179x88 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 3] Depth renderbuffer loaded successfully (32 bits)
+FBO: [ID 3] Framebuffer object created successfully
+TEXTURE: [ID 17] Texture loaded successfully (166x91 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 4] Depth renderbuffer loaded successfully (32 bits)
+FBO: [ID 4] Framebuffer object created successfully
+TEXTURE: [ID 18] Texture loaded successfully (178x91 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 5] Depth renderbuffer loaded successfully (32 bits)
+FBO: [ID 5] Framebuffer object created successfully
+TEXTURE: [ID 19] Texture loaded successfully (304x91 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 6] Depth renderbuffer loaded successfully (32 bits)
+FBO: [ID 6] Framebuffer object created successfully
+TEXTURE: [ID 20] Texture loaded successfully (183x97 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 7] Depth renderbuffer loaded successfully (32 bits)
+FBO: [ID 7] Framebuffer object created successfully
+FBO: [ID 6] Unloaded framebuffer from VRAM (GPU)
+TEXTURE: [ID 19] Texture loaded successfully (373x91 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 6] Depth renderbuffer loaded successfully (32 bits)
+FBO: [ID 6] Framebuffer object created successfully
+TEXTURE: [ID 6] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 5] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 4] Unloaded texture data from VRAM (GPU)
+STREAM: Unloaded audio stream data from RAM
+TEXTURE: [ID 9] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 11] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 8] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 10] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 13] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 12] Unloaded texture data from VRAM (GPU)
+STREAM: Unloaded audio stream data from RAM
+FBO: [ID 1] Unloaded framebuffer from VRAM (GPU)
+AUDIO: Device closed successfully
+TEXTURE: [ID 2] Unloaded texture data from VRAM (GPU)
+SHADER: [ID 3] Default shader unloaded successfully
+TEXTURE: [ID 1] Default texture unloaded successfully
+Window closed successfully
+
+--- SESSION LOG START ---
+Initializing raylib 5.5
+Platform backend: DESKTOP (GLFW)
+Supported raylib modules:
+    > rcore:..... loaded (mandatory)
+    > rlgl:...... loaded (mandatory)
+    > rshapes:... loaded (optional)
+    > rtextures:. loaded (optional)
+    > rtext:..... loaded (optional)
+    > rmodels:... loaded (optional)
+    > raudio:.... loaded (optional)
+DISPLAY: Trying to enable VSYNC
+DISPLAY: Device initialized successfully
+    > Display size: 1920 x 1080
+    > Screen size:  1280 x 720
+    > Render size:  1280 x 720
+    > Viewport offsets: 0, 0
+GLAD: OpenGL extensions loaded successfully
+GL: Supported extensions count: 404
+GL: OpenGL device information:
+    > Vendor:   NVIDIA Corporation
+    > Renderer: NVIDIA GeForce RTX 3050 Laptop GPU/PCIe/SSE2
+    > Version:  3.3.0 NVIDIA 621.14
+    > GLSL:     3.30 NVIDIA via Cg compiler
+GL: VAO extension detected, VAO functions loaded successfully
+GL: NPOT textures extension detected, full NPOT textures supported
+GL: DXT compressed textures supported
+GL: ETC2/EAC compressed textures supported
+PLATFORM: DESKTOP (GLFW - Win32): Initialized successfully
+TEXTURE: [ID 1] Texture loaded successfully (1x1 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 1] Default texture loaded successfully
+SHADER: [ID 1] Vertex shader compiled successfully
+SHADER: [ID 2] Fragment shader compiled successfully
+SHADER: [ID 3] Program shader loaded successfully
+SHADER: [ID 3] Default shader loaded successfully
+RLGL: Render batch vertex buffers loaded successfully in RAM (CPU)
+RLGL: Render batch vertex buffers loaded successfully in VRAM (GPU)
+RLGL: Default OpenGL state initialized successfully
+TEXTURE: [ID 2] Texture loaded successfully (128x128 | GRAY_ALPHA | 1 mipmaps)
+FONT: Default font loaded successfully (224 glyphs)
+SYSTEM: Working Directory: D:\dev\funkin c
+AUDIO: Device initialized successfully
+    > Backend:       miniaudio | WASAPI
+    > Format:        32-bit IEEE Floating Point -> 32-bit IEEE Floating Point
+    > Channels:      2 -> 2
+    > Sample rate:   48000 -> 48000
+    > Periods size:  1440
+TIMER: Target time per frame: 16.667 milliseconds
+TIMER: Target time per frame: 10.000 milliseconds
+TEXTURE: [ID 3] Texture loaded successfully (1280x720 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 1] Depth renderbuffer loaded successfully (32 bits)
+FBO: [ID 1] Framebuffer object created successfully
+STREAM: Initialized successfully (44100 Hz, 16 bit, Stereo)
+FILEIO: [assets/music/menu/spambiverse_remix_by_shyrii.ogg] Music file loaded successfully
+    > Sample rate:   44100 Hz
+    > Sample size:   16 bits
+    > Channels:      2 (Stereo)
+    > Total frames:  6086860
+FILEIO: [assets/fonts/main.ttf] File loaded successfully
+TEXTURE: [ID 4] Texture loaded successfully (1024x512 | GRAY_ALPHA | 1 mipmaps)
+FONT: Data loaded successfully (64 pixel size | 95 glyphs)
+TEXTURE: [ID 5] Texture loaded successfully (765x458 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 6] Texture loaded successfully (4096x4096 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 6] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 5] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 5] Texture loaded successfully (1286x730 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 6] Texture loaded successfully (2048x2048 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 6] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 5] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 5] Texture loaded successfully (1286x730 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 6] Texture loaded successfully (2048x2048 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 6] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 5] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 4] Unloaded texture data from VRAM (GPU)
+STREAM: Unloaded audio stream data from RAM
+FBO: [ID 1] Unloaded framebuffer from VRAM (GPU)
+AUDIO: Device closed successfully
+TEXTURE: [ID 2] Unloaded texture data from VRAM (GPU)
+SHADER: [ID 3] Default shader unloaded successfully
+TEXTURE: [ID 1] Default texture unloaded successfully
+Window closed successfully
+
+--- SESSION LOG START ---
+Initializing raylib 5.5
+Platform backend: DESKTOP (GLFW)
+Supported raylib modules:
+    > rcore:..... loaded (mandatory)
+    > rlgl:...... loaded (mandatory)
+    > rshapes:... loaded (optional)
+    > rtextures:. loaded (optional)
+    > rtext:..... loaded (optional)
+    > rmodels:... loaded (optional)
+    > raudio:.... loaded (optional)
+DISPLAY: Trying to enable VSYNC
+DISPLAY: Device initialized successfully
+    > Display size: 1920 x 1080
+    > Screen size:  1280 x 720
+    > Render size:  1280 x 720
+    > Viewport offsets: 0, 0
+GLAD: OpenGL extensions loaded successfully
+GL: Supported extensions count: 404
+GL: OpenGL device information:
+    > Vendor:   NVIDIA Corporation
+    > Renderer: NVIDIA GeForce RTX 3050 Laptop GPU/PCIe/SSE2
+    > Version:  3.3.0 NVIDIA 621.14
+    > GLSL:     3.30 NVIDIA via Cg compiler
+GL: VAO extension detected, VAO functions loaded successfully
+GL: NPOT textures extension detected, full NPOT textures supported
+GL: DXT compressed textures supported
+GL: ETC2/EAC compressed textures supported
+PLATFORM: DESKTOP (GLFW - Win32): Initialized successfully
+TEXTURE: [ID 1] Texture loaded successfully (1x1 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 1] Default texture loaded successfully
+SHADER: [ID 1] Vertex shader compiled successfully
+SHADER: [ID 2] Fragment shader compiled successfully
+SHADER: [ID 3] Program shader loaded successfully
+SHADER: [ID 3] Default shader loaded successfully
+RLGL: Render batch vertex buffers loaded successfully in RAM (CPU)
+RLGL: Render batch vertex buffers loaded successfully in VRAM (GPU)
+RLGL: Default OpenGL state initialized successfully
+TEXTURE: [ID 2] Texture loaded successfully (128x128 | GRAY_ALPHA | 1 mipmaps)
+FONT: Default font loaded successfully (224 glyphs)
+SYSTEM: Working Directory: D:\dev\funkin c
+AUDIO: Device initialized successfully
+    > Backend:       miniaudio | WASAPI
+    > Format:        32-bit IEEE Floating Point -> 32-bit IEEE Floating Point
+    > Channels:      2 -> 2
+    > Sample rate:   48000 -> 48000
+    > Periods size:  1440
+TIMER: Target time per frame: 16.667 milliseconds
+TIMER: Target time per frame: 10.000 milliseconds
+TEXTURE: [ID 3] Texture loaded successfully (1280x720 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 1] Depth renderbuffer loaded successfully (32 bits)
+FBO: [ID 1] Framebuffer object created successfully
+STREAM: Initialized successfully (44100 Hz, 16 bit, Stereo)
+FILEIO: [assets/music/menu/spambiverse_remix_by_shyrii.ogg] Music file loaded successfully
+    > Sample rate:   44100 Hz
+    > Sample size:   16 bits
+    > Channels:      2 (Stereo)
+    > Total frames:  6086860
+FILEIO: [assets/fonts/main.ttf] File loaded successfully
+TEXTURE: [ID 4] Texture loaded successfully (1024x512 | GRAY_ALPHA | 1 mipmaps)
+FONT: Data loaded successfully (64 pixel size | 95 glyphs)
+TEXTURE: [ID 5] Texture loaded successfully (765x458 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 6] Texture loaded successfully (4096x4096 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 6] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 5] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 5] Texture loaded successfully (1286x730 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 6] Texture loaded successfully (2048x2048 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 6] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 5] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 5] Texture loaded successfully (1286x730 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 6] Texture loaded successfully (2048x2048 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 6] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 5] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 4] Unloaded texture data from VRAM (GPU)
+STREAM: Unloaded audio stream data from RAM
+FBO: [ID 1] Unloaded framebuffer from VRAM (GPU)
+AUDIO: Device closed successfully
+TEXTURE: [ID 2] Unloaded texture data from VRAM (GPU)
+SHADER: [ID 3] Default shader unloaded successfully
+TEXTURE: [ID 1] Default texture unloaded successfully
+Window closed successfully
+
+--- SESSION LOG START ---
+Initializing raylib 5.5
+Platform backend: DESKTOP (GLFW)
+Supported raylib modules:
+    > rcore:..... loaded (mandatory)
+    > rlgl:...... loaded (mandatory)
+    > rshapes:... loaded (optional)
+    > rtextures:. loaded (optional)
+    > rtext:..... loaded (optional)
+    > rmodels:... loaded (optional)
+    > raudio:.... loaded (optional)
+DISPLAY: Trying to enable VSYNC
+DISPLAY: Device initialized successfully
+    > Display size: 1920 x 1080
+    > Screen size:  1280 x 720
+    > Render size:  1280 x 720
+    > Viewport offsets: 0, 0
+GLAD: OpenGL extensions loaded successfully
+GL: Supported extensions count: 404
+GL: OpenGL device information:
+    > Vendor:   NVIDIA Corporation
+    > Renderer: NVIDIA GeForce RTX 3050 Laptop GPU/PCIe/SSE2
+    > Version:  3.3.0 NVIDIA 621.14
+    > GLSL:     3.30 NVIDIA via Cg compiler
+GL: VAO extension detected, VAO functions loaded successfully
+GL: NPOT textures extension detected, full NPOT textures supported
+GL: DXT compressed textures supported
+GL: ETC2/EAC compressed textures supported
+PLATFORM: DESKTOP (GLFW - Win32): Initialized successfully
+TEXTURE: [ID 1] Texture loaded successfully (1x1 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 1] Default texture loaded successfully
+SHADER: [ID 1] Vertex shader compiled successfully
+SHADER: [ID 2] Fragment shader compiled successfully
+SHADER: [ID 3] Program shader loaded successfully
+SHADER: [ID 3] Default shader loaded successfully
+RLGL: Render batch vertex buffers loaded successfully in RAM (CPU)
+RLGL: Render batch vertex buffers loaded successfully in VRAM (GPU)
+RLGL: Default OpenGL state initialized successfully
+TEXTURE: [ID 2] Texture loaded successfully (128x128 | GRAY_ALPHA | 1 mipmaps)
+FONT: Default font loaded successfully (224 glyphs)
+SYSTEM: Working Directory: D:\dev\funkin c
+AUDIO: Device initialized successfully
+    > Backend:       miniaudio | WASAPI
+    > Format:        32-bit IEEE Floating Point -> 32-bit IEEE Floating Point
+    > Channels:      2 -> 2
+    > Sample rate:   48000 -> 48000
+    > Periods size:  1440
+TIMER: Target time per frame: 16.667 milliseconds
+TIMER: Target time per frame: 10.000 milliseconds
+TEXTURE: [ID 3] Texture loaded successfully (1280x720 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 1] Depth renderbuffer loaded successfully (32 bits)
+FBO: [ID 1] Framebuffer object created successfully
+STREAM: Initialized successfully (44100 Hz, 16 bit, Stereo)
+FILEIO: [assets/music/menu/spambiverse_remix_by_shyrii.ogg] Music file loaded successfully
+    > Sample rate:   44100 Hz
+    > Sample size:   16 bits
+    > Channels:      2 (Stereo)
+    > Total frames:  6086860
+FILEIO: [assets/fonts/main.ttf] File loaded successfully
+TEXTURE: [ID 4] Texture loaded successfully (1024x512 | GRAY_ALPHA | 1 mipmaps)
+FONT: Data loaded successfully (64 pixel size | 95 glyphs)
+TEXTURE: [ID 5] Texture loaded successfully (765x458 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 6] Texture loaded successfully (4096x4096 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 6] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 5] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 5] Texture loaded successfully (1286x730 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 6] Texture loaded successfully (2048x2048 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 6] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 5] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 5] Texture loaded successfully (1286x730 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 6] Texture loaded successfully (2048x2048 | R8G8B8A8 | 1 mipmaps)
+STREAM: Unloaded audio stream data from RAM
+STREAM: Initialized successfully (44100 Hz, 16 bit, Stereo)
+FILEIO: [assets/music/menu/p2PSYSPAM_by_ourplebop.ogg] Music file loaded successfully
+    > Sample rate:   44100 Hz
+    > Sample size:   16 bits
+    > Channels:      2 (Stereo)
+    > Total frames:  11823040
+STREAM: Unloaded audio stream data from RAM
+STREAM: Initialized successfully (44100 Hz, 16 bit, Stereo)
+FILEIO: [assets/music/menu/freakyMenu.ogg] Music file loaded successfully
+    > Sample rate:   44100 Hz
+    > Sample size:   16 bits
+    > Channels:      2 (Stereo)
+    > Total frames:  4981248
+STREAM: Unloaded audio stream data from RAM
+STREAM: Initialized successfully (44100 Hz, 16 bit, Stereo)
+FILEIO: [assets/music/menu/PSYSPAM_by_ourplebop.ogg] Music file loaded successfully
+    > Sample rate:   44100 Hz
+    > Sample size:   16 bits
+    > Channels:      2 (Stereo)
+    > Total frames:  13777010
+STREAM: Unloaded audio stream data from RAM
+STREAM: Initialized successfully (44100 Hz, 16 bit, Stereo)
+FILEIO: [assets/music/menu/Alpha_by_BambleW.ogg] Music file loaded successfully
+    > Sample rate:   44100 Hz
+    > Sample size:   16 bits
+    > Channels:      2 (Stereo)
+    > Total frames:  6562843
+STREAM: Unloaded audio stream data from RAM
+STREAM: Initialized successfully (44100 Hz, 16 bit, Stereo)
+FILEIO: [assets/music/menu/Alpha_by_BambleW.ogg] Music file loaded successfully
+    > Sample rate:   44100 Hz
+    > Sample size:   16 bits
+    > Channels:      2 (Stereo)
+    > Total frames:  6562843
+STREAM: Unloaded audio stream data from RAM
+STREAM: Initialized successfully (44100 Hz, 16 bit, Stereo)
+FILEIO: [assets/music/menu/PSYSPAM_by_ourplebop.ogg] Music file loaded successfully
+    > Sample rate:   44100 Hz
+    > Sample size:   16 bits
+    > Channels:      2 (Stereo)
+    > Total frames:  13777010
+STREAM: Unloaded audio stream data from RAM
+STREAM: Initialized successfully (44100 Hz, 16 bit, Stereo)
+FILEIO: [assets/music/menu/freakyMenu.ogg] Music file loaded successfully
+    > Sample rate:   44100 Hz
+    > Sample size:   16 bits
+    > Channels:      2 (Stereo)
+    > Total frames:  4981248
+STREAM: Unloaded audio stream data from RAM
+STREAM: Initialized successfully (44100 Hz, 16 bit, Stereo)
+FILEIO: [assets/music/menu/p2PSYSPAM_by_ourplebop.ogg] Music file loaded successfully
+    > Sample rate:   44100 Hz
+    > Sample size:   16 bits
+    > Channels:      2 (Stereo)
+    > Total frames:  11823040
+STREAM: Unloaded audio stream data from RAM
+STREAM: Initialized successfully (44100 Hz, 16 bit, Stereo)
+FILEIO: [assets/music/menu/spambiverse_remix_by_shyrii.ogg] Music file loaded successfully
+    > Sample rate:   44100 Hz
+    > Sample size:   16 bits
+    > Channels:      2 (Stereo)
+    > Total frames:  6086860
+STREAM: Unloaded audio stream data from RAM
+STREAM: Initialized successfully (44100 Hz, 16 bit, Stereo)
+FILEIO: [assets/music/menu/spambiverse_remix_by_shyrii.ogg] Music file loaded successfully
+    > Sample rate:   44100 Hz
+    > Sample size:   16 bits
+    > Channels:      2 (Stereo)
+    > Total frames:  6086860
+STREAM: Unloaded audio stream data from RAM
+STREAM: Initialized successfully (44100 Hz, 16 bit, Stereo)
+FILEIO: [assets/music/menu/spambiverse_remix_by_shyrii.ogg] Music file loaded successfully
+    > Sample rate:   44100 Hz
+    > Sample size:   16 bits
+    > Channels:      2 (Stereo)
+    > Total frames:  6086860
+STREAM: Unloaded audio stream data from RAM
+STREAM: Initialized successfully (44100 Hz, 16 bit, Stereo)
+FILEIO: [assets/music/menu/p2PSYSPAM_by_ourplebop.ogg] Music file loaded successfully
+    > Sample rate:   44100 Hz
+    > Sample size:   16 bits
+    > Channels:      2 (Stereo)
+    > Total frames:  11823040
+STREAM: Unloaded audio stream data from RAM
+STREAM: Initialized successfully (44100 Hz, 16 bit, Stereo)
+FILEIO: [assets/music/menu/freakyMenu.ogg] Music file loaded successfully
+    > Sample rate:   44100 Hz
+    > Sample size:   16 bits
+    > Channels:      2 (Stereo)
+    > Total frames:  4981248
+STREAM: Unloaded audio stream data from RAM
+STREAM: Initialized successfully (44100 Hz, 16 bit, Stereo)
+FILEIO: [assets/music/menu/p2PSYSPAM_by_ourplebop.ogg] Music file loaded successfully
+    > Sample rate:   44100 Hz
+    > Sample size:   16 bits
+    > Channels:      2 (Stereo)
+    > Total frames:  11823040
+STREAM: Unloaded audio stream data from RAM
+STREAM: Initialized successfully (44100 Hz, 16 bit, Stereo)
+FILEIO: [assets/music/menu/spambiverse_remix_by_shyrii.ogg] Music file loaded successfully
+    > Sample rate:   44100 Hz
+    > Sample size:   16 bits
+    > Channels:      2 (Stereo)
+    > Total frames:  6086860
+STREAM: Unloaded audio stream data from RAM
+STREAM: Initialized successfully (44100 Hz, 16 bit, Stereo)
+FILEIO: [assets/music/menu/spambiverse_remix_by_shyrii.ogg] Music file loaded successfully
+    > Sample rate:   44100 Hz
+    > Sample size:   16 bits
+    > Channels:      2 (Stereo)
+    > Total frames:  6086860
+STREAM: Unloaded audio stream data from RAM
+STREAM: Initialized successfully (44100 Hz, 16 bit, Stereo)
+FILEIO: [assets/music/menu/spambiverse_remix_by_shyrii.ogg] Music file loaded successfully
+    > Sample rate:   44100 Hz
+    > Sample size:   16 bits
+    > Channels:      2 (Stereo)
+    > Total frames:  6086860
+STREAM: Unloaded audio stream data from RAM
+STREAM: Initialized successfully (44100 Hz, 16 bit, Stereo)
+FILEIO: [assets/music/menu/p2PSYSPAM_by_ourplebop.ogg] Music file loaded successfully
+    > Sample rate:   44100 Hz
+    > Sample size:   16 bits
+    > Channels:      2 (Stereo)
+    > Total frames:  11823040
+STREAM: Unloaded audio stream data from RAM
+STREAM: Initialized successfully (44100 Hz, 16 bit, Stereo)
+FILEIO: [assets/music/menu/freakyMenu.ogg] Music file loaded successfully
+    > Sample rate:   44100 Hz
+    > Sample size:   16 bits
+    > Channels:      2 (Stereo)
+    > Total frames:  4981248
+STREAM: Unloaded audio stream data from RAM
+STREAM: Initialized successfully (44100 Hz, 16 bit, Stereo)
+FILEIO: [assets/music/menu/PSYSPAM_by_ourplebop.ogg] Music file loaded successfully
+    > Sample rate:   44100 Hz
+    > Sample size:   16 bits
+    > Channels:      2 (Stereo)
+    > Total frames:  13777010
+STREAM: Unloaded audio stream data from RAM
+STREAM: Initialized successfully (44100 Hz, 16 bit, Stereo)
+FILEIO: [assets/music/menu/Alpha_by_BambleW.ogg] Music file loaded successfully
+    > Sample rate:   44100 Hz
+    > Sample size:   16 bits
+    > Channels:      2 (Stereo)
+    > Total frames:  6562843
+STREAM: Unloaded audio stream data from RAM
+STREAM: Initialized successfully (44100 Hz, 16 bit, Stereo)
+FILEIO: [assets/music/menu/Alpha_by_BambleW.ogg] Music file loaded successfully
+    > Sample rate:   44100 Hz
+    > Sample size:   16 bits
+    > Channels:      2 (Stereo)
+    > Total frames:  6562843
+STREAM: Unloaded audio stream data from RAM
+STREAM: Initialized successfully (44100 Hz, 16 bit, Stereo)
+FILEIO: [assets/music/menu/Alpha_by_BambleW.ogg] Music file loaded successfully
+    > Sample rate:   44100 Hz
+    > Sample size:   16 bits
+    > Channels:      2 (Stereo)
+    > Total frames:  6562843
+TEXTURE: [ID 6] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 5] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 4] Unloaded texture data from VRAM (GPU)
+STREAM: Unloaded audio stream data from RAM
+FBO: [ID 1] Unloaded framebuffer from VRAM (GPU)
+AUDIO: Device closed successfully
+TEXTURE: [ID 2] Unloaded texture data from VRAM (GPU)
+SHADER: [ID 3] Default shader unloaded successfully
+TEXTURE: [ID 1] Default texture unloaded successfully
+Window closed successfully
+
+--- SESSION LOG START ---
+Initializing raylib 5.5
+Platform backend: DESKTOP (GLFW)
+Supported raylib modules:
+    > rcore:..... loaded (mandatory)
+    > rlgl:...... loaded (mandatory)
+    > rshapes:... loaded (optional)
+    > rtextures:. loaded (optional)
+    > rtext:..... loaded (optional)
+    > rmodels:... loaded (optional)
+    > raudio:.... loaded (optional)
+DISPLAY: Trying to enable VSYNC
+DISPLAY: Device initialized successfully
+    > Display size: 1920 x 1080
+    > Screen size:  1280 x 720
+    > Render size:  1280 x 720
+    > Viewport offsets: 0, 0
+GLAD: OpenGL extensions loaded successfully
+GL: Supported extensions count: 404
+GL: OpenGL device information:
+    > Vendor:   NVIDIA Corporation
+    > Renderer: NVIDIA GeForce RTX 3050 Laptop GPU/PCIe/SSE2
+    > Version:  3.3.0 NVIDIA 621.14
+    > GLSL:     3.30 NVIDIA via Cg compiler
+GL: VAO extension detected, VAO functions loaded successfully
+GL: NPOT textures extension detected, full NPOT textures supported
+GL: DXT compressed textures supported
+GL: ETC2/EAC compressed textures supported
+PLATFORM: DESKTOP (GLFW - Win32): Initialized successfully
+TEXTURE: [ID 1] Texture loaded successfully (1x1 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 1] Default texture loaded successfully
+SHADER: [ID 1] Vertex shader compiled successfully
+SHADER: [ID 2] Fragment shader compiled successfully
+SHADER: [ID 3] Program shader loaded successfully
+SHADER: [ID 3] Default shader loaded successfully
+RLGL: Render batch vertex buffers loaded successfully in RAM (CPU)
+RLGL: Render batch vertex buffers loaded successfully in VRAM (GPU)
+RLGL: Default OpenGL state initialized successfully
+TEXTURE: [ID 2] Texture loaded successfully (128x128 | GRAY_ALPHA | 1 mipmaps)
+FONT: Default font loaded successfully (224 glyphs)
+SYSTEM: Working Directory: D:\dev\funkin c
+AUDIO: Device initialized successfully
+    > Backend:       miniaudio | WASAPI
+    > Format:        32-bit IEEE Floating Point -> 32-bit IEEE Floating Point
+    > Channels:      2 -> 2
+    > Sample rate:   48000 -> 48000
+    > Periods size:  1440
+TIMER: Target time per frame: 16.667 milliseconds
+TIMER: Target time per frame: 10.000 milliseconds
+TEXTURE: [ID 3] Texture loaded successfully (1280x720 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 1] Depth renderbuffer loaded successfully (32 bits)
+FBO: [ID 1] Framebuffer object created successfully
+STREAM: Initialized successfully (44100 Hz, 16 bit, Stereo)
+FILEIO: [assets/music/menu/Alpha_by_BambleW.ogg] Music file loaded successfully
+    > Sample rate:   44100 Hz
+    > Sample size:   16 bits
+    > Channels:      2 (Stereo)
+    > Total frames:  6562843
+FILEIO: [assets/fonts/main.ttf] File loaded successfully
+TEXTURE: [ID 4] Texture loaded successfully (1024x512 | GRAY_ALPHA | 1 mipmaps)
+FONT: Data loaded successfully (64 pixel size | 95 glyphs)
+TEXTURE: [ID 5] Texture loaded successfully (765x458 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 6] Texture loaded successfully (4096x4096 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 6] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 5] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 5] Texture loaded successfully (1286x730 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 6] Texture loaded successfully (2048x2048 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 6] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 5] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 5] Texture loaded successfully (1286x730 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 6] Texture loaded successfully (2048x2048 | R8G8B8A8 | 1 mipmaps)
+TEXTURE: [ID 6] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 5] Unloaded texture data from VRAM (GPU)
+TEXTURE: [ID 4] Unloaded texture data from VRAM (GPU)
+STREAM: Unloaded audio stream data from RAM
+FBO: [ID 1] Unloaded framebuffer from VRAM (GPU)
+AUDIO: Device closed successfully
+TEXTURE: [ID 2] Unloaded texture data from VRAM (GPU)
+SHADER: [ID 3] Default shader unloaded successfully
+TEXTURE: [ID 1] Default texture unloaded successfully
+Window closed successfully

@@ -26,7 +26,7 @@ int game_scheme_keys[SCHEME_COUNT][4] = {
 
 static FILE* saveFile;
 
-#define SAVE_VERSION 16  /* 16: + loseIcon (1 byte, no fim); 15: + horizontalMenu (1 byte, no fim); hiddenNotesAlt aceita 0..3; 14: + hiddenNotesAlt (1 byte, no fim); 13: + laneTint (12 bytes, no fim); 12: + strumBgPercent e strumMobileVisible (no fim); 11: + menuMusic (no fim, apos as mods); 10: + healthDrainPlay e healthDrainBotplay (apos scorePosition); 9: + scorePosition (apos threadLimit); 8: + lista de mods desativados; 7: + threadLimit (no fim); 6: + hitSound e as 4 teclas do esquema Custom. v7 e v8 ainda sao lidos. */
+#define SAVE_VERSION 17  /* 17: + streamingJsonParse (1 byte, no fim); 16: + loseIcon (1 byte, no fim); 15: + horizontalMenu (1 byte, no fim); hiddenNotesAlt aceita 0..3; 14: + hiddenNotesAlt (1 byte, no fim); 13: + laneTint (12 bytes, no fim); 12: + strumBgPercent e strumMobileVisible (no fim); 11: + menuMusic (no fim, apos as mods); 10: + healthDrainPlay e healthDrainBotplay (apos scorePosition); 9: + scorePosition (apos threadLimit); 8: + lista de mods desativados; 7: + threadLimit (no fim); 6: + hitSound e as 4 teclas do esquema Custom. v7 e v8 ainda sao lidos. */
 
 static void GameData_Defaults(void) {
     game_scheme_keys[SCHEME_CUSTOM][0] = KEY_LEFT;
@@ -147,6 +147,9 @@ void GameData_Start(void) {
     gameOptions.loseIcon = 0;            /* saves antigos (< v16): padrao */
     if(version >= 16)
         SREAD(char, gameOptions.loseIcon)
+    gameOptions.streamingJsonParse = 0;  /* saves antigos (< v17): padrao off */
+    if(version >= 17)
+        SREAD(char, gameOptions.streamingJsonParse)
 
     GameData_Checks();
 }
@@ -183,6 +186,7 @@ void GameData_Flush(void) {
     SWRITE(char, gameOptions.hiddenNotesAlt)
     SWRITE(char, gameOptions.horizontalMenu)
     SWRITE(char, gameOptions.loseIcon)
+    SWRITE(char, gameOptions.streamingJsonParse)
 }
 
 void GameData_Stop(void) {

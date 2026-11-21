@@ -23,6 +23,7 @@ float otherLogoX;
 float gameplayLogoX;
 float visualLogoX;
 float musicLogoX;
+float renderLogoX;
 static Camera2D cam;
 static RayGraphicObject bg;
 
@@ -43,6 +44,7 @@ static void OptionsMenu_Create([[maybe_unused]] RayScene* scene) {
     gameplayLogoX = LogoXAfterHeader(OPTION_HEADER_GAMEPLAY);
     visualLogoX = LogoXAfterHeader(OPTION_HEADER_VISUAL);
     musicLogoX = LogoXAfterHeader(OPTION_HEADER_MUSIC);
+    renderLogoX = LogoXAfterHeader(OPTION_HEADER_RENDER);
 
     SearchBox_Init(&search, (Rectangle) {SEARCH_X, SEARCH_Y, SEARCH_W, SEARCH_H});
     SearchBox_SetCompact(&search, true);
@@ -79,16 +81,30 @@ static void ActivateCurrent(void) {
 
 /* Icone do titulo (o mesmo da lista) em cima do nome, alinhado a esquerda do titulo. */
 static void DrawTabLogo(int header, float x, float rowY, Color fill, Color shadow) {
-    const float saved[5] = {windowLogoX, otherLogoX, gameplayLogoX, visualLogoX, musicLogoX};
-    windowLogoX = otherLogoX = gameplayLogoX = visualLogoX = musicLogoX = x;
+    const float saved[6] = {windowLogoX, otherLogoX, gameplayLogoX, visualLogoX, musicLogoX, renderLogoX};
+    windowLogoX = otherLogoX = gameplayLogoX = visualLogoX = musicLogoX = renderLogoX = x;
 
     if (header == OPTION_HEADER_WINDOW) DrawWindowLogo(rowY, fill, shadow);
     else if (header == OPTION_HEADER_GAMEPLAY) DrawGameplayLogo(rowY, fill, shadow);
     else if (header == OPTION_HEADER_VISUAL) DrawVisualLogo(rowY, fill, shadow);
     else if (header == OPTION_HEADER_OTHER) DrawOtherLogo(rowY, fill, shadow);
     else if (header == OPTION_HEADER_MUSIC) DrawMusicLogo(rowY, fill, shadow);
+    else if (header == OPTION_HEADER_RENDER) DrawRenderLogo(rowY, fill, shadow);
 
-    windowLogoX = saved[0]; otherLogoX = saved[1]; gameplayLogoX = saved[2]; visualLogoX = saved[3]; musicLogoX = saved[4];
+    windowLogoX = saved[0]; otherLogoX = saved[1]; gameplayLogoX = saved[2]; visualLogoX = saved[3]; musicLogoX = saved[4]; renderLogoX = saved[5];
+}
+
+/* Largura do icone de cada aba (mesmas medidas de OptionsMenuIcons.c), para a hitbox cobrir o icone todo. */
+static float TabIconWidth(int header) {
+    switch (header) {
+        case OPTION_HEADER_WINDOW:   return 2.0f * LOGO_SQUARE + LOGO_GAP;
+        case OPTION_HEADER_GAMEPLAY: return 3.0f * (2.0f * SYMBOL_HALF + SYMBOL_GAP) + 2.0f * SYMBOL_HALF;
+        case OPTION_HEADER_VISUAL:   return FRAME_WIDTH;
+        case OPTION_HEADER_OTHER:    return 2.0f * LOGO_CIRCLE_RADIUS;
+        case OPTION_HEADER_RENDER:   return 2.0f * GEAR_OUTER_R;
+        case OPTION_HEADER_MUSIC:    return 2.0f * NOTE_HEAD_RADIUS + NOTE_FLAG_W;
+        default:                     return 0.0f;
+    }
 }
 
 /* Barra de titulos do menu horizontal. Com draw desenha; senao so devolve o titulo sob o ponto m (ou -1). */
@@ -117,7 +133,12 @@ static int TabBarRun(bool draw, Vector2 m) {
 
         const Vector2 size = TextMeasure_Get(&tabMeasure[i], mainFont, label, TAB_FONT_SIZE, TEXT_SPACING);
         if (!draw) {
-            if (m.y >= TAB_BAR_Y && m.y < TAB_BAR_Y + TAB_FONT_SIZE && m.x >= x - TEXT_SHADOW && m.x < x + size.x)
+            // Uma hitbox so: o retangulo que o icone + titulo ocupam (largura do maior dos dois).
+            const float boxW = size.x > TabIconWidth(i) ? size.x : TabIconWidth(i);
+            const float boxX = x - TEXT_SHADOW;
+            const float boxY = TAB_BAR_Y - TAB_LOGO_LIFT;
+            const float boxH = TAB_LOGO_LIFT + TAB_FONT_SIZE;
+            if (m.x >= boxX && m.x < boxX + boxW && m.y >= boxY && m.y < boxY + boxH)
                 hit = i;
         } else {
             const bool open = options[currentOption].header == i;   // aba aberta
@@ -290,6 +311,8 @@ static void OptionsMenu_Draw([[maybe_unused]] RayScene* scene) {
                 DrawOtherLogo(drawY, fill, shadow);
             else if (i == OPTION_HEADER_MUSIC)
                 DrawMusicLogo(drawY, fill, shadow);
+            else if (i == OPTION_HEADER_RENDER)
+                DrawRenderLogo(drawY, fill, shadow);
             continue;
         }
 

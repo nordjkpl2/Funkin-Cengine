@@ -36,6 +36,8 @@ Option options[OPTION_COUNT] = {
     [OPTION_SHOW_FPS] = {.text = "Show FPS", .type = OPTION_VALUE_BOOL},
     [OPTION_VSYNC] = {.text = "V-SYNC", .type = OPTION_VALUE_BOOL},
     [OPTION_THREADS] = {.text = "Threads", .type = OPTION_VALUE_LIST, .options = thread_names, .step = 1, .max = 1, .min = 0},
+    [OPTION_HEADER_RENDER] = {.text = "[Render]", .type = OPTION_VALUE_HEADER},
+    [OPTION_STREAM_JSON] = {.text = "Streaming JSON Parse (notes)", .type = OPTION_VALUE_BOOL},
     [OPTION_HEADER_GAMEPLAY] = {.text = "[Gameplay]", .type = OPTION_VALUE_HEADER},
     [OPTION_KEYBOARD_SCHEME] = {.text = "Scheme", .type = OPTION_VALUE_LIST, .options = game_available_schemes, .step = 1, .max = SCHEME_COUNT - 1, .min = 0},
     [OPTION_SCROLL_STYLE] = {.text = "Scroll Style", .type = OPTION_VALUE_LIST, .options = scroll_names, .step = 1, .max = 2, .min = 0},
@@ -192,6 +194,7 @@ void ApplyBoolValue(void) {
         case OPTION_LOSE_ICON:     gameOptions.loseIcon = on; break;
         case OPTION_STRUM_MOBILE:  gameOptions.strumMobileVisible = on; break;
         case OPTION_FILL_SCREEN:   gameOptions.fillScreen = on; break;
+        case OPTION_STREAM_JSON:   gameOptions.streamingJsonParse = on; break;
         case OPTION_BOTPLAY:       gameOptions.botplay = on; break;
         case OPTION_HITSOUND:      gameOptions.hitSound = on; break;
         case OPTION_HEALTH_DRAIN_PLAY:    gameOptions.healthDrainPlay = on; break;
@@ -372,6 +375,7 @@ void Options_LoadValues(void) {
     options[OPTION_ZOOMFACTOR_GAME].value = gameOptions.zoomFactorGAME;
     options[OPTION_ZOOMFACTOR_UI].value = gameOptions.zoomFactorUI;
     options[OPTION_FILL_SCREEN].value = gameOptions.fillScreen;
+    options[OPTION_STREAM_JSON].value = gameOptions.streamingJsonParse;
     options[OPTION_BOTPLAY].value = gameOptions.botplay;
     options[OPTION_HORIZONTAL_MENU].value = gameOptions.horizontalMenu;
 

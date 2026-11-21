@@ -148,11 +148,27 @@ int MI_CopyStagesRecursive(const char *sourceDir, const char *destinationDir,
     return ok;
 }
 
-/* Soma o custo do chart copiado nas estatisticas do import. */
-static void MI_AnalyzeCopied(const char *chartPath, MI_ImportContext *context)
+#define MI_CHART_SCAN_MAX (32L * 1024L * 1024L)
+
+/* Um unico parse do chart: icones (player1/player2) e custo para as estatisticas do import.
+ * Le a ORIGEM, nunca o destino: a copia pode ser adiada para um worker e o destino ainda
+ * nao existir aqui. O conteudo e o mesmo (a copia e byte a byte). */
+static void MI_ScanChartOnce(const char *chartPath, MI_ImportContext *context)
 {
+    long size = 0;
+    char *buffer = MI_ReadFile(chartPath, &size, MI_CHART_SCAN_MAX);
+    yyjson_doc *doc;
     MI_ChartCost cost;
-    if (MI_AnalyzeChart(chartPath, &cost)) MI_AddChartCost(context->stats, &cost);
+
+    if (buffer == NULL) return;
+    doc = yyjson_read(buffer, (size_t)size, 0);
+    free(buffer);
+    if (doc == NULL) return;
+
+    MI_CollectChartActors(yyjson_doc_get_root(doc), &context->iconNames);
+    if (MI_AnalyzeChartRoot(yyjson_doc_get_root(doc), &cost))
+        MI_AddChartCost(context->stats, &cost);
+    yyjson_doc_free(doc);
 }
 
 static int MI_CopyChartsFromDirectory(const char *sourceDir, const char *destinationSong,
@@ -185,15 +201,13 @@ static int MI_CopyChartsFromDirectory(const char *sourceDir, const char *destina
         if (FileExists(destination)) {
             /* Reimport atualiza arquivos existentes sem duplicar a estatistica. */
             (void)MI_CopyFile(entries.paths[i], destination, &context->stats->bytes);
-            MI_ParseChartActors(entries.paths[i], &context->iconNames);
-            MI_AnalyzeCopied(destination, context);
+            MI_ScanChartOnce(entries.paths[i], context);
             continue;
         }
         if (MI_CopyFile(entries.paths[i], destination, &context->stats->bytes)) {
             ++context->stats->charts;
             if (chartCount != NULL) ++*chartCount;
-            MI_ParseChartActors(entries.paths[i], &context->iconNames);
-            MI_AnalyzeCopied(destination, context);
+            MI_ScanChartOnce(entries.paths[i], context);
         } else {
             ok = 0;
         }
@@ -302,8 +316,7 @@ static void MI_ImportLooseSongCharts(const char *sourceSongs, const char *destin
                     ++context->stats->charts;
                     ++context->stats->songs;
                 }
-                MI_ParseChartActors(entries.paths[i], &context->iconNames);
-                MI_AnalyzeCopied(destination, context);
+                MI_ScanChartOnce(entries.paths[i], context);
             }
         }
     }

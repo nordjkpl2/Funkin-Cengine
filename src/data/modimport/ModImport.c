@@ -247,9 +247,12 @@ static void MI_ResetCounters(void)
 char ModImport_Run(const char *srcMod, const char *dstRoot, const char *modName,
                    char *msg, size_t msgSize, ModImportStats *stats)
 {
+    char ok;
     MI_ResetCounters();
     atomic_store(&mi_useDefer, 0);
-    return MI_RunImpl(srcMod, dstRoot, modName, msg, msgSize, stats);
+    ok = MI_RunImpl(srcMod, dstRoot, modName, msg, msgSize, stats);
+    MI_ClassifyCacheClear();
+    return ok;
 }
 
 /* ---- import em segundo plano ---- */
@@ -279,6 +282,7 @@ static void MI_RunThread(void *arg)
     }
     mi_run.ok = MI_RunImpl(mi_run.src, mi_run.dst, mi_run.name,
                            mi_run.msg, sizeof(mi_run.msg), &mi_run.stats);
+    MI_ClassifyCacheClear();   /* classificacao so vale dentro desta importacao */
     MI_Drain(NULL);
     atomic_store(&mi_useDefer, 0);
 

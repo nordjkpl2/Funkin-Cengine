@@ -54,21 +54,12 @@ void MI_AddName(MI_NameList *list, const char *name)
     }
 }
 
-void MI_ParseChartActors(const char *chartPath, MI_NameList *names)
+void MI_CollectChartActors(yyjson_val *root, MI_NameList *names)
 {
-    long size = 0;
-    char *buffer = MI_ReadFile(chartPath, &size, 8L * 1024L * 1024L);
-    yyjson_doc *doc;
-    yyjson_val *root;
     yyjson_val *song;
     static const char *keys[] = {"player1", "player2"};
 
-    if (buffer == NULL) return;
-    doc = yyjson_read(buffer, (size_t)size, 0);
-    free(buffer);
-    if (doc == NULL) return;
-
-    root = yyjson_doc_get_root(doc);
+    if (root == NULL) return;
     song = yyjson_obj_get(root, "song");
     if (!yyjson_is_obj(song)) song = root;
 
@@ -76,7 +67,6 @@ void MI_ParseChartActors(const char *chartPath, MI_NameList *names)
         const char *value = MI_JsonString(song, keys[i]);
         MI_AddName(names, value);
     }
-    yyjson_doc_free(doc);
 }
 
 void MI_ParseWeekIcons(const char *weekPath, MI_NameList *names)

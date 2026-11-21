@@ -14,6 +14,7 @@
 #include "std.h"
 #include "data/Song.h"
 #include "data/SongInternal.h"
+#include "data/SongStream.h"
 #include "Log.h"
 
 #include <stdint.h>
@@ -119,6 +120,7 @@ void Song_ReleaseNotes(Song *song)
 void Song_Free(Song *song)
 {
     if (song == NULL) return;
+    if (song->stream != NULL) SongStream_Close(song->stream);
     if (song->sections != NULL) {
         for (int i = 0; i < song->sectionCount; ++i)
             free(song->sections[i].notes);
@@ -154,20 +156,20 @@ static int Song_TryLoadBinary(const char *dirPath, Song *song)
     return 0;
 }
 
-void Song_LoadSongFromDir(Song *song, const char *dirPath)
+void Song_LoadSongFromDir(Song *song, const char *dirPath, char streaming)
 {
     if (song == NULL || dirPath == NULL) Log_Fatal("invalid song directory");
     memset(song, 0, sizeof(*song));
-    if (Song_TryLoadChart(dirPath, "", song)) return;
+    if (Song_TryLoadChart(dirPath, "", song, streaming)) return;
     if (Song_TryLoadBinary(dirPath, song)) return;
     Log_FatalF("no valid chart found for song directory: %s", dirPath);
 }
 
-void Song_LoadSongFromDirDiff(Song *song, const char *dirPath, const char *diff)
+void Song_LoadSongFromDirDiff(Song *song, const char *dirPath, const char *diff, char streaming)
 {
     if (song == NULL || dirPath == NULL) Log_Fatal("invalid song directory");
     memset(song, 0, sizeof(*song));
-    if (Song_TryLoadChart(dirPath, diff, song)) return;
+    if (Song_TryLoadChart(dirPath, diff, song, streaming)) return;
     if (Song_TryLoadBinary(dirPath, song)) return;
     Log_FatalF("no valid chart found for song directory: %s (difficulty: %s)",
                dirPath, diff != NULL ? diff : "default");

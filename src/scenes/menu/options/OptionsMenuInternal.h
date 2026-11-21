@@ -19,11 +19,11 @@
 #define WHEEL_ROWS_PER_NOTCH 1 // linhas puladas a cada clique da roda do mouse
 #define ROW_FONT_SIZE 59
 #define LABEL_FONT_SIZE 40 // subtitulos estaticos (ex.: Score, Zoom), menores que as opcoes
-#define ROW_PADDING 14
-#define HEADER_FONT_SIZE 87
-#define HEADER_PADDING 6
+#define ROW_PADDING 12
+#define HEADER_FONT_SIZE 77
+#define HEADER_PADDING 5
 #define TEXT_SHADOW 6
-#define TEXT_SPACING 1.8f
+#define TEXT_SPACING 1.6f
 #define ROW_X 150.0f
 #define HEADER_X 50.0f
 #define ROW_HEIGHT (ROW_FONT_SIZE + ROW_PADDING)
@@ -84,6 +84,14 @@
 #define NOTE_FLAG_W 16.0f
 #define NOTE_FLAG_H 22.0f
 
+// Engrenagem ao lado de "[Render]".
+#define GEAR_HOLE_R 9.0f     // raio interno do anel do corpo
+#define GEAR_BODY_R 19.0f    // raio externo do anel do corpo
+#define GEAR_TOOTH_LEN 11.0f // dente: comprimento (radial)
+#define GEAR_TOOTH_W 10.0f   // dente: largura
+#define GEAR_TEETH 8
+#define GEAR_OUTER_R (GEAR_BODY_R + GEAR_TOOTH_LEN) // raio total (para alinhar ao texto)
+
 // Aba Musica: Auto passa para a proxima faixa quando a atual termina (so com o menu aberto).
 #define MUSIC_SLOTS 65 // 64 faixas + Auto
 
@@ -134,6 +142,8 @@ typedef enum {
     OPTION_SHOW_FPS,
     OPTION_VSYNC,
     OPTION_THREADS,
+    OPTION_HEADER_RENDER,
+    OPTION_STREAM_JSON,
     OPTION_HEADER_GAMEPLAY,
     OPTION_KEYBOARD_SCHEME,
     OPTION_SCROLL_STYLE,
@@ -181,6 +191,7 @@ extern float otherLogoX;
 extern float gameplayLogoX;
 extern float visualLogoX;
 extern float musicLogoX;
+extern float renderLogoX;
 
 /* OptionsMenuValues.c */
 int AutoThreads(void);
@@ -220,6 +231,7 @@ void DrawOtherLogo(float rowY, Color fill, Color shadow);
 void DrawGameplayLogo(float rowY, Color fill, Color shadow);
 void DrawVisualLogo(float rowY, Color fill, Color shadow);
 void DrawMusicLogo(float rowY, Color fill, Color shadow);
+void DrawRenderLogo(float rowY, Color fill, Color shadow);
 void DrawChevron(float rowY, bool collapsed, Color fill, Color shadow);
 void DrawTvIcon(float rowY, Color fill, Color shadow);
 void DrawHealthIcons(float rowY, Color fill, Color shadow);

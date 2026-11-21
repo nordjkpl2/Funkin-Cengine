@@ -101,6 +101,7 @@ set(OLD_GLOB
   "D:/dev/funkin c/src/data/SongChartFind.c"
   "D:/dev/funkin c/src/data/SongJson.c"
   "D:/dev/funkin c/src/data/SongList.c"
+  "D:/dev/funkin c/src/data/SongStream.c"
   "D:/dev/funkin c/src/data/Week.c"
   "D:/dev/funkin c/src/data/modimport/ModImport.c"
   "D:/dev/funkin c/src/data/modimport/ModImportAnalyze.c"

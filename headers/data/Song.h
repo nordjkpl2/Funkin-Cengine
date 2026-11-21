@@ -28,13 +28,18 @@ typedef struct {
     char noteSkin[SONG_NAME_MAX];
     char arrowSkin[SONG_NAME_MAX];   /* Psych: imagem da skin relativa a images/, sem extensao */
     Section* sections;
-    int sectionCount; 
+    int sectionCount;
     float bpm;
     float speed;
+    /* Modo streaming (chart JSON): as notas ficam no arquivo e a gameplay le por secao.
+       Quando nao NULL, sections[].notes estao vazias e o dono do stream e quem recebe o Song
+       (PlayStateNoteSpawn). Ver data/SongStream.h. */
+    struct SongStream* stream;
 } Song;
 void Song_Parse(Song* song, const char* songDataPath);
-void Song_LoadSongFromDir(Song* song, const char* dirPath);
-void Song_LoadSongFromDirDiff(Song* song, const char* dirPath, const char* diff);
+/* streaming = 1: chart JSON em janelas por secao quando possivel; senao carrega inteiro. */
+void Song_LoadSongFromDir(Song* song, const char* dirPath, char streaming);
+void Song_LoadSongFromDirDiff(Song* song, const char* dirPath, const char* diff, char streaming);
 char Song_HasChart(const char* dirPath);
 void Song_Free(Song* song);
 /* Libera so as notas crus de cada secao (ja copiadas para o array de notas da gameplay).
