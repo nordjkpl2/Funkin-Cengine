@@ -9,22 +9,37 @@
 #include <stdio.h>
 #include "raylib.h"
 #include "yyjson.h"
+#include "core/ModPath.h"
+#include "Render.h"
+#include "Log.h"
+#include "rendering/cpu/ImagePrefetch.h"
 
 #define SCREEN_W 1280.0f
 #define SCREEN_H 720.0f
+#define SHOW_IMAGE_NAME "Show Image"
+#define IMG_MAX 8  /* imagens distintas por musica */
 
 const PlayStateEventType playStateEventTypes[] = {
-    {"Fade In",  "tela preta -> imagem (duracao ms, alpha final %)", 1000, 0,   "tempo", "fade"},
-    {"Fade Out", "imagem -> tela preta (duracao ms, alpha final %)", 1000, 100, "tempo", "fade"},
+    {"Fade In",       "tela preta -> imagem (duracao ms, alpha final %)", 1000, 0,   0,   "tempo", "fade",     NULL,       0},
+    {"Fade Out",      "imagem -> tela preta (duracao ms, alpha final %)", 1000, 100, 0,   "tempo", "fade",     NULL,       0},
+    {SHOW_IMAGE_NAME, "mostra imagem (x, y a partir do centro em px; escala %)", 0, 0, 100, "x (px):", "y (px):", "escala %:", 1},
 };
 const int playStateEventTypeCount = (int)(sizeof(playStateEventTypes) / sizeof(playStateEventTypes[0]));
 
 typedef struct {
     double timeMs;
     char name[48];
-    double v1; /* duracao (ms) */
-    double v2; /* alpha final (%) */
+    double v1;      /* fade: duracao (ms) | imagem: x */
+    double v2;      /* fade: alpha final (%) | imagem: y */
+    double v3;      /* imagem: escala (%) */
+    char img[64];   /* imagem: nome em images/<img>.png */
 } PsEvent;
+
+typedef struct {
+    char name[64];
+    Texture2D tex;
+    char ok;        /* textura carregada */
+} PsImage;
 
 static PsEvent* evs;
 static int evCount;
@@ -37,6 +52,12 @@ static double fadeStartMs;
 static double fadeDurMs;
 static float fadeFrom;
 static float fadeTo;
+
+/* Ultimo Show Image disparado (-1 = nenhum). Derivado da ordem dos eventos, entao seek/restart batem. */
+static PsImage imgs[IMG_MAX];
+static int imgCount;
+static int curImg = -1;
+static double curX, curY, curScale;
 
 static double NumOf(yyjson_val* v) {
     if (yyjson_is_real(v)) return yyjson_get_real(v);
@@ -67,7 +88,21 @@ static float AlphaAt(double ms) {
     return fadeFrom + (fadeTo - fadeFrom) * (float)t;
 }
 
+static int FindImg(const char* name) {
+    for (int i = 0; i < imgCount; i++)
+        if (strcmp(imgs[i].name, name) == 0) return i;
+    return -1;
+}
+
 static void Fire(const PsEvent* e) {
+    if (strcmp(e->name, SHOW_IMAGE_NAME) == 0) {
+        curImg = FindImg(e->img); /* -1 se o nome estiver vazio ou a imagem nao existir */
+        curX = e->v1;
+        curY = e->v2;
+        curScale = e->v3 > 0.0 ? e->v3 : 100.0;
+        return;
+    }
+
     float from;
     if (strcmp(e->name, "Fade In") == 0)
         from = 1.0f;                     /* comeca preto e clareia */
@@ -83,7 +118,47 @@ static void Fire(const PsEvent* e) {
     fadeTo = PctToAlpha(e->v2);
 }
 
+/* <mod>/images/<nome>.png, depois assets/images/<nome>.png (mesma regra do stage). */
+static int ResolveImage(const char* root, const char* name, char out[512]) {
+    if (root[0] != '\0') {
+        snprintf(out, 512, "%s/images/%s.png", root, name);
+        if (FileExists(out)) return 1;
+    }
+    snprintf(out, 512, "assets/images/%s.png", name);
+    return FileExists(out);
+}
+
+/* Carrega (uma vez por nome) as imagens usadas pelos Show Image. Roda no Load, nunca no Draw. */
+static void LoadImages(const char* songDir) {
+    char root[256] = "";
+    (void)ModPath_Root(songDir, root, sizeof(root));
+
+    /* Pede a decodificacao em fundo de todas antes de subir para a GPU. */
+    for (int i = 0; i < evCount; i++) {
+        if (strcmp(evs[i].name, SHOW_IMAGE_NAME) != 0 || evs[i].img[0] == '\0') continue;
+        if (FindImg(evs[i].img) >= 0 || imgCount >= IMG_MAX) continue;
+
+        PsImage* slot = &imgs[imgCount++];
+        snprintf(slot->name, sizeof(slot->name), "%s", evs[i].img);
+        slot->ok = 0;
+
+        char png[512];
+        if (!ResolveImage(root, evs[i].img, png)) {
+            Log_WarnF("Show Image: imagem nao encontrada: %s", evs[i].img);
+            continue;
+        }
+        ImagePrefetch_Start(png);
+        slot->tex = Render_LoadTexture(png);
+        slot->ok = (slot->tex.id != 0);
+    }
+}
+
 void PlayStateEvents_Unload(void) {
+    for (int i = 0; i < imgCount; i++)
+        if (imgs[i].ok) UnloadTexture(imgs[i].tex);
+    imgCount = 0;
+    curImg = -1;
+
     free(evs);
     evs = NULL;
     evCount = 0;
@@ -121,9 +196,17 @@ void PlayStateEvents_Load(const char* songDir) {
                     snprintf(e->name, sizeof(e->name), "%s", yyjson_get_str(jname));
                     e->v1 = NumOf(yyjson_arr_get(ev, 1));
                     e->v2 = NumOf(yyjson_arr_get(ev, 2));
+                    /* Show Image: escala ausente = 100 %; nome da imagem na posicao 4 */
+                    yyjson_val* j3 = yyjson_arr_get(ev, 3);
+                    e->v3 = (j3 != NULL && (yyjson_is_num(j3) || yyjson_is_str(j3))) ? NumOf(j3) : 100.0;
+                    yyjson_val* j4 = yyjson_arr_get(ev, 4);
+                    e->img[0] = '\0';
+                    if (j4 != NULL && yyjson_is_str(j4))
+                        snprintf(e->img, sizeof(e->img), "%s", yyjson_get_str(j4));
                 }
             }
             qsort(evs, (size_t)evCount, sizeof(PsEvent), CmpEvent);
+            LoadImages(songDir);
         }
     }
     yyjson_doc_free(doc);
@@ -133,6 +216,7 @@ void PlayStateEvents_Reset(void) {
     nextIdx = 0;
     curAlpha = 0.0f;
     hasFade = 0;
+    curImg = -1;
 }
 
 void PlayStateEvents_SeekTo(double seconds) {
@@ -155,6 +239,20 @@ void PlayStateEvents_Update(double seconds) {
 }
 
 void PlayStateEvents_Draw(void) {
+    /* Imagem primeiro: o overlay preto do fade fica por cima (Fade In revela a imagem). */
+    if (curImg >= 0 && imgs[curImg].ok) {
+        const Texture2D t = imgs[curImg].tex;
+        const float s = (float)(curScale / 100.0);
+        const float w = (float)t.width * s;
+        const float h = (float)t.height * s;
+        const Rectangle dst = {
+            SCREEN_W * 0.5f + (float)curX - w * 0.5f,
+            SCREEN_H * 0.5f + (float)curY - h * 0.5f,
+            w, h
+        };
+        DrawTexturePro(t, (Rectangle){0.0f, 0.0f, (float)t.width, (float)t.height}, dst, (Vector2){0.0f, 0.0f}, 0.0f, WHITE);
+    }
+
     if (curAlpha <= 0.001f) return;
     DrawRectangle(0, 0, (int)SCREEN_W, (int)SCREEN_H,
                   (Color){0, 0, 0, (unsigned char)(curAlpha * 255.0f)});

@@ -40,13 +40,16 @@ typedef struct {
     char dirty;
 } EdChart;
 
-// evento da musica (events.json). Formato Psych: [tempo, [[nome, v1, v2]]]
+// evento da musica (events.json). Formato: [tempo, [[nome, v1, v2, v3, s1]]] (v3/s1 so em Show Image)
 // fade: nome "Fade In"/"Fade Out", v1 = duracao (ms), v2 = alpha alvo (%)
+// Show Image: v1 = x, v2 = y (px a partir do centro), v3 = escala (%), s1 = nome da imagem
 typedef struct {
     float time; // ms
     char name[48];
     char v1[64];
     char v2[64];
+    char v3[16];
+    char s1[64];
 } EdEvent;
 
 extern EdChart chart;
@@ -54,7 +57,7 @@ extern char chartLoaded;
 extern EdEvent* edEvents;
 extern int edEventCount;
 extern int edEventsGen; /* muda a cada limpeza/recarga: quem guarda indices deve reiniciar */
-int EdEvent_Add(float time, const char* name, const char* v1, const char* v2); /* devolve o indice inserido, -1 = falhou */
+int EdEvent_Add(float time, const char* name, const char* v1, const char* v2, const char* v3, const char* s1); /* devolve o indice inserido, -1 = falhou */
 void EdEvent_RemoveAt(int idx);
 void EdEvent_ClearAll(void);
 void EdEvents_Load(const char* dir);

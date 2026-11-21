@@ -219,3 +219,17 @@
 112	3980	8169332713120430	CMakeFiles/FNF_C_ENGINE.dir/src/rendering/cpu/PngDecode.c.obj	7bd2a9ef66aaab99
 3980	10253	8169332751802193	D:/dev/funkin c/FNF_C_ENGINE.exe	c78a4490ff64be3a
 29	74	8169332856901925	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+16	56	8169337342063799	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+67	248	8169337342573632	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/menu/MenuState.c.obj	20d56ba81941268b
+89	268	8169337342788838	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/modding/charteditor/grid/EditorTimeline.c.obj	8b838996b08055c6
+61	276	8169337342503867	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayState.c.obj	4d49e48b2e806a05
+95	307	8169337342848826	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/modding/charteditor/ui/EditorIcons.c.obj	29883485c15a0f2a
+71	309	8169337342613627	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/modding/charteditor/ChartEditor.c.obj	6baf555505ee245a
+111	322	8169337343008914	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/modding/charteditor/ui/EditorWidgets.c.obj	d01375f19fa37f08
+84	333	8169337342738815	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/modding/charteditor/grid/EditorGrid.c.obj	5c39e53df1bff313
+64	344	8169337342543773	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayStateEventsInGameplay.c.obj	2a0b1db6e3f01df5
+105	355	8169337342948917	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/modding/charteditor/ui/EditorPicker.c.obj	b2b191189ffe6304
+76	358	8169337342658804	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/modding/charteditor/data/EditorCharactersAndLists.c.obj	ced69fa87626fec0
+100	370	8169337342898808	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/modding/charteditor/ui/EditorPanels.c.obj	66937c1a640c4446
+79	587	8169337342688798	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/modding/charteditor/data/EditorDataAndIO.c.obj	97bda65b360aaea0
+587	5587	8169337347768111	D:/dev/funkin c/FNF_C_ENGINE.exe	c78a4490ff64be3a

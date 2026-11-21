@@ -406,6 +406,7 @@ static void Edit_DrawPanel_Charting(float x, float y) {
 // ---------- eventos: picker com busca + edicao do selecionado ----------
 static char evPickOpen;
 static TxtBox evSearchBox;
+static TxtBox evImgBox;     // nome da imagem do Show Image selecionado
 static int evSelected = -1; // indice em edEvents (-1 = nenhum)
 
 // busca sem diferenciar maiusculas (needle vazio casa tudo)
@@ -432,10 +433,11 @@ static void EvClosePicker(void) {
 }
 
 static void EvAddFromType(const PlayStateEventType* t) {
-    char v1[16], v2[16];
+    char v1[16], v2[16], v3[16];
     snprintf(v1, sizeof(v1), "%d", t->defaultDurMs);
     snprintf(v2, sizeof(v2), "%d", t->defaultAlphaPct);
-    evSelected = EdEvent_Add((float)cursorMs, t->name, v1, v2);
+    snprintf(v3, sizeof(v3), "%d", t->defaultScalePct);
+    evSelected = EdEvent_Add((float)cursorMs, t->name, v1, v2, v3, "");
     chart.dirty = 1;
     EdStatusMsg("EVENTO ADICIONADO (CTRL+S salva events.json)");
 }
@@ -467,20 +469,14 @@ static void Edit_DrawEventPicker(float x, float y) {
     if(shown == 0) Ed_DrawText(mainFont, "nenhum evento encontrado", (Vector2){x, y + 4}, 18, 1, YELLOW);
 }
 
-// rotulos dos campos v1/v2 conforme o tipo do evento (padrao: "valor 1/2")
-static void EvLabels(const char* name, const char** l1, const char** l2) {
-    *l1 = "valor 1:";
-    *l2 = "valor 2:";
-    for(int i = 0; i < playStateEventTypeCount; i++) {
-        if(strcmp(playStateEventTypes[i].name, name) == 0) {
-            *l1 = playStateEventTypes[i].label1;
-            *l2 = playStateEventTypes[i].label2;
-            return;
-        }
-    }
+// tipo do evento pelo nome (NULL = tipo desconhecido)
+static const PlayStateEventType* EvTypeOf(const char* name) {
+    for(int i = 0; i < playStateEventTypeCount; i++)
+        if(strcmp(playStateEventTypes[i].name, name) == 0) return &playStateEventTypes[i];
+    return NULL;
 }
 
-// valor inteiro do evento (v1/v2 sao texto no events.json)
+// valor inteiro do evento (v1/v2/v3 sao texto no events.json)
 static void EvStepInt(char* field, size_t n, int delta, int lo, int hi) {
     int v = atoi(field) + delta;
     if(v < lo) v = lo;
@@ -550,22 +546,60 @@ static void Edit_DrawPanel_Events(float x, float y) {
         Ed_DrawText(mainFont, tb, (Vector2){x, y}, 20, 1, GREEN);
         y += 34;
 
-        const char* lab1;
-        const char* lab2;
-        EvLabels(e->name, &lab1, &lab2);
+        // Show Image: x/y aceitam negativo (a partir do centro) e passos de 10 px
+        const PlayStateEventType* t = EvTypeOf(e->name);
+        const char img = (t != NULL && t->usesImage);
+        const char* lab1 = (t != NULL) ? t->label1 : "valor 1:";
+        const char* lab2 = (t != NULL) ? t->label2 : "valor 2:";
+        const int lo1 = img ? -4000 : 0, hi1 = img ? 4000 : 60000, st1 = img ? 10 : 50;
+        const int lo2 = img ? -4000 : 0, hi2 = img ? 4000 : 100, st2 = 10;
+
         Ed_DrawText(mainFont, lab1, (Vector2){x, y + 4}, 20, 1, WHITE);
-        if(EdButton((Rectangle){x + 110, y, 36, 32}, "-", 22)) EvStepInt(e->v1, sizeof(e->v1), -50, 0, 60000);
-        if(EdButton((Rectangle){x + 250, y, 36, 32}, "+", 22)) EvStepInt(e->v1, sizeof(e->v1), 50, 0, 60000);
+        if(EdButton((Rectangle){x + 110, y, 36, 32}, "-", 22)) EvStepInt(e->v1, sizeof(e->v1), -st1, lo1, hi1);
+        if(EdButton((Rectangle){x + 250, y, 36, 32}, "+", 22)) EvStepInt(e->v1, sizeof(e->v1), st1, lo1, hi1);
         snprintf(tb, sizeof(tb), "%s", e->v1);
         Ed_DrawText(mainFont, tb, (Vector2){x + 156, y + 4}, 20, 1, WHITE);
         y += 40;
 
         Ed_DrawText(mainFont, lab2, (Vector2){x, y + 4}, 20, 1, WHITE);
-        if(EdButton((Rectangle){x + 110, y, 36, 32}, "-", 22)) EvStepInt(e->v2, sizeof(e->v2), -10, 0, 100);
-        if(EdButton((Rectangle){x + 250, y, 36, 32}, "+", 22)) EvStepInt(e->v2, sizeof(e->v2), 10, 0, 100);
+        if(EdButton((Rectangle){x + 110, y, 36, 32}, "-", 22)) EvStepInt(e->v2, sizeof(e->v2), -st2, lo2, hi2);
+        if(EdButton((Rectangle){x + 250, y, 36, 32}, "+", 22)) EvStepInt(e->v2, sizeof(e->v2), st2, lo2, hi2);
         snprintf(tb, sizeof(tb), "%s", e->v2);
         Ed_DrawText(mainFont, tb, (Vector2){x + 156, y + 4}, 20, 1, WHITE);
-        y += 44;
+        y += 40;
+
+        if(t != NULL && t->label3 != NULL) {
+            Ed_DrawText(mainFont, t->label3, (Vector2){x, y + 4}, 20, 1, WHITE);
+            if(EdButton((Rectangle){x + 110, y, 36, 32}, "-", 22)) EvStepInt(e->v3, sizeof(e->v3), -10, 10, 1000);
+            if(EdButton((Rectangle){x + 250, y, 36, 32}, "+", 22)) EvStepInt(e->v3, sizeof(e->v3), 10, 10, 1000);
+            snprintf(tb, sizeof(tb), "%s", e->v3);
+            Ed_DrawText(mainFont, tb, (Vector2){x + 156, y + 4}, 20, 1, WHITE);
+            y += 40;
+        }
+
+        if(img) {
+            // caixa de texto com o nome da imagem: sincroniza com o evento selecionado
+            static int evImgSel = -2;
+            static int evImgGen = -1;
+            if(evImgSel != evSelected || evImgGen != edEventsGen) {
+                evImgSel = evSelected;
+                evImgGen = edEventsGen;
+                snprintf(evImgBox.buf, sizeof(evImgBox.buf), "%s", e->s1);
+            }
+            Ed_DrawText(mainFont, "imagem (images/<nome>.png):", (Vector2){x, y}, 18, 1, WHITE);
+            y += 26;
+            const char evBlocked = (ceDlg != DLG_NONE || activeDrop || menuOpen);
+            Rectangle ir = {x, y, 250, 32};
+            TxtBox_Update(&evImgBox, ir, evBlocked);
+            TxtBox_Draw(&evImgBox, ir, "nome da imagem");
+            if(strcmp(evImgBox.buf, e->s1) != 0) {
+                snprintf(e->s1, sizeof(e->s1), "%s", evImgBox.buf);
+                snprintf(evImgBox.buf, sizeof(evImgBox.buf), "%s", e->s1); /* ja truncado */
+                chart.dirty = 1;
+            }
+            y += 44;
+        }
+        y += 4;
     }
 
     snprintf(tb, sizeof(tb), "%d evento(s) no total", edEventCount);

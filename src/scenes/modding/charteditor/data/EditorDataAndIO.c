@@ -729,7 +729,7 @@ void EdEvent_ClearAll(void) {
 }
 
 // insere mantendo ordem por tempo (iguais ficam na ordem de insercao)
-int EdEvent_Add(float time, const char* name, const char* v1, const char* v2) {
+int EdEvent_Add(float time, const char* name, const char* v1, const char* v2, const char* v3, const char* s1) {
     if(edEventCount >= edEventCap) {
         int ncap = edEventCap ? edEventCap * 2 : 16;
         EdEvent* n = realloc(edEvents, sizeof(EdEvent) * (size_t)ncap);
@@ -746,6 +746,8 @@ int EdEvent_Add(float time, const char* name, const char* v1, const char* v2) {
     snprintf(e->name, sizeof(e->name), "%s", name);
     snprintf(e->v1, sizeof(e->v1), "%s", v1);
     snprintf(e->v2, sizeof(e->v2), "%s", v2);
+    snprintf(e->v3, sizeof(e->v3), "%s", v3);
+    snprintf(e->s1, sizeof(e->s1), "%s", s1);
     edEventCount++;
     return at;
 }
@@ -782,11 +784,14 @@ void EdEvents_Load(const char* dir) {
             yyjson_val* ev;
             yyjson_arr_foreach(jlist, k, kmax, ev) {
                 if(!yyjson_is_arr(ev)) continue;
-                char nm[48], a[64], b[64];
+                char nm[48], a[64], b[64], c[16], s[64];
                 EdEvent_ValStr(yyjson_arr_get(ev, 0), nm, sizeof(nm));
                 EdEvent_ValStr(yyjson_arr_get(ev, 1), a, sizeof(a));
                 EdEvent_ValStr(yyjson_arr_get(ev, 2), b, sizeof(b));
-                if(nm[0] != 0) EdEvent_Add(t, nm, a, b);
+                EdEvent_ValStr(yyjson_arr_get(ev, 3), c, sizeof(c));
+                EdEvent_ValStr(yyjson_arr_get(ev, 4), s, sizeof(s));
+                if(c[0] == 0 && strcmp(nm, "Show Image") == 0) snprintf(c, sizeof(c), "100"); /* escala padrao */
+                if(nm[0] != 0) EdEvent_Add(t, nm, a, b, c, s);
             }
         }
     }
@@ -817,6 +822,10 @@ char EdEvents_Save(const char* dir) {
         yyjson_mut_arr_append(ev, yyjson_mut_strcpy(doc, e->name));
         yyjson_mut_arr_append(ev, yyjson_mut_strcpy(doc, e->v1));
         yyjson_mut_arr_append(ev, yyjson_mut_strcpy(doc, e->v2));
+        if(strcmp(e->name, "Show Image") == 0) { // so Show Image tem v3 (escala) e s1 (imagem)
+            yyjson_mut_arr_append(ev, yyjson_mut_strcpy(doc, e->v3));
+            yyjson_mut_arr_append(ev, yyjson_mut_strcpy(doc, e->s1));
+        }
     }
 
     bool ok = yyjson_mut_write_file(p, doc, YYJSON_WRITE_PRETTY, NULL, NULL);
