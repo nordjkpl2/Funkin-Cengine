@@ -36,7 +36,7 @@ static void GameData_Defaults(void) {
     game_scheme_keys[SCHEME_CUSTOM][3] = KEY_RIGHT;
     gameDisabledModCount = 0;
     gameOptions = (GameOptions) {
-        .showScore = 1, .bopIcons = 1, .showFps = 1,
+        .showScore = 1, .bopIcons = 1, .showFps = 1, .loseIcon = 1,
         .scorePosition = SCORE_POS_PSYCH, .strumBgPercent = 0,
         .fps = 120,
         .zoomFactorUI = 1.0f, .zoomFactorGAME = 1.0f,
