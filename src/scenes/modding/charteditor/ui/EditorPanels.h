@@ -14,10 +14,14 @@
 #include "scenes/modding/charteditor/grid/EditorGrid.h"
 
 #include "scenes/gameplay/PlayState.h"
+#include "scenes/gameplay/PlayStateEventsInGameplay.h"
+#include "rendering/shaders/ShaderFx.h"
 
 void Edit_DrawMenuBar(void);
 void Edit_DrawTabs(void);
 void Edit_DrawPanel(void);
+/* Preview do shader do evento selecionado (chamar no update do editor). */
+void Edit_ShaderPreview(void);
 /* Salva e abre o test play no modo dado (F5 = FULL, F6 = RECEPTORS). */
 void Edit_StartTest(PlayStateTestMode mode);
 

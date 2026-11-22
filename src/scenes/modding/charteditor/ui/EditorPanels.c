@@ -406,6 +406,7 @@ static void Edit_DrawPanel_Charting(float x, float y) {
 
 // ---------- eventos: picker com busca + edicao do selecionado ----------
 static char evPickOpen;
+static char evPickShaders;  // picker abre so com os shaders de tela
 static TxtBox evSearchBox;
 static TxtBox evImgBox;     // nome da imagem do Show Image selecionado
 static int evSelected = -1; // indice em edEvents (-1 = nenhum)
@@ -430,6 +431,7 @@ static char EvContainsCI(const char* hay, const char* needle) {
 
 static void EvClosePicker(void) {
     evPickOpen = 0;
+    evPickShaders = 0;
     if(focusBox == &evSearchBox) focusBox = NULL;
 }
 
@@ -446,17 +448,18 @@ static void EvAddFromType(const PlayStateEventType* t) {
 // lista filtrada pela busca; clicar adiciona no cursor
 static void Edit_DrawEventPicker(float x, float y) {
     const char blocked = (ceDlg != DLG_NONE || activeDrop || menuOpen);
-    Ed_DrawText(mainFont, "pesquisar evento:", (Vector2){x, y + 4}, 20, 1, WHITE);
+    Ed_DrawText(mainFont, evPickShaders ? "escolha o shader:" : "pesquisar evento:", (Vector2){x, y + 4}, 20, 1, WHITE);
     y += 28;
     Rectangle sr = {x, y, 250, 32};
     TxtBox_Update(&evSearchBox, sr, blocked);
-    TxtBox_Draw(&evSearchBox, sr, "fade in / out");
+    TxtBox_Draw(&evSearchBox, sr, evPickShaders ? "tv / glitch / off" : "fade in / out");
     if(EdButton((Rectangle){x + 260, y, 90, 32}, "fechar", 18)) EvClosePicker();
     y += 44;
 
     int shown = 0;
     for(int i = 0; i < playStateEventTypeCount; i++) {
         const PlayStateEventType* t = &playStateEventTypes[i];
+        if(evPickShaders && !t->usesShader) continue;
         if(!EvContainsCI(t->name, evSearchBox.buf) && !EvContainsCI(t->description, evSearchBox.buf)) continue;
         if(EdButton((Rectangle){x, y, 350, 32}, t->name, 20)) {
             EvAddFromType(t);
@@ -511,6 +514,13 @@ static void Edit_DrawPanel_Events(float x, float y) {
     if(!evPickOpen) {
         if(EdButton((Rectangle){x, y, 350, 36}, "+ Adicionar evento...", 20)) {
             evPickOpen = 1;
+            evPickShaders = 0;
+            evSearchBox.buf[0] = 0;
+            focusBox = &evSearchBox;
+        }
+        if(EdButton((Rectangle){x + 360, y, 220, 36}, "+ Adicionar shader", 20)) {
+            evPickOpen = 1;
+            evPickShaders = 1;
             evSearchBox.buf[0] = 0;
             focusBox = &evSearchBox;
         }
@@ -559,7 +569,8 @@ static void Edit_DrawPanel_Events(float x, float y) {
         const char img = (t != NULL && t->usesImage);
         const char* lab1 = (t != NULL) ? t->label1 : "valor 1:";
         const char* lab2 = (t != NULL) ? t->label2 : "valor 2:";
-        const int lo1 = img ? -4000 : 0, hi1 = img ? 4000 : 60000, st1 = img ? 10 : 50;
+        const char fx = (t != NULL && t->usesShader); // shader: intensidade e animacao 0..100
+        const int lo1 = img ? -4000 : 0, hi1 = img ? 4000 : (fx ? 100 : 60000), st1 = (img || fx) ? 10 : 50;
         const int lo2 = img ? -4000 : 0, hi2 = img ? 4000 : 100, st2 = 10;
 
         Ed_DrawText(mainFont, lab1, (Vector2){x, y + 4}, 20, 1, WHITE);
@@ -612,6 +623,19 @@ static void Edit_DrawPanel_Events(float x, float y) {
 
     snprintf(tb, sizeof(tb), "%d evento(s) no total", edEventCount);
     Ed_DrawText(mainFont, tb, (Vector2){x, y}, 18, 1, YELLOW);
+}
+
+// preview do shader do evento selecionado (so na aba Events); fora disso, sem efeito
+void Edit_ShaderPreview(void) {
+    if(activeTab == TAB_EVENTS && evSelected >= 0 && evSelected < edEventCount) {
+        const EdEvent* e = &edEvents[evSelected];
+        const PlayStateEventType* t = EvTypeOf(e->name);
+        if(t != NULL && t->usesShader) {
+            PlayStateEvents_ApplyShader(e->name, atof(e->v1), atof(e->v2));
+            return;
+        }
+    }
+    ShaderFx_Reset();
 }
 
 void Edit_DrawPanel(void) {

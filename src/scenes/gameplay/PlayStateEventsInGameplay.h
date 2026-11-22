@@ -24,10 +24,15 @@ typedef struct {
     const char* label2;    /* rotulo do campo v2 no editor */
     const char* label3;    /* rotulo do campo v3 no editor (NULL = sem v3) */
     char usesImage;        /* 1 = tem campo de texto com o nome da imagem (s1) */
+    char usesShader;       /* 1 = evento de shader de tela: v1 = intensidade %, v2 = animacao % (0 = estatico) */
 } PlayStateEventType;
 
 extern const PlayStateEventType playStateEventTypes[];
 extern const int playStateEventTypeCount;
+
+/* Liga/desliga o shader de tela de um evento "Shader ..." (usado pelo play e pelo preview do editor).
+ * intensityPct 0..100; animPct 0 = estatico, 100 = velocidade normal. */
+void PlayStateEvents_ApplyShader(const char* name, double intensityPct, double animPct);
 
 /* Le <songDir>/events.json (ausente = sem eventos) e carrega as imagens dos Show Image.
  * Chamar no Create, depois de saber a pasta. */

@@ -13,6 +13,7 @@
 #include "Render.h"
 #include "Log.h"
 #include "rendering/cpu/ImagePrefetch.h"
+#include "rendering/shaders/ShaderFx.h"
 
 #define SCREEN_W 1280.0f
 #define SCREEN_H 720.0f
@@ -25,6 +26,9 @@ const PlayStateEventType playStateEventTypes[] = {
     {"Fade Out",      "imagem -> tela preta (duracao ms, alpha final %)", 1000, 100, 0,   "tempo", "fade",     NULL,       0},
     {SHOW_IMAGE_NAME, "mostra imagem (x, y a partir do centro em px; escala %)", 0, 0, 100, "x (px):", "y (px):", "escala %:", 1},
     {HIDE_IMAGE_NAME, "esconde a imagem mostrada (sem valores)", 0, 0, 0, NULL, NULL, NULL, 0},
+    {"Shader TV",     "TV velha: linhas, vinheta, granulado", 50, 0, 0, "intensidade %:", "animacao %:", NULL, 0, 1},
+    {"Shader Glitch", "glitch: fatias, separacao RGB, blocos", 50, 0, 0, "intensidade %:", "animacao %:", NULL, 0, 1},
+    {"Shader Off",    "desliga o shader de tela", 0, 0, 0, NULL, NULL, NULL, 0, 1},
 };
 const int playStateEventTypeCount = (int)(sizeof(playStateEventTypes) / sizeof(playStateEventTypes[0]));
 
@@ -96,7 +100,19 @@ static int FindImg(const char* name) {
     return -1;
 }
 
+void PlayStateEvents_ApplyShader(const char* name, double intensityPct, double animPct) {
+    const float amt = (float)(intensityPct / 100.0);
+    const float spd = (float)(animPct / 100.0);
+    if (strcmp(name, "Shader TV") == 0) ShaderFx_Set(SHADERFX_TV, amt, spd);
+    else if (strcmp(name, "Shader Glitch") == 0) ShaderFx_Set(SHADERFX_GLITCH, amt, spd);
+    else if (strcmp(name, "Shader Off") == 0) ShaderFx_Reset();
+}
+
 static void Fire(const PsEvent* e) {
+    if (strncmp(e->name, "Shader ", 7) == 0) {
+        PlayStateEvents_ApplyShader(e->name, e->v1, e->v2);
+        return;
+    }
     if (strcmp(e->name, SHOW_IMAGE_NAME) == 0) {
         curImg = FindImg(e->img); /* -1 se o nome estiver vazio ou a imagem nao existir */
         curX = e->v1;
@@ -171,6 +187,7 @@ void PlayStateEvents_Unload(void) {
     nextIdx = 0;
     curAlpha = 0.0f;
     hasFade = 0;
+    ShaderFx_Reset();
 }
 
 void PlayStateEvents_Load(const char* songDir) {
@@ -223,6 +240,7 @@ void PlayStateEvents_Reset(void) {
     curAlpha = 0.0f;
     hasFade = 0;
     curImg = -1;
+    ShaderFx_Reset();
 }
 
 void PlayStateEvents_SeekTo(double seconds) {

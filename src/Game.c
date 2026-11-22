@@ -12,6 +12,7 @@
 #include "data/modimport/ModImport.h"
 #include "threads/Thread.h"
 #include "rendering/Display.h"
+#include "rendering/shaders/ShaderFx.h"
 #if defined(FNF_DEBUG_STATS)
 #include "rlgl.h"
 #endif
@@ -459,7 +460,9 @@ void RayGame_GameLoop(void)
         const double tDraw0 = 0.0;
 #endif
 
-        if (gameOptions.fillScreen && stretchReady)
+        /* Com efeito de tela ligado, o canvas sempre passa pelo render target (mesmo sem fillScreen). */
+        const bool fxOn = stretchReady && ShaderFx_IsActive();
+        if ((gameOptions.fillScreen || fxOn) && stretchReady)
         {
             BeginTextureMode(stretchTarget);
             ClearBackground(BLACK);
@@ -472,14 +475,25 @@ void RayGame_GameLoop(void)
             BeginDrawing();
             ClearBackground(BLACK);
 
+            Rectangle dstRect = { 0.0f, 0.0f, (float)width, (float)height };
+            if (!gameOptions.fillScreen)
+            {
+                /* canvas centralizado com o mesmo zoom do letterbox */
+                const float cw = (float)RAYGAME_CANVAS_WIDTH * zoom;
+                const float ch = (float)RAYGAME_CANVAS_HEIGHT * zoom;
+                dstRect = (Rectangle){ ((float)width - cw) * 0.5f, ((float)height - ch) * 0.5f, cw, ch };
+            }
+
+            const int fxDrawn = ShaderFx_BeginDraw((float)RAYGAME_CANVAS_WIDTH, (float)RAYGAME_CANVAS_HEIGHT);
             DrawTexturePro(
                 stretchTarget.texture,
                 (Rectangle){ 0.0f, 0.0f, (float)RAYGAME_CANVAS_WIDTH, -(float)RAYGAME_CANVAS_HEIGHT },
-                (Rectangle){ 0.0f, 0.0f, (float)width, (float)height },
+                dstRect,
                 (Vector2){0.0f, 0.0f},
                 0.0f,
                 WHITE
             );
+            if (fxDrawn) ShaderFx_EndDraw();
 
             RayGame_DrawOverlay();
             RayGame_EndFrame(tDraw0);
@@ -539,6 +553,7 @@ void RayGame_ClearScene(void)
 void RayGame_Destroy(void)
 {
     RayGame_ClearScene();
+    ShaderFx_Unload();
 
     /* Workers param ANTES de fechar a janela (CloseWindow/WM_DESTROY); senao eles seguem
      * segurando arquivos e a pasta nao pode ser apagada. Espera no maximo ~2,5 s; se algum

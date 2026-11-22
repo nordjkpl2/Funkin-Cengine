@@ -127,6 +127,7 @@ set(OLD_GLOB
   "D:/dev/funkin c/src/rendering/TextMeasure.c"
   "D:/dev/funkin c/src/rendering/cpu/ImagePrefetch.c"
   "D:/dev/funkin c/src/rendering/cpu/PngDecode.c"
+  "D:/dev/funkin c/src/rendering/shaders/ShaderFx.c"
   "D:/dev/funkin c/src/scenes/LoadingState.c"
   "D:/dev/funkin c/src/scenes/api/EndStartLoader.c"
   "D:/dev/funkin c/src/scenes/api/FontLoader.c"

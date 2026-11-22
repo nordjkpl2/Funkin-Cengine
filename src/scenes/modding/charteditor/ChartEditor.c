@@ -483,6 +483,7 @@ static void ChartEditor_Update([[maybe_unused]] RayScene* scene) {
         statusTimer -= RayGame_DeltaTime();
     // dialog aberto neste mesmo frame (ex.: ESC) so recebe teclas no proximo,
     // senao o mesmo ESC que abriu ja fecharia
+    Edit_ShaderPreview();
     CeDlg dlgAtStart = ceDlg;
     if(ceMode == CE_PICKER)
         Picker_Update();
@@ -503,6 +504,7 @@ static void ChartEditor_Draw([[maybe_unused]] RayScene* scene) {
 }
 
 static void ChartEditor_Destroy([[maybe_unused]] RayScene* scene) {
+    ShaderFx_Reset(); // o preview nao pode vazar para os outros menus
     UnloadTexture(bgEd.image);
     SecTimes_Drop();
     Picker_Free();

@@ -17,3 +17,4 @@ LOAD [ampersand] init: 0.0 ms, chart: 13.0 ms, sounds: 0.8 ms, characters: 444.4
 LOAD [ampersand] init: 0.0 ms, chart: 6.3 ms, sounds: 0.8 ms, characters: 444.4 ms, stage: 2.2 ms, song audio: 3.4 ms, notes: 226.6 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 445.3 ms) total: 683.8 ms
 LOAD [ampersand] init: 0.0 ms, chart: 8.8 ms, sounds: 0.7 ms, characters: 451.5 ms, stage: 1.9 ms, song audio: 3.2 ms, notes: 236.9 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 452.1 ms) total: 703.2 ms
 LOAD [ampersand] init: 0.0 ms, chart: 8.5 ms, sounds: 1.0 ms, characters: 457.8 ms, stage: 1.8 ms, song audio: 3.2 ms, notes: 225.0 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 458.3 ms) total: 697.5 ms
+LOAD [ampersand] init: 0.9 ms, chart: 7.9 ms, sounds: 65.7 ms, characters: 418.6 ms, stage: 2.7 ms, song audio: 3.4 ms, notes: 253.5 ms, ui: 9.8 ms, warmup: 0.2 ms, (textures on main thread: 429.7 ms) total: 762.9 ms
