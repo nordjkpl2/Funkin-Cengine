@@ -116,6 +116,13 @@
 #define TAB_BAND_H 180.0f        // faixa escura atras da barra (a lista rola por baixo dela)
 #define TAB_X 50.0f
 
+// Paleta unica do menu de opcoes (titulos, selecao, dicas).
+#define OPT_ACCENT ((Color) {253, 249, 0, 255})          // amarelo principal
+#define OPT_ACCENT_TEXT ((Color) {245, 220, 120, 255})   // texto de dica
+#define OPT_ACCENT_DIM ((Color) {253, 249, 0, 150})      // borda suave
+#define OPT_PANEL ((Color) {0, 0, 0, 170})               // painel escuro atras de textos
+#define OPT_PANEL_SEL ((Color) {255, 255, 255, 30})      // fundo da linha selecionada
+
 typedef enum {
     OPTION_VALUE_INT,
     OPTION_VALUE_FLOAT,

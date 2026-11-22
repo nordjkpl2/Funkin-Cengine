@@ -4,7 +4,6 @@ build (fnf c engine (c) 2026 nordjkpl and as name Mawh/na Corporation)
 
         >   Mapa
         1.Build
-        2.Map
         Backup
         >>Limites Fisicos de Software
         >>>Global
@@ -32,33 +31,6 @@ cmake -B build-clang -G Ninja -DCMAKE_C_COMPILER=clang
     Cmake
 cmake --build build-clang --config Release
 
-2.  Map
-    &   Renderização    &
-    ### Scene.c -> Cria e Destroi Cenas de Forma Gênerica, Parte do Código pras Cenas
-    ## Render.c -> Renderização (atualização de Frames e Parametros de Objetos) 
-    &   Core Dados e Sistema    &
-    ###### Log.c -> Código pra Jogar as Mensagens de log do terminal em Baixo Nivel (entre plataformas se não eu usava win32api)
-    # GameData.c -> Menu de Opções, save.data tudo ai
-    ##### Game.c -> Lógica principal, controle de tempo (delta t), zoom e janela
-    &   Funções     &
-    # Chart Editor.c -> Chart Editor bruhhh
-    &   Cenas   &
-    ###### Freeplay.c -> Freeplay
-    ## LoadingState.c -> Loading para charts muito grandes (ficar numa tela preta é badd, talvez eu faço uma barra de carregamento, mas não preisa)
-    ##### MenuState.c -> Le o Titulo
-    ## ModdingState.c -> Submenu e Código pra aba de Modding
-    ### OptionsMenu.c -> Diferente do Game Data C é o menu pra mudar as opções (cena) não o código do menu
-    ##### AllScenes.c -> Animação bf, dad e Animação de Todos os Personagens
-    #### TitleState.c -> A Animação Inicial de Titulo do Fnf
-    #### StoryState.c -> Modo Historia do Menu Código
-    &   Estado  & (código que tem dependencia de outra coisa, mas continua sendo principal)
-    ## PlayState.c -> Gui e Tudo da Gameplay ta Aqui
-
-    2.1 > Extra
-    Barra de Vida <playstate.c
-    Notas <playstate.c
-    Icons <playstate.c
-    Score <playstate.c
 > Backup
     git status
     git diff

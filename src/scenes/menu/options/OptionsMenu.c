@@ -14,6 +14,7 @@
 #include "widgets-and-menus-ui/SearchBox.h"
 #include "scenes/menu/MenuMusic.h"
 #include "rendering/TextMeasure.h"
+#include <math.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -93,17 +94,25 @@ static void ActivateCurrent(void) {
         NoteColorScreen_Begin();
 }
 
-/* Icone do titulo (o mesmo da lista) em cima do nome, alinhado a esquerda do titulo. */
+/* Icone de um titulo de secao (usado na lista e na barra de abas). Cada icone tem sua propria posicao X. */
+static void DrawHeaderLogo(int header, float rowY, Color fill, Color shadow) {
+    switch (header) {
+        case OPTION_HEADER_WINDOW:   DrawWindowLogo(rowY, fill, shadow); break;
+        case OPTION_HEADER_GAMEPLAY: DrawGameplayLogo(rowY, fill, shadow); break;
+        case OPTION_HEADER_VISUAL:   DrawVisualLogo(rowY, fill, shadow); break;
+        case OPTION_HEADER_OTHER:    DrawOtherLogo(rowY, fill, shadow); break;
+        case OPTION_HEADER_MUSIC:    DrawMusicLogo(rowY, fill, shadow); break;
+        case OPTION_HEADER_RENDER:   DrawRenderLogo(rowY, fill, shadow); break;
+        default: break;
+    }
+}
+
+/* Icone do titulo (o mesmo da lista) em cima do nome, alinhado a esquerda do titulo da barra. */
 static void DrawTabLogo(int header, float x, float rowY, Color fill, Color shadow) {
     const float saved[6] = {windowLogoX, otherLogoX, gameplayLogoX, visualLogoX, musicLogoX, renderLogoX};
     windowLogoX = otherLogoX = gameplayLogoX = visualLogoX = musicLogoX = renderLogoX = x;
 
-    if (header == OPTION_HEADER_WINDOW) DrawWindowLogo(rowY, fill, shadow);
-    else if (header == OPTION_HEADER_GAMEPLAY) DrawGameplayLogo(rowY, fill, shadow);
-    else if (header == OPTION_HEADER_VISUAL) DrawVisualLogo(rowY, fill, shadow);
-    else if (header == OPTION_HEADER_OTHER) DrawOtherLogo(rowY, fill, shadow);
-    else if (header == OPTION_HEADER_MUSIC) DrawMusicLogo(rowY, fill, shadow);
-    else if (header == OPTION_HEADER_RENDER) DrawRenderLogo(rowY, fill, shadow);
+    DrawHeaderLogo(header, rowY, fill, shadow);
 
     windowLogoX = saved[0]; otherLogoX = saved[1]; gameplayLogoX = saved[2]; visualLogoX = saved[3]; musicLogoX = saved[4]; renderLogoX = saved[5];
 }
@@ -161,8 +170,13 @@ static int TabBarRun(bool draw, Vector2 m) {
             shadow.a = open ? 255 : 100;
             DrawOptionText(label, x, TAB_BAR_Y, TAB_FONT_SIZE, fill, shadow);
             DrawTabLogo(i, x, TAB_BAR_Y - TAB_LOGO_LIFT, fill, shadow);
-            if (open)   // sublinhado da aba aberta
-                DrawRectangleRounded((Rectangle) {x - TEXT_SHADOW, TAB_BAR_Y + TAB_FONT_SIZE + 10.0f, size.x + TEXT_SHADOW * 2.0f, 4.0f}, 0.5f, 4, YELLOW);
+            if (open) {   // sublinhado da aba aberta, com brilho que pulsa
+                const float pulse = 0.5f + 0.5f * sinf((float)GetTime() * 4.0f);
+                const Rectangle line = {x - TEXT_SHADOW, TAB_BAR_Y + TAB_FONT_SIZE + 10.0f, size.x + TEXT_SHADOW * 2.0f, 4.0f};
+                const Rectangle glow = {line.x - 4.0f, line.y - 4.0f, line.width + 8.0f, line.height + 8.0f};
+                DrawRectangleRounded(glow, 0.5f, 6, (Color) {255, 230, 60, (unsigned char)(40.0f + 70.0f * pulse)});
+                DrawRectangleRounded(line, 0.5f, 4, YELLOW);
+            }
         }
         x += size.x;
     }
@@ -283,18 +297,24 @@ static void OptionsMenu_Update([[maybe_unused]] RayScene* scene) {
 
 /* Faixa da linha selecionada: retangulo arredondado translucido com barra de acento amarela. */
 static void DrawSelectionBar(float rowY, float height) {
+    const float pulse = 0.5f + 0.5f * sinf((float)GetTime() * 3.0f);
     const Rectangle r = {SEL_X, rowY - SEL_PAD, SEL_W, height - 2.0f};
-    DrawRectangleRounded(r, 0.35f, 8, (Color) {255, 255, 255, 26});
-    DrawRectangleRounded((Rectangle) {SEL_X, rowY - SEL_PAD + 8.0f, SEL_ACCENT_W, height - 18.0f}, 1.0f, 4, YELLOW);
+    // Halo amarelo que respira atras do painel.
+    const Rectangle halo = {r.x - 3.0f, r.y - 3.0f, r.width + 6.0f, r.height + 6.0f};
+    DrawRectangleRounded(halo, 0.4f, 8, (Color) {OPT_ACCENT.r, OPT_ACCENT.g, OPT_ACCENT.b, (unsigned char)(18.0f + 26.0f * pulse)});
+    DrawRectangleRounded(r, 0.35f, 8, OPT_PANEL_SEL);
+    DrawRectangleRounded((Rectangle) {SEL_X, rowY - SEL_PAD + 8.0f, SEL_ACCENT_W, height - 18.0f}, 1.0f, 4, OPT_ACCENT);
 }
 
-/* Dica do rodape: texto sobre uma pilula escura (legivel em qualquer fundo). */
+/* Dica do rodape: painel escuro com borda amarela (legivel em qualquer fundo). */
 static void DrawHint(const char* text) {
     const Vector2 pos = {ROW_X, SCREEN_H - 50.0f};
     const Vector2 ts = MeasureTextEx(mainFont, text, 24, 2);
-    DrawRectangleRounded((Rectangle) {pos.x - 18.0f, pos.y - 8.0f, ts.x + 36.0f, ts.y + 16.0f}, 0.5f, 8, (Color) {0, 0, 0, 170});
+    const Rectangle box = {pos.x - 18.0f, pos.y - 8.0f, ts.x + 36.0f, ts.y + 16.0f};
+    DrawRectangleRounded(box, 0.5f, 8, OPT_PANEL);
+    DrawRectangleRoundedLinesEx(box, 0.5f, 8, 2.0f, OPT_ACCENT_DIM);
     DrawTextEx(mainFont, text, (Vector2) {pos.x + 2.0f, pos.y + 2.0f}, 24, 2, (Color) {0, 0, 0, 200});   // sombra
-    DrawTextEx(mainFont, text, pos, 24, 2, (Color) {245, 220, 120, 255});
+    DrawTextEx(mainFont, text, pos, 24, 2, OPT_ACCENT_TEXT);
 }
 
 static void OptionsMenu_Draw([[maybe_unused]] RayScene* scene) {
@@ -324,27 +344,21 @@ static void OptionsMenu_Draw([[maybe_unused]] RayScene* scene) {
         if (selected) DrawSelectionBar(drawY, height);
 
         if (isHeader) {
-            Color fill = YELLOW, shadow = BLACK;
+            Color fill = OPT_ACCENT, shadow = BLACK;
             fill.a = selected ? 255 : HEADER_DIM_ALPHA;
             shadow.a = selected ? 255 : 100;
 
+            if (!Option_HorizontalMode()) {
+                // Painel do titulo: faixa escura que some para a direita + divisor com brilho.
+                DrawRectangleGradientH((int)HEADER_X - 20, (int)drawY - 4, 1200, (int)HEADER_HEIGHT,
+                                       (Color) {0, 0, 0, selected ? 150 : 90}, (Color) {0, 0, 0, 0});
+                DrawRectangleGradientH((int)HEADER_X, (int)(drawY + HEADER_HEIGHT - 4.0f), 1180, 2,
+                                       (Color) {OPT_ACCENT.r, OPT_ACCENT.g, OPT_ACCENT.b, 150}, (Color) {OPT_ACCENT.r, OPT_ACCENT.g, OPT_ACCENT.b, 0});
+            }
             DrawOptionText(o->text, HEADER_X, drawY, HEADER_FONT_SIZE, fill, shadow);
-            if (!Option_HorizontalMode())   // fio separador sob o titulo da secao
-                DrawRectangleRec((Rectangle) {HEADER_X, drawY + HEADER_HEIGHT - 4.0f, 1180.0f, 2.0f}, (Color) {255, 255, 255, 40});
             DrawChevron(drawY, o->collapsed, fill, shadow);
 
-            if (i == OPTION_HEADER_WINDOW)
-                DrawWindowLogo(drawY, fill, shadow);
-            else if (i == OPTION_HEADER_GAMEPLAY)
-                DrawGameplayLogo(drawY, fill, shadow);
-            else if (i == OPTION_HEADER_VISUAL)
-                DrawVisualLogo(drawY, fill, shadow);
-            else if (i == OPTION_HEADER_OTHER)
-                DrawOtherLogo(drawY, fill, shadow);
-            else if (i == OPTION_HEADER_MUSIC)
-                DrawMusicLogo(drawY, fill, shadow);
-            else if (i == OPTION_HEADER_RENDER)
-                DrawRenderLogo(drawY, fill, shadow);
+            DrawHeaderLogo(i, drawY, fill, shadow);
             continue;
         }
 

@@ -29,7 +29,7 @@
 #define NC_LANE_H 46.0f
 
 #define NC_SL_X 540.0f
-#define NC_SL_W 700.0f
+#define NC_SL_W 470.0f
 #define NC_SL_H 26.0f
 #define NC_SL_Y0 236.0f
 #define NC_SL_STEP 100.0f
@@ -42,6 +42,12 @@
 
 #define NC_ROUND 0.12f
 
+/* Roda de cor: angulo = matiz (HUE), distancia do centro = saturacao (SAT). */
+#define NC_WHEEL_CX 1120.0f
+#define NC_WHEEL_CY 330.0f
+#define NC_WHEEL_R 110
+#define NC_RAD2DEG 57.29577951308232f
+
 bool noteColorScreen;
 
 static int lane;      /* coluna sendo editada (0..3) */
@@ -49,6 +55,9 @@ static int slider;    /* slider com foco: 0 = matiz, 1 = saturacao, 2 = brilho *
 static int drag;      /* 0 = nada; 1 + indice do slider sendo arrastado com o mouse */
 static short clip[NC_SL_COUNT];
 static bool hasClip;
+static Texture2D wheelTex;
+static bool wheelReady;
+static bool wheelDrag;   /* arrastando dentro da roda */
 
 static const char* const laneNames[4] = {"LEFT", "DOWN", "UP", "RIGHT"};
 static const char* const sliderNames[NC_SL_COUNT] = {"HUE", "SATURATION", "BRIGHTNESS"};
@@ -90,6 +99,38 @@ static void DragSlider(int s, float mx) {
 static void SelectLane(int i) {
     lane = i;
     drag = 0;
+    wheelDrag = false;
+}
+
+/* Textura da roda: matiz no angulo, saturacao no raio (cheia na borda). Feita uma vez. */
+static void BuildWheel(void) {
+    const int size = NC_WHEEL_R * 2;
+    Image img = GenImageColor(size, size, BLANK);
+    for (int y = 0; y < size; y++) {
+        for (int x = 0; x < size; x++) {
+            const float dx = (float)x + 0.5f - NC_WHEEL_R;
+            const float dy = (float)y + 0.5f - NC_WHEEL_R;
+            const float d = sqrtf(dx * dx + dy * dy);
+            if (d > NC_WHEEL_R) continue;
+            float hue = atan2f(dy, dx) * NC_RAD2DEG;
+            if (hue < 0.0f) hue += 360.0f;
+            ImageDrawPixel(&img, x, y, ColorFromHSV(hue, d / NC_WHEEL_R, 1.0f));
+        }
+    }
+    wheelTex = LoadTextureFromImage(img);
+    UnloadImage(img);
+    wheelReady = true;
+}
+
+/* Mouse na roda: angulo grava HUE, distancia grava SAT (0..100). */
+static void DragWheel(Vector2 m) {
+    const float dx = m.x - NC_WHEEL_CX, dy = m.y - NC_WHEEL_CY;
+    const float d = sqrtf(dx * dx + dy * dy);
+    float sat = d / (float)NC_WHEEL_R * 100.0f;
+    if (sat > 100.0f) sat = 100.0f;
+    SetVal(0, (int)lroundf(atan2f(dy, dx) * NC_RAD2DEG));
+    SetVal(1, (int)lroundf(sat));
+    slider = 0;
 }
 
 void NoteColorScreen_Begin(void) {
@@ -128,11 +169,15 @@ void NoteColorScreen_Update(void) {
 
     // Mouse: arrastar nas barras; cliques nas colunas, previa, copiar/colar/resetar.
     const Vector2 m = RayGame_MouseWorld();
-    if (!IsMouseButtonDown(MOUSE_BUTTON_LEFT)) drag = 0;
+    if (!IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
+        drag = 0;
+        wheelDrag = false;
+    }
 
     if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
         for (int s = 0; s < NC_SL_COUNT; s++)
             if (CheckCollisionPointRec(m, SliderHit(s))) drag = 1 + s;
+        if (CheckCollisionPointCircle(m, (Vector2) {NC_WHEEL_CX, NC_WHEEL_CY}, (float)NC_WHEEL_R)) wheelDrag = true;
         for (int i = 0; i < 4; i++) {
             if (CheckCollisionPointRec(m, LaneButton(i))) SelectLane(i);
             const Rectangle pr = {NC_PREV_CX - NC_PREV_HALF, NC_PREV_Y0 + (float)i * NC_PREV_STEP - NC_PREV_HALF,
@@ -152,6 +197,7 @@ void NoteColorScreen_Update(void) {
         slider = drag - 1;
         DragSlider(slider, m.x);
     }
+    if (wheelDrag) DragWheel(m);
 }
 
 /* Receptor + nota reais da skin (a nota ja vai com o ajuste da coluna), centrados em (cx, cy).
@@ -282,6 +328,19 @@ void NoteColorScreen_Draw(void) {
     // Os tres sliders.
     for (int s = 0; s < NC_SL_COUNT; s++) DrawSliderBar(s);
 
+    // Roda de cor: o marcador fica na posicao (matiz, saturacao) atual da coluna.
+    if (!wheelReady) BuildWheel();
+    const float wx = NC_WHEEL_CX - NC_WHEEL_R, wy = NC_WHEEL_CY - NC_WHEEL_R;
+    DrawTexture(wheelTex, (int)wx, (int)wy, WHITE);
+    DrawCircleLines((int)NC_WHEEL_CX, (int)NC_WHEEL_CY, (float)NC_WHEEL_R, (Color) {20, 20, 20, 255});
+    const float t = (float)*Val(1) / 100.0f;
+    const float ang = (float)*Val(0) / NC_RAD2DEG;
+    const float mx = NC_WHEEL_CX + (float)NC_WHEEL_R * t * cosf(ang);
+    const float my = NC_WHEEL_CY + (float)NC_WHEEL_R * t * sinf(ang);
+    DrawCircleV((Vector2) {mx, my}, 9.0f, BLACK);
+    DrawCircleV((Vector2) {mx, my}, 6.0f, WHITE);
+    DrawTextEx(mainFont, "COLOR", (Vector2) {NC_WHEEL_CX - 36.0f, NC_WHEEL_CY - NC_WHEEL_R - 34.0f}, 26, 1.0f, WHITE);
+
     // Copiar / colar / resetar a coluna.
     DrawButton(CopyButton(), "COPY", true);
     DrawButton(PasteButton(), "PASTE", hasClip);
@@ -294,4 +353,6 @@ void NoteColorScreen_Draw(void) {
 
 void NoteColorScreen_Destroy(void) {
     NoteColors_ReleaseFx();
+    if (wheelReady) UnloadTexture(wheelTex);
+    wheelReady = false;
 }
