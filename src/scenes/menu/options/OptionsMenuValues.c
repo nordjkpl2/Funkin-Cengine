@@ -387,6 +387,9 @@ void Options_LoadValues(void) {
     options[OPTION_STRUM_MOBILE].value = gameOptions.strumMobileVisible;
     options[OPTION_HIDDEN_NOTES].value = gameOptions.hiddenNotesAlt;
     options[OPTION_VSYNC].value = gameOptions.vsync;
+    // Mesma regra do VSYNC ligado: Uncapped FPS e Framerate ficam inativos (vermelhos) ao entrar na cena.
+    options[OPTION_UNCAPPED_FPS].active = !gameOptions.vsync;
+    options[OPTION_FPS].active = !gameOptions.vsync && !options[OPTION_UNCAPPED_FPS].value;
     if (gameOptions.threadLimit > 0) limitedThreads = gameOptions.threadLimit;
     options[OPTION_THREADS].value = gameOptions.threadLimit > 0;
     options[OPTION_KEYBOARD_SCHEME].value = gameOptions.scheme;

@@ -24,7 +24,7 @@ rule C_COMPILER__raylib_objects_unscanned_Release
 #############################################
 # Rule for compiling C files.
 
-rule C_COMPILER__FNF_C_ENGINE_unscanned_Release
+rule C_COMPILER__FunkinCengine_unscanned_Release
   depfile = $DEP_FILE
   deps = gcc
   command = ${LAUNCHER}${CODE_CHECK}C:\msys64\clang64\bin\clang.exe $DEFINES $INCLUDES $FLAGS -MD -MT $out -MF $DEP_FILE -o $out -c $in
@@ -34,7 +34,7 @@ rule C_COMPILER__FNF_C_ENGINE_unscanned_Release
 #############################################
 # Rule for linking C executable.
 
-rule C_EXECUTABLE_LINKER__FNF_C_ENGINE_Release
+rule C_EXECUTABLE_LINKER__FunkinCengine_Release
   command = C:\WINDOWS\system32\cmd.exe /C "$PRE_LINK && C:\msys64\clang64\bin\clang.exe $FLAGS $LINK_FLAGS @$RSP_FILE -o $TARGET_FILE -Wl,--out-implib,$TARGET_IMPLIB -Wl,--major-image-version,0,--minor-image-version,0 && $POST_BUILD"
   description = Linking C executable $TARGET_FILE
   rspfile = $RSP_FILE

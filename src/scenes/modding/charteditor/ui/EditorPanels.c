@@ -143,13 +143,14 @@ void Edit_DrawMenuBar(void) {
     if(menuOpen == 0) return;
     float mx = (float)(PANEL_X + (menuOpen - 1) * 70);
     if(menuOpen == 1) {
-        Rectangle box = {mx, MENU_H, 230, 4 * 30 + 8};
+        Rectangle box = {mx, MENU_H, 230, 5 * 30 + 8};
         DrawRectangleRec(box, (Color){15,15,15,245});
         DrawRectangleLinesEx(box, 1, GREEN);
         if(EdMenuItem((Rectangle){box.x + 4, box.y + 4, 222, 28}, "Save  Ctrl+S")) { menuOpen = 0; Editor_Save(); }
         else if(EdMenuItem((Rectangle){box.x + 4, box.y + 32, 222, 28}, "Save As...")) { menuOpen = 0; saveAsBox.buf[0] = 0; importPath[0] = 0; ceDlg = DLG_SAVEAS; focusBox = &saveAsBox; }
         else if(EdMenuItem((Rectangle){box.x + 4, box.y + 60, 222, 28}, "Save Compressed")) { menuOpen = 0; EdChart_SaveCompressed(&chart); EdStatusMsg("SALVO COMPRIMIDO"); }
-        else if(EdMenuItem((Rectangle){box.x + 4, box.y + 88, 222, 28}, "Back to list  ESC")) { menuOpen = 0; Editor_RequestLeave(); }
+        else if(EdMenuItem((Rectangle){box.x + 4, box.y + 88, 222, 28}, "Save Events")) { menuOpen = 0; if(EdEvents_Save(chart.dir)) EdStatusMsg("EVENTOS SALVOS"); else EdStatusMsg("ERRO AO SALVAR EVENTOS"); }
+        else if(EdMenuItem((Rectangle){box.x + 4, box.y + 116, 222, 28}, "Back to list  ESC")) { menuOpen = 0; Editor_RequestLeave(); }
         else if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             if(!(m.x >= box.x && m.x <= box.x + box.width && m.y >= 0 && m.y <= box.y + box.height)) menuOpen = 0;
         }
@@ -519,11 +520,10 @@ static void Edit_DrawPanel_Events(float x, float y) {
         return;
     }
 
-    Ed_DrawText(mainFont, "eventos a partir do cursor:", (Vector2){x, y}, 20, 1, GREEN);
+    Ed_DrawText(mainFont, "eventos da musica:", (Vector2){x, y}, 20, 1, GREEN);
     y += 28;
     int shown = 0;
-    for(int i = 0; i < edEventCount && shown < 6; i++) {
-        if(edEvents[i].time < (float)cursorMs) continue;
+    for(int i = 0; i < edEventCount && y < 600; i++) {
         char row[120];
         snprintf(row, sizeof(row), "%.0fms  %s", edEvents[i].time, edEvents[i].name);
         if(EdButton((Rectangle){x, y, 300, 28}, row, 18)) evSelected = (evSelected == i) ? -1 : i;
@@ -537,7 +537,7 @@ static void Edit_DrawPanel_Events(float x, float y) {
         y += 32;
         shown++;
     }
-    if(shown == 0) Ed_DrawText(mainFont, "(nenhum)", (Vector2){x, y + 4}, 18, 1, YELLOW);
+    if(edEventCount == 0) Ed_DrawText(mainFont, "(nenhum)", (Vector2){x, y + 4}, 18, 1, YELLOW);
     y += 40;
 
     if(evSelected >= 0) {

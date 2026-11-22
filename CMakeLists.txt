@@ -182,19 +182,19 @@ set_source_files_properties("${CMAKE_CURRENT_SOURCE_DIR}/src/rendering/cpu/PngDe
 set_source_files_properties("${CMAKE_CURRENT_SOURCE_DIR}/lib/wuffs-unsupported-snapshot.c"
     PROPERTIES COMPILE_OPTIONS "-Os;${FNF_NOLTO_FLAGS}")
 
-add_executable(FNF_C_ENGINE ${FNF_EXE_TYPE}
+add_executable(FunkinCengine ${FNF_EXE_TYPE}
     main.c
     ${ENGINE_SOURCES}
     ${LIB_SOURCES}
     $<TARGET_OBJECTS:raylib_objects>
 )
 
-target_link_options(FNF_C_ENGINE PRIVATE
+target_link_options(FunkinCengine PRIVATE
     ${FNF_LINK_FLAGS}
 )
 
 if(FNF_PLATFORM STREQUAL "windows")
-    target_link_libraries(FNF_C_ENGINE PRIVATE
+    target_link_libraries(FunkinCengine PRIVATE
         opengl32
         gdi32
         winmm
@@ -202,7 +202,7 @@ if(FNF_PLATFORM STREQUAL "windows")
         shell32
     )
 else()
-    target_link_libraries(FNF_C_ENGINE PRIVATE
+    target_link_libraries(FunkinCengine PRIVATE
         ${X11_LIBRARIES}
         Threads::Threads
         m
@@ -210,16 +210,16 @@ else()
     )
 endif()
 
-target_include_directories(FNF_C_ENGINE PRIVATE
+target_include_directories(FunkinCengine PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/headers"
     "${CMAKE_CURRENT_SOURCE_DIR}/src"
     "${CMAKE_CURRENT_SOURCE_DIR}/lib"
     ${FNF_RAYLIB_INCLUDES}
 )
-target_compile_options(FNF_C_ENGINE PRIVATE
+target_compile_options(FunkinCengine PRIVATE
     ${FNF_COMPILE_FLAGS}
 )
 
-set_target_properties(FNF_C_ENGINE PROPERTIES
+set_target_properties(FunkinCengine PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
 )

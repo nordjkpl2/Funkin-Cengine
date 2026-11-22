@@ -204,7 +204,7 @@ static void UpdateSongDisplayName(const char* songDir) {
     }
 
     HudText_SetText(&hTitle, name);
-    HudText_SetAnchor(&hTitle, TEXT_RIGHT_X, 651.0f);
+    HudText_SetAnchor(&hTitle, 22.0f, 46.0f); // logo abaixo do BOTPLAY
 }
 
 void PlayStateText_Init(const char* songDir) {
@@ -229,7 +229,7 @@ void PlayStateText_Init(const char* songDir) {
     HudText_Style(&hPsych, PSYCH_SCORE_FONT, WHITE, BLACK, 1.5f, -1.5f, HUD_ALIGN_CENTER);
     HudText_SetAnchor(&hPsych, TEXT_CENTER_X, 0.0f); // y real vem de PlayStateText_Refresh
 
-    HudText_Style(&hTitle, 13.0f, (Color){225, 225, 225, 220}, (Color){0, 0, 0, 180}, 1.0f, 1.0f, HUD_ALIGN_RIGHT);
+    HudText_Style(&hTitle, 13.0f, (Color){225, 225, 225, 220}, (Color){0, 0, 0, 180}, 1.0f, 1.0f, HUD_ALIGN_LEFT);
     UpdateSongDisplayName(songDir);
 
     HudText_Style(&hBotplay, 22.0f, (Color){255, 255, 255, 125}, (Color){0, 0, 0, 110}, 2.0f, 2.0f, HUD_ALIGN_LEFT);
