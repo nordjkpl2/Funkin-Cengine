@@ -106,6 +106,61 @@ void PlayStateAnimations_Unload(void) {
 }
 
 /* ------------------------------------------------------------------ */
+/* Evento Change Character                                             */
+/* ------------------------------------------------------------------ */
+
+static int IsNoGfName(const char* name) {
+    for (size_t i = 0; i < sizeof(noGfNames) / sizeof(noGfNames[0]); i++)
+        if (strcmp(name, noGfNames[i]) == 0) return 1;
+    return 0;
+}
+
+/* Libera o que o personagem antigo usava (textura do icone e animacoes). */
+static void FreeCharacter(Character* c) {
+    UnloadTexture(c->icon);
+    AnimationSet_FreeAll(&c->object.animationSet);
+}
+
+/* Troca um personagem (oponente/BF) mantendo a posicao que o stage deu ao slot. */
+static void SwapSide(Character* c, const char* name, CharRole role) {
+    const Vector2 pos = c->object.position;
+    FreeCharacter(c);
+    Character_Load(c, name, role);
+    c->object.position = pos;
+    AnimatedObject_SetAnimation(&c->object, c->animations.idle);
+}
+
+void PlayStateAnimations_ChangeCharacter(int target, const char* name) {
+    if (name == NULL) name = "";
+
+    if (target == 0) {
+        SwapSide(&dad, name, CHAR_DAD);
+        PlayStateHealth_SetCharacterColors(&dad, &bf);
+    } else if (target == 1) {
+        SwapSide(&bf, name, CHAR_BF);
+        PlayStateDeath_LoadAnimations(&bf);
+        PlayStateHealth_SetCharacterColors(&dad, &bf);
+    } else if (target == 2) {
+        const Vector2 pos = gf.object.position;
+        if (gfLoaded)
+            AnimationSet_FreeAll(&gf.object.animationSet);
+        if (IsNoGfName(name)) {
+            /* "empty"/"none": GF some da cena */
+            Render_DefaultAnimated(&gf.object);
+            gf.f = 0;
+            gf.anims[0] = gf.anims[1] = 0;
+            gfLoaded = 0;
+            gfHidden = 1;
+            return;
+        }
+        Girlfriend_Load(&gf, name);
+        gf.object.position = pos;
+        gfLoaded = 1;
+        gfHidden = 0;
+        AnimatedObject_SetAnimation(&gf.object, gf.anims[gf.f]);
+    }
+}
+/* ------------------------------------------------------------------ */
 /* Eventos                                                             */
 /* ------------------------------------------------------------------ */
 

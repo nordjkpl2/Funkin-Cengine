@@ -20,3 +20,40 @@ LOAD [ampersand] init: 0.0 ms, chart: 8.5 ms, sounds: 1.0 ms, characters: 457.8 
 LOAD [ampersand] init: 0.9 ms, chart: 7.9 ms, sounds: 65.7 ms, characters: 418.6 ms, stage: 2.7 ms, song audio: 3.4 ms, notes: 253.5 ms, ui: 9.8 ms, warmup: 0.2 ms, (textures on main thread: 429.7 ms) total: 762.9 ms
 LOAD [ampersand] init: 0.6 ms, chart: 9.4 ms, sounds: 62.4 ms, characters: 445.4 ms, stage: 1.7 ms, song audio: 3.5 ms, notes: 251.1 ms, ui: 9.0 ms, warmup: 0.2 ms, (textures on main thread: 454.3 ms) total: 783.3 ms
 LOAD [absolute-zero] init: 0.0 ms, chart: 21.1 ms, sounds: 1.7 ms, characters: 510.8 ms, stage: 1435.3 ms, song audio: 1.8 ms, notes: 254.3 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 1944.0 ms) total: 2225.2 ms
+LOAD [absolute-zero] init: 1.5 ms, chart: 9.2 ms, sounds: 72.3 ms, characters: 462.7 ms, stage: 1342.7 ms, song audio: 1.7 ms, notes: 238.4 ms, ui: 8.4 ms, warmup: 0.2 ms, (textures on main thread: 1811.0 ms) total: 2137.1 ms
+[WARN] Skin '@AstrayNote_assets': animacao 'purple hold end' nao existe no XML (a lane pode sumir)
+LOAD [Astray] init: 0.0 ms, chart: 46.6 ms, sounds: 112.2 ms, characters: 460.4 ms, stage: 8.6 ms, song audio: 2.2 ms, notes: 236.0 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 454.8 ms) total: 866.2 ms
+LOAD [Crisis] init: 0.0 ms, chart: 18.6 ms, sounds: 55.9 ms, characters: 416.4 ms, stage: 33.4 ms, song audio: 3.9 ms, notes: 227.8 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 423.3 ms) total: 756.2 ms
+[WARN] Skin '@SingularityNote_assets': animacao 'purple hold end' nao existe no XML (a lane pode sumir)
+LOAD [Singularity] init: 0.0 ms, chart: 37.9 ms, sounds: 110.7 ms, characters: 423.4 ms, stage: 7.1 ms, song audio: 2.1 ms, notes: 221.8 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 415.1 ms) total: 803.2 ms
+LOAD [Singularity] init: 0.0 ms, chart: 8.2 ms, sounds: 2.5 ms, characters: 426.9 ms, stage: 8.1 ms, song audio: 1.6 ms, notes: 220.6 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 432.2 ms) total: 668.0 ms
+LOAD [Singularity] init: 0.0 ms, chart: 6.5 ms, sounds: 1.7 ms, characters: 436.8 ms, stage: 7.9 ms, song audio: 1.6 ms, notes: 223.8 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 442.2 ms) total: 678.4 ms
+LOAD [Singularity] init: 0.0 ms, chart: 6.9 ms, sounds: 16.9 ms, characters: 422.0 ms, stage: 9.6 ms, song audio: 1.7 ms, notes: 225.6 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 422.7 ms) total: 682.9 ms
+LOAD [Singularity] init: 0.0 ms, chart: 10.2 ms, sounds: 0.7 ms, characters: 416.9 ms, stage: 7.1 ms, song audio: 1.8 ms, notes: 219.6 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 422.8 ms) total: 656.5 ms
+LOAD [Singularity] init: 0.0 ms, chart: 4.0 ms, sounds: 18.5 ms, characters: 110.4 ms, stage: 6.4 ms, song audio: 1.7 ms, notes: 225.2 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 98.1 ms) total: 366.4 ms
+LOAD [Singularity] init: 0.0 ms, chart: 33.0 ms, sounds: 32.9 ms, characters: 136.5 ms, stage: 6.4 ms, song audio: 1.6 ms, notes: 222.4 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 133.7 ms) total: 433.1 ms
+LOAD [Singularity] init: 2.2 ms, chart: 33.1 ms, sounds: 67.0 ms, characters: 54.2 ms, stage: 5.5 ms, song audio: 1.7 ms, notes: 230.6 ms, ui: 8.1 ms, warmup: 0.1 ms, (textures on main thread: 66.1 ms) total: 402.6 ms
+LOAD [Singularity] init: 0.0 ms, chart: 10.1 ms, sounds: 1.6 ms, characters: 119.6 ms, stage: 6.3 ms, song audio: 1.7 ms, notes: 220.9 ms, ui: 0.0 ms, warmup: 0.1 ms, (textures on main thread: 123.6 ms) total: 360.4 ms
+LOAD [Singularity] init: 1.3 ms, chart: 32.9 ms, sounds: 67.6 ms, characters: 84.7 ms, stage: 6.4 ms, song audio: 1.7 ms, notes: 230.1 ms, ui: 9.0 ms, warmup: 0.2 ms, (textures on main thread: 98.0 ms) total: 433.9 ms
+LOAD [Singularity] init: 0.0 ms, chart: 10.1 ms, sounds: 2.2 ms, characters: 122.4 ms, stage: 6.4 ms, song audio: 1.7 ms, notes: 239.2 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 127.4 ms) total: 382.2 ms
+LOAD [Singularity] init: 0.0 ms, chart: 37.4 ms, sounds: 1.0 ms, characters: 123.7 ms, stage: 6.8 ms, song audio: 1.7 ms, notes: 226.6 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 129.0 ms) total: 397.3 ms
+LOAD [Singularity] init: 1.0 ms, chart: 5.9 ms, sounds: 73.3 ms, characters: 76.9 ms, stage: 7.8 ms, song audio: 1.6 ms, notes: 240.9 ms, ui: 8.7 ms, warmup: 0.1 ms, (textures on main thread: 91.5 ms) total: 416.4 ms
+IMAGE: Failed to load image data
+LOAD [Singularity] init: 0.7 ms, chart: 32.6 ms, sounds: 63.5 ms, characters: 68.5 ms, stage: 1.4 ms, song audio: 1.7 ms, notes: 244.7 ms, ui: 8.5 ms, warmup: 0.2 ms, (textures on main thread: 76.5 ms) total: 421.6 ms
+IMAGE: Failed to load image data
+LOAD [Singularity] init: 0.0 ms, chart: 8.5 ms, sounds: 1.1 ms, characters: 136.9 ms, stage: 1.1 ms, song audio: 2.2 ms, notes: 266.9 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 135.3 ms) total: 416.9 ms
+IMAGE: Failed to load image data
+LOAD [Singularity] init: 1.9 ms, chart: 38.0 ms, sounds: 77.9 ms, characters: 69.7 ms, stage: 1.6 ms, song audio: 1.8 ms, notes: 283.0 ms, ui: 9.0 ms, warmup: 0.2 ms, (textures on main thread: 78.4 ms) total: 483.0 ms
+IMAGE: Failed to load image data
+LOAD [Singularity] init: 0.7 ms, chart: 8.3 ms, sounds: 87.2 ms, characters: 60.4 ms, stage: 1.5 ms, song audio: 1.7 ms, notes: 262.2 ms, ui: 8.4 ms, warmup: 0.1 ms, (textures on main thread: 68.3 ms) total: 430.5 ms
+[WARN] Skin '@AstrayNote_assets': animacao 'purple hold end' nao existe no XML (a lane pode sumir)
+LOAD [Astray] init: 0.0 ms, chart: 8.5 ms, sounds: 1.5 ms, characters: 507.4 ms, stage: 8.7 ms, song audio: 1.7 ms, notes: 242.5 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 512.6 ms) total: 770.5 ms
+LOAD [Astray] init: 21.8 ms, chart: 3.8 ms, sounds: 94.8 ms, characters: 475.5 ms, stage: 10.4 ms, song audio: 1.8 ms, notes: 272.3 ms, ui: 8.0 ms, warmup: 0.2 ms, (textures on main thread: 510.9 ms) total: 888.5 ms
+[WARN] Skin '@AstrayNote_assets': animacao 'purple hold end' nao existe no XML (a lane pode sumir)
+LOAD [stagnant] init: 0.0 ms, chart: 37.5 ms, sounds: 1.6 ms, characters: 483.1 ms, stage: 7.2 ms, song audio: 1.9 ms, notes: 249.6 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 495.8 ms) total: 781.0 ms
+LOAD [stagnant] init: 0.0 ms, chart: 9.1 ms, sounds: 1.3 ms, characters: 479.7 ms, stage: 7.7 ms, song audio: 1.7 ms, notes: 273.8 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 485.1 ms) total: 773.6 ms
+LOAD [stagnant] init: 0.0 ms, chart: 9.2 ms, sounds: 1.4 ms, characters: 472.1 ms, stage: 6.9 ms, song audio: 1.7 ms, notes: 270.8 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 477.1 ms) total: 762.3 ms
+LOAD [stagnant] init: 0.0 ms, chart: 9.4 ms, sounds: 1.1 ms, characters: 475.6 ms, stage: 9.6 ms, song audio: 1.7 ms, notes: 261.0 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 483.3 ms) total: 758.7 ms
+LOAD [stagnant] init: 0.0 ms, chart: 10.2 ms, sounds: 1.4 ms, characters: 482.0 ms, stage: 7.2 ms, song audio: 1.7 ms, notes: 246.4 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 487.3 ms) total: 749.0 ms
+[WARN] Skin '@AstrayNote_assets': animacao 'purple hold end' nao existe no XML (a lane pode sumir)
+LOAD [stagnant] init: 18.8 ms, chart: 5.0 ms, sounds: 74.2 ms, characters: 390.1 ms, stage: 8.8 ms, song audio: 1.8 ms, notes: 240.4 ms, ui: 8.7 ms, warmup: 0.2 ms, (textures on main thread: 422.9 ms) total: 748.0 ms

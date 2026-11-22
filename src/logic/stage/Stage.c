@@ -28,8 +28,8 @@ static inline bool Stage_IsSafeName(const char *name)
 
 /* Ordem de busca: mod/stages, mod/data/stages, assets/stages,
  * assets/data/stages, songDir. Serve para .lua e .json. */
-static char Stage_FindFile(const char *stageName, const char *songDir,
-                           const char *ext, char out[STAGE_PATH_MAX])
+static char Stage_FindFileEx(const char *stageName, const char *songDir,
+                             const char *ext, char out[STAGE_PATH_MAX], char allowStage)
 {
     char modRoot[STAGE_MOD_ROOT_MAX];
     char relative[STAGE_PATH_MAX];
@@ -39,7 +39,7 @@ static char Stage_FindFile(const char *stageName, const char *songDir,
 
     out[0] = '\0';
 
-    if (!Stage_IsSafeName(stageName) || strcmp(stageName, "stage") == 0)
+    if (!Stage_IsSafeName(stageName) || (!allowStage && strcmp(stageName, "stage") == 0))
         return 0;
 
     if (!ModPath_Root(songDir, modRoot, sizeof(modRoot)))
@@ -65,9 +65,20 @@ static char Stage_FindFile(const char *stageName, const char *songDir,
     return ModPath_FindIn(songDir, relative, out, STAGE_PATH_MAX) ? 1 : 0;
 }
 
+static char Stage_FindFile(const char *stageName, const char *songDir,
+                           const char *ext, char out[STAGE_PATH_MAX])
+{
+    return Stage_FindFileEx(stageName, songDir, ext, out, 0);
+}
+
 char Stage_FindLua(const char *stageName, const char *songDir, char out[300])
 {
     return Stage_FindFile(stageName, songDir, "lua", out);
+}
+
+char Stage_FindJsonAllowStage(const char *stageName, const char *songDir, char out[300])
+{
+    return Stage_FindFileEx(stageName, songDir, "json", out, 1);
 }
 
 char Stage_FindJson(const char *stageName, const char *songDir, char out[300])

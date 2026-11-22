@@ -19,7 +19,9 @@
 #define NC_PREV_Y0 200.0f
 #define NC_PREV_STEP 100.0f
 #define NC_PREV_HALF 52.0f
-#define NC_CARD_PREV (Rectangle) {40.0f, 150.0f, 320.0f, 420.0f}
+#define NC_CARD_PREV (Rectangle) {40.0f, 150.0f, 320.0f, 500.0f}
+#define NC_PRESET_BTN (Rectangle) {56.0f, 598.0f, 288.0f, 40.0f}
+#define NC_PRESET_ARROW (Rectangle) {140.0f, 572.0f, 26.0f, 22.0f}  /* seta que abre/fecha a secao PRESET */
 #define NC_CARD_SL (Rectangle) {500.0f, 150.0f, 740.0f, 420.0f}
 
 #define NC_LANE_X 540.0f
@@ -58,12 +60,22 @@ static bool hasClip;
 static Texture2D wheelTex;
 static bool wheelReady;
 static bool wheelDrag;   /* arrastando dentro da roda */
+static bool presetOpen = true; /* secao PRESET aberta (botao visivel) ou fechada */
 
 static const char* const laneNames[4] = {"LEFT", "DOWN", "UP", "RIGHT"};
 static const char* const sliderNames[NC_SL_COUNT] = {"HUE", "SATURATION", "BRIGHTNESS"};
 static const short sliderMin[NC_SL_COUNT] = {-180, -100, -100};
 static const short sliderMax[NC_SL_COUNT] = {180, 100, 100};
 static TextMeasure laneNameMeasure[4]; /* nomes fixos: medidos uma vez */
+
+/* Presets: valores (matiz, saturacao, brilho) por coluna LEFT, DOWN, UP, RIGHT. */
+typedef struct {
+    const char* name;
+    short hsb[4][NC_SL_COUNT];
+} NoteColorPreset;
+static const NoteColorPreset presets[] = {
+    {"Reimagined/Modern", {{9, 0, 40}, {11, 100, 35}, {40, 100, 28}, {9, 100, 29}}},
+};
 
 static Rectangle LaneButton(int i) { return (Rectangle) {NC_LANE_X + (float)i * NC_LANE_STEP, NC_LANE_Y, NC_LANE_W, NC_LANE_H}; }
 static Rectangle SliderRect(int s) { return (Rectangle) {NC_SL_X, NC_SL_Y0 + (float)s * NC_SL_STEP, NC_SL_W, NC_SL_H}; }
@@ -85,6 +97,15 @@ static void SetVal(int s, int v) {
 
 static void ResetLane(void) {
     for (int s = 0; s < NC_SL_COUNT; s++) *Val(s) = 0;
+}
+
+/* Aplica o preset em todas as colunas (offsets HSB; sliders e previa leem daqui a cada frame). */
+static void ApplyPreset(void) {
+    const NoteColorPreset* p = &presets[0];
+    for (int i = 0; i < 4; i++)
+        for (int s = 0; s < NC_SL_COUNT; s++) gameOptions.laneHSB[i][s] = p->hsb[i][s];
+    drag = 0;
+    wheelDrag = false;
 }
 
 /* Mouse no slider: posicao na barra vira valor (arredondado para inteiro). */
@@ -157,6 +178,7 @@ void NoteColorScreen_Update(void) {
     if (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S)) slider = (slider + 1) % NC_SL_COUNT;
     if (IsKeyPressedRepeat(KEY_LEFT) || IsKeyPressedRepeat(KEY_A)) SetVal(slider, *Val(slider) - step);
     if (IsKeyPressedRepeat(KEY_RIGHT) || IsKeyPressedRepeat(KEY_D)) SetVal(slider, *Val(slider) + step);
+    if (IsKeyPressed(KEY_P)) ApplyPreset();   /* mesmo efeito do botao PRESET */
     if (IsKeyPressed(KEY_Q)) SelectLane((lane + 3) % 4);
     if (IsKeyPressed(KEY_E)) SelectLane((lane + 1) % 4);
     if (IsKeyPressed(KEY_R)) {
@@ -191,6 +213,8 @@ void NoteColorScreen_Update(void) {
         if (CheckCollisionPointRec(m, PasteButton()) && hasClip)
             for (int s = 0; s < NC_SL_COUNT; s++) SetVal(s, clip[s]);
         if (CheckCollisionPointRec(m, ResetButton())) ResetLane();
+        if (CheckCollisionPointRec(m, NC_PRESET_ARROW)) presetOpen = !presetOpen;
+        if (presetOpen && CheckCollisionPointRec(m, NC_PRESET_BTN)) ApplyPreset();
     }
 
     if (drag > 0) {
@@ -320,6 +344,25 @@ void NoteColorScreen_Draw(void) {
     for (int i = 0; i < 4; i++)
         NoteColors_DrawLanePreview(i, NC_PREV_CX, NC_PREV_Y0 + (float)i * NC_PREV_STEP, i == lane ? 0.85f : 0.6f);
 
+    // Presets: titulo com seta (abre/fecha) e botao embaixo das notas.
+    DrawTextEx(mainFont, "PRESET", (Vector2) {NC_PRESET_BTN.x, NC_PRESET_BTN.y - 26.0f}, 22, 1.0f, GRAY);
+    {
+        const Rectangle a = NC_PRESET_ARROW;
+        const float ax = a.x + a.width * 0.5f, ay = a.y + a.height * 0.5f;
+        if (presetOpen) /* aberta: aponta para baixo */
+            DrawTriangle((Vector2) {ax - 8.0f, ay - 5.0f}, (Vector2) {ax + 8.0f, ay - 5.0f}, (Vector2) {ax, ay + 6.0f}, WHITE);
+        else            /* fechada: aponta para a direita */
+            DrawTriangle((Vector2) {ax - 5.0f, ay - 8.0f}, (Vector2) {ax - 5.0f, ay + 8.0f}, (Vector2) {ax + 6.0f, ay}, WHITE);
+    }
+    if (presetOpen) {
+        DrawRectangleRounded(NC_PRESET_BTN, NC_ROUND, 6, (Color) {46, 46, 52, 255});
+        DrawRectangleRoundedLinesEx(NC_PRESET_BTN, NC_ROUND, 6, 2.0f, WHITE);
+        const char* pname = presets[0].name;
+        const Vector2 ps = MeasureTextEx(mainFont, pname, 22, 1.0f);
+        DrawTextEx(mainFont, pname, (Vector2) {NC_PRESET_BTN.x + (NC_PRESET_BTN.width - ps.x) * 0.5f,
+                   NC_PRESET_BTN.y + (NC_PRESET_BTN.height - ps.y) * 0.5f}, 22, 1.0f, WHITE);
+    }
+
     // Estado da coluna: original ou ajustada.
     const bool shifted = GameData_LaneShifted(lane);
     DrawTextEx(mainFont, shifted ? "Ajustada" : "Original", (Vector2) {NC_SL_X, NC_LANE_Y + NC_LANE_H + 14.0f},
@@ -348,7 +391,7 @@ void NoteColorScreen_Draw(void) {
 
     DrawTextEx(mainFont, "W/S: select   A/D: adjust   ALT: x10   Q/E: lane   R: reset lane   SHIFT+R: reset all",
                (Vector2) {NC_SL_X, 676}, 20, 1, GRAY);
-    DrawTextEx(mainFont, "ESC/BACKSPACE: back", (Vector2) {NC_SL_X, 696}, 20, 1, GRAY);
+    DrawTextEx(mainFont, "ESC/BACKSPACE: back   P: preset", (Vector2) {NC_SL_X, 696}, 20, 1, GRAY);
 }
 
 void NoteColorScreen_Destroy(void) {

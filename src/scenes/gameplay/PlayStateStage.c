@@ -56,6 +56,24 @@ static void LoadDefaultStage(PlayStateStage* stage, Girlfriend* gf, Character* d
         stage->defaultCameraZoom = 0.9f;
 }
 
+// Stage padrao ("stage") com <stage>.json: as posicoes do json somam na posicao padrao (como no LoadModStage).
+static float defaultCamBf[2], defaultCamDad[2];
+static char ApplyDefaultStageJson(const char* songDir, Girlfriend* gf, Character* dad, Character* bf) {
+    char jsonPath[300];
+    if (!Stage_FindJsonAllowStage("stage", songDir, jsonPath)) return 0;
+    StageMeta meta;
+    if (!Stage_LoadJson(jsonPath, &meta)) return 0;
+    gf->object.position.x += meta.girlfriend[0] - 640.0f * 0.05f;
+    gf->object.position.y += meta.girlfriend[1] - 360.0f * 0.05f;
+    dad->object.position.x += meta.opponent[0];
+    dad->object.position.y += meta.opponent[1];
+    bf->object.position.x += meta.boyfriend[0];
+    bf->object.position.y += meta.boyfriend[1];
+    defaultCamBf[0] = meta.cameraBoyfriend[0]; defaultCamBf[1] = meta.cameraBoyfriend[1];
+    defaultCamDad[0] = meta.cameraOpponent[0]; defaultCamDad[1] = meta.cameraOpponent[1];
+    return 1;
+}
+
 // Raiz do mod (assets/mods/<mod> ou assets/mods direto).
 static void ModRoot(const char* songDir, char out[256]) {
     (void)ModPath_Root(songDir, out, 256);
@@ -327,6 +345,10 @@ void PlayStateStage_Load(PlayStateStage* stage, const char* stageName, const cha
         memset(stage, 0, sizeof(*stage));
         stage->cameraSpeed = 1.0f;
         LoadDefaultStage(stage, gf, dad, bf);
+        if (ApplyDefaultStageJson(songDir, gf, dad, bf)) {
+            cameraOffsetBf = defaultCamBf;
+            cameraOffsetDad = defaultCamDad;
+        }
     }
     FinalizeCamera(dad, 1, cameraOffsetDad);
     FinalizeCamera(bf, 0, cameraOffsetBf);

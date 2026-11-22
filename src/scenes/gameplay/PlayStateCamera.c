@@ -5,6 +5,7 @@
 
 #include "scenes/gameplay/PlayStateCamera.h"
 #include "raymath.h"
+#include "scenes/gameplay/events/PlayStateParallax.h"
 
 static Character* followTarget;
 static Camera2D camGame;
@@ -12,12 +13,15 @@ static Camera2D camHUD;
 
 static float followSpeed = 1.0f;
 
+static Camera2D parallaxCam; /* copia da camera de jogo com o parallax aplicado */
+
 void PlayStateCamera_SetSpeed(float speed) {
     followSpeed = speed > 0.0f ? speed : 1.0f;
 }
 
 void PlayStateCamera_Reset(Character* initialTarget) {
     followSpeed = 1.0f;
+    PlayStateParallax_Reset();
     followTarget = initialTarget;
 
     camGame = (Camera2D) {
@@ -60,10 +64,15 @@ void PlayStateCamera_Update(float deltaTime, float defaultGameZoom) {
     camGame.target.y = Lerp(camGame.target.y, goal.y, deltaTime * 5 * followSpeed);
     camGame.zoom = Lerp(camGame.zoom, defaultGameZoom, deltaTime * 8);
     camHUD.zoom = Lerp(camHUD.zoom, 1, deltaTime * 8);
+
+    PlayStateParallax_Update(deltaTime);
 }
 
 void PlayStateCamera_BeginGame(void) {
-    Render_SetCamera(&camGame);
+    if (PlayStateParallax_Apply(&camGame, &parallaxCam))
+        Render_SetCamera(&parallaxCam);
+    else
+        Render_SetCamera(&camGame);
 }
 
 void PlayStateCamera_BeginHUD(void) {

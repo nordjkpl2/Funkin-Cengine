@@ -14,7 +14,7 @@
 #include "scenes/modding/charteditor/grid/EditorGrid.h"
 
 #include "scenes/gameplay/PlayState.h"
-#include "scenes/gameplay/PlayStateEventsInGameplay.h"
+#include "scenes/gameplay/events/PlayStateEventsInGameplay.h"
 #include "rendering/shaders/ShaderFx.h"
 
 void Edit_DrawMenuBar(void);

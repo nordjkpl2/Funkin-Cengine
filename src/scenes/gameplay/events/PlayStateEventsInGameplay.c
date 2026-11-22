@@ -3,7 +3,7 @@
  * PlayStateEventsInGameplay.c - eventos do events.json tocados no PlayState.
  */
 
-#include "scenes/gameplay/PlayStateEventsInGameplay.h"
+#include "scenes/gameplay/events/PlayStateEventsInGameplay.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -14,11 +14,15 @@
 #include "Log.h"
 #include "rendering/cpu/ImagePrefetch.h"
 #include "rendering/shaders/ShaderFx.h"
+#include "scenes/gameplay/PlayStateAnimations.h"
 
 #define SCREEN_W 1280.0f
+#include "scenes/gameplay/events/PlayStateParallax.h"
 #define SCREEN_H 720.0f
 #define SHOW_IMAGE_NAME "Show Image"
 #define HIDE_IMAGE_NAME "Hide Image"
+#define CHANGE_CHAR_NAME "Change Character"
+#define CAMERA_PARALLAX_NAME "Camera Parallax"
 #define IMG_MAX 8  /* imagens distintas por musica */
 
 const PlayStateEventType playStateEventTypes[] = {
@@ -28,7 +32,10 @@ const PlayStateEventType playStateEventTypes[] = {
     {HIDE_IMAGE_NAME, "esconde a imagem mostrada (sem valores)", 0, 0, 0, NULL, NULL, NULL, 0},
     {"Shader TV",     "TV velha: linhas, vinheta, granulado", 50, 0, 0, "intensidade %:", "animacao %:", NULL, 0, 1},
     {"Shader Glitch", "glitch: fatias, separacao RGB, blocos", 50, 0, 0, "intensidade %:", "animacao %:", NULL, 0, 1},
+    {"Shader Blackness", "buraco negro: puxa pro centro, escurece", 50, 0, 0, "intensidade %:", "animacao %:", NULL, 0, 1},
     {"Shader Off",    "desliga o shader de tela", 0, 0, 0, NULL, NULL, NULL, 0, 1},
+    {"Camera Parallax", "camera 3D parallax: balanca a camera em profundidade (0 desliga)", 50, 0, 0, "intensidade %:", "velocidade %:", NULL, 0, 1},
+    {CHANGE_CHAR_NAME, "troca o personagem: 0=oponente 1=bf 2=gf (nome do personagem)", 0, 0, 0, "alvo (0/1/2):", NULL, NULL, 0, 0, 1},
 };
 const int playStateEventTypeCount = (int)(sizeof(playStateEventTypes) / sizeof(playStateEventTypes[0]));
 
@@ -38,7 +45,7 @@ typedef struct {
     double v1;      /* fade: duracao (ms) | imagem: x */
     double v2;      /* fade: alpha final (%) | imagem: y */
     double v3;      /* imagem: escala (%) */
-    char img[64];   /* imagem: nome em images/<img>.png */
+    char img[64];   /* imagem: nome em images/<img>.png | Change Character: nome do personagem */
 } PsEvent;
 
 typedef struct {
@@ -105,12 +112,17 @@ void PlayStateEvents_ApplyShader(const char* name, double intensityPct, double a
     const float spd = (float)(animPct / 100.0);
     if (strcmp(name, "Shader TV") == 0) ShaderFx_Set(SHADERFX_TV, amt, spd);
     else if (strcmp(name, "Shader Glitch") == 0) ShaderFx_Set(SHADERFX_GLITCH, amt, spd);
+    else if (strcmp(name, "Shader Blackness") == 0) ShaderFx_Set(SHADERFX_BLACKNESS, amt, spd);
     else if (strcmp(name, "Shader Off") == 0) ShaderFx_Reset();
 }
 
 static void Fire(const PsEvent* e) {
     if (strncmp(e->name, "Shader ", 7) == 0) {
         PlayStateEvents_ApplyShader(e->name, e->v1, e->v2);
+        return;
+    }
+    if (strcmp(e->name, CAMERA_PARALLAX_NAME) == 0) {
+        PlayStateParallax_Set((float)(e->v1 / 100.0), (float)(e->v2 > 0.0 ? e->v2 / 100.0 : 1.0));
         return;
     }
     if (strcmp(e->name, SHOW_IMAGE_NAME) == 0) {
@@ -122,6 +134,10 @@ static void Fire(const PsEvent* e) {
     }
     if (strcmp(e->name, HIDE_IMAGE_NAME) == 0) {
         curImg = -1;
+        return;
+    }
+    if (strcmp(e->name, CHANGE_CHAR_NAME) == 0) {
+        PlayStateAnimations_ChangeCharacter((int)e->v1, e->img);
         return;
     }
 
@@ -188,6 +204,7 @@ void PlayStateEvents_Unload(void) {
     curAlpha = 0.0f;
     hasFade = 0;
     ShaderFx_Reset();
+    PlayStateParallax_Reset();
 }
 
 void PlayStateEvents_Load(const char* songDir) {
@@ -241,6 +258,7 @@ void PlayStateEvents_Reset(void) {
     hasFade = 0;
     curImg = -1;
     ShaderFx_Reset();
+    PlayStateParallax_Reset();
 }
 
 void PlayStateEvents_SeekTo(double seconds) {

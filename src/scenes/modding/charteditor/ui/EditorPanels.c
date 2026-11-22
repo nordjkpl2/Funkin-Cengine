@@ -12,8 +12,9 @@
 #include "scenes/modding/charteditor/ui/EditorPanels.h"
 #include "rendering/TextMeasure.h"
 #include "scenes/modding/charteditor/data/EditorCharactersAndLists.h"
+#include "scenes/modding/charteditor/data/EditorStagePos.h"
 #include "scenes/modding/charteditor/ui/EditorPicker.h"
-#include "scenes/gameplay/PlayStateEventsInGameplay.h"
+#include "scenes/gameplay/events/PlayStateEventsInGameplay.h"
 
 // ---------- acoes de trecho (usadas no menu e nas abas, sem duplicar) ----------
 static void Edit_DoNewPart(void) {
@@ -290,6 +291,7 @@ static void Edit_DrawPanel_Song(float x, float y) {
     y += 38;
     DrawDropField(x, y, boxW, "Note Skin:", &skinBox, "default", DROP_SKIN, blocked);
     y += 42;
+    y += StagePos_Draw(x, y, stageBox.buf, chart.dir, blocked) + 8;
 
     Ed_DrawText(mainFont, "bpm:", (Vector2){x, y + 4}, 22, 1, WHITE);
     {
@@ -567,10 +569,12 @@ static void Edit_DrawPanel_Events(float x, float y) {
             return;
         }
         const char img = (t != NULL && t->usesImage);
+        const char chr = (t != NULL && t->usesChar);  // troca de personagem: alvo 0..2 + nome (s1)
         const char* lab1 = (t != NULL) ? t->label1 : "valor 1:";
         const char* lab2 = (t != NULL) ? t->label2 : "valor 2:";
         const char fx = (t != NULL && t->usesShader); // shader: intensidade e animacao 0..100
-        const int lo1 = img ? -4000 : 0, hi1 = img ? 4000 : (fx ? 100 : 60000), st1 = (img || fx) ? 10 : 50;
+        const int lo1 = img ? -4000 : 0, hi1 = img ? 4000 : chr ? 2 : (fx ? 100 : 60000);
+        const int st1 = (img || fx) ? 10 : chr ? 1 : 50;
         const int lo2 = img ? -4000 : 0, hi2 = img ? 4000 : 100, st2 = 10;
 
         Ed_DrawText(mainFont, lab1, (Vector2){x, y + 4}, 20, 1, WHITE);
@@ -580,12 +584,14 @@ static void Edit_DrawPanel_Events(float x, float y) {
         Ed_DrawText(mainFont, tb, (Vector2){x + 156, y + 4}, 20, 1, WHITE);
         y += 40;
 
-        Ed_DrawText(mainFont, lab2, (Vector2){x, y + 4}, 20, 1, WHITE);
-        if(EdButton((Rectangle){x + 110, y, 36, 32}, "-", 22)) EvStepInt(e->v2, sizeof(e->v2), -st2, lo2, hi2);
-        if(EdButton((Rectangle){x + 250, y, 36, 32}, "+", 22)) EvStepInt(e->v2, sizeof(e->v2), st2, lo2, hi2);
-        snprintf(tb, sizeof(tb), "%s", e->v2);
-        Ed_DrawText(mainFont, tb, (Vector2){x + 156, y + 4}, 20, 1, WHITE);
-        y += 40;
+        if(!chr) {
+            Ed_DrawText(mainFont, lab2, (Vector2){x, y + 4}, 20, 1, WHITE);
+            if(EdButton((Rectangle){x + 110, y, 36, 32}, "-", 22)) EvStepInt(e->v2, sizeof(e->v2), -st2, lo2, hi2);
+            if(EdButton((Rectangle){x + 250, y, 36, 32}, "+", 22)) EvStepInt(e->v2, sizeof(e->v2), st2, lo2, hi2);
+            snprintf(tb, sizeof(tb), "%s", e->v2);
+            Ed_DrawText(mainFont, tb, (Vector2){x + 156, y + 4}, 20, 1, WHITE);
+            y += 40;
+        }
 
         if(t != NULL && t->label3 != NULL) {
             Ed_DrawText(mainFont, t->label3, (Vector2){x, y + 4}, 20, 1, WHITE);
@@ -596,8 +602,8 @@ static void Edit_DrawPanel_Events(float x, float y) {
             y += 40;
         }
 
-        if(img) {
-            // caixa de texto com o nome da imagem: sincroniza com o evento selecionado
+        if(img || chr) {
+            // caixa de texto com o nome da imagem (ou do personagem): sincroniza com o evento selecionado
             static int evImgSel = -2;
             static int evImgGen = -1;
             if(evImgSel != evSelected || evImgGen != edEventsGen) {
@@ -605,12 +611,12 @@ static void Edit_DrawPanel_Events(float x, float y) {
                 evImgGen = edEventsGen;
                 snprintf(evImgBox.buf, sizeof(evImgBox.buf), "%s", e->s1);
             }
-            Ed_DrawText(mainFont, "imagem (images/<nome>.png):", (Vector2){x, y}, 18, 1, WHITE);
+            Ed_DrawText(mainFont, chr ? "personagem (nome pasta/xml):" : "imagem (images/<nome>.png):", (Vector2){x, y}, 18, 1, WHITE);
             y += 26;
             const char evBlocked = (ceDlg != DLG_NONE || activeDrop || menuOpen);
             Rectangle ir = {x, y, 250, 32};
             TxtBox_Update(&evImgBox, ir, evBlocked);
-            TxtBox_Draw(&evImgBox, ir, "nome da imagem");
+            TxtBox_Draw(&evImgBox, ir, chr ? "ex.: bf-car, gf, dad" : "nome da imagem");
             if(strcmp(evImgBox.buf, e->s1) != 0) {
                 snprintf(e->s1, sizeof(e->s1), "%s", evImgBox.buf);
                 snprintf(evImgBox.buf, sizeof(evImgBox.buf), "%s", e->s1); /* ja truncado */

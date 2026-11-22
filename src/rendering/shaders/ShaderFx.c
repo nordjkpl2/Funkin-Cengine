@@ -72,13 +72,45 @@ static const char kFsGlitch[] =
     "    finalColor = vec4(clamp(col, 0.0, 1.0), 1.0);\n"
     "}\n";
 
+/* Buraco negro: puxa a imagem pro centro (lente), escurece, horizonte preto e anel de acrecao animado. */
+static const char kFsBlackness[] =
+    "#version 330\n"
+    "in vec2 fragTexCoord;\n"
+    "uniform sampler2D texture0;\n"
+    "uniform vec2 uRes;\n"
+    "uniform float uTime;\n"
+    "uniform float uAmt;\n"
+    "uniform float uAnim;\n"
+    "out vec4 finalColor;\n"
+    "void main() {\n"
+    "    float asp = uRes.x / max(uRes.y, 1.0);\n"
+    "    vec2 c = fragTexCoord * 2.0 - 1.0;\n"
+    "    c.x *= asp;\n"                                          /* circulo sem elipse */
+    "    float r = length(c);\n"
+    "    float k = uAmt * 0.45 * exp(-r * r * 2.5);\n"           /* puxao gravitacional: forte no centro */
+    "    float ang = uAmt * 0.9 * exp(-r * r * 3.5);\n"          /* redemoinho */
+    "    float ca = cos(ang), sa = sin(ang);\n"
+    "    vec2 s = mat2(ca, -sa, sa, ca) * (c * (1.0 + k));\n"
+    "    s.x /= asp;\n"
+    "    vec2 uv = s * 0.5 + 0.5;\n"
+    "    vec3 col = texture(texture0, uv).rgb;\n"
+    "    col *= step(0.0, uv.x) * step(uv.x, 1.0) * step(0.0, uv.y) * step(uv.y, 1.0);\n"
+    "    float lum = dot(col, vec3(0.299, 0.587, 0.114));\n"
+    "    col = mix(col, vec3(lum), uAmt * 0.6);\n"               /* perde cor */
+    "    col *= 1.0 - uAmt * 0.6 * smoothstep(0.3, 1.2, r);\n"   /* borda escura */
+    "    float rh = 0.08 + uAmt * 0.32;\n"                       /* raio do horizonte de eventos */
+    "    col *= mix(1.0, smoothstep(rh, rh + 0.2, r), 0.3);\n"    /* buraco preto no centro (30% de escuridao, deixa a gameplay ver) */
+    "    finalColor = vec4(clamp(col, 0.0, 1.0), 1.0);\n"
+    "}\n";
+
 typedef struct {
     Shader sh;
     int locRes, locTime, locAmt, locAnim;
     char ok;
 } FxSlot;
 
-static FxSlot slots[2];   /* [0] = TV, [1] = glitch */
+#define FX_COUNT 3
+static FxSlot slots[FX_COUNT];   /* [0] = TV, [1] = glitch, [2] = blackness */
 static char triedLoad;
 static ShaderFxKind curKind = SHADERFX_NONE;
 static float curAmt, curAnim;
@@ -102,6 +134,7 @@ static void EnsureLoaded(void) {
     triedLoad = 1;
     FxSlot_Load(&slots[0], kFsTv);
     FxSlot_Load(&slots[1], kFsGlitch);
+    FxSlot_Load(&slots[2], kFsBlackness);
 }
 
 static FxSlot* CurSlot(void) {
@@ -114,7 +147,7 @@ static FxSlot* CurSlot(void) {
 void ShaderFx_Set(ShaderFxKind kind, float intensity, float speed) {
     curAmt = Clampf(intensity, 0.0f, 1.0f);
     curAnim = Clampf(speed, 0.0f, 2.0f);
-    curKind = (kind == SHADERFX_TV || kind == SHADERFX_GLITCH) ? kind : SHADERFX_NONE;
+    curKind = (kind == SHADERFX_TV || kind == SHADERFX_GLITCH || kind == SHADERFX_BLACKNESS) ? kind : SHADERFX_NONE;
     if (curAmt <= 0.0f) curKind = SHADERFX_NONE;
 }
 
@@ -144,7 +177,7 @@ void ShaderFx_EndDraw(void) {
 }
 
 void ShaderFx_Unload(void) {
-    for (int i = 0; i < 2; i++) {
+    for (int i = 0; i < FX_COUNT; i++) {
         if (slots[i].ok) UnloadShader(slots[i].sh);
         slots[i].ok = 0;
     }

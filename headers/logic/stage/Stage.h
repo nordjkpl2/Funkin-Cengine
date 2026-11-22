@@ -55,6 +55,10 @@ typedef struct {
 /* Procura <nome>.json nos mesmos lugares do .lua. Retorna 1 se achou. */
 char Stage_FindJson(const char *stageName, const char *songDir, char out[300]);
 
+/* Igual ao Stage_FindJson, mas aceita o nome "stage" (usado pelo stage padrao do engine,
+ * que le so o json de posicoes). */
+char Stage_FindJsonAllowStage(const char *stageName, const char *songDir, char out[300]);
+
 /* Procura <nome>.lua em <mod>/stages/, <mod>/data/stages/,
  * assets/stages/, assets/data/stages/ e songDir/.
  * Retorna 1 quando encontrado; escreve o caminho em out[300].

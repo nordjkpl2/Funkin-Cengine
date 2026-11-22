@@ -38,6 +38,10 @@ Character* PlayStateAnimations_Bf(void);
 Girlfriend* PlayStateAnimations_Gf(void);
 Girlfriend* PlayStateAnimations_GfLoaded(void);
 
+/* Evento Change Character: troca o personagem do lado (target 0 = oponente, 1 = BF, 2 = GF) pelo
+ * nome da pasta/xml em name. Mantem a posicao do slot. Vazio ou nome desconhecido cai no padrao. */
+void PlayStateAnimations_ChangeCharacter(int target, const char* name);
+
 /* Eventos de nota (lane = 0..3). */
 void PlayStateAnimations_OpponentHit(int lane);
 void PlayStateAnimations_OpponentHold(void);

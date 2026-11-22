@@ -154,33 +154,11 @@ static char StageJsonGlobal_Exists(const char* name) {
     return 0;
 }
 
-// json do mod da musica: <mod>/stages/<nome>.json (layout Psych mods/stages)
-static char StageJsonForSong_Exists(const char* name, const char* songDir) {    const char* pm = strstr(songDir, "assets/mods/");
-    if(pm == NULL) return 0;
-    const char* after = pm + 12;
-    const char* slash = strchr(after, '/');
-    char modRoot[256] = {0};
-    if(slash != NULL) {
-        const char* songs = strstr(slash, "/songs/");
-        size_t n = (size_t)((songs != NULL ? songs : slash) - songDir);
-        if(n >= sizeof(modRoot)) return 0;
-        memcpy(modRoot, songDir, n);
-        modRoot[n] = 0;
-    } else {
-        return 0;
-    }
-    char p[300];
-    snprintf(p, sizeof(p), "%s/stages/%s.json", modRoot, name);
-    FILE* f = fopen(p, "rb");
-    if(f != NULL) { fclose(f); return 1; }
-    return 0;
-}
-
 // .lua vale porque o exe converte na hora (Stage_ParseLua, sem LuaJIT)
+// mesma busca do jogo (Stage_FindJson / Stage_FindLua): mod da musica, global, pasta da musica
 char StageFileForSong_Exists(const char* name, const char* songDir) {
-    if(StageJsonForSong_Exists(name, songDir)) return 1;
-    char lua[300];
-    return Stage_FindLua(name, songDir, lua);
+    char p[300];
+    return Stage_FindJson(name, songDir, p) || Stage_FindLua(name, songDir, p);
 }
 
 char StageAsset_Exists(const char* name) {
@@ -232,6 +210,46 @@ void StageList_Invalidate(void) {
     songStageCap = 0;
 }
 
+/* Adiciona as stages de uma pasta: arquivos que terminam em suffix (ex.: "back.png", ".json"); o nome e o resto. */
+static void StageNames_AddDir(const char* dir, const char* suffix) {
+    if(!DirectoryExists(dir))
+        return;
+    const size_t sl = strlen(suffix);
+    FilePathList list = LoadDirectoryFiles(dir);
+    for(unsigned int i = 0; i < list.count && stageCount < 32; i++) {
+        const char* p = list.paths[i];
+        const char* s1 = strrchr(p, '/');
+        const char* s2 = strrchr(p, '\\');
+        const char* b = (s1 > s2) ? s1 : s2;
+        b = (b != NULL) ? b + 1 : p;
+        const size_t len = strlen(b);
+        if(len <= sl || strcmp(b + len - sl, suffix) != 0)
+            continue;
+        if(len - sl >= SONG_NAME_MAX)
+            continue;
+        char name[SONG_NAME_MAX] = {0};
+        memcpy(name, b, len - sl);
+        char dup = 0;
+        for(int k = 0; k < stageCount && !dup; k++)
+            dup = strcmp(stageNames[k], name) == 0;
+        if(!dup) {
+            strncpy(stageNames[stageCount], name, SONG_NAME_MAX - 1);
+            stageNames[stageCount][SONG_NAME_MAX - 1] = 0;
+            stageCount++;
+        }
+    }
+    UnloadDirectoryFiles(list);
+}
+
+/* Stages de uma raiz (assets ou mod): imagens <nome>back.png e definicoes stages/<nome>.json. */
+static void StageNames_AddRoot(const char* root) {
+    char d[300];
+    snprintf(d, sizeof(d), "%s/images/stage", root);
+    StageNames_AddDir(d, "back.png");
+    snprintf(d, sizeof(d), "%s/stages", root);
+    StageNames_AddDir(d, ".json");
+}
+
 void StageList_Scan(void) {
     stageCount = 0;
     strcpy(stageNames[stageCount++], "__not_have_a_stage"); // primeira opcao: sem stage
@@ -276,6 +294,17 @@ void StageList_Scan(void) {
             stageNames[stageCount][SONG_NAME_MAX - 1] = 0;
             stageCount++;
         }
+    }
+    // todas as stages disponiveis (assets e mods ativos), mesmo sem musica que as use
+    StageNames_AddRoot("assets");
+    StageNames_AddDir("assets/data/stages", ".json");
+    char modRootSt[256];
+    EdModRoot(chart.dir, modRootSt);
+    if(modRootSt[0] != 0)
+        StageNames_AddRoot(modRootSt);
+    for(int i = 0; i < ModList_Count(); i++) {
+        if(ModList_Enabled(i))
+            StageNames_AddRoot(ModList_Root(i));
     }
     if(stageCount == 1 && StageAsset_Exists("stage")) {
         strncpy(stageNames[1], "stage", SONG_NAME_MAX - 1);

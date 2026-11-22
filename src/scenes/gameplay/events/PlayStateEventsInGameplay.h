@@ -8,6 +8,7 @@
  * Show Image: mostra images/<s1>.png. v1 = x, v2 = y (px a partir do centro da tela, 0,0 = centralizado),
  *             v3 = escala (%). Fica visivel ate o proximo Show Image ou Hide Image.
  * Hide Image: esconde a imagem atual. Sem valores.
+ * Change Character: v1 = alvo (0 = oponente, 1 = BF, 2 = GF); s1 = nome do personagem (pasta do mod/assets).
  */
 #pragma once
 #ifndef PLAYSTATE_EVENTS_IN_GAMEPLAY_H
@@ -25,6 +26,7 @@ typedef struct {
     const char* label3;    /* rotulo do campo v3 no editor (NULL = sem v3) */
     char usesImage;        /* 1 = tem campo de texto com o nome da imagem (s1) */
     char usesShader;       /* 1 = evento de shader de tela: v1 = intensidade %, v2 = animacao % (0 = estatico) */
+    char usesChar;         /* 1 = troca de personagem: v1 = alvo (0 = oponente, 1 = BF, 2 = GF), s1 = nome do personagem */
 } PlayStateEventType;
 
 extern const PlayStateEventType playStateEventTypes[];

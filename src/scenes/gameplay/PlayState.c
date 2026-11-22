@@ -27,7 +27,7 @@
 #include "scenes/gameplay/PlayStateBeat.h"
 #include "scenes/gameplay/PlayStateAnimations.h"
 #include "scenes/gameplay/PlayStateRatingPopups.h"
-#include "scenes/gameplay/PlayStateEventsInGameplay.h"
+#include "scenes/gameplay/events/PlayStateEventsInGameplay.h"
 #include "Log.h"
 #include "rendering/cpu/ImagePrefetch.h"
 #include <stdlib.h>
