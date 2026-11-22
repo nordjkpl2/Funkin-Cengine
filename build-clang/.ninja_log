@@ -324,3 +324,7 @@
 90	170	8170831096775451	CMakeFiles/FunkinCengine.dir/src/rendering/shaders/ShaderFx.c.obj	395b032d05bdf535
 170	9129	8170831097574108	D:/dev/funkin c/FunkinCengine.exe	b5ed00d2c882b462
 39	76	8170834164328040	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+23	64	8170837299382642	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+70	220	8170837299859946	CMakeFiles/FunkinCengine.dir/src/scenes/modding/charteditor/ChartEditor.c.obj	36b6b08430ac032
+75	256	8170837299899806	CMakeFiles/FunkinCengine.dir/src/scenes/modding/charteditor/ui/EditorPanels.c.obj	3e5abb0e456800b0
+256	8320	8170837301721453	D:/dev/funkin c/FunkinCengine.exe	b5ed00d2c882b462

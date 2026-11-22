@@ -363,14 +363,20 @@ static void Edit_Update(void) {
     // roda a musica / relogio (tempo mestre = Inst, senao voz, senao silencio)
     if(playing) {
         Audio_Update();
+        // o raylib reporta a posicao antiga logo apos SeekMusicStream (buffer ainda nao trocou);
+        // so aceita o relogio da musica se ele estiver perto do cursor, senao segue o dt
+        double clkMs = -1.0;
         if(edHasAudio)
-            cursorMs = GetMusicTimePlayed(edInst) * 1000.0;
+            clkMs = GetMusicTimePlayed(edInst) * 1000.0;
         else if(edHasVoices)
-            cursorMs = GetMusicTimePlayed(edVoices) * 1000.0;
+            clkMs = GetMusicTimePlayed(edVoices) * 1000.0;
         else if(edHasSplit)
-            cursorMs = GetMusicTimePlayed(edSplitO) * 1000.0;
+            clkMs = GetMusicTimePlayed(edSplitO) * 1000.0;
+        const double stepMs = RayGame_DeltaTime() * 1000.0;
+        if(clkMs >= 0.0 && (clkMs - cursorMs < 300.0) && (cursorMs - clkMs < 300.0))
+            cursorMs = clkMs;
         else
-            cursorMs += RayGame_DeltaTime() * 1000.0;
+            cursorMs += stepMs;
         if(cursorMs >= SongEndMs() + 2000)
             Audio_StopPlay();
         else if(playFollow)

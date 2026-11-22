@@ -627,6 +627,11 @@ static void Edit_DrawPanel_Events(float x, float y) {
 
 // preview do shader do evento selecionado (so na aba Events); fora disso, sem efeito
 void Edit_ShaderPreview(void) {
+    // o menu (picker de musicas) nunca recebe o shader
+    if(ceMode == CE_PICKER) {
+        ShaderFx_Reset();
+        return;
+    }
     if(activeTab == TAB_EVENTS && evSelected >= 0 && evSelected < edEventCount) {
         const EdEvent* e = &edEvents[evSelected];
         const PlayStateEventType* t = EvTypeOf(e->name);
