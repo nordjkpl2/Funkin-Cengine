@@ -366,7 +366,11 @@ static void OptionsMenu_Draw([[maybe_unused]] RayScene* scene) {
             // Texto estatico: cinza, sem icones, nunca selecionado.
             // Fonte menor, centralizada na altura da linha (o layout continua o mesmo).
             const float labelY = drawY + (ROW_FONT_SIZE - LABEL_FONT_SIZE) * 0.5f;
-            DrawOptionText(o->text, ROW_X, labelY, LABEL_FONT_SIZE, (Color) {190, 190, 190, 255}, (Color) {0, 0, 0, 100});
+            DrawOptionText(o->text, HEADER_X, labelY, LABEL_FONT_SIZE, (Color) {190, 190, 190, 255}, (Color) {0, 0, 0, 100});
+            // Divisor curto, da largura do proprio titulo (nao da linha inteira, como o [Header]).
+            const float labelW = MeasureTextEx(mainFont, o->text, LABEL_FONT_SIZE, TEXT_SPACING).x;
+            DrawRectangleGradientH((int)HEADER_X, (int)(labelY + LABEL_FONT_SIZE + 3.0f), (int)labelW, 2,
+                                   (Color) {OPT_ACCENT.r, OPT_ACCENT.g, OPT_ACCENT.b, 170}, (Color) {OPT_ACCENT.r, OPT_ACCENT.g, OPT_ACCENT.b, 0});
             continue;
         }
 
@@ -381,12 +385,13 @@ static void OptionsMenu_Draw([[maybe_unused]] RayScene* scene) {
         const bool inWindow = i >= OPTION_FPS && i <= OPTION_VSYNC;
         const float textX = inWindow ? ROW_X - WINDOW_ROW_SHIFT : ROW_X;
         DrawOptionText(o->cachedText, textX, drawY, ROW_FONT_SIZE, fill, shadow);
-        if (inWindow) DrawTvIcon(drawY, fill, shadow);
+        // Icone de TV so em Framerate; V-SYNC tem o seu (monitor); Uncapped FPS e Show FPS ficam sem icone.
+        if (i == OPTION_FPS) DrawTvIcon(drawY, fill, shadow);
 
         const bool isHealthDrain = i == OPTION_HEALTH_DRAIN_PLAY || i == OPTION_HEALTH_DRAIN_BOTPLAY;
         if (isHealthDrain) DrawHealthIcons(drawY, fill, shadow);
 
-        const bool hasKeyArrows = i == OPTION_KEYBOARD_SCHEME || i == OPTION_GHOST;
+        const bool hasKeyArrows = i == OPTION_GHOST;
         if (hasKeyArrows) DrawKeyArrow(drawY, fill, shadow);
 
         DrawExtraIcon(i, drawY, fill, shadow);
@@ -404,6 +409,8 @@ static void OptionsMenu_Draw([[maybe_unused]] RayScene* scene) {
         DrawHint("ENTER: edit note colors");
     else if (currentOption == OPTION_THREADS && (int)options[OPTION_THREADS].value == 1)
         DrawHint("ENTER: set thread count");
+    else if (currentOption == OPTION_VSYNC)
+        DrawHint("same fps as your monitor hz");
     else if (currentOption == OPTION_RESET_CONFIG)
         DrawHint(resetArmed ? "ENTER again to confirm: resets every option" : "ENTER: reset all options to default");
 

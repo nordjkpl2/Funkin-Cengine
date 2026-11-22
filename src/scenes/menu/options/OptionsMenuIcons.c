@@ -4,6 +4,7 @@
  */
 #include "scenes/api/FontLoader.h"
 #include "scenes/menu/options/OptionsMenuInternal.h"
+#include "GameData.h"
 #include <math.h>
 
 /* Texto com sombra deslocada para cima/esquerda. */
@@ -252,14 +253,17 @@ void DrawKeyArrow(float rowY, Color fill, Color shadow) {
     }
 }
 
-/* Seta dupla <-->, para Stretch. */
+/* Quatro cantos com as pontas para fora (expandir ate a borda) + bloco central, para Stretch. */
 static void DrawStretchIcon(float cx, float cy, Color color) {
-    const float h = STRETCH_HALF;
-    const float head = STRETCH_HEAD;
+    const float w = STRETCH_HALF, h = STRETCH_HALF * 0.7f, len = 9.0f;
 
-    DrawRoundLine((Vector2) {cx - h, cy}, (Vector2) {cx + h, cy}, color);
-    FillTriangle((Vector2) {cx - h - 4.0f, cy}, (Vector2) {cx - h + head, cy - head * 0.7f}, (Vector2) {cx - h + head, cy + head * 0.7f}, color);
-    FillTriangle((Vector2) {cx + h + 4.0f, cy}, (Vector2) {cx + h - head, cy - head * 0.7f}, (Vector2) {cx + h - head, cy + head * 0.7f}, color);
+    for (int sx = -1; sx <= 1; sx += 2)
+        for (int sy = -1; sy <= 1; sy += 2) {
+            const float x = cx + sx * w, y = cy + sy * h;
+            DrawRoundLine((Vector2) {x - sx * len, y}, (Vector2) {x, y}, color);
+            DrawRoundLine((Vector2) {x, y - sy * len}, (Vector2) {x, y}, color);
+        }
+    DrawRectangleRec((Rectangle) {cx - 6.0f, cy - 4.0f, 12.0f, 8.0f}, color);
 }
 
 /* Caixa com um "T" dentro, para as opcoes de texto (Show Score / Score Position). */
@@ -275,10 +279,63 @@ static void DrawBopIcon(float cx, float cy, Color color) {
     DrawCircleV((Vector2) {cx + 9.0f, cy - 3.0f}, BOP_ICON_R, color);
 }
 
-/* Quadrado, para Keys Monitor. */
-static void DrawSquareIcon(float cx, float cy, Color color) {
-    const float h = KEYMON_ICON_HALF;
-    DrawRectangleLinesEx((Rectangle) {cx - h, cy - h, h * 2.0f, h * 2.0f}, 5.0f, color);
+/* Teclado (corpo com teclas e barra de espaco), para Scheme. */
+static void DrawKeyboardIcon(float cx, float cy, Color color) {
+    const float x = cx - KEYBOARD_W * 0.5f, y = cy - KEYBOARD_H * 0.5f;
+    const float key = 6.0f, step = 9.0f;
+
+    DrawRectangleRoundedLinesEx((Rectangle) {x, y, KEYBOARD_W, KEYBOARD_H}, 0.25f, 6, 4.0f, color);
+    for (int row = 0; row < 2; row++) {          // duas fileiras de teclas
+        const float ky = cy - 11.0f + row * 9.0f;
+        for (int k = 0; k < 5; k++)
+            DrawRectangleRec((Rectangle) {cx - 2.0f * step + k * step - key * 0.5f + 0.5f, ky, key, key}, color);
+    }
+    DrawRectangleRounded((Rectangle) {cx - 12.0f, cy + 5.0f, 24.0f, 5.0f}, 0.5f, 4, color); // espaco
+}
+
+/* Painel preto arredondado atras dos icones de notas (mesma ideia da faixa do gameplay). */
+static void DrawIconPanel(float cx, float cy) {
+    DrawRectangleRounded((Rectangle) {cx - ICON_PANEL_W * 0.5f, cy - ICON_PANEL_H * 0.5f, ICON_PANEL_W, ICON_PANEL_H},
+                         0.4f, 8, (Color) {0, 0, 0, ICON_PANEL_ALPHA});
+}
+
+/* Teclas do Keys Monitor: 4 quadradinhos na cor de cada coluna, com a letra do esquema (como no gameplay). */
+static void DrawKeysMonitorIcon(float cx, float cy) {
+    static const Color laneCol[4] = {{200, 80, 255, 255}, {80, 180, 255, 255}, {80, 255, 150, 255}, {255, 90, 90, 255}};
+    static const char* const laneLetter[4] = {"L", "D", "U", "R"};
+    const float total = 4.0f * KEYMON_BOX + 3.0f * KEYMON_BOX_GAP;
+    const float x0 = cx - total * 0.5f;
+    const float pulse = 0.5f + 0.5f * sinf((float)GetTime() * 2.0f);
+
+    for (int i = 0; i < 4; i++) {
+        const Rectangle box = {x0 + i * (KEYMON_BOX + KEYMON_BOX_GAP), cy - KEYMON_BOX * 0.5f, KEYMON_BOX, KEYMON_BOX};
+        const int key = game_scheme_keys[gameOptions.scheme][i];
+        char label[2] = {laneLetter[i][0], 0};
+        if (key >= KEY_A && key <= KEY_Z) label[0] = (char)('A' + (key - KEY_A));
+        else if (key >= KEY_ZERO && key <= KEY_NINE) label[0] = (char)('0' + (key - KEY_ZERO));
+
+        Color lit = laneCol[i];
+        lit.a = (unsigned char)(50.0f + 50.0f * pulse);   // respira devagar, como o brilho das teclas
+        DrawRectangleRec(box, (Color) {0, 0, 0, 160});
+        DrawRectangleRec(box, lit);
+        DrawRectangleLinesEx(box, 2.0f, laneCol[i]);
+
+        const Vector2 ts = MeasureTextEx(mainFont, label, 16, 1.0f);
+        DrawTextEx(mainFont, label, (Vector2) {box.x + (box.width - ts.x) * 0.5f, box.y + (box.height - ts.y) * 0.5f},
+                   16, 1.0f, WHITE);
+    }
+}
+
+/* Notas pequenas (uma por coluna) que sobem devagar, crescem, somem e recomecam: "escondidas" e aparecendo. */
+static void DrawHiddenNotesIcon(float cx, float cy) {
+    const float t0 = (float)GetTime() / HIDDEN_ICON_PERIOD;
+    for (int k = 0; k < 3; k++) {
+        const float ph = t0 + (float)k / 3.0f;
+        const float t = ph - floorf(ph);                 // 0..1 dentro do ciclo
+        const float s = HIDDEN_ICON_SCALE * sinf(PI * t); // cresce e diminui: aparece e some
+        if (s < 0.005f) continue;
+        NoteColors_DrawNoteIcon(k, cx + (float)(k - 1) * 22.0f, cy + 14.0f - 28.0f * t, s);
+    }
 }
 
 /* Mouse (corpo arredondado, divisao dos botoes e roda), para os Beat Zoom. */
@@ -311,24 +368,89 @@ void DrawResetIcon(float cx, float cy, Color color) {
     DrawCircleV(tip, stroke * 0.5f, color);
 }
 
+/* Monitor (tela com base), para o V-SYNC. */
+static void DrawMonitorIcon(float cx, float cy, Color color) {
+    const float w = MONITOR_ICON_W, h = MONITOR_ICON_H;
+    const float top = cy - h * 0.5f - 5.0f, bottom = top + h;
+
+    DrawRectangleRoundedLinesEx((Rectangle) {cx - w * 0.5f, top, w, h}, 0.14f, 6, TV_STROKE, color);
+    DrawLineEx((Vector2) {cx, bottom}, (Vector2) {cx, bottom + 7.0f}, TV_STROKE, color);                 // pescoco
+    DrawLineEx((Vector2) {cx - 11.0f, bottom + 7.0f}, (Vector2) {cx + 11.0f, bottom + 7.0f}, TV_STROKE, color); // base
+}
+
+/* Arvore de tecnologia: raiz, dois ramos e quatro nos, em uma cor so. */
+static void DrawTechTreeIcon(float cx, float cy, Color color) {
+    const Vector2 root = {cx, cy - 14.0f};
+    const Vector2 mid[2] = {{cx - 12.0f, cy + 2.0f}, {cx + 12.0f, cy + 2.0f}};
+    const Vector2 leaf[4] = {{cx - 18.0f, cy + 16.0f}, {cx - 6.0f, cy + 16.0f}, {cx + 6.0f, cy + 16.0f}, {cx + 18.0f, cy + 16.0f}};
+
+    for (int m = 0; m < 2; m++) {
+        DrawRoundLine(root, mid[m], color);
+        for (int k = 0; k < 2; k++) DrawRoundLine(mid[m], leaf[m * 2 + k], color);
+    }
+    DrawCircleV(root, TREE_NODE_R + 1.0f, color);
+    for (int m = 0; m < 2; m++) DrawCircleV(mid[m], TREE_NODE_R, color);
+    for (int k = 0; k < 4; k++) DrawCircleV(leaf[k], TREE_NODE_R - 1.0f, color);
+}
+
+/* Rosto triste (circulo, olhos e boca curvada para baixo), para o Losing Icon. */
+static void DrawSadFaceIcon(float cx, float cy, Color color) {
+    const float r = FACE_ICON_R;
+
+    DrawRing((Vector2) {cx, cy}, r - 2.5f, r + 2.5f, 0.0f, 360.0f, 36, color);
+    DrawCircleV((Vector2) {cx - 6.0f, cy - 4.0f}, 2.8f, color);
+    DrawCircleV((Vector2) {cx + 6.0f, cy - 4.0f}, 2.8f, color);
+    DrawRing((Vector2) {cx, cy + 5.0f}, 5.0f, 7.0f, 20.0f, 160.0f, 16, color);
+}
+
+/* Robo (cabeca com antena e olhos), para o Botplay (jogada automatica). */
+static void DrawRobotIcon(float cx, float cy, Color color) {
+    const float w = ROBOT_ICON_W, h = ROBOT_ICON_H;
+    const float top = cy - h * 0.5f - 4.0f;   // antena + cabeca ficam centrados em cy
+
+    DrawLineEx((Vector2) {cx, top}, (Vector2) {cx, top - 7.0f}, 3.0f, color);       // antena
+    DrawCircleV((Vector2) {cx, top - 9.0f}, 3.5f, color);
+    DrawRectangleRoundedLinesEx((Rectangle) {cx - w * 0.5f, top, w, h}, 0.3f, 6, 4.0f, color);
+    DrawCircleV((Vector2) {cx - 7.0f, top + h * 0.42f}, 3.5f, color);                // olhos
+    DrawCircleV((Vector2) {cx + 7.0f, top + h * 0.42f}, 3.5f, color);
+    DrawLineEx((Vector2) {cx - 6.0f, top + h - 5.0f}, (Vector2) {cx + 6.0f, top + h - 5.0f}, 3.0f, color); // boca
+}
+
+/* Painel arredondado com uma seta dupla vertical (Scroll Style). Cor segue o estado da linha. */
+static void DrawScrollIcon(float cx, float cy, Color color) {
+    DrawRectangleRounded((Rectangle) {cx - 20.0f, cy - 19.0f, 40.0f, 38.0f}, 0.4f, 8, (Color) {0, 0, 0, ICON_PANEL_ALPHA});
+    DrawLineEx((Vector2) {cx, cy - 9.0f}, (Vector2) {cx, cy + 9.0f}, 3.0f, color);       // haste
+    DrawPoly((Vector2) {cx, cy - 12.0f}, 3, 7.0f, 0.0f, color);                          // ponta de cima
+    DrawPoly((Vector2) {cx, cy + 12.0f}, 3, 7.0f, 180.0f, color);                        // ponta de baixo
+}
+
 /* Icone da linha (so para as opcoes que tem), com a mesma sombra do texto. */
 void DrawExtraIcon(int i, float rowY, Color fill, Color shadow) {
     const float cy = rowY + ROW_FONT_SIZE * 0.5f + ROW_ICON_DY;
 
-    // Setas de nota reais da skin (sem sombra propria: a nota ja tem contorno).
-    if (i == OPTION_SCROLL_STYLE) {   // Normal = cima, Downscroll = baixo, Middlescroll/Middledown = as duas
-        const int v = (int)options[OPTION_SCROLL_STYLE].value;
-        if (v == 0) NoteColors_DrawNoteIcon(2, EXTRA_ICON_CX, cy, 0.2f);
-        else if (v == 1) NoteColors_DrawNoteIcon(1, EXTRA_ICON_CX, cy, 0.2f);
-        else {
-            NoteColors_DrawNoteIcon(2, EXTRA_ICON_CX, cy - 16.0f, 0.16f);
-            NoteColors_DrawNoteIcon(1, EXTRA_ICON_CX, cy + 16.0f, 0.16f);
-        }
+    if (i == OPTION_SCROLL_STYLE) {
+        DrawScrollIcon(EXTRA_ICON_CX, cy, fill);
         return;
     }
-    if (i == OPTION_STRUM_BG) {       // as 4 notas lado a lado, na cor de cada coluna
+    // Icones de notas: sem sombra propria (a nota ja tem contorno), com painel preto quando precisa.
+    if (i == OPTION_STRUM_BG) {       // painel preto + as 4 notas lado a lado, na cor de cada coluna
+        DrawIconPanel(74.0f, cy);
         for (int k = 0; k < 4; k++)
             NoteColors_DrawNoteIcon(k, 26.0f + 32.0f * (float)k, cy, 0.2f);
+        return;
+    }
+    if (i == OPTION_NOTE_COLORS) {    // 2x2: uma nota de cada cor
+        DrawIconPanel(EXTRA_ICON_CX, cy);
+        for (int k = 0; k < 4; k++)
+            NoteColors_DrawNoteIcon(k, EXTRA_ICON_CX - 10.0f + 20.0f * (float)(k % 2), cy - 10.0f + 20.0f * (float)(k / 2), 0.13f);
+        return;
+    }
+    if (i == OPTION_HIDDEN_NOTES) {   // notas subindo e sumindo devagar
+        DrawHiddenNotesIcon(EXTRA_ICON_CX, cy);
+        return;
+    }
+    if (i == OPTION_STRUM_MOBILE) {   // as 4 teclas do Keys Monitor
+        DrawKeysMonitorIcon(EXTRA_ICON_CX, cy);
         return;
     }
 
@@ -343,10 +465,15 @@ void DrawExtraIcon(int i, float rowY, Color fill, Color shadow) {
             case OPTION_SHOW_SCORE:
             case OPTION_SCORE_POSITION: DrawTextIcon(cx, y, color); break;
             case OPTION_BOPPING_ICONS:  DrawBopIcon(cx, y, color); break;
-            case OPTION_STRUM_MOBILE:   DrawSquareIcon(cx, y, color); break;
+            case OPTION_KEYBOARD_SCHEME: DrawKeyboardIcon(cx, y, color); break;
             case OPTION_ZOOMFACTOR_UI:
             case OPTION_ZOOMFACTOR_GAME: DrawMouseIcon(cx, y, color); break;
             case OPTION_RESET_CONFIG:   DrawResetIcon(cx, y, color); break;
+            case OPTION_STREAM_JSON:    DrawResetIcon(cx, y, color); break;
+            case OPTION_VSYNC:          DrawMonitorIcon(TV_X + TV_W * 0.5f + shift, y, color); break;
+            case OPTION_THREADS:        DrawTechTreeIcon(cx, y, color); break;
+            case OPTION_LOSE_ICON:      DrawSadFaceIcon(cx, y, color); break;
+            case OPTION_BOTPLAY:        DrawRobotIcon(cx, y, color); break;
             default: return;
         }
     }

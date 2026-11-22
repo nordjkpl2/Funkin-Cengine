@@ -71,14 +71,28 @@
 
 // Icones extras (todos na mesma coluna esquerda das linhas).
 #define EXTRA_ICON_CX 58.0f
-#define STRETCH_HALF 20.0f     // meia largura da seta dupla <-->
-#define STRETCH_HEAD 9.0f      // tamanho da ponta da seta
+#define STRETCH_HALF 20.0f     // meia largura do icone de Stretch (cantos)
 #define TEXT_ICON_HALF 14.0f   // meia altura da caixa com o "T"
 #define BOP_ICON_R 7.0f        // raio de cada bolinha do Bopping
-#define KEYMON_ICON_HALF 11.0f // meia largura do quadrado do Keys Monitor
+#define KEYMON_BOX 15.0f        // lado de cada tecla no icone do Keys Monitor
+#define KEYMON_BOX_GAP 4.0f     // espaco entre as teclas
+#define KEYBOARD_W 54.0f        // icone de teclado (Scheme)
+#define KEYBOARD_H 36.0f
+#define ICON_PANEL_W 132.0f     // painel preto atras das notas (Strumline Background)
+#define ICON_PANEL_H 40.0f
+#define ICON_PANEL_ALPHA 170    // mesma ideia da faixa preta do gameplay
+#define HIDDEN_ICON_SCALE 0.16f // tamanho da nota no icone de Hidden Notes
+#define HIDDEN_ICON_PERIOD 3.0f // segundos para cada nota subir e sumir
 #define MOUSE_ICON_W 22.0f     // mouse do Beat Zoom (UI / Game)
 #define MOUSE_ICON_H 34.0f
 #define MOUSE_ICON_STROKE 4.0f
+#define MONITOR_ICON_W 40.0f    // monitor do V-SYNC (mesma coluna do icone de TV)
+#define MONITOR_ICON_H 26.0f
+#define TREE_NODE_R 4.0f        // icone de arvore (Threads)
+#define TREE_STROKE 3.0f
+#define FACE_ICON_R 16.0f       // rosto triste (Losing Icon)
+#define ROBOT_ICON_W 30.0f      // robo (Botplay)
+#define ROBOT_ICON_H 22.0f
 // Centro vertical dos icones de linha (um pouco abaixo do centro da caixa, para ficar na altura do texto).
 #define ROW_ICON_DY 3.0f
 

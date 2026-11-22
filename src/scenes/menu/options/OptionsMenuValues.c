@@ -37,7 +37,7 @@ Option options[OPTION_COUNT] = {
     [OPTION_VSYNC] = {.text = "V-SYNC", .type = OPTION_VALUE_BOOL},
     [OPTION_THREADS] = {.text = "Threads", .type = OPTION_VALUE_LIST, .options = thread_names, .step = 1, .max = 1, .min = 0},
     [OPTION_HEADER_RENDER] = {.text = "[Render]", .type = OPTION_VALUE_HEADER},
-    [OPTION_STREAM_JSON] = {.text = "Streaming JSON Parse (notes)", .type = OPTION_VALUE_BOOL},
+    [OPTION_STREAM_JSON] = {.text = "Streaming JSON (notes)", .type = OPTION_VALUE_BOOL},
     [OPTION_HEADER_GAMEPLAY] = {.text = "[Gameplay]", .type = OPTION_VALUE_HEADER},
     [OPTION_KEYBOARD_SCHEME] = {.text = "Scheme", .type = OPTION_VALUE_LIST, .options = game_available_schemes, .step = 1, .max = SCHEME_COUNT - 1, .min = 0},
     [OPTION_SCROLL_STYLE] = {.text = "Scroll Style", .type = OPTION_VALUE_LIST, .options = scroll_names, .step = 1, .max = 3, .min = 0},
