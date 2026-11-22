@@ -57,6 +57,12 @@ static void OptionsMenu_Create([[maybe_unused]] RayScene* scene) {
 
 #define ROW_CLICK_W 1280.0f // largura clicavel da linha (a tela inteira)
 
+// Faixa da linha selecionada (ver DrawSelectionBar).
+#define SEL_X 110.0f
+#define SEL_W 1080.0f
+#define SEL_PAD 6.0f
+#define SEL_ACCENT_W 5.0f
+
 /* Reset pede confirmacao: o primeiro ENTER arma, o segundo executa. Mover a selecao desarma. */
 static bool resetArmed;
 
@@ -155,6 +161,8 @@ static int TabBarRun(bool draw, Vector2 m) {
             shadow.a = open ? 255 : 100;
             DrawOptionText(label, x, TAB_BAR_Y, TAB_FONT_SIZE, fill, shadow);
             DrawTabLogo(i, x, TAB_BAR_Y - TAB_LOGO_LIFT, fill, shadow);
+            if (open)   // sublinhado da aba aberta
+                DrawRectangleRounded((Rectangle) {x - TEXT_SHADOW, TAB_BAR_Y + TAB_FONT_SIZE + 10.0f, size.x + TEXT_SHADOW * 2.0f, 4.0f}, 0.5f, 4, YELLOW);
         }
         x += size.x;
     }
@@ -273,8 +281,18 @@ static void OptionsMenu_Update([[maybe_unused]] RayScene* scene) {
     }
 }
 
+/* Faixa da linha selecionada: retangulo arredondado translucido com barra de acento amarela. */
+static void DrawSelectionBar(float rowY, float height) {
+    const Rectangle r = {SEL_X, rowY - SEL_PAD, SEL_W, height - 2.0f};
+    DrawRectangleRounded(r, 0.35f, 8, (Color) {255, 255, 255, 26});
+    DrawRectangleRounded((Rectangle) {SEL_X, rowY - SEL_PAD + 8.0f, SEL_ACCENT_W, height - 18.0f}, 1.0f, 4, YELLOW);
+}
+
+/* Dica do rodape: texto sobre uma pilula escura (legivel em qualquer fundo). */
 static void DrawHint(const char* text) {
     const Vector2 pos = {ROW_X, SCREEN_H - 50.0f};
+    const Vector2 ts = MeasureTextEx(mainFont, text, 24, 2);
+    DrawRectangleRounded((Rectangle) {pos.x - 18.0f, pos.y - 8.0f, ts.x + 36.0f, ts.y + 16.0f}, 0.5f, 8, (Color) {0, 0, 0, 170});
     DrawTextEx(mainFont, text, (Vector2) {pos.x + 2.0f, pos.y + 2.0f}, 24, 2, (Color) {0, 0, 0, 200});   // sombra
     DrawTextEx(mainFont, text, pos, 24, 2, (Color) {245, 220, 120, 255});
 }
@@ -282,6 +300,8 @@ static void DrawHint(const char* text) {
 static void OptionsMenu_Draw([[maybe_unused]] RayScene* scene) {
     Render_SetCamera(&cam);
     Render_DrawGraphicObject(&bg);
+    // Escurece o fundo de cima para baixo: o texto fica legivel sobre qualquer imagem de menu.
+    DrawRectangleGradientV(0, 0, 1280, 720, (Color) {0, 0, 0, 70}, (Color) {0, 0, 0, 190});
 
     float y = SCREEN_H / 2.0f - scrollOffset * ROW_HEIGHT;
 
@@ -301,6 +321,7 @@ static void OptionsMenu_Draw([[maybe_unused]] RayScene* scene) {
             continue;
 
         const bool selected = currentOption == i;
+        if (selected) DrawSelectionBar(drawY, height);
 
         if (isHeader) {
             Color fill = YELLOW, shadow = BLACK;
@@ -308,6 +329,8 @@ static void OptionsMenu_Draw([[maybe_unused]] RayScene* scene) {
             shadow.a = selected ? 255 : 100;
 
             DrawOptionText(o->text, HEADER_X, drawY, HEADER_FONT_SIZE, fill, shadow);
+            if (!Option_HorizontalMode())   // fio separador sob o titulo da secao
+                DrawRectangleRec((Rectangle) {HEADER_X, drawY + HEADER_HEIGHT - 4.0f, 1180.0f, 2.0f}, (Color) {255, 255, 255, 40});
             DrawChevron(drawY, o->collapsed, fill, shadow);
 
             if (i == OPTION_HEADER_WINDOW)
@@ -356,7 +379,7 @@ static void OptionsMenu_Draw([[maybe_unused]] RayScene* scene) {
     }
 
     if (Option_HorizontalMode()) {
-        DrawRectangle(0, 0, 1280, (int)TAB_BAND_H, (Color) {0, 0, 0, 180});   // faixa da barra (a lista passa por baixo)
+        DrawRectangleGradientV(0, 0, 1280, (int)TAB_BAND_H, (Color) {0, 0, 0, 215}, (Color) {0, 0, 0, 90});   // faixa da barra (a lista passa por baixo)
         TabBarRun(true, (Vector2) {0.0f, 0.0f});
     }
 

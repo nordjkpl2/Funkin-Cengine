@@ -77,12 +77,11 @@ void PlayStateNoteSpawn_SetEvents(const PlayStateNoteEvents* newEvents) {
     events = *newEvents;
 }
 
-/* Cor de cada lane fixa durante a musica: calculada uma vez aqui, nao por nota/frame. */
-static Color laneColor[4] = {{255, 255, 255, 255}, {255, 255, 255, 255}, {255, 255, 255, 255}, {255, 255, 255, 255}};
-static Vector3 laneTargetHSV[4];
+/* Offset HSB de cada lane fixo durante a musica: lido uma vez aqui, nao por nota/frame. */
+static Vector3 laneShift[4];
 
-static bool IsWhiteColor(Color c) {
-    return c.r == 255 && c.g == 255 && c.b == 255;
+static bool IsIdentityShift(Vector3 s) {
+    return s.x == 0.0f && s.y == 0.0f && s.z == 0.0f;
 }
 
 /* Janela de notas por secao (modo streaming). Ver a descricao em PlayStateNoteSpawn.h. */
@@ -147,14 +146,11 @@ void PlayStateNoteSpawn_Load(Song* song) {
     for (size_t i = 0; i < (size_t)song->sectionCount; i++)
         noteCount += song->sections[i].noteCount;
 
-    for (int lane = 0; lane < 4; lane++) {
-        laneColor[lane] = GameData_LaneTint(lane);
-        laneTargetHSV[lane] = ColorToHSV(laneColor[lane]);
-    }
+    for (int lane = 0; lane < 4; lane++)
+        laneShift[lane] = GameData_LaneShift(lane);
     {
         const RayAnimationHandler skin = Cache_GetNoteAnimations();
-        const Color tints[4] = {laneColor[0], laneColor[1], laneColor[2], laneColor[3]};
-        NoteAtlas_Build(&skin, tints);   /* false = sem cor customizada ou skin grande: cai no shader */
+        NoteAtlas_Build(&skin, laneShift);   /* false = sem ajuste de cor ou skin grande: cai no shader */
     }
 
     /* Streaming: a gameplay fica com o stream; as notas entram pelo Update (StreamFeed). */
@@ -276,15 +272,15 @@ static void SetAnimIfChanged(RayAnimatedObject* object, int anim) {
 }
 
 /* Sustain ainda nao pressionado/perdido: desenha inteiro, sem clip. */
-/* Recolor da skin: troca so o matiz de cada pixel (saturacao e brilho originais ficam),
-   assim um amarelo nao vira marrom escuro como aconteceria com um simples multiplicador. */
+/* Recolor da skin (estilo Psych): soma um offset de matiz, saturacao e brilho a cada pixel.
+   Offset 0 = skin original. Mesma conta de PlayStateNoteAtlas.c (ShiftRow), para atlas e shader baterem. */
 static const char* const recolorFS =
     "#version 330\n"
     "in vec2 fragTexCoord;\n"
     "in vec4 fragColor;\n"
     "uniform sampler2D texture0;\n"
     "uniform vec4 colDiffuse;\n"
-    "uniform vec3 targetHSV;\n"   /* matiz 0..1, saturacao 0..1, brilho 0..1 */
+    "uniform vec3 shiftHSB;\n"   /* x = matiz/360, y = saturacao/100, z = brilho/100 (somados) */
     "out vec4 finalColor;\n"
     "vec3 rgb2hsv(vec3 c) {\n"
     "    vec4 K = vec4(0.0, -1.0/3.0, 2.0/3.0, -1.0);\n"
@@ -302,9 +298,9 @@ static const char* const recolorFS =
     "void main() {\n"
     "    vec4 texel = texture(texture0, fragTexCoord) * colDiffuse * fragColor;\n"
     "    vec3 hsv = rgb2hsv(texel.rgb);\n"
-    "    hsv.x = targetHSV.x;\n"
-    "    hsv.y *= targetHSV.y;\n"
-    "    hsv.z *= targetHSV.z;\n"
+    "    hsv.x = fract(hsv.x + shiftHSB.x);\n"
+    "    hsv.y = clamp(hsv.y + shiftHSB.y, 0.0, 1.0);\n"
+    "    hsv.z = clamp(hsv.z + shiftHSB.z, 0.0, 1.0);\n"
     "    finalColor = vec4(hsv2rgb(hsv), texel.a);\n"
     "}\n";
 
@@ -315,7 +311,7 @@ static bool recolorReady;
 static void EnsureRecolorShader(void) {
     if (recolorReady) return;
     recolorShader = LoadShaderFromMemory(NULL, recolorFS);
-    recolorLoc = GetShaderLocation(recolorShader, "targetHSV");
+    recolorLoc = GetShaderLocation(recolorShader, "shiftHSB");
     recolorReady = true;
 }
 
@@ -348,33 +344,30 @@ static void DrawLaneObjs(int lane, RayAnimatedObject* a, RayAnimatedObject* b) {
         return;
     }
 
-    if (IsWhiteColor(laneColor[lane])) {
+    if (IsIdentityShift(laneShift[lane])) {
         if (a != NULL) Render_DrawAnimatedObject(a);
         if (b != NULL) Render_DrawAnimatedObject(b);
         return;
     }
 
     EnsureRecolorShader();
-    const float target[3] = {laneTargetHSV[lane].x / 360.0f, laneTargetHSV[lane].y, laneTargetHSV[lane].z};
     rlDrawRenderBatchActive();   /* o lote pendente usa o uniform antigo */
-    SetShaderValue(recolorShader, recolorLoc, target, SHADER_UNIFORM_VEC3);
+    SetShaderValue(recolorShader, recolorLoc, &laneShift[lane], SHADER_UNIFORM_VEC3);
     BeginShaderMode(recolorShader);
     if (a != NULL) Render_DrawAnimatedObject(a);
     if (b != NULL) Render_DrawAnimatedObject(b);
     EndShaderMode();
 }
 
-/* Menu de opcoes (preview): mesmo desenho de nota com uma cor qualquer (sempre shader, sem atlas). */
-void PlayStateNoteSpawn_DrawTinted(RayAnimatedObject* obj, Color tint) {
-    if (IsWhiteColor(tint)) {
+/* Menu de opcoes (preview): mesmo desenho de nota com um offset HSB qualquer (sempre shader, sem atlas). */
+void PlayStateNoteSpawn_DrawShifted(RayAnimatedObject* obj, Vector3 shift) {
+    if (IsIdentityShift(shift)) {
         Render_DrawAnimatedObject(obj);
         return;
     }
     EnsureRecolorShader();
-    const Vector3 hsv = ColorToHSV(tint);
-    const float target[3] = {hsv.x / 360.0f, hsv.y, hsv.z};
     rlDrawRenderBatchActive();
-    SetShaderValue(recolorShader, recolorLoc, target, SHADER_UNIFORM_VEC3);
+    SetShaderValue(recolorShader, recolorLoc, &shift, SHADER_UNIFORM_VEC3);
     BeginShaderMode(recolorShader);
     Render_DrawAnimatedObject(obj);
     EndShaderMode();

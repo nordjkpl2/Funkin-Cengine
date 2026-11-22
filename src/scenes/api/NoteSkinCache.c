@@ -11,6 +11,8 @@
 #include <stdbool.h>
 #include "data/Song.h"
 #include "core/ModPath.h"
+#include "Log.h"
+#include "Render.h"
 #include "core/ModList.h"
 
 #define NOTE_SKIN_MAX 16
@@ -135,6 +137,37 @@ static bool NoteSkin_FindFiles(const char* skinName, const char* songDir, Cached
     return false;
 }
 
+/* Aviso para cada animacao de lane que a skin nao tem (a lane some sem erro visivel). */
+static void WarnMissingLaneAnims(const char* skinName, const RayAnimationHandler* anims) {
+    static const char* const names[] = {
+        "arrowLEFT", "arrowDOWN", "arrowUP", "arrowRIGHT",
+        "left press", "down press", "up press", "right press",
+        "left confirm", "down confirm", "up confirm", "right confirm",
+        "purple", "blue", "green", "red",
+        "purple hold piece", "blue hold piece", "green hold piece", "red hold piece",
+        "purple hold end", "blue hold end", "green hold end", "red hold end",
+    };
+    for (size_t i = 0; i < sizeof(names) / sizeof(names[0]); i++)
+        if (AnimationSet_FindAnimation(anims, names[i]) < 0)
+            Log_WarnF("Skin '%s': animacao '%s' nao existe no XML (a lane pode sumir)", skinName, names[i]);
+}
+
+/* Aviso se a skin usada nao e a que a musica pediria pelo proprio mod (cache por nome pode trazer
+   a de outro mod carregada antes). */
+static void WarnIfSkinMismatch(const char* skinName, const char* songDir, const CachedNoteSkin* used) {
+    char base[SKIN_PATH_MAX], modRoot[SKIN_PATH_MAX] = {0};
+    CachedNoteSkin own = {0};
+
+    if (!SkinBaseName(skinName, base, sizeof(base))) return;
+    if (!ExtractModRoot(songDir, modRoot, sizeof(modRoot))) return;
+    if (!TrySkinRoot(modRoot, base, &own)) {
+        Log_WarnF("Skin '%s' nao existe no mod da musica (%s): usando %s", skinName, modRoot, used->texturePath);
+        return;
+    }
+    if (strcmp(own.texturePath, used->texturePath) != 0)
+        Log_WarnF("Skin '%s': usando %s, mas o mod da musica tem %s", skinName, used->texturePath, own.texturePath);
+}
+
 /* Devolve a skin em cache (carregando se preciso) ou NULL se nao existir. */
 static CachedNoteSkin* ResolveNoteSkin(const char* skinName, const char* songDir) {
     if (!skinName || !skinName[0]) return NULL;
@@ -146,6 +179,7 @@ static CachedNoteSkin* ResolveNoteSkin(const char* skinName, const char* songDir
             skin->animations = NoteSkin_Load(skin->animationPath, skin->texturePath);
             skin->isLoaded = 1;
         }
+        WarnIfSkinMismatch(skinName, songDir, skin);
         return skin;
     }
 
@@ -157,11 +191,14 @@ static CachedNoteSkin* ResolveNoteSkin(const char* skinName, const char* songDir
 
     if (!NoteSkin_FindFiles(skinName, songDir, slot)) {
         slot->name[0] = 0; // libera o slot
+        Log_WarnF("Skin de notas '%s' nao encontrada (esperado %s.png/.xml em images/)", skinName, skinName);
         return NULL;
     }
+    WarnIfSkinMismatch(skinName, songDir, slot);
 
     slot->animations = NoteSkin_Load(slot->animationPath, slot->texturePath);
     slot->isLoaded = 1;
+    WarnMissingLaneAnims(skinName, &slot->animations);
     noteSkinCount++;
     return slot;
 }

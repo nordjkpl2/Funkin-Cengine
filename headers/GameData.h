@@ -22,7 +22,7 @@ typedef struct GameOptions {
     char hiddenNotesAlt;      /* Hidden Notes: 0 Off, 1 Alternate, 2 Only Playable, 3 Alternate Playable (ver GameData_HiddenShowsSide) */
     char loseIcon;            /* Losing Icon: icone troca para o de derrota quando o lado perde (so visual) */
     char horizontalMenu;      /* menu de opcoes: 0 = lista vertical, 1 = titulos em barra horizontal (uma secao por vez) */
-    unsigned char laneTint[4][3]; /* RGB por coluna (esq, baixo, cima, dir): multiplica a skin; 255,255,255 = original */
+    short laneHSB[4][3];      /* por coluna (esq, baixo, cima, dir): offset de matiz (-180..180 graus), saturacao e brilho (-100..100 %); 0 = skin original */
     int scheme, fps;
     int threadLimit; /* 0 = Auto (nucleos - 1); >0 = limite de threads de fundo (1..64) */
     float zoomFactorUI, zoomFactorGAME;
@@ -42,8 +42,13 @@ typedef struct GameOptions {
 
 extern GameOptions gameOptions;
 
-/* Cor de tint de uma coluna (0..3), ja com alpha 255. Branco = sem mudanca. */
-Color GameData_LaneTint(int lane);
+/* Offset HSB de uma coluna (0..3) para o shader: x = matiz / 360, y = saturacao / 100, z = brilho / 100.
+   (0,0,0) = sem mudanca. */
+Vector3 GameData_LaneShift(int lane);
+/* Mesma conta do shader, na CPU (para a cor de um monitor/icone). c e a cor base. */
+Color GameData_ShiftColor(Color c, Vector3 shift);
+/* 1 se a coluna tem algum offset (0 = skin original). */
+char GameData_LaneShifted(int lane);
 
 /* Hidden Notes: 1 se o lado (bfSide: 1 = BF) deve ser desenhado; singerBf = quem canta na secao. */
 char GameData_HiddenShowsSide(char bfSide, char singerBf);

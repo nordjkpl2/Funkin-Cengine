@@ -1,7 +1,8 @@
 /* // * Friday Night Funkin´ c engine (c) 2026 nordjkpl */
 /*
- * OptionsMenuNoteColors.c - tela de cor das notas: roda de matiz/saturacao, barra de brilho, paleta,
- * RGB/HEX e copiar/colar. Cada coluna (esq, baixo, cima, dir) guarda um RGB em gameOptions.laneTint.
+ * OptionsMenuNoteColors.c - tela de cor das notas (estilo Psych): por coluna, tres sliders de Matiz,
+ * Saturacao e Brilho. Sao offsets sobre a skin (0 = original), guardados em gameOptions.laneHSB.
+ * O preview e a nota real da skin, desenhada pelo mesmo shader da gameplay.
  */
 #include "scenes/api/FontLoader.h"
 #include "scenes/menu/options/OptionsMenuInternal.h"
@@ -14,121 +15,88 @@
 #include <math.h>
 #include <stdio.h>
 
-#define NC_WHEEL_CX 880.0f
-#define NC_WHEEL_CY 300.0f
-#define NC_WHEEL_R 150
-#define NC_BAR_X 1080.0f
-#define NC_BAR_Y 150.0f
-#define NC_BAR_W 44.0f
-#define NC_BAR_H 300.0f
-#define NC_SW_COLS 12
-#define NC_SW_ROWS 3
-#define NC_SW_W 34.0f
-#define NC_SW_H 28.0f
-#define NC_SW_STEP 40.0f
-#define NC_SW_ROW_STEP 34.0f
-#define NC_SW_X 80.0f
-#define NC_SW_Y 540.0f
-#define NC_DEG2RAD 0.01745329252f
-// Coluna de preview (receptor + nota reais da skin), lado esquerdo, de cima para baixo: LEFT, DOWN, UP, RIGHT.
 #define NC_PREV_CX 200.0f
-#define NC_PREV_Y0 150.0f
+#define NC_PREV_Y0 200.0f
 #define NC_PREV_STEP 100.0f
 #define NC_PREV_HALF 52.0f
+#define NC_CARD_PREV (Rectangle) {40.0f, 150.0f, 320.0f, 420.0f}
+#define NC_CARD_SL (Rectangle) {500.0f, 150.0f, 740.0f, 420.0f}
+
+#define NC_LANE_X 540.0f
+#define NC_LANE_Y 80.0f
+#define NC_LANE_STEP 170.0f
+#define NC_LANE_W 150.0f
+#define NC_LANE_H 46.0f
+
+#define NC_SL_X 540.0f
+#define NC_SL_W 700.0f
+#define NC_SL_H 26.0f
+#define NC_SL_Y0 236.0f
+#define NC_SL_STEP 100.0f
+#define NC_SL_COUNT 3
+
+#define NC_BTN_Y 610.0f
+#define NC_BTN_H 46.0f
+#define NC_BTN_W 170.0f
+#define NC_BTN_GAP 14.0f
+
+#define NC_ROUND 0.12f
 
 bool noteColorScreen;
 
-static int lane;                 // coluna sendo editada (0..3)
-static float hue, sat, val;      // HSV da cor atual (roda + barra)
-static int drag;                 // 0 = nada, 1 = roda, 2 = barra
-static Texture2D wheelTex;
-static bool wheelReady;
-static Color clipboard = {255, 255, 255, 255};
+static int lane;      /* coluna sendo editada (0..3) */
+static int slider;    /* slider com foco: 0 = matiz, 1 = saturacao, 2 = brilho */
+static int drag;      /* 0 = nada; 1 + indice do slider sendo arrastado com o mouse */
+static short clip[NC_SL_COUNT];
 static bool hasClip;
-static Color swatches[NC_SW_ROWS * NC_SW_COLS];
-static bool swatchesReady;
 
 static const char* const laneNames[4] = {"LEFT", "DOWN", "UP", "RIGHT"};
-static TextMeasure laneNameMeasure[4]; // nomes fixos: medidos uma vez
+static const char* const sliderNames[NC_SL_COUNT] = {"HUE", "SATURATION", "BRIGHTNESS"};
+static const short sliderMin[NC_SL_COUNT] = {-180, -100, -100};
+static const short sliderMax[NC_SL_COUNT] = {180, 100, 100};
+static TextMeasure laneNameMeasure[4]; /* nomes fixos: medidos uma vez */
 
-/* Botoes das colunas em cima da roda (canto superior direito). */
-static Rectangle LaneButton(int i) { return (Rectangle) {700.0f + (float)i * 108.0f, 72.0f, 96.0f, 44.0f}; }
-static Rectangle CopyButton(void) { return (Rectangle) {340.0f, 300.0f, 110.0f, 44.0f}; }
-static Rectangle PasteButton(void) { return (Rectangle) {462.0f, 300.0f, 110.0f, 44.0f}; }
-static Rectangle ResetButton(void) { return (Rectangle) {584.0f, 300.0f, 110.0f, 44.0f}; }
-static Rectangle BarRect(void) { return (Rectangle) {NC_BAR_X, NC_BAR_Y, NC_BAR_W, NC_BAR_H}; }
+static Rectangle LaneButton(int i) { return (Rectangle) {NC_LANE_X + (float)i * NC_LANE_STEP, NC_LANE_Y, NC_LANE_W, NC_LANE_H}; }
+static Rectangle SliderRect(int s) { return (Rectangle) {NC_SL_X, NC_SL_Y0 + (float)s * NC_SL_STEP, NC_SL_W, NC_SL_H}; }
+static Rectangle SliderHit(int s) {
+    const Rectangle r = SliderRect(s);
+    return (Rectangle) {r.x - 10.0f, r.y - 18.0f, r.width + 20.0f, r.height + 36.0f};
+}
+static Rectangle CopyButton(void)  { return (Rectangle) {NC_SL_X, NC_BTN_Y, NC_BTN_W, NC_BTN_H}; }
+static Rectangle PasteButton(void) { return (Rectangle) {NC_SL_X + NC_BTN_W + NC_BTN_GAP, NC_BTN_Y, NC_BTN_W, NC_BTN_H}; }
+static Rectangle ResetButton(void) { return (Rectangle) {NC_SL_X + 2.0f * (NC_BTN_W + NC_BTN_GAP), NC_BTN_Y, NC_BTN_W + 60.0f, NC_BTN_H}; }
 
-static Rectangle SwatchRect(int r, int c) {
-    return (Rectangle) {NC_SW_X + (float)c * NC_SW_STEP, NC_SW_Y + (float)r * NC_SW_ROW_STEP, NC_SW_W, NC_SW_H};
-    /* (paleta compacta: ver NC_SW_* acima) */
+static short* Val(int s) { return &gameOptions.laneHSB[lane][s]; }
+
+static void SetVal(int s, int v) {
+    if (v < sliderMin[s]) v = sliderMin[s];
+    if (v > sliderMax[s]) v = sliderMax[s];
+    *Val(s) = (short)v;
 }
 
-static void BuildWheel(void) {
-    const int size = NC_WHEEL_R * 2;
-    Image img = GenImageColor(size, size, BLANK);
-    for (int y = 0; y < size; y++) {
-        for (int x = 0; x < size; x++) {
-            const float dx = (float)x + 0.5f - NC_WHEEL_R;
-            const float dy = (float)y + 0.5f - NC_WHEEL_R;
-            const float d = sqrtf(dx * dx + dy * dy);
-            if (d > NC_WHEEL_R) continue;
-            float h = atan2f(dy, dx) / NC_DEG2RAD;
-            if (h < 0.0f) h += 360.0f;
-            ImageDrawPixel(&img, x, y, ColorFromHSV(h, d / NC_WHEEL_R, 1.0f));
-        }
-    }
-    wheelTex = LoadTextureFromImage(img);
-    UnloadImage(img);
-    wheelReady = true;
+static void ResetLane(void) {
+    for (int s = 0; s < NC_SL_COUNT; s++) *Val(s) = 0;
 }
 
-static void BuildSwatches(void) {
-    for (int c = 0; c < NC_SW_COLS; c++) {
-        const float h = (float)c * 360.0f / NC_SW_COLS;
-        swatches[0 * NC_SW_COLS + c] = ColorFromHSV(h, 1.0f, 1.0f);
-        swatches[1 * NC_SW_COLS + c] = ColorFromHSV(h, 0.5f, 1.0f);
-        swatches[2 * NC_SW_COLS + c] = ColorFromHSV(0.0f, 0.0f, 1.0f - (float)c / (NC_SW_COLS - 1));
-    }
-    swatchesReady = true;
-}
-
-/* Recarrega o HSV a partir do RGB guardado da coluna. */
-static void LoadLaneHSV(void) {
-    const Vector3 h = ColorToHSV(GameData_LaneTint(lane));
-    hue = h.x;
-    sat = h.y;
-    val = h.z;
-}
-
-/* Grava o HSV atual como RGB da coluna. */
-static void ApplyHSV(void) {
-    const Color c = ColorFromHSV(hue, sat, val);
-    gameOptions.laneTint[lane][0] = c.r;
-    gameOptions.laneTint[lane][1] = c.g;
-    gameOptions.laneTint[lane][2] = c.b;
-}
-
-static void SetLaneRGB(Color c) {
-    gameOptions.laneTint[lane][0] = c.r;
-    gameOptions.laneTint[lane][1] = c.g;
-    gameOptions.laneTint[lane][2] = c.b;
-    LoadLaneHSV();
+/* Mouse no slider: posicao na barra vira valor (arredondado para inteiro). */
+static void DragSlider(int s, float mx) {
+    const Rectangle r = SliderRect(s);
+    float t = (mx - r.x) / r.width;
+    if (t < 0.0f) t = 0.0f;
+    if (t > 1.0f) t = 1.0f;
+    SetVal(s, (int)lroundf(sliderMin[s] + t * (float)(sliderMax[s] - sliderMin[s])));
 }
 
 static void SelectLane(int i) {
     lane = i;
     drag = 0;
-    LoadLaneHSV();
 }
 
 void NoteColorScreen_Begin(void) {
     NoteColors_ReleaseFx();   /* recarrega a previa com a skin padrao */
-    if (!wheelReady) BuildWheel();
-    if (!swatchesReady) BuildSwatches();
     noteColorScreen = true;
     drag = 0;
-    LoadLaneHSV();
-    while (GetKeyPressed() != 0) {}   // descarta o Enter que abriu a tela
+    while (GetKeyPressed() != 0) {}   /* descarta o Enter que abriu a tela */
 }
 
 static void CloseScreen(void) {
@@ -141,68 +109,52 @@ void NoteColorScreen_Update(void) {
         CloseScreen();
         return;
     }
-    if (IsKeyPressed(KEY_LEFT)) SelectLane((lane + 3) % 4);
-    if (IsKeyPressed(KEY_RIGHT)) SelectLane((lane + 1) % 4);
+
+    // Teclado: W/S (ou setas cima/baixo) troca o slider; A/D (ou setas) ajusta; ALT = passo grande.
+    const int step = IsKeyDown(KEY_LEFT_ALT) ? 10 : 1;
+    if (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W)) slider = (slider + NC_SL_COUNT - 1) % NC_SL_COUNT;
+    if (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S)) slider = (slider + 1) % NC_SL_COUNT;
+    if (IsKeyPressedRepeat(KEY_LEFT) || IsKeyPressedRepeat(KEY_A)) SetVal(slider, *Val(slider) - step);
+    if (IsKeyPressedRepeat(KEY_RIGHT) || IsKeyPressedRepeat(KEY_D)) SetVal(slider, *Val(slider) + step);
+    if (IsKeyPressed(KEY_Q)) SelectLane((lane + 3) % 4);
+    if (IsKeyPressed(KEY_E)) SelectLane((lane + 1) % 4);
     if (IsKeyPressed(KEY_R)) {
         if (IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT)) {
-            for (int i = 0; i < 4; i++) {
-                gameOptions.laneTint[i][0] = gameOptions.laneTint[i][1] = gameOptions.laneTint[i][2] = 255;
-            }
-            LoadLaneHSV();
+            for (int i = 0; i < 4; i++)
+                for (int s = 0; s < NC_SL_COUNT; s++) gameOptions.laneHSB[i][s] = 0;
         }
-        else SetLaneRGB((Color) {255, 255, 255, 255});
+        else ResetLane();
     }
 
+    // Mouse: arrastar nas barras; cliques nas colunas, previa, copiar/colar/resetar.
     const Vector2 m = RayGame_MouseWorld();
-    const Vector2 wheelC = {NC_WHEEL_CX, NC_WHEEL_CY};
-
     if (!IsMouseButtonDown(MOUSE_BUTTON_LEFT)) drag = 0;
 
     if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-        if (CheckCollisionPointCircle(m, wheelC, (float)NC_WHEEL_R)) drag = 1;
-        else if (CheckCollisionPointRec(m, BarRect())) drag = 2;
-        else {
-            for (int i = 0; i < 4; i++)
-                if (CheckCollisionPointRec(m, LaneButton(i))) SelectLane(i);
-            for (int i = 0; i < 4; i++) {
-                const Rectangle pr = {NC_PREV_CX - NC_PREV_HALF, NC_PREV_Y0 + (float)i * NC_PREV_STEP - NC_PREV_HALF,
-                                      NC_PREV_HALF * 2.0f, NC_PREV_HALF * 2.0f};
-                if (CheckCollisionPointRec(m, pr)) SelectLane(i);
-            }
-            for (int r = 0; r < NC_SW_ROWS; r++)
-                for (int c = 0; c < NC_SW_COLS; c++)
-                    if (CheckCollisionPointRec(m, SwatchRect(r, c))) {
-                        SetLaneRGB(swatches[r * NC_SW_COLS + c]);
-                    }
-            if (CheckCollisionPointRec(m, CopyButton())) {
-                clipboard = GameData_LaneTint(lane);
-                hasClip = true;
-            }
-            if (CheckCollisionPointRec(m, PasteButton()) && hasClip) SetLaneRGB(clipboard);
-            if (CheckCollisionPointRec(m, ResetButton())) SetLaneRGB((Color) {255, 255, 255, 255});
+        for (int s = 0; s < NC_SL_COUNT; s++)
+            if (CheckCollisionPointRec(m, SliderHit(s))) drag = 1 + s;
+        for (int i = 0; i < 4; i++) {
+            if (CheckCollisionPointRec(m, LaneButton(i))) SelectLane(i);
+            const Rectangle pr = {NC_PREV_CX - NC_PREV_HALF, NC_PREV_Y0 + (float)i * NC_PREV_STEP - NC_PREV_HALF,
+                                  NC_PREV_HALF * 2.0f, NC_PREV_HALF * 2.0f};
+            if (CheckCollisionPointRec(m, pr)) SelectLane(i);
         }
+        if (CheckCollisionPointRec(m, CopyButton())) {
+            for (int s = 0; s < NC_SL_COUNT; s++) clip[s] = *Val(s);
+            hasClip = true;
+        }
+        if (CheckCollisionPointRec(m, PasteButton()) && hasClip)
+            for (int s = 0; s < NC_SL_COUNT; s++) SetVal(s, clip[s]);
+        if (CheckCollisionPointRec(m, ResetButton())) ResetLane();
     }
 
-    if (drag == 1) {
-        const float dx = m.x - NC_WHEEL_CX, dy = m.y - NC_WHEEL_CY;
-        float d = sqrtf(dx * dx + dy * dy) / NC_WHEEL_R;
-        if (d > 1.0f) d = 1.0f;
-        float h = atan2f(dy, dx) / NC_DEG2RAD;
-        if (h < 0.0f) h += 360.0f;
-        hue = h;
-        sat = d;
-        ApplyHSV();
-    }
-    else if (drag == 2) {
-        float v = 1.0f - (m.y - NC_BAR_Y) / NC_BAR_H;
-        if (v < 0.0f) v = 0.0f;
-        if (v > 1.0f) v = 1.0f;
-        val = v;
-        ApplyHSV();
+    if (drag > 0) {
+        slider = drag - 1;
+        DragSlider(slider, m.x);
     }
 }
 
-/* Receptor + nota reais da skin (a nota ja vai com a cor da coluna), centrados em (cx, cy).
+/* Receptor + nota reais da skin (a nota ja vai com o ajuste da coluna), centrados em (cx, cy).
    Usado aqui e na tela de teclas Custom. */
 static StrumNote laneStrum[4];
 static RayAnimatedObject laneNote[4];
@@ -220,10 +172,10 @@ static void EnsureLaneFx(void) {
     laneFxReady = true;
 }
 
-void NoteColors_DrawLanePreview(int lane, float cx, float cy, float scale) {
+void NoteColors_DrawLanePreview(int laneIdx, float cx, float cy, float scale) {
     EnsureLaneFx();
-    StrumNote* s = laneStrum + lane;
-    RayAnimatedObject* n = laneNote + lane;
+    StrumNote* s = laneStrum + laneIdx;
+    RayAnimatedObject* n = laneNote + laneIdx;
 
     s->object.scaleX = s->object.scaleY = scale;
     n->scaleX = n->scaleY = scale;
@@ -236,17 +188,17 @@ void NoteColors_DrawLanePreview(int lane, float cx, float cy, float scale) {
     n->position = (Vector2) {cx - ns.x * 0.5f, cy - ns.y * 0.5f};
 
     Render_DrawAnimatedObject(&s->object);
-    PlayStateNoteSpawn_DrawTinted(n, GameData_LaneTint(lane));
+    PlayStateNoteSpawn_DrawShifted(n, GameData_LaneShift(laneIdx));
 }
 
-void NoteColors_DrawNoteIcon(int lane, float cx, float cy, float scale) {
+void NoteColors_DrawNoteIcon(int laneIdx, float cx, float cy, float scale) {
     EnsureLaneFx();
-    RayAnimatedObject* n = laneNote + lane;
+    RayAnimatedObject* n = laneNote + laneIdx;
     n->scaleX = n->scaleY = scale;
     AnimatedObject_UpdateFrame(n);
     const Vector2 ns = AnimatedObject_Sizes(n);
     n->position = (Vector2) {cx - ns.x * 0.5f, cy - ns.y * 0.5f};
-    PlayStateNoteSpawn_DrawTinted(n, GameData_LaneTint(lane));
+    PlayStateNoteSpawn_DrawShifted(n, GameData_LaneShift(laneIdx));
 }
 
 void NoteColors_ReleaseFx(void) {
@@ -254,84 +206,92 @@ void NoteColors_ReleaseFx(void) {
     laneFxReady = false;
 }
 
+/* Barra de um slider: gradiente de fundo + marcador no valor atual + rotulo e valor. */
+static void DrawSliderBar(int s) {
+    const Rectangle r = SliderRect(s);
+    const bool focus = slider == s;
+    const int v = *Val(s);
+
+    // Rotulo e valor acima da barra.
+    char value[16];
+    if (s == 0) (void)snprintf(value, sizeof(value), "%+d", v);
+    else        (void)snprintf(value, sizeof(value), "%+d%%", v);
+    DrawTextEx(mainFont, sliderNames[s], (Vector2) {r.x, r.y - 34.0f}, 26, 1.0f, focus ? YELLOW : GRAY);
+    const Vector2 vs = MeasureTextEx(mainFont, value, 26, 1.0f);
+    DrawTextEx(mainFont, value, (Vector2) {r.x + r.width - vs.x, r.y - 34.0f}, 26, 1.0f, focus ? WHITE : LIGHTGRAY);
+
+    // Fundo da barra: matiz = arco-iris; saturacao = cinza -> cor quente; brilho = preto -> branco.
+    if (s == 0) {
+        const float seg = r.width / 6.0f;
+        const Color stops[7] = {
+            {255, 0, 0, 255}, {255, 255, 0, 255}, {0, 255, 0, 255}, {0, 255, 255, 255},
+            {0, 0, 255, 255}, {255, 0, 255, 255}, {255, 0, 0, 255}};
+        for (int i = 0; i < 6; i++)
+            DrawRectangleGradientH((int)(r.x + seg * (float)i), (int)r.y, (int)seg + 1, (int)r.height, stops[i], stops[i + 1]);
+    }
+    else if (s == 1) DrawRectangleGradientH((int)r.x, (int)r.y, (int)r.width, (int)r.height,
+                                            (Color) {110, 110, 110, 255}, (Color) {255, 150, 70, 255});
+    else             DrawRectangleGradientH((int)r.x, (int)r.y, (int)r.width, (int)r.height,
+                                            (Color) {0, 0, 0, 255}, (Color) {255, 255, 255, 255});
+    DrawRectangleLinesEx(r, focus ? 3.0f : 2.0f, focus ? YELLOW : (Color) {20, 20, 20, 255});
+
+    // Marcador: posicao do valor dentro da faixa.
+    const float t = (float)(v - sliderMin[s]) / (float)(sliderMax[s] - sliderMin[s]);
+    const float kx = r.x + t * r.width;
+    DrawRectangleRec((Rectangle) {kx - 3.0f, r.y - 6.0f, 6.0f, r.height + 12.0f}, BLACK);
+    DrawRectangleRec((Rectangle) {kx - 2.0f, r.y - 4.0f, 4.0f, r.height + 8.0f}, WHITE);
+}
+
+static void DrawButton(Rectangle r, const char* text, bool enabled) {
+    const Color fill = (Color) {46, 46, 52, 255};
+    DrawRectangleRounded(r, NC_ROUND, 6, fill);
+    DrawRectangleRoundedLinesEx(r, NC_ROUND, 6, 2.0f, enabled ? WHITE : GRAY);
+    const Vector2 ts = MeasureTextEx(mainFont, text, 26, 1.0f);
+    DrawTextEx(mainFont, text, (Vector2) {r.x + (r.width - ts.x) * 0.5f, r.y + (r.height - ts.y) * 0.5f},
+               26, 1.0f, enabled ? WHITE : GRAY);
+}
+
 void NoteColorScreen_Draw(void) {
     DrawRectangle(0, 0, 1280, 720, (Color) {0, 0, 0, 225});
     DrawTextEx(mainFont, "NOTE COLORS", (Vector2) {80, 14}, 40, TEXT_SPACING, YELLOW);
 
-    const Color cur = ColorFromHSV(hue, sat, val);
-    const Color tint = GameData_LaneTint(lane);
+    // Cartoes: previa a esquerda, controles a direita.
+    DrawRectangleRounded(NC_CARD_PREV, NC_ROUND, 8, (Color) {22, 22, 28, 240});
+    DrawRectangleRounded(NC_CARD_SL, NC_ROUND, 8, (Color) {22, 22, 28, 240});
 
-    // Botoes das colunas (cor da coluna no fundo).
+    // Botoes das colunas: a coluna selecionada fica com borda branca.
     for (int i = 0; i < 4; i++) {
         const Rectangle r = LaneButton(i);
-        const Color c = GameData_LaneTint(i);
-        DrawRectangleRec(r, (Color) {c.r / 3, c.g / 3, c.b / 3, 255});
-        DrawRectangleLinesEx(r, i == lane ? 4.0f : 2.0f, i == lane ? WHITE : GRAY);
+        const bool sel = i == lane;
+        DrawRectangleRounded(r, NC_ROUND, 6, sel ? (Color) {70, 70, 80, 255} : (Color) {34, 34, 40, 255});
+        DrawRectangleRoundedLinesEx(r, NC_ROUND, 6, sel ? 3.0f : 1.0f, sel ? WHITE : GRAY);
         const Vector2 ts = TextMeasure_Get(&laneNameMeasure[i], mainFont, laneNames[i], 26, 1.0f);
         DrawTextEx(mainFont, laneNames[i], (Vector2) {r.x + (r.width - ts.x) * 0.5f, r.y + (r.height - ts.y) * 0.5f},
-                   26, 1.0f, WHITE);
+                   26, 1.0f, sel ? WHITE : LIGHTGRAY);
     }
 
-    // Pre-visualizacao: as 4 colunas com a skin real; a selecionada aparece maior.
+    // Previa: as 4 colunas com a skin real; a selecionada aparece maior.
     for (int i = 0; i < 4; i++)
         NoteColors_DrawLanePreview(i, NC_PREV_CX, NC_PREV_Y0 + (float)i * NC_PREV_STEP, i == lane ? 0.85f : 0.6f);
 
-    // Leitura HEX e RGB.
-    char line[64];
-    if (tint.r == 255 && tint.g == 255 && tint.b == 255) {
-        DrawTextEx(mainFont, "Standart (padrão)", (Vector2) {340.0f, 176.0f}, 44, 2, WHITE);
-    } else {
-        (void)snprintf(line, sizeof(line), "%02X%02X%02X", tint.r, tint.g, tint.b);
-        DrawTextEx(mainFont, line, (Vector2) {340.0f, 150.0f}, 64, TEXT_SPACING, tint);
-    }
-    (void)snprintf(line, sizeof(line), "R %3d   G %3d   B %3d", tint.r, tint.g, tint.b);
-    DrawTextEx(mainFont, line, (Vector2) {340.0f, 240.0f}, 26, 2, WHITE);
+    // Estado da coluna: original ou ajustada.
+    const bool shifted = GameData_LaneShifted(lane);
+    DrawTextEx(mainFont, shifted ? "Ajustada" : "Original", (Vector2) {NC_SL_X, NC_LANE_Y + NC_LANE_H + 14.0f},
+               26, 1.0f, shifted ? YELLOW : GRAY);
 
-    // Copiar / colar / resetar.
-    const Rectangle bc = CopyButton(), bp = PasteButton(), br = ResetButton();
-    DrawRectangleRec(bc, (Color) {60, 60, 60, 255});
-    DrawRectangleLinesEx(bc, 2.0f, WHITE);
-    DrawTextEx(mainFont, "COPY", (Vector2) {bc.x + 24.0f, bc.y + 6.0f}, 28, 2, WHITE);
-    DrawRectangleRec(bp, (Color) {60, 60, 60, 255});
-    DrawRectangleLinesEx(bp, 2.0f, hasClip ? WHITE : GRAY);
-    DrawTextEx(mainFont, "PASTE", (Vector2) {bp.x + 18.0f, bp.y + 6.0f}, 28, 2, hasClip ? WHITE : GRAY);
-    DrawRectangleRec(br, (Color) {60, 60, 60, 255});
-    DrawRectangleLinesEx(br, 2.0f, WHITE);
-    DrawTextEx(mainFont, "RESET", (Vector2) {br.x + 18.0f, br.y + 6.0f}, 28, 2, WHITE);
+    // Os tres sliders.
+    for (int s = 0; s < NC_SL_COUNT; s++) DrawSliderBar(s);
 
-    // Roda de matiz (eixo angular) e saturacao (raio).
-    if (wheelReady) DrawTexture(wheelTex, (int)(NC_WHEEL_CX - NC_WHEEL_R), (int)(NC_WHEEL_CY - NC_WHEEL_R), WHITE);
-    const float mx = NC_WHEEL_CX + (float)NC_WHEEL_R * sat * cosf(hue * NC_DEG2RAD);
-    const float my = NC_WHEEL_CY + (float)NC_WHEEL_R * sat * sinf(hue * NC_DEG2RAD);
-    DrawCircleV((Vector2) {mx, my}, 11.0f, BLACK);
-    DrawCircleV((Vector2) {mx, my}, 8.0f, cur);
+    // Copiar / colar / resetar a coluna.
+    DrawButton(CopyButton(), "COPY", true);
+    DrawButton(PasteButton(), "PASTE", hasClip);
+    DrawButton(ResetButton(), "RESET LANE", true);
 
-    // Barra de brilho (valor).
-    const Rectangle bar = BarRect();
-    DrawRectangleGradientV((int)bar.x, (int)bar.y, (int)bar.width, (int)bar.height,
-                           ColorFromHSV(hue, sat, 1.0f), BLACK);
-    DrawRectangleLinesEx(bar, 2.0f, WHITE);
-    const float ky = bar.y + (1.0f - val) * bar.height;
-    DrawRectangleLinesEx((Rectangle) {bar.x - 6.0f, ky - 5.0f, bar.width + 12.0f, 10.0f}, 2.0f, BLACK);
-    DrawRectangleLinesEx((Rectangle) {bar.x - 4.0f, ky - 3.0f, bar.width + 8.0f, 6.0f}, 2.0f, WHITE);
-
-    // Paleta rapida.
-    for (int r = 0; r < NC_SW_ROWS; r++) {
-        for (int c = 0; c < NC_SW_COLS; c++) {
-            const Rectangle sr = SwatchRect(r, c);
-            DrawRectangleRec(sr, swatches[r * NC_SW_COLS + c]);
-            DrawRectangleLinesEx(sr, 2.0f, (Color) {20, 20, 20, 255});
-        }
-    }
-
-    DrawTextEx(mainFont, "Wheel: hue/saturation   Bar: brightness   Swatch: quick pick",
-               (Vector2) {80, 662}, 22, 1, GRAY);
-    DrawTextEx(mainFont, "LEFT/RIGHT: column   R: reset column   SHIFT+R: reset all   ESC/BACKSPACE: back",
-               (Vector2) {80, 688}, 22, 1, GRAY);
+    DrawTextEx(mainFont, "W/S: select   A/D: adjust   ALT: x10   Q/E: lane   R: reset lane   SHIFT+R: reset all",
+               (Vector2) {NC_SL_X, 676}, 20, 1, GRAY);
+    DrawTextEx(mainFont, "ESC/BACKSPACE: back", (Vector2) {NC_SL_X, 696}, 20, 1, GRAY);
 }
 
 void NoteColorScreen_Destroy(void) {
-    if (wheelReady) UnloadTexture(wheelTex);
-    wheelReady = false;
     NoteColors_ReleaseFx();
 }

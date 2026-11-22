@@ -5,8 +5,8 @@
  * Layout: 4 colunas lado a lado, cada uma com a skin inteira (w x h) recolorida na cor
  * da lane. Os frames de cada variante sao copias dos frames base com x deslocado.
  *
- * A recolorizacao segue o shader de matiz de PlayStateNoteSpawn.c: troca o matiz pelo da
- * cor alvo e multiplica saturacao e brilho pelos da cor alvo; alpha e preservado.
+ * A recolorizacao segue o shader de PlayStateNoteSpawn.c: soma o offset de matiz, saturacao e
+ * brilho de cada coluna (GameData_LaneShift) a cada pixel; alpha e preservado.
  */
 
 #include "scenes/gameplay/PlayStateNoteAtlas.h"
@@ -27,8 +27,8 @@ static RayAnimationHandler laneSets[ATLAS_LANES];
 static LaneStorage laneStorage[ATLAS_LANES];
 static bool atlasReady;
 
-static bool IsWhite(Color c) {
-    return c.r == 255 && c.g == 255 && c.b == 255;
+static bool IsIdentity(Vector3 s) {
+    return s.x == 0.0f && s.y == 0.0f && s.z == 0.0f;
 }
 
 /* HSV -> RGB (0..1), mesma formula do hsv2rgb do shader. h em 0..1. */
@@ -54,17 +54,35 @@ static unsigned char ToByte(float x) {
     return (unsigned char)(x * 255.0f + 0.5f);
 }
 
-/* Recolore uma linha de `count` pixels RGBA8 para a cor alvo. */
-static void RecolorRow(unsigned char* dst, const unsigned char* src, int count, const Vector3 target) {
-    const float th = target.x / 360.0f;
+/* RGB (0..1) -> HSV com matiz em 0..1. */
+static void Rgb2Hsv(float r, float g, float b, float* h, float* s, float* v) {
+    const float max = fmaxf(r, fmaxf(g, b));
+    const float d = max - fminf(r, fminf(g, b));
+    *v = max;
+    *s = max > 0.0f ? d / max : 0.0f;
+    if (d <= 0.0f) {
+        *h = 0.0f;
+        return;
+    }
+    float hh;
+    if (max == r)      hh = (g - b) / d;
+    else if (max == g) hh = 2.0f + (b - r) / d;
+    else               hh = 4.0f + (r - g) / d;
+    hh /= 6.0f;
+    *h = hh - floorf(hh);
+}
+
+static float Clamp01(float x) { return fminf(fmaxf(x, 0.0f), 1.0f); }
+
+/* Aplica o offset HSB da coluna a `count` pixels RGBA8 (mesma conta do shader). */
+static void ShiftRow(unsigned char* dst, const unsigned char* src, int count, const Vector3 shift) {
     for (int x = 0; x < count; x++, src += 4, dst += 4) {
-        const float r = src[0] / 255.0f, g = src[1] / 255.0f, b = src[2] / 255.0f;
-        const float max = fmaxf(r, fmaxf(g, b));
-        const float min = fminf(r, fminf(g, b));
-        const float s = (max > 0.0f ? (max - min) / max : 0.0f) * target.y;
-        const float v = max * target.z;
+        float h, s, v;
+        Rgb2Hsv(src[0] / 255.0f, src[1] / 255.0f, src[2] / 255.0f, &h, &s, &v);
+        h += shift.x;
+        h -= floorf(h);
         float or_, og, ob;
-        Hsv2Rgb(th, s, v, &or_, &og, &ob);
+        Hsv2Rgb(h, Clamp01(s + shift.y), Clamp01(v + shift.z), &or_, &og, &ob);
         dst[0] = ToByte(or_);
         dst[1] = ToByte(og);
         dst[2] = ToByte(ob);
@@ -133,14 +151,14 @@ static bool BuildLaneSet(const RayAnimationHandler* base, int lane, int shiftX) 
     return true;
 }
 
-bool NoteAtlas_Build(const RayAnimationHandler* base, const Color tints[4]) {
+bool NoteAtlas_Build(const RayAnimationHandler* base, const Vector3 shifts[4]) {
     NoteAtlas_Free();
 
     if (base == NULL || base->texture.id == 0 || base->animations == NULL || base->animationCount <= 0)
         return false;
 
-    /* Todas brancas: a skin original ja serve, nao ha atlas para gerar. */
-    if (IsWhite(tints[0]) && IsWhite(tints[1]) && IsWhite(tints[2]) && IsWhite(tints[3]))
+    /* Sem offset em nenhuma coluna: a skin original ja serve, nao ha atlas para gerar. */
+    if (IsIdentity(shifts[0]) && IsIdentity(shifts[1]) && IsIdentity(shifts[2]) && IsIdentity(shifts[3]))
         return false;
 
     const int w = base->texture.width;
@@ -166,14 +184,13 @@ bool NoteAtlas_Build(const RayAnimationHandler* base, const Color tints[4]) {
     const size_t dstRow = (size_t)w * ATLAS_LANES * 4;
 
     for (int lane = 0; lane < ATLAS_LANES; lane++) {
-        const Vector3 target = ColorToHSV(tints[lane]);
         for (int y = 0; y < h; y++) {
             unsigned char* out = dstPx + (size_t)y * dstRow + (size_t)lane * srcRow;
             const unsigned char* in = srcPx + (size_t)y * srcRow;
-            if (IsWhite(tints[lane]))
+            if (IsIdentity(shifts[lane]))
                 memcpy(out, in, srcRow);
             else
-                RecolorRow(out, in, w, target);
+                ShiftRow(out, in, w, shifts[lane]);
         }
     }
 

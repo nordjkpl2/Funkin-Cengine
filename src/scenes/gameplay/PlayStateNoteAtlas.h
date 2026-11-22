@@ -14,8 +14,8 @@
 #include <stdbool.h>
 #include "Render.h"
 
-/* Monta o atlas a partir da skin base. tints[lane] = cor da lane. false = sem atlas. */
-bool NoteAtlas_Build(const RayAnimationHandler* base, const Color tints[4]);
+/* Monta o atlas a partir da skin base. shifts[lane] = offset HSB da lane (GameData_LaneShift). false = sem atlas. */
+bool NoteAtlas_Build(const RayAnimationHandler* base, const Vector3 shifts[4]);
 
 /* Conjunto de animacao da variante da lane (mesmos indices da skin base). NULL sem atlas. */
 const RayAnimationHandler* NoteAtlas_Lane(int lane);

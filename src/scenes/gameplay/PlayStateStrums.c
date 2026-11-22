@@ -148,13 +148,9 @@ void PlayStateStrums_DrawKeyMonitor(void) {
         const Rectangle box = {x0 + i * (MONITOR_KEY + MONITOR_GAP), y, MONITOR_KEY, MONITOR_KEY};
 
         DrawRectangleRec(box, (Color) {0, 0, 0, 150});
-        /* Cor da coluna: matiz escolhido em brilho total (a barra escura nao apaga o monitor). */
-        const Color tint = GameData_LaneTint(i);
+        /* Cor da coluna: a cor base com o ajuste HSB da coluna (mesma conta do shader da nota). */
         Color base = laneColors[i];
-        if (tint.r != 255 || tint.g != 255 || tint.b != 255) {
-            const Vector3 hsv = ColorToHSV(tint);
-            base = ColorFromHSV(hsv.x, hsv.y > 0.0f ? 1.0f : 0.0f, 1.0f);
-        }
+        if (GameData_LaneShifted(i)) base = GameData_ShiftColor(base, GameData_LaneShift(i));
         base.a = 255;
         Color lit = base;
         lit.a = (unsigned char)(255.0f * mobileGlow[i]);

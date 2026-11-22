@@ -1,6 +1,7 @@
 /* // * Friday Night Funkin´ c engine (c) 2026 nordjkpl */
-#include "GameData.h" 
+#include "GameData.h"
 #include "Log.h"
+#include <math.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -27,7 +28,7 @@ int game_scheme_keys[SCHEME_COUNT][4] = {
 static FILE* saveFile;
 
 /* Formato unico. Saves de outra versao sao descartados (volta aos padroes). Ainda nao distribuido, sem migracao. */
-#define SAVE_VERSION 17
+#define SAVE_VERSION 18
 
 static void GameData_Defaults(void) {
     game_scheme_keys[SCHEME_CUSTOM][0] = KEY_LEFT;
@@ -40,7 +41,6 @@ static void GameData_Defaults(void) {
         .scorePosition = SCORE_POS_PSYCH, .strumBgPercent = 0,
         .fps = 120,
         .zoomFactorUI = 1.0f, .zoomFactorGAME = 1.0f,
-        .laneTint = {{255, 255, 255}, {255, 255, 255}, {255, 255, 255}, {255, 255, 255}},
     };
 }
 
@@ -55,10 +55,27 @@ char GameData_HiddenShowsSide(char bfSide, char singerBf) {
     }
 }
 
-Color GameData_LaneTint(int lane) {
-    if (lane < 0 || lane > 3) return WHITE;
-    const unsigned char* c = gameOptions.laneTint[lane];
-    return (Color) {c[0], c[1], c[2], 255};
+Vector3 GameData_LaneShift(int lane) {
+    if (lane < 0 || lane > 3) return (Vector3) {0.0f, 0.0f, 0.0f};
+    const short* o = gameOptions.laneHSB[lane];
+    return (Vector3) {o[0] / 360.0f, o[1] / 100.0f, o[2] / 100.0f};
+}
+
+char GameData_LaneShifted(int lane) {
+    if (lane < 0 || lane > 3) return 0;
+    const short* o = gameOptions.laneHSB[lane];
+    return o[0] != 0 || o[1] != 0 || o[2] != 0;
+}
+
+static float Clamp01(float x) { return x < 0.0f ? 0.0f : (x > 1.0f ? 1.0f : x); }
+
+Color GameData_ShiftColor(Color c, Vector3 shift) {
+    const Vector3 hsv = ColorToHSV(c);
+    float h = hsv.x / 360.0f + shift.x;
+    h -= floorf(h);
+    Color out = ColorFromHSV(h * 360.0f, Clamp01(hsv.y + shift.y), Clamp01(hsv.z + shift.z));
+    out.a = c.a;
+    return out;
 }
 
 void GameData_ResetOptions(void) {
@@ -138,7 +155,7 @@ void GameData_Start(void) {
     gameOptions.menuMusic[MENU_MUSIC_NAME_MAX - 1] = 0;
     SREAD(char, gameOptions.strumBgPercent)
     SREAD(char, gameOptions.strumMobileVisible)
-    READ(unsigned char, sizeof(gameOptions.laneTint), gameOptions.laneTint[0][0])
+    READ(short, 12, gameOptions.laneHSB[0][0])
     SREAD(char, gameOptions.hiddenNotesAlt)
     SREAD(char, gameOptions.horizontalMenu)
     SREAD(char, gameOptions.loseIcon)
@@ -175,7 +192,7 @@ void GameData_Flush(void) {
     WRITE(char, MENU_MUSIC_NAME_MAX, gameOptions.menuMusic[0])
     SWRITE(char, gameOptions.strumBgPercent)
     SWRITE(char, gameOptions.strumMobileVisible)
-    WRITE(unsigned char, sizeof(gameOptions.laneTint), gameOptions.laneTint[0][0])
+    WRITE(short, 12, gameOptions.laneHSB[0][0])
     SWRITE(char, gameOptions.hiddenNotesAlt)
     SWRITE(char, gameOptions.horizontalMenu)
     SWRITE(char, gameOptions.loseIcon)
