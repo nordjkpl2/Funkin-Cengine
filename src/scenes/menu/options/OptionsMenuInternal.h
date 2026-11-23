@@ -195,6 +195,7 @@ typedef enum {
     OPTION_HEADER_OTHER,
     OPTION_FILL_SCREEN,
     OPTION_BOTPLAY,
+    OPTION_HITSOUND_BOTPLAY,
     OPTION_HEALTH_DRAIN_BOTPLAY,
     OPTION_HORIZONTAL_MENU,
     OPTION_HEADER_MUSIC,
@@ -266,6 +267,7 @@ void DrawTvIcon(float rowY, Color fill, Color shadow);
 void DrawHealthIcons(float rowY, Color fill, Color shadow);
 void DrawKeyArrow(float rowY, Color fill, Color shadow);
 void DrawExtraIcon(int i, float rowY, Color fill, Color shadow);
+void DrawNotesLabelIcon(float x, float cy); /* icone de notas ao lado do rotulo "Notes" */
 void DrawResetIcon(float cx, float cy, Color color);
 
 #endif

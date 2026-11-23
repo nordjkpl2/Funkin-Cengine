@@ -174,6 +174,9 @@ void PlayStateAnimations_OpponentHold(void) {
 }
 
 void PlayStateAnimations_BotHit(int lane) {
+    if (gameOptions.hitSoundBotplay)
+        PlaySound(hitSFX);
+
     bf.idleTimer = 0;
     AnimatedObject_SetAnimation(&bf.object, bf.animations.notes[lane]);
 }

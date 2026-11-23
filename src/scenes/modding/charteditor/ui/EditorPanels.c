@@ -15,6 +15,7 @@
 #include "scenes/modding/charteditor/data/EditorStagePos.h"
 #include "scenes/modding/charteditor/ui/EditorPicker.h"
 #include "scenes/gameplay/events/PlayStateEventsInGameplay.h"
+#include <math.h>
 
 // ---------- acoes de trecho (usadas no menu e nas abas, sem duplicar) ----------
 static void Edit_DoNewPart(void) {
@@ -447,6 +448,42 @@ static void EvAddFromType(const PlayStateEventType* t) {
     EdStatusMsg("EVENTO ADICIONADO (CTRL+S salva events.json)");
 }
 
+// seletor: lista com rolagem (linhas inteiras, igual ao menu de faixas)
+#define EV_PICK_ROW_H 58
+#define EV_PICK_ROWS 4
+#define EV_PICK_LIST_H (EV_PICK_ROW_H * EV_PICK_ROWS)
+#define EV_PICK_W 340
+static int evPickTop;                       // primeira linha visivel
+static char evPickDrag;                     // arrastando a barra
+static char evPickLastQ[sizeof(evSearchBox.buf)];  // busca anterior (muda -> volta ao topo)
+static Rectangle evPickBox;                 // area da lista (ultimo desenho), p/ roda do mouse
+
+static char EvPickMatch(const PlayStateEventType* t) {
+    if(evPickShaders && !t->usesShader) return 0;
+    return EvContainsCI(t->name, evSearchBox.buf) || EvContainsCI(t->description, evSearchBox.buf);
+}
+
+static int EvPickCount(void) {
+    int n = 0;
+    for(int i = 0; i < playStateEventTypeCount; i++)
+        if(EvPickMatch(&playStateEventTypes[i])) n++;
+    return n;
+}
+
+static int EvPickMaxTop(int n) {
+    return n > EV_PICK_ROWS ? n - EV_PICK_ROWS : 0;
+}
+
+char Edit_EventPickerWheel(float wheel) {
+    if(activeTab != TAB_EVENTS || !evPickOpen || wheel == 0) return 0;
+    if(!CheckCollisionPointRec(EdMouseWorld(), evPickBox)) return 0;
+    evPickTop += wheel > 0 ? -1 : 1;
+    int maxTop = EvPickMaxTop(EvPickCount());
+    if(evPickTop < 0) evPickTop = 0;
+    if(evPickTop > maxTop) evPickTop = maxTop;
+    return 1;
+}
+
 // lista filtrada pela busca; clicar adiciona no cursor
 static void Edit_DrawEventPicker(float x, float y) {
     const char blocked = (ceDlg != DLG_NONE || activeDrop || menuOpen);
@@ -458,21 +495,61 @@ static void Edit_DrawEventPicker(float x, float y) {
     if(EdButton((Rectangle){x + 260, y, 90, 32}, "fechar", 18)) EvClosePicker();
     y += 44;
 
-    int shown = 0;
-    for(int i = 0; i < playStateEventTypeCount; i++) {
+    // busca mudou: volta ao topo da lista
+    if(strcmp(evPickLastQ, evSearchBox.buf) != 0) {
+        snprintf(evPickLastQ, sizeof(evPickLastQ), "%s", evSearchBox.buf);
+        evPickTop = 0;
+    }
+    const int n = EvPickCount();
+    const int maxTop = EvPickMaxTop(n);
+    if(evPickTop > maxTop) evPickTop = maxTop;
+    if(evPickTop < 0) evPickTop = 0;
+
+    evPickBox = (Rectangle){x, y, EV_PICK_W, EV_PICK_LIST_H};
+    DrawRectangleRec(evPickBox, (Color){16, 16, 16, 220});
+    DrawRectangleLinesEx(evPickBox, 1, GRAY);
+
+    // barra de rolagem: mesmo estilo do menu de faixas (trilho cinza, polegar verde)
+    const float barX = x + EV_PICK_W - 8;
+    const Rectangle barHit = {x + EV_PICK_W - 14, y, 16, EV_PICK_LIST_H};
+    if(maxTop > 0) {
+        const Vector2 m = EdMouseWorld();
+        if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && CheckCollisionPointRec(m, barHit)) evPickDrag = 1;
+        if(!IsMouseButtonDown(MOUSE_BUTTON_LEFT)) evPickDrag = 0;
+        const float thumbH = fmaxf(24.0f, EV_PICK_LIST_H * (float)EV_PICK_ROWS / (float)n);
+        if(evPickDrag) {
+            const float span = EV_PICK_LIST_H - thumbH;
+            float t = span > 0.0f ? (m.y - y - thumbH * 0.5f) / span : 0.0f;
+            t = fminf(fmaxf(t, 0.0f), 1.0f);
+            evPickTop = (int)lroundf(t * (float)maxTop);
+        }
+        const float thumbY = y + (EV_PICK_LIST_H - thumbH) * (float)evPickTop / (float)maxTop;
+        DrawRectangleRounded((Rectangle){barX, y, 6, EV_PICK_LIST_H}, 0.5f, 4, (Color){40, 48, 70, 200});
+        DrawRectangleRounded((Rectangle){barX, thumbY, 6, thumbH}, 0.5f, 4, GREEN);
+    } else {
+        evPickDrag = 0;
+    }
+
+    if(n == 0) {
+        Ed_DrawText(mainFont, "nenhum evento encontrado", (Vector2){x + 6, y + 8}, 18, 1, YELLOW);
+        return;
+    }
+
+    // so desenha as linhas visiveis (linha inteira, sem corte)
+    int idx = 0, row = 0;
+    for(int i = 0; i < playStateEventTypeCount && row < EV_PICK_ROWS; i++) {
         const PlayStateEventType* t = &playStateEventTypes[i];
-        if(evPickShaders && !t->usesShader) continue;
-        if(!EvContainsCI(t->name, evSearchBox.buf) && !EvContainsCI(t->description, evSearchBox.buf)) continue;
-        if(EdButton((Rectangle){x, y, 350, 32}, t->name, 20)) {
+        if(!EvPickMatch(t)) continue;
+        if(idx++ < evPickTop) continue;
+        const float ry = y + (float)(row * EV_PICK_ROW_H) + 2;
+        row++;
+        if(EdButton((Rectangle){x + 4, ry, EV_PICK_W - 20, 32}, t->name, 20)) {
             EvAddFromType(t);
             EvClosePicker();
             return;
         }
-        Ed_DrawText(mainFont, t->description, (Vector2){x + 4, y + 36}, 16, 1, YELLOW);
-        y += 58;
-        shown++;
+        Ed_DrawText(mainFont, t->description, (Vector2){x + 8, ry + 36}, 16, 1, YELLOW);
     }
-    if(shown == 0) Ed_DrawText(mainFont, "nenhum evento encontrado", (Vector2){x, y + 4}, 18, 1, YELLOW);
 }
 
 // tipo do evento pelo nome (NULL = tipo desconhecido)
@@ -513,21 +590,29 @@ static void Edit_DrawPanel_Events(float x, float y) {
     }
     if(evSelected >= edEventCount) evSelected = -1;
 
-    if(!evPickOpen) {
-        if(EdButton((Rectangle){x, y, 350, 36}, "+ Adicionar evento...", 20)) {
+    // grupos recolhiveis: ">" fecha/abre; o botao do grupo aberto mostra "v"
+    if(EdButton((Rectangle){x, y, 350, 36}, (evPickOpen && !evPickShaders) ? "v Adicionar evento" : "> Adicionar evento", 20)) {
+        if(evPickOpen && !evPickShaders) EvClosePicker();
+        else {
             evPickOpen = 1;
             evPickShaders = 0;
             evSearchBox.buf[0] = 0;
+            evPickTop = 0;
             focusBox = &evSearchBox;
         }
-        if(EdButton((Rectangle){x + 360, y, 220, 36}, "+ Adicionar shader", 20)) {
+    }
+    if(EdButton((Rectangle){x + 360, y, 220, 36}, (evPickOpen && evPickShaders) ? "v Adicionar shader" : "> Adicionar shader", 20)) {
+        if(evPickOpen && evPickShaders) EvClosePicker();
+        else {
             evPickOpen = 1;
             evPickShaders = 1;
             evSearchBox.buf[0] = 0;
+            evPickTop = 0;
             focusBox = &evSearchBox;
         }
-        y += 50;
-    } else {
+    }
+    y += 50;
+    if(evPickOpen) {
         Edit_DrawEventPicker(x, y);
         return;
     }
@@ -572,7 +657,8 @@ static void Edit_DrawPanel_Events(float x, float y) {
         const char chr = (t != NULL && t->usesChar);  // troca de personagem: alvo 0..2 + nome (s1)
         const char* lab1 = (t != NULL) ? t->label1 : "valor 1:";
         const char* lab2 = (t != NULL) ? t->label2 : "valor 2:";
-        const char fx = (t != NULL && t->usesShader); // shader: intensidade e animacao 0..100
+        // shader e parallax: intensidade e velocidade 0..100 (passos de 10)
+        const char fx = (t != NULL && (t->usesShader || strcmp(t->name, "Camera Parallax") == 0));
         const int lo1 = img ? -4000 : 0, hi1 = img ? 4000 : chr ? 2 : (fx ? 100 : 60000);
         const int st1 = (img || fx) ? 10 : chr ? 1 : 50;
         const int lo2 = img ? -4000 : 0, hi2 = img ? 4000 : 100, st2 = 10;

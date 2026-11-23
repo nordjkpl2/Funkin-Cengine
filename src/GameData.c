@@ -28,7 +28,7 @@ int game_scheme_keys[SCHEME_COUNT][4] = {
 static FILE* saveFile;
 
 /* Formato unico. Saves de outra versao sao descartados (volta aos padroes). Ainda nao distribuido, sem migracao. */
-#define SAVE_VERSION 18
+#define SAVE_VERSION 19
 
 static void GameData_Defaults(void) {
     game_scheme_keys[SCHEME_CUSTOM][0] = KEY_LEFT;
@@ -160,6 +160,7 @@ void GameData_Start(void) {
     SREAD(char, gameOptions.horizontalMenu)
     SREAD(char, gameOptions.loseIcon)
     SREAD(char, gameOptions.streamingJsonParse)
+    SREAD(char, gameOptions.hitSoundBotplay)
 
     GameData_Checks();
 }
@@ -197,6 +198,7 @@ void GameData_Flush(void) {
     SWRITE(char, gameOptions.horizontalMenu)
     SWRITE(char, gameOptions.loseIcon)
     SWRITE(char, gameOptions.streamingJsonParse)
+    SWRITE(char, gameOptions.hitSoundBotplay)
 }
 
 void GameData_Stop(void) {

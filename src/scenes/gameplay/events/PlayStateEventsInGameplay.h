@@ -9,6 +9,7 @@
  *             v3 = escala (%). Fica visivel ate o proximo Show Image ou Hide Image.
  * Hide Image: esconde a imagem atual. Sem valores.
  * Change Character: v1 = alvo (0 = oponente, 1 = BF, 2 = GF); s1 = nome do personagem (pasta do mod/assets).
+ * Letterbox: barras pretas em cima e embaixo. v1 = duracao da animacao (ms), v2 = altura de cada barra (% da tela; 0 tira).
  */
 #pragma once
 #ifndef PLAYSTATE_EVENTS_IN_GAMEPLAY_H
@@ -55,5 +56,8 @@ void PlayStateEvents_Update(double seconds);
 /* Desenha a imagem do Show Image (se houver) e, por cima, o overlay preto do fade.
  * Chamar com a camera HUD aberta. */
 void PlayStateEvents_Draw(void);
+
+/* Barras do Letterbox. Chamar com a camera HUD aberta, antes do HUD (notas ficam por cima). */
+void PlayStateEvents_DrawLetterbox(void);
 
 #endif /* PLAYSTATE_EVENTS_IN_GAMEPLAY_H */

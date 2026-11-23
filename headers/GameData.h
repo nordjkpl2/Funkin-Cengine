@@ -17,6 +17,7 @@ typedef struct GameOptions {
     char healthDrainPlay;     /* oponente acerta -> perde vida no jogo normal (padrao: off) */
     char healthDrainBotplay;  /* botplay ganha/perde vida como o jogador (padrao: off; off = barra travada) */
     char streamingJsonParse;  /* chart JSON em janelas por secao (streaming): menos RAM em charts grandes (padrao: off) */
+    char hitSoundBotplay;     /* som de acerto tambem quando o botplay acerta (padrao: off) */
     char strumBgPercent;      /* fundo preto atras dos receptores: 0 = off, 10..100 = opacidade em % */
     char strumMobileVisible;  /* 1 = tela dividida em 4 colunas com as cores das notas */
     char hiddenNotesAlt;      /* Hidden Notes: 0 Off, 1 Alternate, 2 Only Playable, 3 Alternate Playable (ver GameData_HiddenShowsSide) */

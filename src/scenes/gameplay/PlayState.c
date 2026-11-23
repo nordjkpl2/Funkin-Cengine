@@ -595,6 +595,7 @@ static void PlayState_Draw([[maybe_unused]] RayScene* scene) {
     DrawWorld(dt);
 
     PlayStateCamera_BeginHUD();
+    PlayStateEvents_DrawLetterbox(); // barras antes do HUD: notas ficam visiveis
     DrawHud(dt);
     PlayStateEvents_Draw(); // fades do events.json cobrem a tela (HUD incluso)
 

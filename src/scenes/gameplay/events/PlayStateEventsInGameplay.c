@@ -23,6 +23,8 @@
 #define HIDE_IMAGE_NAME "Hide Image"
 #define CHANGE_CHAR_NAME "Change Character"
 #define CAMERA_PARALLAX_NAME "Camera Parallax"
+#define LETTERBOX_NAME "Letterbox"
+#define LETTERBOX_MAX_FRAC 0.5f  /* cada barra no maximo metade da tela */
 #define IMG_MAX 8  /* imagens distintas por musica */
 
 const PlayStateEventType playStateEventTypes[] = {
@@ -34,8 +36,9 @@ const PlayStateEventType playStateEventTypes[] = {
     {"Shader Glitch", "glitch: fatias, separacao RGB, blocos", 50, 0, 0, "intensidade %:", "animacao %:", NULL, 0, 1},
     {"Shader Blackness", "buraco negro: puxa pro centro, escurece", 50, 0, 0, "intensidade %:", "animacao %:", NULL, 0, 1},
     {"Shader Off",    "desliga o shader de tela", 0, 0, 0, NULL, NULL, NULL, 0, 1},
-    {"Camera Parallax", "camera 3D parallax: balanca a camera em profundidade (0 desliga)", 50, 0, 0, "intensidade %:", "velocidade %:", NULL, 0, 1},
+    {"Camera Parallax", "camera 3D: afasta (zoom out) e balanca em profundidade (0 desliga)", 100, 0, 0, "intensidade %:", "velocidade %:", NULL, 0, 0},
     {CHANGE_CHAR_NAME, "troca o personagem: 0=oponente 1=bf 2=gf (nome do personagem)", 0, 0, 0, "alvo (0/1/2):", NULL, NULL, 0, 0, 1},
+    {LETTERBOX_NAME, "barras de filme preto em cima e embaixo (duracao ms, altura % da tela; 0 tira)", 1000, 12, 0, "tempo", "altura %:", NULL, 0},
 };
 const int playStateEventTypeCount = (int)(sizeof(playStateEventTypes) / sizeof(playStateEventTypes[0]));
 
@@ -58,6 +61,14 @@ static PsEvent* evs;
 static int evCount;
 static int nextIdx;    /* proximo evento a disparar */
 static float curAlpha; /* alpha do overlay preto (0..1) neste instante */
+
+/* Ultimo Letterbox disparado: altura de cada barra (fracao da tela) anima de from a to. */
+static char hasLb;
+static double lbStartMs;
+static double lbDurMs;
+static float lbFrom;
+static float lbTo;
+static float curBar;   /* altura atual de cada barra (fracao da tela) neste instante */
 
 /* Ultimo fade disparado: o alpha e uma funcao do tempo desse fade. */
 static char hasFade;
@@ -101,6 +112,21 @@ static float AlphaAt(double ms) {
     return fadeFrom + (fadeTo - fadeFrom) * (float)t;
 }
 
+/* Altura da barra no instante ms, dado o ultimo Letterbox disparado. */
+static float BarAt(double ms) {
+    if (!hasLb) return 0.0f;
+    if (lbDurMs <= 0.0 || ms >= lbStartMs + lbDurMs) return lbTo;
+    if (ms <= lbStartMs) return lbFrom;
+    const double t = (ms - lbStartMs) / lbDurMs;
+    return lbFrom + (lbTo - lbFrom) * (float)t;
+}
+
+static float PctToBar(double pct) {
+    if (pct <= 0.0) return 0.0f;
+    if (pct >= 50.0) return LETTERBOX_MAX_FRAC;
+    return (float)(pct / 100.0);
+}
+
 static int FindImg(const char* name) {
     for (int i = 0; i < imgCount; i++)
         if (strcmp(imgs[i].name, name) == 0) return i;
@@ -138,6 +164,14 @@ static void Fire(const PsEvent* e) {
     }
     if (strcmp(e->name, CHANGE_CHAR_NAME) == 0) {
         PlayStateAnimations_ChangeCharacter((int)e->v1, e->img);
+        return;
+    }
+    if (strcmp(e->name, LETTERBOX_NAME) == 0) {
+        hasLb = 1;
+        lbStartMs = e->timeMs;
+        lbDurMs = e->v1 > 0.0 ? e->v1 : 0.0;
+        lbFrom = BarAt(e->timeMs);       /* anima a partir de onde esta */
+        lbTo = PctToBar(e->v2);
         return;
     }
 
@@ -203,6 +237,8 @@ void PlayStateEvents_Unload(void) {
     nextIdx = 0;
     curAlpha = 0.0f;
     hasFade = 0;
+    hasLb = 0;
+    curBar = 0.0f;
     ShaderFx_Reset();
     PlayStateParallax_Reset();
 }
@@ -256,6 +292,8 @@ void PlayStateEvents_Reset(void) {
     nextIdx = 0;
     curAlpha = 0.0f;
     hasFade = 0;
+    hasLb = 0;
+    curBar = 0.0f;
     curImg = -1;
     ShaderFx_Reset();
     PlayStateParallax_Reset();
@@ -269,6 +307,7 @@ void PlayStateEvents_SeekTo(double seconds) {
         nextIdx++;
     }
     curAlpha = AlphaAt(ms);
+    curBar = BarAt(ms);
 }
 
 void PlayStateEvents_Update(double seconds) {
@@ -278,6 +317,7 @@ void PlayStateEvents_Update(double seconds) {
         nextIdx++;
     }
     curAlpha = AlphaAt(ms);
+    curBar = BarAt(ms);
 }
 
 void PlayStateEvents_Draw(void) {
@@ -295,7 +335,16 @@ void PlayStateEvents_Draw(void) {
         DrawTexturePro(t, (Rectangle){0.0f, 0.0f, (float)t.width, (float)t.height}, dst, (Vector2){0.0f, 0.0f}, 0.0f, WHITE);
     }
 
-    if (curAlpha <= 0.001f) return;
-    DrawRectangle(0, 0, (int)SCREEN_W, (int)SCREEN_H,
-                  (Color){0, 0, 0, (unsigned char)(curAlpha * 255.0f)});
+    if (curAlpha > 0.001f)
+        DrawRectangle(0, 0, (int)SCREEN_W, (int)SCREEN_H,
+                      (Color){0, 0, 0, (unsigned char)(curAlpha * 255.0f)});
+}
+
+void PlayStateEvents_DrawLetterbox(void) {
+    /* Barras pretas por cima do mundo, mas por baixo do HUD/notas para nao cobri-las. */
+    if (curBar > 0.001f) {
+        const int bh = (int)(curBar * SCREEN_H + 0.5f);
+        DrawRectangle(0, 0, (int)SCREEN_W, bh, BLACK);
+        DrawRectangle(0, (int)SCREEN_H - bh, (int)SCREEN_W, bh, BLACK);
+    }
 }

@@ -416,6 +416,33 @@ static void DrawRobotIcon(float cx, float cy, Color color) {
     DrawLineEx((Vector2) {cx - 6.0f, top + h - 5.0f}, (Vector2) {cx + 6.0f, top + h - 5.0f}, 3.0f, color); // boca
 }
 
+/* Alto-falante com ondas (Hit Sound). */
+static void DrawSpeakerIcon(float cx, float cy, Color color) {
+    DrawRectangleRec((Rectangle) {cx - 12.0f, cy - 4.0f, 6.0f, 8.0f}, color);                    // caixa
+    DrawLineEx((Vector2) {cx - 6.0f, cy - 4.0f}, (Vector2) {cx + 1.0f, cy - 10.0f}, 3.0f, color); // cone
+    DrawLineEx((Vector2) {cx + 1.0f, cy - 10.0f}, (Vector2) {cx + 1.0f, cy + 10.0f}, 3.0f, color);
+    DrawLineEx((Vector2) {cx + 1.0f, cy + 10.0f}, (Vector2) {cx - 6.0f, cy + 4.0f}, 3.0f, color);
+    DrawRing((Vector2) {cx + 1.0f, cy}, 7.0f, 9.0f, -45.0f, 45.0f, 12, color);                    // onda
+}
+
+/* Colcheia pequena (Track da musica), na mesma forma do [Musica] mas em escala menor. */
+static void DrawSmallNoteIcon(float cx, float cy, Color color) {
+    const float r = 5.0f, stemW = 2.5f, flagW = 7.0f, flagH = 9.0f;
+    const float headY = cy + 4.0f;                  // centro da cabeca
+    const float top = cy - 8.0f;                    // topo da haste
+    const float stemX = cx + r - stemW * 0.5f;
+
+    DrawCircleV((Vector2) {cx, headY}, r, color);
+    DrawRectangleRec((Rectangle) {cx + r - stemW, top, stemW, headY - top}, color);
+    DrawRoundLine((Vector2) {stemX, top}, (Vector2) {stemX + flagW, top + flagH}, color);
+}
+
+/* Quatro notas (uma de cada cor) ao lado do rotulo "Notes". */
+void DrawNotesLabelIcon(float x, float cy) {
+    for (int k = 0; k < 4; k++)
+        NoteColors_DrawNoteIcon(k, x + 15.0f * (float)k, cy, 0.1f);
+}
+
 /* Painel arredondado com uma seta dupla vertical (Scroll Style). Cor segue o estado da linha. */
 static void DrawScrollIcon(float cx, float cy, Color color) {
     DrawRectangleRounded((Rectangle) {cx - 20.0f, cy - 19.0f, 40.0f, 38.0f}, 0.4f, 8, (Color) {0, 0, 0, ICON_PANEL_ALPHA});
@@ -474,6 +501,9 @@ void DrawExtraIcon(int i, float rowY, Color fill, Color shadow) {
             case OPTION_THREADS:        DrawTechTreeIcon(cx, y, color); break;
             case OPTION_LOSE_ICON:      DrawSadFaceIcon(cx, y, color); break;
             case OPTION_BOTPLAY:        DrawRobotIcon(cx, y, color); break;
+            case OPTION_MENU_MUSIC:     DrawSmallNoteIcon(cx, y, color); break;
+            case OPTION_HITSOUND:       DrawSpeakerIcon(cx, y, color); break;
+            case OPTION_HITSOUND_BOTPLAY: DrawSpeakerIcon(cx, y, color); break;
             default: return;
         }
     }

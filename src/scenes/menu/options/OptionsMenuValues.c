@@ -62,6 +62,7 @@ Option options[OPTION_COUNT] = {
     [OPTION_HEADER_OTHER] = {.text = "[Other]", .type = OPTION_VALUE_HEADER},
     [OPTION_FILL_SCREEN] = {.text = "Stretch", .type = OPTION_VALUE_BOOL},
     [OPTION_BOTPLAY] = {.text = "Botplay", .type = OPTION_VALUE_BOOL},
+    [OPTION_HITSOUND_BOTPLAY] = {.text = "Hit Sound (Botplay)", .type = OPTION_VALUE_BOOL},
     [OPTION_HEALTH_DRAIN_BOTPLAY] = {.text = "Health Drain (Botplay)", .type = OPTION_VALUE_BOOL},
     [OPTION_HORIZONTAL_MENU] = {.text = "Horizontal Menu", .type = OPTION_VALUE_BOOL},
     [OPTION_HEADER_MUSIC] = {.text = "[Musica]", .type = OPTION_VALUE_HEADER},
@@ -199,6 +200,7 @@ void ApplyBoolValue(void) {
         case OPTION_STREAM_JSON:   gameOptions.streamingJsonParse = on; break;
         case OPTION_BOTPLAY:       gameOptions.botplay = on; break;
         case OPTION_HITSOUND:      gameOptions.hitSound = on; break;
+        case OPTION_HITSOUND_BOTPLAY: gameOptions.hitSoundBotplay = on; break;
         case OPTION_HEALTH_DRAIN_PLAY:    gameOptions.healthDrainPlay = on; break;
         case OPTION_HEALTH_DRAIN_BOTPLAY: gameOptions.healthDrainBotplay = on; break;
         case OPTION_HORIZONTAL_MENU:
@@ -396,6 +398,7 @@ void Options_LoadValues(void) {
     options[OPTION_SCROLL_STYLE].value = gameOptions.scroll;
     options[OPTION_GHOST].value = gameOptions.ghost;
     options[OPTION_HITSOUND].value = gameOptions.hitSound;
+    options[OPTION_HITSOUND_BOTPLAY].value = gameOptions.hitSoundBotplay;
     options[OPTION_HEALTH_DRAIN_PLAY].value = gameOptions.healthDrainPlay;
     options[OPTION_HEALTH_DRAIN_BOTPLAY].value = gameOptions.healthDrainBotplay;
     options[OPTION_ZOOMFACTOR_GAME].value = gameOptions.zoomFactorGAME;

@@ -369,6 +369,7 @@ static void OptionsMenu_Draw([[maybe_unused]] RayScene* scene) {
             DrawOptionText(o->text, HEADER_X, labelY, LABEL_FONT_SIZE, (Color) {190, 190, 190, 255}, (Color) {0, 0, 0, 100});
             // Divisor curto, da largura do proprio titulo (nao da linha inteira, como o [Header]).
             const float labelW = MeasureTextEx(mainFont, o->text, LABEL_FONT_SIZE, TEXT_SPACING).x;
+            if (i == OPTION_NOTES_LABEL) DrawNotesLabelIcon(HEADER_X + labelW + 24.0f, labelY + LABEL_FONT_SIZE * 0.5f);
             DrawRectangleGradientH((int)HEADER_X, (int)(labelY + LABEL_FONT_SIZE + 3.0f), (int)labelW, 2,
                                    (Color) {OPT_ACCENT.r, OPT_ACCENT.g, OPT_ACCENT.b, 170}, (Color) {OPT_ACCENT.r, OPT_ACCENT.g, OPT_ACCENT.b, 0});
             continue;
@@ -411,6 +412,8 @@ static void OptionsMenu_Draw([[maybe_unused]] RayScene* scene) {
         DrawHint("ENTER: set thread count");
     else if (currentOption == OPTION_VSYNC)
         DrawHint("same fps as your monitor hz");
+    else if (currentOption == OPTION_UNCAPPED_FPS)
+        DrawHint("no limiter use limiter less use of video card");
     else if (currentOption == OPTION_RESET_CONFIG)
         DrawHint(resetArmed ? "ENTER again to confirm: resets every option" : "ENTER: reset all options to default");
 

@@ -396,7 +396,7 @@ static void Edit_Update(void) {
 
     // roda do mouse = sobe/desce
     float wheel = GetMouseWheelMove();
-    if(wheel != 0) {
+    if(wheel != 0 && !Edit_EventPickerWheel(wheel)) {
         Vector2 m = EdMouseWorld();
         int shift = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
         int ctrl = IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL);
