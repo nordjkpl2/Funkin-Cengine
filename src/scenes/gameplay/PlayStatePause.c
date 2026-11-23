@@ -107,7 +107,24 @@ PlayStatePauseAction PlayStatePause_Update(float dt) {
             action = PLAYSTATE_PAUSE_EXIT;
     }
 
-    optionOffset = Lerp(optionOffset, currentOption, dt * 10.0f);
+    // Roda do mouse: acumula o movimento (touchpad manda fracoes) e anda 1 linha por clique, como no Options.
+    static float wheelAcc;
+    wheelAcc += GetMouseWheelMove();
+    while (wheelAcc >= 1.0f) {
+        wheelAcc -= 1.0f;
+        currentOption = (currentOption + OPTION_COUNT - 1) % OPTION_COUNT;
+    }
+    while (wheelAcc <= -1.0f) {
+        wheelAcc += 1.0f;
+        currentOption = (currentOption + 1) % OPTION_COUNT;
+    }
+
+    // Animacao rapida; para de calcular quando ja chegou (nao precisa rodar todo frame).
+    const float diff = currentOption - optionOffset;
+    if (diff > -0.001f && diff < 0.001f)
+        optionOffset = (float)currentOption;
+    else
+        optionOffset = Lerp(optionOffset, currentOption, dt * 25.0f);
     return action;
 }
 

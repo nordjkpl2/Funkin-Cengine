@@ -15,6 +15,7 @@
 #include "rendering/cpu/ImagePrefetch.h"
 #include "rendering/shaders/ShaderFx.h"
 #include "scenes/gameplay/PlayStateAnimations.h"
+#include "scenes/api/FontLoader.h"
 
 #define SCREEN_W 1280.0f
 #include "scenes/gameplay/events/PlayStateParallax.h"
@@ -24,6 +25,9 @@
 #define CHANGE_CHAR_NAME "Change Character"
 #define CAMERA_PARALLAX_NAME "Camera Parallax"
 #define LETTERBOX_NAME "Letterbox"
+#define MUSIC_CREDIT_NAME "Music Credit"
+#define CREDIT_DEFAULT_MS 4000.0
+#define CREDIT_SLIDE_FRAC 0.12  /* fracao da duracao gasta entrando e saindo */
 #define LETTERBOX_MAX_FRAC 0.5f  /* cada barra no maximo metade da tela */
 #define IMG_MAX 8  /* imagens distintas por musica */
 
@@ -39,6 +43,7 @@ const PlayStateEventType playStateEventTypes[] = {
     {"Camera Parallax", "camera 3D: afasta (zoom out) e balanca em profundidade (0 desliga)", 100, 0, 0, "intensidade %:", "velocidade %:", NULL, 0, 0},
     {CHANGE_CHAR_NAME, "troca o personagem: 0=oponente 1=bf 2=gf (nome do personagem)", 0, 0, 0, "alvo (0/1/2):", NULL, NULL, 0, 0, 1},
     {LETTERBOX_NAME, "barras de filme preto em cima e embaixo (duracao ms, altura % da tela; 0 tira)", 1000, 12, 0, "tempo", "altura %:", NULL, 0},
+    {MUSIC_CREDIT_NAME, "disco com titulo da musica e criador (duracao ms; texto = nome do criador)", 4000, 0, 0, "tempo (ms):", NULL, NULL, 0, 0, 0, 1},
 };
 const int playStateEventTypeCount = (int)(sizeof(playStateEventTypes) / sizeof(playStateEventTypes[0]));
 
@@ -82,6 +87,14 @@ static PsImage imgs[IMG_MAX];
 static int imgCount;
 static int curImg = -1;
 static double curX, curY, curScale;
+
+/* Music Credit: ultimo disparado. Visivel so enquanto curMs esta dentro da janela. */
+static double curMs;
+static char hasCredit;
+static double creditStartMs;
+static double creditDurMs;
+static char creditTitle[64];   /* nome da pasta da musica (Load) */
+static char creditName[64];    /* criador (s1 do evento) */
 
 static double NumOf(yyjson_val* v) {
     if (yyjson_is_real(v)) return yyjson_get_real(v);
@@ -166,6 +179,13 @@ static void Fire(const PsEvent* e) {
         PlayStateAnimations_ChangeCharacter((int)e->v1, e->img);
         return;
     }
+    if (strcmp(e->name, MUSIC_CREDIT_NAME) == 0) {
+        hasCredit = 1;
+        creditStartMs = e->timeMs;
+        creditDurMs = e->v1 > 0.0 ? e->v1 : CREDIT_DEFAULT_MS;
+        snprintf(creditName, sizeof(creditName), "%s", e->img);
+        return;
+    }
     if (strcmp(e->name, LETTERBOX_NAME) == 0) {
         hasLb = 1;
         lbStartMs = e->timeMs;
@@ -239,12 +259,19 @@ void PlayStateEvents_Unload(void) {
     hasFade = 0;
     hasLb = 0;
     curBar = 0.0f;
+    hasCredit = 0;
     ShaderFx_Reset();
     PlayStateParallax_Reset();
 }
 
 void PlayStateEvents_Load(const char* songDir) {
     PlayStateEvents_Unload();
+
+    /* Titulo do Music Credit: ultimo segmento do caminho da pasta da musica. */
+    const char* base = strrchr(songDir, '/');
+    const char* bslash = strrchr(songDir, '\\');
+    if (bslash != NULL && (base == NULL || bslash > base)) base = bslash;
+    snprintf(creditTitle, sizeof(creditTitle), "%s", base != NULL ? base + 1 : songDir);
 
     char path[512];
     snprintf(path, sizeof(path), "%s/events.json", songDir);
@@ -295,6 +322,8 @@ void PlayStateEvents_Reset(void) {
     hasLb = 0;
     curBar = 0.0f;
     curImg = -1;
+    hasCredit = 0;
+    curMs = 0.0;
     ShaderFx_Reset();
     PlayStateParallax_Reset();
 }
@@ -302,6 +331,7 @@ void PlayStateEvents_Reset(void) {
 void PlayStateEvents_SeekTo(double seconds) {
     const double ms = seconds * 1000.0;
     PlayStateEvents_Reset();
+    curMs = ms;
     while (nextIdx < evCount && evs[nextIdx].timeMs <= ms) {
         Fire(&evs[nextIdx]);
         nextIdx++;
@@ -312,6 +342,7 @@ void PlayStateEvents_SeekTo(double seconds) {
 
 void PlayStateEvents_Update(double seconds) {
     const double ms = seconds * 1000.0;
+    curMs = ms;
     while (nextIdx < evCount && evs[nextIdx].timeMs <= ms) {
         Fire(&evs[nextIdx]);
         nextIdx++;
@@ -320,7 +351,49 @@ void PlayStateEvents_Update(double seconds) {
     curBar = BarAt(ms);
 }
 
+/* Disco de vinil desenhado por codigo (sem asset). Centro (cx, cy), raio r, angulo em graus. */
+static void DrawRecord(float cx, float cy, float r, float angle, float alpha) {
+    const unsigned char a = (unsigned char)(alpha * 255.0f);
+    DrawCircleV((Vector2){cx, cy}, r, (Color){18, 18, 18, a});
+    for (float g = r * 0.34f; g < r * 0.97f; g += 7.0f)          /* sulcos */
+        DrawRing((Vector2){cx, cy}, g, g + 1.5f, 0.0f, 360.0f, 72, (Color){55, 55, 55, a});
+    DrawCircleSector((Vector2){cx, cy}, r * 0.95f, angle, angle + 35.0f, 24,
+                     (Color){255, 255, 255, (unsigned char)(28.0f * alpha)});  /* brilho girando */
+    DrawCircleV((Vector2){cx, cy}, r * 0.36f, (Color){200, 50, 60, a});     /* etiqueta */
+    DrawCircleV((Vector2){cx, cy}, r * 0.05f, (Color){18, 18, 18, a});      /* furo central */
+}
+
+/* Music Credit: disco entra pela direita, gira, mostra titulo e criador, e sai. */
+static void DrawMusicCredit(void) {
+    if (!hasCredit || creditDurMs <= 0.0) return;
+    const double t = curMs - creditStartMs;
+    if (t < 0.0 || t >= creditDurMs) return;
+
+    const double slideMs = creditDurMs * CREDIT_SLIDE_FRAC;
+    float p = 1.0f;                                  /* 0 = fora da tela, 1 = em posicao */
+    if (t < slideMs) p = (float)(t / slideMs);
+    else if (t > creditDurMs - slideMs) p = (float)((creditDurMs - t) / slideMs);
+    p = p * p * (3.0f - 2.0f * p);                   /* suaviza entrada e saida */
+
+    const float R = 210.0f;
+    const float cx = SCREEN_W * 0.30f + (1.0f - p) * 600.0f;   /* desliza da direita */
+    const float cy = SCREEN_H * 0.5f;
+    const float angle = (float)(t * 0.12);           /* 120 graus por segundo */
+
+    DrawRecord(cx, cy, R, angle, p);
+
+    const float tx = cx + R + 40.0f;
+    const float ty = cy - 50.0f;
+    const Color titleCol = Fade(WHITE, p);
+    const Color subCol = Fade((Color){220, 220, 220, 255}, p);
+    DrawTextEx(mainFont, creditTitle, (Vector2){tx, ty}, 56.0f, 2.0f, titleCol);
+    DrawTextEx(mainFont, "by",(Vector2){tx, ty + 70.0f}, 26.0f, 1.0f, subCol);
+    DrawTextEx(mainFont, creditName, (Vector2){tx, ty + 100.0f}, 36.0f, 1.0f, titleCol);
+}
+
 void PlayStateEvents_Draw(void) {
+    DrawMusicCredit();
+
     /* Imagem primeiro: o overlay preto do fade fica por cima (Fade In revela a imagem). */
     if (curImg >= 0 && imgs[curImg].ok) {
         const Texture2D t = imgs[curImg].tex;

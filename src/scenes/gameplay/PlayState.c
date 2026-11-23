@@ -145,6 +145,7 @@ static void ApplyMusicVolume(void) {
 
     PlayStateAudio_SetVolume(volume);
     PlayStateDeath_SetVolume(volume);
+    PlayStateAnimations_SetHitVolume(volume);
 }
 
 /* ------------------------------------------------------------------ */

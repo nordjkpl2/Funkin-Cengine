@@ -655,6 +655,7 @@ static void Edit_DrawPanel_Events(float x, float y) {
         }
         const char img = (t != NULL && t->usesImage);
         const char chr = (t != NULL && t->usesChar);  // troca de personagem: alvo 0..2 + nome (s1)
+        const char txt = (t != NULL && t->usesText);  // so texto livre em s1 (ex.: criador da musica)
         const char* lab1 = (t != NULL) ? t->label1 : "valor 1:";
         const char* lab2 = (t != NULL) ? t->label2 : "valor 2:";
         // shader e parallax: intensidade e velocidade 0..100 (passos de 10)
@@ -670,7 +671,7 @@ static void Edit_DrawPanel_Events(float x, float y) {
         Ed_DrawText(mainFont, tb, (Vector2){x + 156, y + 4}, 20, 1, WHITE);
         y += 40;
 
-        if(!chr) {
+        if(!chr && !txt) {
             Ed_DrawText(mainFont, lab2, (Vector2){x, y + 4}, 20, 1, WHITE);
             if(EdButton((Rectangle){x + 110, y, 36, 32}, "-", 22)) EvStepInt(e->v2, sizeof(e->v2), -st2, lo2, hi2);
             if(EdButton((Rectangle){x + 250, y, 36, 32}, "+", 22)) EvStepInt(e->v2, sizeof(e->v2), st2, lo2, hi2);
@@ -688,7 +689,7 @@ static void Edit_DrawPanel_Events(float x, float y) {
             y += 40;
         }
 
-        if(img || chr) {
+        if(img || chr || txt) {
             // caixa de texto com o nome da imagem (ou do personagem): sincroniza com o evento selecionado
             static int evImgSel = -2;
             static int evImgGen = -1;
@@ -697,12 +698,12 @@ static void Edit_DrawPanel_Events(float x, float y) {
                 evImgGen = edEventsGen;
                 snprintf(evImgBox.buf, sizeof(evImgBox.buf), "%s", e->s1);
             }
-            Ed_DrawText(mainFont, chr ? "personagem (nome pasta/xml):" : "imagem (images/<nome>.png):", (Vector2){x, y}, 18, 1, WHITE);
+            Ed_DrawText(mainFont, chr ? "personagem (nome pasta/xml):" : txt ? "criador (texto):" : "imagem (images/<nome>.png):", (Vector2){x, y}, 18, 1, WHITE);
             y += 26;
             const char evBlocked = (ceDlg != DLG_NONE || activeDrop || menuOpen);
             Rectangle ir = {x, y, 250, 32};
             TxtBox_Update(&evImgBox, ir, evBlocked);
-            TxtBox_Draw(&evImgBox, ir, chr ? "ex.: bf-car, gf, dad" : "nome da imagem");
+            TxtBox_Draw(&evImgBox, ir, chr ? "ex.: bf-car, gf, dad" : txt ? "nome do criador" : "nome da imagem");
             if(strcmp(evImgBox.buf, e->s1) != 0) {
                 snprintf(e->s1, sizeof(e->s1), "%s", evImgBox.buf);
                 snprintf(evImgBox.buf, sizeof(evImgBox.buf), "%s", e->s1); /* ja truncado */

@@ -22,6 +22,9 @@ void PlayStateAnimations_Load(const Song* song, const char* opponent);
 /* Sons de acerto e erro: carregados uma vez, entre as musicas. */
 void PlayStateAnimations_LoadSounds(void);
 
+/* Volume global (0..1) do hitsound: aplicado sobre o volume base do som. */
+void PlayStateAnimations_SetHitVolume(float volume);
+
 /* Restart: volta os personagens para o idle e reaproveita o que ja esta carregado. */
 void PlayStateAnimations_Restart(void);
 

@@ -8,6 +8,7 @@
 #include "scenes/gameplay/PlayStateHealth.h"
 #include "scenes/gameplay/PlayStateStage.h"
 #include "GameData.h"
+#include "Game.h"
 #include <stddef.h>
 #include <string.h>
 
@@ -67,6 +68,11 @@ void PlayStateAnimations_Load(const Song* song, const char* opponent) {
     PlayStateHealth_SetCharacterColors(&dad, &bf);
 }
 
+/* Volume base do hitsound; o volume global (+/-) multiplica por cima. */
+#define HIT_SOUND_BASE_VOLUME 0.5f
+/* Intervalo minimo entre dois hitsounds: notas em rajada nao empilham a mesma amostra. */
+#define HIT_SOUND_COOLDOWN 0.10
+
 void PlayStateAnimations_LoadSounds(void) {
     static const char* const missFiles[3] = {
         "assets/sounds/missnote1.ogg", "assets/sounds/missnote2.ogg", "assets/sounds/missnote3.ogg"
@@ -78,7 +84,41 @@ void PlayStateAnimations_LoadSounds(void) {
     }
 
     hitSFX = LoadSound("assets/sounds/hitosu!mania.ogg");
-    SetSoundVolume(hitSFX, 0.5f);
+    SetSoundVolume(hitSFX, HIT_SOUND_BASE_VOLUME * RayGame_MusicVolumeLevel());
+}
+
+void PlayStateAnimations_SetHitVolume(float volume) {
+    SetSoundVolume(hitSFX, HIT_SOUND_BASE_VOLUME * volume);
+}
+
+static void PlayHitSound(void) {
+    static double lastHitSound = -1.0;
+
+    const double now = GetTime();
+    if (lastHitSound >= 0.0 && now - lastHitSound < HIT_SOUND_COOLDOWN)
+        return;
+
+    lastHitSound = now;
+    PlaySound(hitSFX);
+}
+
+/* Hitsound do botplay: some quando ha spam (mais de HIT_SOUND_SPAM_MAX notas seguidas). */
+#define HIT_SOUND_SPAM_MAX 4
+
+static void PlayBotHitSound(void) {
+    static double lastBotHit = -1.0;
+    static int streak = 0;
+
+    const double now = GetTime();
+    if (lastBotHit >= 0.0 && now - lastBotHit < HIT_SOUND_COOLDOWN)
+        streak++;
+    else
+        streak = 1;
+    lastBotHit = now;
+
+    if (streak > HIT_SOUND_SPAM_MAX)
+        return;
+    PlayHitSound();
 }
 
 void PlayStateAnimations_Restart(void) {
@@ -175,7 +215,7 @@ void PlayStateAnimations_OpponentHold(void) {
 
 void PlayStateAnimations_BotHit(int lane) {
     if (gameOptions.hitSoundBotplay)
-        PlaySound(hitSFX);
+        PlayBotHitSound();
 
     bf.idleTimer = 0;
     AnimatedObject_SetAnimation(&bf.object, bf.animations.notes[lane]);
@@ -187,7 +227,7 @@ void PlayStateAnimations_BotHold(void) {
 
 void PlayStateAnimations_PlayerHit(int lane) {
     if (gameOptions.hitSound)
-        PlaySound(hitSFX);
+        PlayHitSound();
 
     bf.idleTimer = 0;
     AnimatedObject_SetAnimation(&bf.object, bf.animations.notes[lane]);

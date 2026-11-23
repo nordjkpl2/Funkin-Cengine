@@ -10,6 +10,7 @@
  * Hide Image: esconde a imagem atual. Sem valores.
  * Change Character: v1 = alvo (0 = oponente, 1 = BF, 2 = GF); s1 = nome do personagem (pasta do mod/assets).
  * Letterbox: barras pretas em cima e embaixo. v1 = duracao da animacao (ms), v2 = altura de cada barra (% da tela; 0 tira).
+ * Music Credit: disco de vinil grande com o titulo da musica (nome da pasta) e o criador. v1 = duracao (ms), s1 = nome do criador.
  */
 #pragma once
 #ifndef PLAYSTATE_EVENTS_IN_GAMEPLAY_H
@@ -28,6 +29,7 @@ typedef struct {
     char usesImage;        /* 1 = tem campo de texto com o nome da imagem (s1) */
     char usesShader;       /* 1 = evento de shader de tela: v1 = intensidade %, v2 = animacao % (0 = estatico) */
     char usesChar;         /* 1 = troca de personagem: v1 = alvo (0 = oponente, 1 = BF, 2 = GF), s1 = nome do personagem */
+    char usesText;         /* 1 = so texto livre em s1 (ex.: nome do criador); sem v2 */
 } PlayStateEventType;
 
 extern const PlayStateEventType playStateEventTypes[];
