@@ -404,3 +404,15 @@
 89	241	8171044291780145	CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/events/PlayStateEventsInGameplay.c.obj	1ab2c340a5e5a42
 94	295	8171044291830008	CMakeFiles/FunkinCengine.dir/src/scenes/modding/charteditor/data/EditorEvents.c.obj	6eda2daaaf26e7b
 295	3808	8171044293843756	D:/dev/funkin c/FunkinCengine.exe	9829c3c138cdfdde
+60	120	8171068522744700	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+128	364	8171068523432682	CMakeFiles/FunkinCengine.dir/src/scenes/menu/storymode/StoryMode.c.obj	bd694547e98728e
+364	12527	8171068525791260	D:/dev/funkin c/FunkinCengine.exe	9829c3c138cdfdde
+41	96	8171069688888822	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+103	263	8171069689509292	CMakeFiles/FunkinCengine.dir/src/scenes/menu/storymode/StoryMode.c.obj	bd694547e98728e
+264	5635	8171069691121864	D:/dev/funkin c/FunkinCengine.exe	9829c3c138cdfdde
+46	99	8171075187533587	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+112	246	8171075188184613	CMakeFiles/FunkinCengine.dir/src/scenes/menu/storymode/StoryMode.c.obj	bd694547e98728e
+246	4797	8171075189534280	D:/dev/funkin c/FunkinCengine.exe	9829c3c138cdfdde
+58	119	8171076475321261	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+129	269	8171076476027090	CMakeFiles/FunkinCengine.dir/src/scenes/menu/storymode/StoryMode.c.obj	bd694547e98728e
+269	3921	8171076477434724	D:/dev/funkin c/FunkinCengine.exe	9829c3c138cdfdde

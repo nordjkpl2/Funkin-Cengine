@@ -138,3 +138,4 @@ LOAD [Singularity] init: 0.0 ms, chart: 4.3 ms, sounds: 11.2 ms, characters: 137
 IMAGE: Failed to load image data
 LOAD [Spacathon] init: 0.0 ms, chart: 9.5 ms, sounds: 47.0 ms, characters: 410.1 ms, stage: 3.3 ms, song audio: 9.1 ms, notes: 223.5 ms, ui: 0.0 ms, warmup: 0.3 ms, (textures on main thread: 402.6 ms) total: 702.8 ms
 LOAD [Trauma] init: 0.0 ms, chart: 23.3 ms, sounds: 26.1 ms, characters: 470.8 ms, stage: 1479.6 ms, song audio: 4.8 ms, notes: 248.4 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 1933.6 ms) total: 2253.2 ms
+LOAD [Astray] init: 27.5 ms, chart: 4.0 ms, sounds: 62.0 ms, characters: 447.9 ms, stage: 9.0 ms, song audio: 5.6 ms, notes: 280.1 ms, ui: 10.2 ms, warmup: 0.2 ms, (textures on main thread: 490.2 ms) total: 846.4 ms

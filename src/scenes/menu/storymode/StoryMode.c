@@ -2,9 +2,10 @@
  * Friday Night Funkin' C Engine (c) 2026 nordjkpl
  * StoryMode.c - selecao de weeks do Story Mode.
  *
- * A busca da capa fica em StoryCover.c. Textos que dependem so da week (titulo
- * cortado, contagem de musicas, lista de faixas) sao montados quando a lista ou a
- * selecao muda, nunca no Draw.
+ * A capa da week ocupa a tela inteira (recorte centralizado, sem esticar), com
+ * gradientes em cima e embaixo para o texto ler bem. A busca da capa fica em
+ * StoryCover.c. Textos e recortes que dependem so da week ou da capa sao montados
+ * quando a lista ou a selecao muda, nunca no Draw.
  */
 
 #include "scenes/LoadingState.h"
@@ -27,20 +28,19 @@
 #define SCREEN_W 1280
 #define SCREEN_H 720
 
-/* Layout: banner grande no topo; lista de weeks embaixo a esquerda; faixas a direita. */
-#define BANNER_X -40.0f
-#define BANNER_Y 0.0f
-#define BANNER_W 1360.0f
-#define BANNER_H 380.0f
-#define DISC_CENTER_X 1236.0f
-#define DISC_CENTER_Y 350.0f
-#define DISC_RADIUS 24.0f
-#define TITLE_RIGHT 1222.0f
-#define TITLE_Y 618.0f
+/* Layout: titulo grande no topo a esquerda; lista de weeks embaixo a esquerda; faixas a direita. */
+#define HERO_TITLE_X 58.0f
+#define HERO_TITLE_Y 36.0f
+#define HERO_TITLE_SIZE 56.0f
+#define HERO_TITLE_MAX_W 1000.0f
+#define HERO_COUNT_Y 108.0f
+#define DISC_CENTER_X 1222.0f
+#define DISC_CENTER_Y 78.0f
+#define DISC_RADIUS 22.0f
 
 #define LIST_X 58.0f
 #define LIST_Y 392.0f
-#define LIST_W 610.0f
+#define LIST_W 560.0f
 #define LIST_BOTTOM 644.0f
 #define ROW_H 72.0f
 #define ROW_BOX_H 62.0f
@@ -69,19 +69,20 @@
 #define TWO_PI 6.28318530718f
 
 static const Color COLOR_PANEL = {12, 15, 27, 218};
-static const Color COLOR_PANEL_ALT = {22, 27, 44, 230};
 static const Color COLOR_BORDER = {90, 105, 145, 150};
 static const Color COLOR_TEXT = {238, 241, 255, 255};
 static const Color COLOR_MUTED = {155, 165, 190, 255};
 static const Color COLOR_ACCENT = {255, 205, 92, 255};
 static const Color COLOR_GREEN = {100, 225, 155, 255};
 static const Color COLOR_DANGER = {255, 105, 115, 255};
+static const Color COLOR_SHADE = {5, 7, 15, 255};
 
 /* Textos prontos de cada week na lista. */
 typedef struct {
     char idleTitle[TEXT_MAX];     // cortado para caber, fonte normal
     char selectedTitle[TEXT_MAX]; // cortado para caber, fonte da selecionada
     char count[32];               // "3 SONGS" ou "HIDDEN  3 SONGS"
+    float countWidth;             // largura da contagem, para desenhar a pilula
 } WeekRowText;
 
 static WeekEntry* weeks;
@@ -95,6 +96,10 @@ static bool showHidden;
 static char anchorFile[64];  // week a manter selecionada ao recarregar a lista
 static char anchorDir[256];
 
+/* Fundo: capa (ou padrao) ja recortada para preencher a tela. Recalculado so ao trocar de capa. */
+static Texture2D backdrop;
+static Rectangle backdropSrc;
+static Rectangle coverFitDst; // capa inteira (contain) por cima do fundo; width 0 = nao desenhar
 static Texture2D backgroundTexture;
 static Camera2D storyCamera;
 static float discAngle;
@@ -106,8 +111,9 @@ static char statusText[128];
 static float statusWidth;
 static float statusTimer;
 
-/* Painel de detalhes da week selecionada. */
-static float detailsTitleX;
+/* Titulo grande e contagem da week selecionada, e painel de faixas. */
+static char heroTitle[TEXT_MAX];
+static char heroCount[64];
 static char detailsCount[64];
 static char detailsLastScore[48];
 static char detailsLines[MAX_DISPLAY_SONGS][DETAIL_LINE_MAX];
@@ -130,17 +136,17 @@ static void SetStatus(const char* message) {
     statusTimer = STATUS_SECONDS;
 }
 
-/* Copia o titulo e corta com "..." ate caber em TITLE_MAX_W. */
-static void FitTitle(const char* title, float fontSize, char out[TEXT_MAX]) {
+/* Copia o titulo e corta com "..." ate caber em maxWidth. */
+static void FitTitle(const char* title, float fontSize, float maxWidth, char out[TEXT_MAX]) {
     size_t length = strlen(title);
     if (length >= TEXT_MAX) length = TEXT_MAX - 1;
     memcpy(out, title, length);
     out[length] = '\0';
 
-    if (MeasureTextEx(mainFont, out, fontSize, 1.5f).x <= TITLE_MAX_W)
+    if (MeasureTextEx(mainFont, out, fontSize, 1.5f).x <= maxWidth)
         return;
 
-    while (length > 4 && MeasureTextEx(mainFont, out, fontSize, 1.5f).x > TITLE_MAX_W)
+    while (length > 4 && MeasureTextEx(mainFont, out, fontSize, 1.5f).x > maxWidth)
         out[--length] = '\0';
 
     if (length > 3)
@@ -150,16 +156,17 @@ static void FitTitle(const char* title, float fontSize, char out[TEXT_MAX]) {
 static void RowTexts_Build(void) {
     for (int i = 0; i < weekCount; i++) {
         const char* title = WeekTitle(weeks + i);
-        FitTitle(title, ROW_FONT_IDLE, rowTexts[i].idleTitle);
-        FitTitle(title, ROW_FONT_SELECTED, rowTexts[i].selectedTitle);
+        FitTitle(title, ROW_FONT_IDLE, TITLE_MAX_W, rowTexts[i].idleTitle);
+        FitTitle(title, ROW_FONT_SELECTED, TITLE_MAX_W, rowTexts[i].selectedTitle);
         if (weeks[i].hidden)
             snprintf(rowTexts[i].count, sizeof(rowTexts[i].count), "HIDDEN  %d SONGS", weeks[i].songCount);
         else
             snprintf(rowTexts[i].count, sizeof(rowTexts[i].count), "%d SONGS", weeks[i].songCount);
+        rowTexts[i].countWidth = MeasureTextEx(mainFont, rowTexts[i].count, 13.0f, 1.0f).x;
     }
 }
 
-/* Refaz o painel de detalhes da week selecionada. */
+/* Refaz o titulo grande e o painel de faixas da week selecionada. */
 static void Details_Build(void) {
     if (selected < 0 || selected >= weekCount) return;
 
@@ -167,9 +174,11 @@ static void Details_Build(void) {
     const int shown = week->songCount > MAX_DISPLAY_SONGS ? MAX_DISPLAY_SONGS
                     : week->songCount < 0 ? 0 : week->songCount;
 
-    // Titulo alinhado a direita, no canto inferior.
-    const Vector2 titleSize = MeasureTextEx(mainFont, WeekTitle(week), 36.0f, 2.0f);
-    detailsTitleX = TITLE_RIGHT - titleSize.x;
+    FitTitle(WeekTitle(week), HERO_TITLE_SIZE, HERO_TITLE_MAX_W, heroTitle);
+    if (week->hidden)
+        snprintf(heroCount, sizeof(heroCount), "HIDDEN   %d SONGS", week->songCount);
+    else
+        snprintf(heroCount, sizeof(heroCount), "%d SONGS", week->songCount);
 
     detailsHidden = week->songCount > MAX_DISPLAY_SONGS;
     if (detailsHidden)
@@ -192,6 +201,43 @@ static void Details_Build(void) {
         detailsLastScore[0] = '\0';
 }
 
+/*
+ * Recorte que preenche a tela (cover), centralizado, sem esticar. Usa a capa se
+ * houver, senao o fundo do menu. Chamado so ao trocar de week.
+ */
+static void Backdrop_Update(void) {
+    backdrop = StoryCover_IsLoaded() ? StoryCover_Texture() : backgroundTexture;
+    coverFitDst = (Rectangle) {0};
+    if (backdrop.id == 0 || backdrop.width <= 0 || backdrop.height <= 0) return;
+
+    const float screenAspect = (float)SCREEN_W / (float)SCREEN_H; // float: SCREEN_W / SCREEN_H daria 1
+    const float textureAspect = (float)backdrop.width / (float)backdrop.height;
+
+    // Capa inteira, proporcional, centralizada (contain), com margem.
+    if (StoryCover_IsLoaded()) {
+        const float margin = 40.0f;
+        const float maxW = SCREEN_W - margin * 2.0f;
+        const float maxH = SCREEN_H - margin * 2.0f;
+        float w = maxW;
+        float h = w / textureAspect;
+        if (h > maxH) {
+            h = maxH;
+            w = h * textureAspect;
+        }
+        coverFitDst = (Rectangle) {(SCREEN_W - w) * 0.5f, (SCREEN_H - h) * 0.5f, w, h};
+    }
+
+    // Fundo: recorte que preenche a tela (como antes).
+    backdropSrc = (Rectangle) {0.0f, 0.0f, (float)backdrop.width, (float)backdrop.height};
+    if (textureAspect > screenAspect) {
+        backdropSrc.width = backdropSrc.height * screenAspect;
+        backdropSrc.x = ((float)backdrop.width - backdropSrc.width) * 0.5f;
+    } else {
+        backdropSrc.height = backdropSrc.width / screenAspect;
+        backdropSrc.y = ((float)backdrop.height - backdropSrc.height) * 0.5f;
+    }
+}
+
 /* ------------------------------------------------------------------ */
 /* Lista de weeks e selecao                                            */
 /* ------------------------------------------------------------------ */
@@ -199,6 +245,7 @@ static void Details_Build(void) {
 static void SelectWeek(int index) {
     selected = index;
     StoryCover_Load(selected, weeks + selected);
+    Backdrop_Update();
     Details_Build();
 }
 
@@ -315,6 +362,7 @@ static void StoryMode_Create([[maybe_unused]] RayScene* scene) {
     anchorDir[0] = '\0';
 
     RefreshWeekList();
+    Backdrop_Update();
 
     if (WeekRun_Missing()[0]) {
         char message[128];
@@ -373,16 +421,13 @@ static void StoryMode_Update([[maybe_unused]] RayScene* scene) {
     if (weekCount <= 0)
         return;
 
-    // Roda do mouse rola a lista de faixas.
-    const float wheel = GetMouseWheelMove();
-    if (wheel != 0.0f)
-        ScrollTracks(wheel > 0.0f ? -1 : 1);
-
     UpdateTrackScrollInput();
 
-    if (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S))
+    // Roda do mouse move a selecao do menu (cima/baixo), como as setas.
+    const float wheel = GetMouseWheelMove();
+    if (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S) || wheel < 0.0f)
         SelectWeek((selected + 1) % weekCount);
-    else if (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W))
+    else if (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W) || wheel > 0.0f)
         SelectWeek((selected - 1 + weekCount) % weekCount);
 
     if (IsKeyPressed(KEY_DELETE) || IsKeyPressed(KEY_SLASH) || IsKeyPressed(KEY_KP_DIVIDE)) {
@@ -409,73 +454,95 @@ static void DrawPanel(Rectangle rect, Color fill, Color border) {
     DrawRectangleLinesEx(rect, 1.0f, border);
 }
 
-/* Maior retangulo com a proporcao de (srcW x srcH) que cabe inteiro em `box`, centralizado. */
-static Rectangle FitContain(float srcW, float srcH, Rectangle box) {
-    const float scale = fminf(box.width / srcW, box.height / srcH);
-    const float w = srcW * scale;
-    const float h = srcH * scale;
-    return (Rectangle) {box.x + (box.width - w) * 0.5f, box.y + (box.height - h) * 0.5f, w, h};
-}
-
-/* Banner da week inteiro (sem recorte), no topo ocupando a largura da tela. */
+/* Fundo em tela cheia (recorte), capa inteira por cima, e gradientes para leitura. */
 static void DrawCover(void) {
-    const Rectangle slot = {BANNER_X, BANNER_Y, BANNER_W, BANNER_H};
+    if (backdrop.id != 0)
+        DrawTexturePro(backdrop, backdropSrc, (Rectangle) {0.0f, 0.0f, SCREEN_W, SCREEN_H},
+                       VECTOR_ZERO, 0.0f, WHITE);
 
-    if (StoryCover_IsLoaded() && StoryCover_Texture().width > 0 && StoryCover_Texture().height > 0) {
-        const Texture2D texture = StoryCover_Texture();
-        const Rectangle art = FitContain((float)texture.width, (float)texture.height, slot);
-
-        DrawTexturePro(texture, (Rectangle) {0.0f, 0.0f, (float)texture.width, (float)texture.height},
-                       art, VECTOR_ZERO, 0.0f, WHITE);
-        DrawRectangleLinesEx(art, 3.0f, (Color) {235, 220, 180, 230});
-    } else {
-        DrawRectangleRec(slot, (Color) {28, 33, 52, 255});
-        DrawTextEx(mainFont, "NO WEEK ART", (Vector2) {BANNER_X + BANNER_W * 0.5f - 60.0f, BANNER_Y + 150.0f},
-                   19.0f, 1.0f, COLOR_MUTED);
+    if (coverFitDst.width > 0.0f) {
+        DrawRectangle(0, 0, SCREEN_W, SCREEN_H, (Color) {5, 7, 15, 150}); // escurece o fundo
+        DrawTexturePro(backdrop, (Rectangle) {0.0f, 0.0f, (float)backdrop.width, (float)backdrop.height},
+                       coverFitDst, VECTOR_ZERO, 0.0f, WHITE);
     }
+
+    DrawRectangle(0, 0, SCREEN_W, SCREEN_H, (Color) {5, 7, 15, 40});
+    DrawRectangleGradientV(0, 0, SCREEN_W, 250, (Color) {5, 7, 15, 215}, (Color) {5, 7, 15, 0});
+    DrawRectangleGradientV(0, 290, SCREEN_W, SCREEN_H - 290, (Color) {5, 7, 15, 0}, (Color) {5, 7, 15, 240});
 }
 
-/* Vinil pequeno no canto do banner. */
+/* Vinil pequeno no canto superior direito. */
 static void DrawDisc(void) {
     const Vector2 center = {DISC_CENTER_X, DISC_CENTER_Y};
     const float radius = DISC_RADIUS;
-    const Vector2 marker = {center.x + 20.0f * cosf(discAngle), center.y + 20.0f * sinf(discAngle)};
+    const Vector2 marker = {center.x + 16.0f * cosf(discAngle), center.y + 16.0f * sinf(discAngle)};
 
     DrawCircleV(center, radius + 4.0f, (Color) {4, 6, 13, 150});
     DrawCircleV(center, radius, (Color) {19, 22, 35, 255});
     DrawCircleLines((int)center.x, (int)center.y, radius - 2.0f, (Color) {105, 117, 150, 210});
-    DrawCircleLines((int)center.x, (int)center.y, 20.0f, (Color) {62, 72, 103, 190});
-    DrawCircleLines((int)center.x, (int)center.y, 12.0f, (Color) {62, 72, 103, 170});
-    DrawCircleV(center, 7.0f, (Color) {104, 79, 153, 255});
-    DrawCircleV(center, 2.5f, (Color) {231, 232, 242, 255});
+    DrawCircleLines((int)center.x, (int)center.y, 14.0f, (Color) {62, 72, 103, 190});
+    DrawCircleV(center, 6.0f, (Color) {104, 79, 153, 255});
+    DrawCircleV(center, 2.0f, (Color) {231, 232, 242, 255});
     DrawLineEx(center, marker, 1.5f, (Color) {255, 218, 139, 210});
     DrawCircleV(marker, 2.0f, COLOR_ACCENT);
 }
 
+/* Titulo grande da week selecionada, com sombra, e contagem logo abaixo. */
+static void DrawHero(void) {
+    DrawTextEx(mainFont, heroTitle, (Vector2) {HERO_TITLE_X + 3.0f, HERO_TITLE_Y + 3.0f},
+               HERO_TITLE_SIZE, 1.5f, (Color) {0, 0, 0, 190});
+    DrawTextEx(mainFont, heroTitle, (Vector2) {HERO_TITLE_X, HERO_TITLE_Y},
+               HERO_TITLE_SIZE, 1.5f, COLOR_TEXT);
+    DrawTextEx(mainFont, heroCount, (Vector2) {HERO_TITLE_X + 2.0f, HERO_COUNT_Y},
+               16.0f, 1.5f, COLOR_ACCENT);
+}
+
 static void DrawWeekRow(int i) {
     const float y = LIST_Y + ((float)i - listOffset) * ROW_H;
-    // So desenha linhas inteiras dentro da area da lista (nao invade o banner).
+    // So desenha linhas inteiras dentro da area da lista.
     if (y < LIST_Y || y + ROW_BOX_H > LIST_BOTTOM)
         return;
 
     const Rectangle row = {LIST_X, y, LIST_W, ROW_BOX_H};
     const bool isSelected = i == selected;
+    const WeekRowText* text = rowTexts + i;
+
+    // Sombra suave embaixo da linha.
+    DrawRectangleRounded((Rectangle) {row.x, row.y + 4.0f, row.width, row.height},
+                         0.16f, 8, (Color) {3, 4, 10, 110});
 
     if (isSelected) {
-        DrawPanel(row, (Color) {59, 49, 75, 242}, (Color) {255, 205, 92, 220});
-        DrawRectangle((int)row.x, (int)row.y + 8, 4, 46, COLOR_ACCENT);
+        // Brilho dourado por fora, fundo com faixa clara no topo (simula gradiente) e borda.
+        DrawRectangleRounded((Rectangle) {row.x - 3.0f, row.y - 3.0f, row.width + 6.0f, row.height + 6.0f},
+                             0.2f, 8, (Color) {255, 205, 92, 34});
+        DrawRectangleRounded(row, 0.16f, 8, (Color) {44, 38, 62, 248});
+        DrawRectangleRounded((Rectangle) {row.x + 1.0f, row.y + 1.0f, row.width - 2.0f, row.height * 0.5f},
+                             0.3f, 8, (Color) {255, 255, 255, 16});
+        DrawRectangleRoundedLinesEx(row, 0.16f, 8, 1.5f, (Color) {255, 205, 92, 220});
+        // Seta ">" atras da barra de acento, como o seletor do freeplay.
+        DrawTextEx(mainFont, ">", (Vector2) {row.x + 2.0f, row.y + 14.0f}, 34.0f, 1.0f, COLOR_ACCENT);
+        // Barra de acento arredondada a esquerda.
+        DrawRectangleRounded((Rectangle) {row.x + 8.0f, row.y + 14.0f, 4.0f, ROW_BOX_H - 28.0f},
+                             1.0f, 4, COLOR_ACCENT);
     } else {
-        DrawRectangleRounded(row, 0.08f, 6, (Color) {12, 16, 29, 155});
-        DrawRectangleLinesEx(row, 1.0f, (Color) {60, 72, 100, 90});
+        DrawRectangleRounded(row, 0.16f, 8, (Color) {14, 18, 33, 200});
+        DrawRectangleRoundedLinesEx(row, 0.16f, 8, 1.0f, (Color) {70, 84, 120, 110});
     }
 
-    const WeekRowText* text = rowTexts + i;
-    DrawTextEx(mainFont, isSelected ? text->selectedTitle : text->idleTitle,
-               (Vector2) {row.x + 25.0f, row.y + 13.0f},
+    // Titulo, com sombra leve quando selecionado.
+    const Vector2 titlePos = {row.x + 25.0f, row.y + 13.0f};
+    if (isSelected)
+        DrawTextEx(mainFont, text->selectedTitle, (Vector2) {titlePos.x + 1.0f, titlePos.y + 2.0f},
+                   ROW_FONT_SELECTED, 1.5f, (Color) {0, 0, 0, 160});
+    DrawTextEx(mainFont, isSelected ? text->selectedTitle : text->idleTitle, titlePos,
                isSelected ? ROW_FONT_SELECTED : ROW_FONT_IDLE, 1.5f,
                isSelected ? COLOR_TEXT : COLOR_MUTED);
 
-    DrawTextEx(mainFont, text->count, (Vector2) {row.x + LIST_W - 112.0f, row.y + 22.0f},
+    // Contagem dentro de uma pilula.
+    const float countX = row.x + LIST_W - 112.0f;
+    const Rectangle pill = {countX - 10.0f, row.y + (ROW_BOX_H - 24.0f) * 0.5f, text->countWidth + 20.0f, 24.0f};
+    DrawRectangleRounded(pill, 0.5f, 8, isSelected ? (Color) {255, 205, 92, 44} : (Color) {255, 255, 255, 12});
+    DrawTextEx(mainFont, text->count, (Vector2) {countX, pill.y + 6.0f},
                13.0f, 1.0f, isSelected ? COLOR_ACCENT : COLOR_MUTED);
 }
 
@@ -579,10 +646,6 @@ static void DrawTrackList(void) {
 static void DrawWeekDetails(void) {
     const float firstX = DETAILS_X + 18.0f;
 
-    const char* title = WeekTitle(weeks + selected);
-    DrawTextEx(mainFont, title, (Vector2) {detailsTitleX + 2.0f, TITLE_Y + 2.0f}, 36.0f, 2.0f, (Color) {0, 0, 0, 180});
-    DrawTextEx(mainFont, title, (Vector2) {detailsTitleX, TITLE_Y}, 36.0f, 2.0f, COLOR_TEXT);
-
     DrawPanel((Rectangle) {DETAILS_X, DETAILS_Y, DETAILS_W, DETAILS_H}, COLOR_PANEL, COLOR_BORDER);
     DrawTextEx(mainFont, detailsCount, (Vector2) {firstX, DETAILS_Y + 10.0f}, 14.0f, 1.0f, COLOR_ACCENT);
 
@@ -595,8 +658,6 @@ static void DrawWeekDetails(void) {
     if (detailsLastScore[0])
         DrawTextEx(mainFont, detailsLastScore, (Vector2) {DETAILS_X + DETAILS_W - 170.0f, DETAILS_Y + 9.0f},
                    12.0f, 1.0f, COLOR_GREEN);
-
-    DrawDisc();
 }
 
 static void DrawDeleteModal(void) {
@@ -605,25 +666,6 @@ static void DrawDeleteModal(void) {
     DrawTextEx(mainFont, deletePrompt, (Vector2) {350.0f, 294.0f}, 30.0f, 1.5f, COLOR_TEXT);
     DrawTextEx(mainFont, "Y  CONFIRM", (Vector2) {390.0f, 365.0f}, 19.0f, 1.0f, COLOR_DANGER);
     DrawTextEx(mainFont, "N  CANCEL", (Vector2) {650.0f, 365.0f}, 19.0f, 1.0f, COLOR_GREEN);
-}
-
-/* Fundo: a capa da week (ou o padrao) preenchendo a tela, recortado no centro sem esticar. */
-static void DrawBackdrop(void) {
-    const Texture2D background = StoryCover_IsLoaded() ? StoryCover_Texture() : backgroundTexture;
-    if (background.id == 0) return;
-
-    Rectangle source = {0.0f, 0.0f, (float)background.width, (float)background.height};
-    const float screenAspect = (float)SCREEN_W / (float)SCREEN_H; // float: SCREEN_W / SCREEN_H daria 1
-    const float textureAspect = source.width / source.height;
-    if (textureAspect > screenAspect) {
-        source.width = source.height * screenAspect;
-        source.x = ((float)background.width - source.width) * 0.5f;
-    } else {
-        source.height = source.width / screenAspect;
-        source.y = ((float)background.height - source.height) * 0.5f;
-    }
-    DrawTexturePro(background, source, (Rectangle) {0.0f, 0.0f, SCREEN_W, SCREEN_H},
-                   VECTOR_ZERO, 0.0f, (Color) {115, 125, 160, 90});
 }
 
 static void DrawEmptyState(void) {
@@ -648,16 +690,16 @@ static void DrawHelpLine(void) {
 static void StoryMode_Draw([[maybe_unused]] RayScene* scene) {
     Render_SetCamera(&storyCamera);
 
-    ClearBackground((Color) {7, 9, 18, 255});
-    DrawBackdrop();
-    DrawRectangle(0, 0, SCREEN_W, SCREEN_H, (Color) {5, 7, 15, 145});
+    ClearBackground(COLOR_SHADE);
+    DrawCover();
 
     if (weekCount <= 0) {
         DrawEmptyState();
     } else {
+        DrawHero();
         DrawWeekList();
-        DrawCover();
         DrawWeekDetails();
+        DrawDisc();
         if (deleteConfirm)
             DrawDeleteModal();
     }
@@ -672,6 +714,8 @@ static void StoryMode_Destroy([[maybe_unused]] RayScene* scene) {
     StoryCover_Free();
 
     backgroundTexture = (Texture2D) {0}; // compartilhada: nao descarrega aqui
+    backdrop = (Texture2D) {0};
+    coverFitDst = (Rectangle) {0};
 
     WeekList_Free(weeks);
     weeks = NULL;
