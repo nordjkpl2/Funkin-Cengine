@@ -377,3 +377,11 @@
 42	93	8172639192901868	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
 98	236	8172639193462857	CMakeFiles/FunkinCengine.dir/src/scenes/menu/freeplay/FreeplayIcon.c.obj	92ba0ce23340ebe2
 236	3740	8172639194829139	D:/dev/funkin c/FunkinCengine.exe	99322e49f006c849
+38	91	8172644346340446	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+101	248	8172644346970115	CMakeFiles/FunkinCengine.dir/src/scenes/menu/freeplay/Freeplay.c.obj	5835d826c816f924
+97	257	8172644346930117	CMakeFiles/FunkinCengine.dir/src/data/Song.c.obj	7ef60e2412fe6230
+106	293	8172644347010044	CMakeFiles/FunkinCengine.dir/src/scenes/modding/charteditor/ui/EditorPanels.c.obj	3e5abb0e456800b0
+294	3813	8172644348888410	D:/dev/funkin c/FunkinCengine.exe	99322e49f006c849
+41	81	8172645797996176	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+86	179	8172645798437293	CMakeFiles/FunkinCengine.dir/src/scenes/menu/freeplay/Freeplay.c.obj	5835d826c816f924
+179	3594	8172645799366565	D:/dev/funkin c/FunkinCengine.exe	99322e49f006c849

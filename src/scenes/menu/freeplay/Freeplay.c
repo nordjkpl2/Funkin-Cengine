@@ -273,7 +273,7 @@ static void DrawBackdrop(void) {
 
     if (FreeplayIcon_IsLoaded()) {
         const Texture2D texture = FreeplayIcon_Texture();
-        const float a = 0.45f * backFade;
+        const float a = 1.0f * backFade;
         DrawTexturePro(texture, SquareCrop(texture), (Rectangle){-120.0f, -40.0f, SCREEN_W + 240.0f, SCREEN_W + 240.0f},
                        (Vector2){0.0f, 0.0f}, 0.0f, Fade(WHITE, a));
     }

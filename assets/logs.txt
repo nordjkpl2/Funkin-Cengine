@@ -160,3 +160,8 @@ LOAD [absolute-zero] init: 21.1 ms, chart: 6.9 ms, sounds: 62.4 ms, characters: 
 LOAD [absolute-zero] init: 0.0 ms, chart: 9.2 ms, sounds: 1.3 ms, characters: 459.3 ms, stage: 1291.4 ms, song audio: 1.7 ms, notes: 238.4 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 1748.7 ms) total: 2001.4 ms
 [WARN] Skin '@BewildermentNote_assets': animacao 'purple hold end' nao existe no XML (a lane pode sumir)
 LOAD [moribund-3] init: 21.0 ms, chart: 162.2 ms, sounds: 109.4 ms, characters: 639.9 ms, stage: 15.5 ms, song audio: 2.0 ms, notes: 238.2 ms, ui: 9.1 ms, warmup: 0.2 ms, (textures on main thread: 653.6 ms) total: 1197.5 ms
+LOAD [macrosm] init: 19.1 ms, chart: 12.1 ms, sounds: 107.3 ms, characters: 571.1 ms, stage: 53.0 ms, song audio: 3.0 ms, notes: 230.4 ms, ui: 9.7 ms, warmup: 0.2 ms, (textures on main thread: 629.8 ms) total: 1005.9 ms
+LOAD [macrosm] init: 0.0 ms, chart: 8.1 ms, sounds: 1.4 ms, characters: 484.5 ms, stage: 4.1 ms, song audio: 1.8 ms, notes: 233.2 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 486.9 ms) total: 733.3 ms
+LOAD [guilt] init: 0.0 ms, chart: 5.6 ms, sounds: 30.1 ms, characters: 508.7 ms, stage: 28.4 ms, song audio: 4.2 ms, notes: 224.4 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 502.6 ms) total: 801.6 ms
+LOAD [guilt] init: 0.0 ms, chart: 26.9 ms, sounds: 1.7 ms, characters: 420.2 ms, stage: 3.0 ms, song audio: 1.7 ms, notes: 227.3 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 421.4 ms) total: 680.9 ms
+LOAD [guilt] init: 0.0 ms, chart: 9.6 ms, sounds: 1.3 ms, characters: 419.0 ms, stage: 2.5 ms, song audio: 1.8 ms, notes: 224.4 ms, ui: 0.0 ms, warmup: 0.1 ms, (textures on main thread: 419.7 ms) total: 658.7 ms
