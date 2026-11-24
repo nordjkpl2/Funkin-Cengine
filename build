@@ -9,6 +9,12 @@ build (fnf c engine (c) 2026 nordjkpl and as name Mawh/na Corporation)
         >>>Global
 
 1. Build
+
+    Cmake e Ninja
+cmake -B build-clang -G Ninja -DCMAKE_C_COMPILER=clang
+    Cmake
+cmake --build build-clang --config Release
+
 >GCC gnu
     Código de Compilação Comum Atual
 gcc main.c $(find src -name "*.c") $(find lib -name "*.c") -o FNF_C_ENGINE.exe -I./headers -I./src -I./lib -L./lib -lraylibdll -lopengl32 -lgdi32 -lwinmm -mwindows -std=c23 -Os -flto -finline-small-functions -ffunction-sections -fmerge-all-constants -funroll-loops -fdata-sections -Wl,--gc-sections -Wl,-O2 -s -DNDEBUG -fomit-frame-pointer -fno-math-errno -fno-common -fipa-pta
@@ -25,11 +31,6 @@ clang -std=c23 -Os -flto=thin -fuse-ld=lld -ffunction-sections -fdata-sections -
 
 clang -std=c23 -Os -flto=thin -fuse-ld=lld -ffunction-sections -fdata-sections -fmerge-all-constants -funroll-loops -fomit-frame-pointer -fno-math-errno -fno-common -DNDEBUG -mwindows -DPLATFORM_DESKTOP_GLFW -DGRAPHICS_API_OPENGL_33 main.c $(find src -type f -name "*.c") $(find lib -type f -name "*.c" ! -path "lib/raylib55/*") $(find lib/raylib55/src -maxdepth 1 -type f -name "*.c") -o FNF_C_ENGINE.exe -I./headers -I./src -I./lib -I./lib/raylib55/src -I./lib/raylib55/src/external/glfw/include -lopengl32 -lgdi32 -lwinmm -luser32 -lshell32 -Wl,--gc-sections,--icf=all,-O12
 // por -fno-plt pra ELF64
-
-    Cmake e Ninja
-cmake -B build-clang -G Ninja -DCMAKE_C_COMPILER=clang
-    Cmake
-cmake --build build-clang --config Release
 
 > Backup
     git status

@@ -414,6 +414,12 @@ static void OptionsMenu_Draw([[maybe_unused]] RayScene* scene) {
         DrawHint("same fps as your monitor hz");
     else if (currentOption == OPTION_UNCAPPED_FPS)
         DrawHint("no limiter use limiter less use of video card");
+    else if (currentOption == OPTION_STREAM_JSON)
+        DrawHint("less RAM, more CPU: only useful for very large note charts");
+    else if (currentOption == OPTION_HITSOUND)
+        DrawHint("a sound when hit a note");
+    else if (currentOption == OPTION_STRUM_BG)
+        DrawHint("background in notereceptor");
     else if (currentOption == OPTION_RESET_CONFIG)
         DrawHint(resetArmed ? "ENTER again to confirm: resets every option" : "ENTER: reset all options to default");
 

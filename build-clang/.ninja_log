@@ -416,3 +416,10 @@
 58	119	8171076475321261	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
 129	269	8171076476027090	CMakeFiles/FunkinCengine.dir/src/scenes/menu/storymode/StoryMode.c.obj	bd694547e98728e
 269	3921	8171076477434724	D:/dev/funkin c/FunkinCengine.exe	9829c3c138cdfdde
+52	103	8172564185621802	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+116	514	8172564186264852	CMakeFiles/FunkinCengine.dir/src/scenes/menu/options/OptionsMenu.c.obj	e422e837b5a50c1
+145	529	8172564186554851	CMakeFiles/FunkinCengine.dir/src/scenes/menu/storymode/StoryMode.c.obj	bd694547e98728e
+529	4029	8172564190386162	D:/dev/funkin c/FunkinCengine.exe	9829c3c138cdfdde
+45	95	8172565906659216	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+101	206	8172565907224476	CMakeFiles/FunkinCengine.dir/src/scenes/menu/options/OptionsMenu.c.obj	e422e837b5a50c1
+206	3395	8172565908266054	D:/dev/funkin c/FunkinCengine.exe	9829c3c138cdfdde
