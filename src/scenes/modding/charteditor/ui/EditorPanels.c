@@ -107,11 +107,17 @@ static void Edit_DoTestPlay(void) {
 }
 
 /* Item do menu Play: com ok = 0 (arquivo ausente) o texto fica vermelho e o clique so avisa. */
-static char PlayMenuItem(Rectangle r, const char* label, char ok, const char* missing) {
+/* lane >= 0: desenha a seta dessa lane (0..3) antes do texto; -1 = sem icone. */
+static char PlayMenuItem(Rectangle r, const char* label, char ok, const char* missing, int lane) {
     Vector2 m = EdMouseWorld();
     char hov = (m.x >= r.x && m.x <= r.x + r.width && m.y >= r.y && m.y <= r.y + r.height);
     DrawRectangleRec(r, hov ? (Color){60,60,60,255} : (Color){18,18,18,255});
-    Ed_DrawText(mainFont, label, (Vector2){r.x + 8, r.y + 5}, 20, 1, ok ? WHITE : RED);
+    float tx = r.x + 8;
+    if(lane >= 0) {
+        EdArrows_DrawIcon(lane, r.x + 16, r.y + r.height / 2, 22.0f, ok ? WHITE : (Color){255,255,255,90});
+        tx = r.x + 34;
+    }
+    Ed_DrawText(mainFont, label, (Vector2){tx, r.y + 5}, 20, 1, ok ? WHITE : RED);
     if(!(hov && IsMouseButtonPressed(MOUSE_BUTTON_LEFT))) return 0;
     if(!ok) EdStatusMsg(missing);
     return 1;
@@ -183,11 +189,11 @@ void Edit_DrawMenuBar(void) {
         Rectangle box = {mx, MENU_H, 260, 5 * 30 + 8};
         DrawRectangleRec(box, (Color){15,15,15,245});
         DrawRectangleLinesEx(box, 1, GREEN);
-        if(PlayMenuItem((Rectangle){box.x + 4, box.y + 4, 252, 28}, "All sounds", 1, "")) { menuOpen = 0; Audio_SetSolo(0); }
-        else if(PlayMenuItem((Rectangle){box.x + 4, box.y + 32, 252, 28}, "Play only inst", edPlayHasInst, "NAO TEM Inst.ogg (ou mp3/wav)")) { menuOpen = 0; Edit_PlaySolo(1, edPlayHasInst); }
-        else if(PlayMenuItem((Rectangle){box.x + 4, box.y + 60, 252, 28}, "Play only vocals", edPlayHasVocals, "NAO TEM Voices (ou Voices-Player/Opponent)")) { menuOpen = 0; Edit_PlaySolo(2, edPlayHasVocals); }
-        else if(PlayMenuItem((Rectangle){box.x + 4, box.y + 88, 252, 28}, "Play only bf vocals", edPlayHasBf, "NAO TEM Voices-Player.ogg")) { menuOpen = 0; Edit_PlaySolo(3, edPlayHasBf); }
-        else if(PlayMenuItem((Rectangle){box.x + 4, box.y + 116, 252, 28}, "Play only opponent vocals", edPlayHasOpp, "NAO TEM Voices-Opponent.ogg")) { menuOpen = 0; Edit_PlaySolo(4, edPlayHasOpp); }
+        if(PlayMenuItem((Rectangle){box.x + 4, box.y + 4, 252, 28}, "All sounds", 1, "", -1)) { menuOpen = 0; Audio_SetSolo(0); }
+        else if(PlayMenuItem((Rectangle){box.x + 4, box.y + 32, 252, 28}, "Play only inst", edPlayHasInst, "NAO TEM Inst.ogg (ou mp3/wav)", 0)) { menuOpen = 0; Edit_PlaySolo(1, edPlayHasInst); }
+        else if(PlayMenuItem((Rectangle){box.x + 4, box.y + 60, 252, 28}, "Play only vocals", edPlayHasVocals, "NAO TEM Voices (ou Voices-Player/Opponent)", 1)) { menuOpen = 0; Edit_PlaySolo(2, edPlayHasVocals); }
+        else if(PlayMenuItem((Rectangle){box.x + 4, box.y + 88, 252, 28}, "Play only bf vocals", edPlayHasBf, "NAO TEM Voices-Player.ogg", 2)) { menuOpen = 0; Edit_PlaySolo(3, edPlayHasBf); }
+        else if(PlayMenuItem((Rectangle){box.x + 4, box.y + 116, 252, 28}, "Play only opponent vocals", edPlayHasOpp, "NAO TEM Voices-Opponent.ogg", 3)) { menuOpen = 0; Edit_PlaySolo(4, edPlayHasOpp); }
         else if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             if(!(m.x >= box.x && m.x <= box.x + box.width && m.y >= 0 && m.y <= box.y + box.height)) menuOpen = 0;
         }
@@ -196,8 +202,8 @@ void Edit_DrawMenuBar(void) {
         Rectangle box = {mx, MENU_H, 230, 2 * 30 + 8};
         DrawRectangleRec(box, (Color){15,15,15,245});
         DrawRectangleLinesEx(box, 1, GREEN);
-        if(PlayMenuItem((Rectangle){box.x + 4, box.y + 4, 222, 28}, "Test Play  F5", 1, "")) { menuOpen = 0; Edit_DoTestPlay(); }
-        else if(PlayMenuItem((Rectangle){box.x + 4, box.y + 32, 222, 28}, "Only note receptor  F6", 1, "")) { menuOpen = 0; Edit_StartTest(PLAYSTATE_TEST_RECEPTORS); }
+        if(PlayMenuItem((Rectangle){box.x + 4, box.y + 4, 222, 28}, "Test Play  F5", 1, "", -1)) { menuOpen = 0; Edit_DoTestPlay(); }
+        else if(PlayMenuItem((Rectangle){box.x + 4, box.y + 32, 222, 28}, "Only note receptor  F6", 1, "", -1)) { menuOpen = 0; Edit_StartTest(PLAYSTATE_TEST_RECEPTORS); }
         else if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             if(!(m.x >= box.x && m.x <= box.x + box.width && m.y >= 0 && m.y <= box.y + box.height)) menuOpen = 0;
         }

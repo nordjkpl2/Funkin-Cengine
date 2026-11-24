@@ -62,6 +62,26 @@ void EdArrows_Reset(void) {
     EdArrows_Init();
 }
 
+// seta da lane (0..3) centralizada em (cx, cy) com ~size pixels; usada como icone nos menus
+void EdArrows_DrawIcon(int lane, float cx, float cy, float size, Color tint) {
+    if(!edArrowsReady)
+        return;
+    int d = lane & 3;
+    Color keepC = edArrows[d].color;
+    float keepSx = edArrows[d].scaleX;
+    float keepSy = edArrows[d].scaleY;
+    float k = size / 56.0f;
+    edArrows[d].color = tint;
+    edArrows[d].scaleX = keepSx * k;
+    edArrows[d].scaleY = keepSy * k;
+    edArrows[d].position.x = cx + edArrowAdj[d].x * k;
+    edArrows[d].position.y = cy + edArrowAdj[d].y * k;
+    Render_DrawAnimatedObject(edArrows + d);
+    edArrows[d].color = keepC;
+    edArrows[d].scaleX = keepSx;
+    edArrows[d].scaleY = keepSy;
+}
+
 float EdPxPerMs(void) {
     return (GRID_Y1 - GRID_Y0) / (float)VIEW_MS;
 }

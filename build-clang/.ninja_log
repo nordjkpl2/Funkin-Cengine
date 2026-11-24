@@ -410,3 +410,12 @@
 96	257	8172671517478828	CMakeFiles/FunkinCengine.dir/src/scenes/menu/modding/ModdingMenuDraw.c.obj	f7a1143df5119a3
 43	94	8172671706662240	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
 101	4345	8172671707241385	D:/dev/funkin c/FunkinCengine.exe	99322e49f006c849
+21	73	8172673575552944	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+86	252	8172673576195740	CMakeFiles/FunkinCengine.dir/src/scenes/modding/charteditor/data/EditorStagePos.c.obj	93b6af9fac12a7c7
+78	261	8172673576125922	CMakeFiles/FunkinCengine.dir/src/scenes/modding/charteditor/ChartEditor.c.obj	36b6b08430ac032
+89	272	8172673576235745	CMakeFiles/FunkinCengine.dir/src/scenes/modding/charteditor/grid/EditorGrid.c.obj	cd13fb6c3c99af69
+93	278	8172673576275749	CMakeFiles/FunkinCengine.dir/src/scenes/modding/charteditor/ui/EditorIcons.c.obj	b9b83689bb48e251
+101	292	8172673576355759	CMakeFiles/FunkinCengine.dir/src/scenes/modding/charteditor/ui/EditorPicker.c.obj	bd7c486499fdd4fb
+82	306	8172673576165713	CMakeFiles/FunkinCengine.dir/src/scenes/modding/charteditor/data/EditorCharactersAndLists.c.obj	bacc52349f5c8375
+96	313	8172673576305742	CMakeFiles/FunkinCengine.dir/src/scenes/modding/charteditor/ui/EditorPanels.c.obj	3e5abb0e456800b0
+313	3923	8172673578468226	D:/dev/funkin c/FunkinCengine.exe	99322e49f006c849

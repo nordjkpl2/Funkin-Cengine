@@ -29,6 +29,7 @@ extern char edIconOOk;
 extern char edIconPOk;
 void EdArrows_Init(void);
 void EdArrows_Reset(void);   // refaz os sprites das notas a partir da skin atual (Note_GetCurrentSkin)
+void EdArrows_DrawIcon(int lane, float cx, float cy, float size, Color tint);   // icone de seta (menus)
 float EdPxPerMs(void);
 void Edit_DrawGrid(void);
 
