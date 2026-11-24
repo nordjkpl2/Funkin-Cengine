@@ -2,15 +2,63 @@
 #include "GameData.h"
 #include "Log.h"
 #include <math.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 
-#define IERR Log_Fatal("[ SAVE ] invalid data");
-#define READ(type, count, output) if(fread(&output, sizeof(type), count, saveFile) != count) IERR
-#define WRITE(type, count, source) if(fwrite(&source, sizeof(type), count, saveFile) != count) Log_Fatal("[ SAVE ] unable to write to save file!");
+/*
+ * Save em assets/save.data: cabecalho + registros (id u16, tamanho u16, bytes).
+ *  - Cada campo tem um id fixo na tabela saveFields. Id novo = proximo numero livre; id usado nunca muda nem volta.
+ *  - Id desconhecido (campo removido ou de versao mais nova) e pulado; campo ausente fica com o padrao.
+ *  - Tamanho diferente do atual: copia o que cabe e o resto fica com o padrao (campo que cresceu nao quebra o save).
+ *  - Dado invalido vira padrao (GameData_Sanitize), nunca encerra o programa.
+ *  - Escrita em save.data.tmp e troca pelo arquivo final: queda no meio do salvamento nao corrompe o save.
+ */
+#define SAVE_FILE "assets/save.data"
+#define SAVE_TMP  "assets/save.data.tmp"
+#define SAVE_MAGIC   "FNFS"
+#define SAVE_VERSION 1       /* so muda se o cabecalho mudar: campos novos nao precisam de versao nova */
 
-#define SREAD(type, output) READ(type, 1, output)
-#define SWRITE(type, source) WRITE(type, 1, source)
+#define SAVE_ID_MODS 0xFFFEu /* lista de mods desativados (tamanho = quantidade * MOD_NAME_MAX) */
+
+typedef struct {
+    uint16_t id;
+    void* ptr;
+    uint16_t size;
+} SaveField;
+
+#define SAVE_FIELD(id_, field_) { (id_), &gameOptions.field_, (uint16_t)sizeof(gameOptions.field_) }
+
+static const SaveField saveFields[] = {
+    SAVE_FIELD(1,  menuMusic),
+    SAVE_FIELD(2,  showScore),
+    SAVE_FIELD(3,  bopIcons),
+    SAVE_FIELD(4,  vsync),
+    SAVE_FIELD(5,  fillScreen),
+    SAVE_FIELD(6,  botplay),
+    SAVE_FIELD(7,  ghost),
+    SAVE_FIELD(8,  scroll),
+    SAVE_FIELD(9,  showFps),
+    SAVE_FIELD(10, hitSound),
+    SAVE_FIELD(11, scheme),
+    SAVE_FIELD(12, fps),
+    SAVE_FIELD(13, zoomFactorUI),
+    SAVE_FIELD(14, zoomFactorGAME),
+    SAVE_FIELD(15, threadLimit),
+    SAVE_FIELD(16, scorePosition),
+    SAVE_FIELD(17, healthDrainPlay),
+    SAVE_FIELD(18, healthDrainBotplay),
+    SAVE_FIELD(19, strumBgPercent),
+    SAVE_FIELD(20, strumMobileVisible),
+    SAVE_FIELD(21, laneHSB),
+    SAVE_FIELD(22, hiddenNotesAlt),
+    SAVE_FIELD(23, horizontalMenu),
+    SAVE_FIELD(24, loseIcon),
+    SAVE_FIELD(25, streamingJsonParse),
+    SAVE_FIELD(26, hitSoundBotplay),
+    SAVE_FIELD(27, noteSplashes),
+    { 28, game_scheme_keys[SCHEME_CUSTOM], (uint16_t)sizeof(game_scheme_keys[SCHEME_CUSTOM]) },
+};
 
 GameOptions gameOptions;
 char gameDisabledMods[MOD_DISABLED_MAX][MOD_NAME_MAX];
@@ -25,11 +73,6 @@ int game_scheme_keys[SCHEME_COUNT][4] = {
     {KEY_LEFT, KEY_DOWN, KEY_UP, KEY_RIGHT}   /* Custom: comeca igual ao Arrows */
 };
 
-static FILE* saveFile;
-
-/* Formato unico. Saves de outra versao sao descartados (volta aos padroes). Ainda nao distribuido, sem migracao. */
-#define SAVE_VERSION 19
-
 static void GameData_Defaults(void) {
     game_scheme_keys[SCHEME_CUSTOM][0] = KEY_LEFT;
     game_scheme_keys[SCHEME_CUSTOM][1] = KEY_DOWN;
@@ -38,7 +81,7 @@ static void GameData_Defaults(void) {
     gameDisabledModCount = 0;
     gameOptions = (GameOptions) {
         .showScore = 1, .bopIcons = 1, .showFps = 1, .loseIcon = 1,
-        .scorePosition = SCORE_POS_PSYCH, .strumBgPercent = 0,
+        .scorePosition = SCORE_POS_PSYCH, .strumBgPercent = 0, .noteSplashes = 1,
         .fps = 120,
         .zoomFactorUI = 1.0f, .zoomFactorGAME = 1.0f,
     };
@@ -94,114 +137,164 @@ void GameData_ResetOptions(void) {
     memcpy(game_scheme_keys[SCHEME_CUSTOM], customKeys, sizeof(customKeys));
 }
 
-static void GameData_Checks(void) {
-    if(gameOptions.scheme < 0 || gameOptions.scheme >= SCHEME_COUNT) IERR
-    if(gameOptions.fps < 0) IERR
-    if(gameOptions.threadLimit < 0 || gameOptions.threadLimit > 64) IERR
-    if(gameDisabledModCount < 0 || gameDisabledModCount > MOD_DISABLED_MAX) IERR
-    if(gameOptions.ghost < 0 || gameOptions.ghost > 2) IERR
-    if(gameOptions.scroll < 0 || gameOptions.scroll > SCROLL_MIDDLEDOWN) IERR
-    if(gameOptions.hitSound < 0 || gameOptions.hitSound > 1) IERR
-    if(gameOptions.showFps < 0 || gameOptions.showFps > 1) IERR
-    if(gameOptions.scorePosition < SCORE_POS_CENGINE || gameOptions.scorePosition > SCORE_POS_PSYCH) IERR
-    if(gameOptions.strumBgPercent < 0 || gameOptions.strumBgPercent > 100) IERR
-    if(gameOptions.strumMobileVisible < 0 || gameOptions.strumMobileVisible > 1) IERR
-    if(gameOptions.hiddenNotesAlt < 0 || gameOptions.hiddenNotesAlt > 3) IERR
-    for(int k = 0; k < 4; k++)
-        if(game_scheme_keys[SCHEME_CUSTOM][k] <= 0) IERR
+/* ------------------------------------------------------------------ */
+/* Validacao: qualquer valor fora da faixa volta ao padrao da faixa.   */
+/* ------------------------------------------------------------------ */
+
+static int Clamp(int v, int lo, int hi) { return v < lo ? lo : (v > hi ? hi : v); }
+static char Bool(char v) { return v != 0; }
+
+static void GameData_Sanitize(void) {
+    GameOptions* o = &gameOptions;
+
+    o->showScore = Bool(o->showScore);
+    o->bopIcons = Bool(o->bopIcons);
+    o->vsync = Bool(o->vsync);
+    o->fillScreen = Bool(o->fillScreen);
+    o->botplay = Bool(o->botplay);
+    o->healthDrainPlay = Bool(o->healthDrainPlay);
+    o->healthDrainBotplay = Bool(o->healthDrainBotplay);
+    o->streamingJsonParse = Bool(o->streamingJsonParse);
+    o->hitSoundBotplay = Bool(o->hitSoundBotplay);
+    o->noteSplashes = Bool(o->noteSplashes);
+    o->strumMobileVisible = Bool(o->strumMobileVisible);
+    o->horizontalMenu = Bool(o->horizontalMenu);
+    o->loseIcon = Bool(o->loseIcon);
+    o->showFps = Bool(o->showFps);
+    o->hitSound = Bool(o->hitSound);
+
+    o->scheme = Clamp(o->scheme, 0, SCHEME_COUNT - 1);
+    o->ghost = Clamp(o->ghost, 0, 2);
+    o->scroll = Clamp(o->scroll, SCROLL_UP, SCROLL_MIDDLEDOWN);
+    o->scorePosition = Clamp(o->scorePosition, SCORE_POS_CENGINE, SCORE_POS_PSYCH);
+    o->strumBgPercent = Clamp(o->strumBgPercent, 0, 100);
+    o->hiddenNotesAlt = Clamp(o->hiddenNotesAlt, 0, 3);
+    o->fps = Clamp(o->fps, 0, 1000);
+    o->threadLimit = Clamp(o->threadLimit, 0, 64);
+
+    if (!(o->zoomFactorUI > 0.1f && o->zoomFactorUI < 10.0f)) o->zoomFactorUI = 1.0f;
+    if (!(o->zoomFactorGAME > 0.1f && o->zoomFactorGAME < 10.0f)) o->zoomFactorGAME = 1.0f;
+
+    for (int lane = 0; lane < 4; lane++) {
+        o->laneHSB[lane][0] = (short)Clamp(o->laneHSB[lane][0], -180, 180);
+        o->laneHSB[lane][1] = (short)Clamp(o->laneHSB[lane][1], -100, 100);
+        o->laneHSB[lane][2] = (short)Clamp(o->laneHSB[lane][2], -100, 100);
+    }
+
+    o->menuMusic[MENU_MUSIC_NAME_MAX - 1] = 0;
+
+    gameDisabledModCount = Clamp(gameDisabledModCount, 0, MOD_DISABLED_MAX);
+    for (int i = 0; i < gameDisabledModCount; i++)
+        gameDisabledMods[i][MOD_NAME_MAX - 1] = 0;
+
+    static const int defaultArrows[4] = {KEY_LEFT, KEY_DOWN, KEY_UP, KEY_RIGHT};
+    for (int k = 0; k < 4; k++)
+        if (game_scheme_keys[SCHEME_CUSTOM][k] <= 0)
+            game_scheme_keys[SCHEME_CUSTOM][k] = defaultArrows[k];
+}
+
+/* ------------------------------------------------------------------ */
+/* Leitura e escrita                                                   */
+/* ------------------------------------------------------------------ */
+
+static const SaveField* FindField(uint16_t id) {
+    for (size_t i = 0; i < sizeof(saveFields) / sizeof(saveFields[0]); i++)
+        if (saveFields[i].id == id)
+            return &saveFields[i];
+    return NULL;
+}
+
+/* Le o arquivo inteiro. Retorna 0 se o cabecalho nao bate (save de outro formato ou corrompido no inicio). */
+static char GameData_LoadFile(FILE* f) {
+    char magic[4];
+    uint16_t version = 0;
+    if (fread(magic, 1, sizeof(magic), f) != sizeof(magic) || memcmp(magic, SAVE_MAGIC, sizeof(magic)) != 0)
+        return 0;
+    if (fread(&version, sizeof(version), 1, f) != 1 || version != SAVE_VERSION)
+        return 0;
+
+    uint16_t head[2]; /* id, tamanho */
+    while (fread(head, sizeof(uint16_t), 2, f) == 2) {
+        const uint16_t id = head[0];
+        const uint16_t size = head[1];
+
+        if (id == SAVE_ID_MODS) {
+            const uint16_t cap = (uint16_t)sizeof(gameDisabledMods);
+            const uint16_t n = size < cap ? size : cap;
+            memset(gameDisabledMods, 0, sizeof(gameDisabledMods));
+            if (fread(gameDisabledMods, 1, n, f) != n) break;
+            gameDisabledModCount = n / MOD_NAME_MAX;
+            if (size > n) fseek(f, size - n, SEEK_CUR);
+            continue;
+        }
+
+        const SaveField* field = FindField(id);
+        if (field == NULL) {
+            fseek(f, size, SEEK_CUR); /* campo desconhecido: pula */
+            continue;
+        }
+
+        const uint16_t n = size < field->size ? size : field->size;
+        if (fread(field->ptr, 1, n, f) != n) break;
+        if (size > n) fseek(f, size - n, SEEK_CUR);
+    }
+    return 1;
+}
+
+static int GameData_WriteRecord(FILE* f, uint16_t id, const void* data, uint16_t size) {
+    const uint16_t head[2] = { id, size };
+    if (fwrite(head, sizeof(uint16_t), 2, f) != 2) return 0;
+    return size == 0 || fwrite(data, 1, size, f) == size;
+}
+
+static int GameData_WriteFile(FILE* f) {
+    if (fwrite(SAVE_MAGIC, 1, sizeof(SAVE_MAGIC) - 1, f) != sizeof(SAVE_MAGIC) - 1) return 0;
+    const uint16_t version = SAVE_VERSION;
+    if (fwrite(&version, sizeof(version), 1, f) != 1) return 0;
+
+    for (size_t i = 0; i < sizeof(saveFields) / sizeof(saveFields[0]); i++)
+        if (!GameData_WriteRecord(f, saveFields[i].id, saveFields[i].ptr, saveFields[i].size))
+            return 0;
+
+    const uint16_t modsBytes = (uint16_t)(gameDisabledModCount * MOD_NAME_MAX);
+    return GameData_WriteRecord(f, SAVE_ID_MODS, gameDisabledMods, modsBytes);
 }
 
 void GameData_Start(void) {
-    saveFile = fopen("assets/save.data", "r+b");
-    if(saveFile == NULL) { 
-        GameData_Defaults();
-        saveFile = fopen("assets/save.data", "w+b");
-        GameData_Flush();
-        return;
+    GameData_Defaults();
+
+    char loaded = 0;
+    FILE* f = fopen(SAVE_FILE, "rb");
+    if (f != NULL) {
+        loaded = (char)GameData_LoadFile(f);
+        fclose(f);
     }
 
-    char version = 0;
-    SREAD(char, version)
-
-    if(version != SAVE_VERSION) {
-        GameData_Defaults();
-        GameData_Flush();
-        return;
-    }
-
-    SREAD(char, gameOptions.showScore)
-    SREAD(char, gameOptions.bopIcons)
-    SREAD(char, gameOptions.vsync)
-    SREAD(char, gameOptions.fillScreen)
-    SREAD(char, gameOptions.botplay)
-    SREAD(char, gameOptions.ghost)
-    SREAD(char, gameOptions.scroll)
-    SREAD(char, gameOptions.showFps)
-    SREAD(char, gameOptions.hitSound)
-    SREAD(int,  gameOptions.scheme) 
-    SREAD(int,  gameOptions.fps) 
-    SREAD(float,gameOptions.zoomFactorUI) 
-    SREAD(float,gameOptions.zoomFactorGAME) 
-    READ(int, 4, game_scheme_keys[SCHEME_CUSTOM][0])
-    SREAD(int,  gameOptions.threadLimit)
-    SREAD(char, gameOptions.scorePosition)
-    SREAD(char, gameOptions.healthDrainPlay)
-    SREAD(char, gameOptions.healthDrainBotplay)
-    SREAD(int,  gameDisabledModCount)
-    if(gameDisabledModCount < 0 || gameDisabledModCount > MOD_DISABLED_MAX) IERR
-    READ(char, gameDisabledModCount * MOD_NAME_MAX, gameDisabledMods[0][0])
-    for(int i = 0; i < gameDisabledModCount; i++) gameDisabledMods[i][MOD_NAME_MAX - 1] = 0;
-    READ(char, MENU_MUSIC_NAME_MAX, gameOptions.menuMusic[0])
-    gameOptions.menuMusic[MENU_MUSIC_NAME_MAX - 1] = 0;
-    SREAD(char, gameOptions.strumBgPercent)
-    SREAD(char, gameOptions.strumMobileVisible)
-    READ(short, 12, gameOptions.laneHSB[0][0])
-    SREAD(char, gameOptions.hiddenNotesAlt)
-    SREAD(char, gameOptions.horizontalMenu)
-    SREAD(char, gameOptions.loseIcon)
-    SREAD(char, gameOptions.streamingJsonParse)
-    SREAD(char, gameOptions.hitSoundBotplay)
-
-    GameData_Checks();
+    GameData_Sanitize();
+    if (!loaded)
+        GameData_Flush(); /* primeiro uso, save antigo ou de outro formato: grava o padrao */
 }
 
-void GameData_Flush(void) {  
-    rewind(saveFile);
+void GameData_Flush(void) {
+    FILE* f = fopen(SAVE_TMP, "wb");
+    if (f == NULL) {
+        Log_WarnF("[ SAVE ] nao foi possivel gravar %s", SAVE_TMP);
+        return;
+    }
 
-    char version = SAVE_VERSION;
-    SWRITE(char, version)
-    SWRITE(char, gameOptions.showScore)
-    SWRITE(char, gameOptions.bopIcons)
-    SWRITE(char, gameOptions.vsync)
-    SWRITE(char, gameOptions.fillScreen)
-    SWRITE(char, gameOptions.botplay)
-    SWRITE(char, gameOptions.ghost)
-    SWRITE(char, gameOptions.scroll)
-    SWRITE(char, gameOptions.showFps)
-    SWRITE(char, gameOptions.hitSound)
-    SWRITE(int,  gameOptions.scheme) 
-    SWRITE(int,  gameOptions.fps)
-    SWRITE(float,gameOptions.zoomFactorUI) 
-    SWRITE(float,gameOptions.zoomFactorGAME) 
-    WRITE(int, 4, game_scheme_keys[SCHEME_CUSTOM][0])
-    SWRITE(int,  gameOptions.threadLimit)
-    SWRITE(char, gameOptions.scorePosition)
-    SWRITE(char, gameOptions.healthDrainPlay)
-    SWRITE(char, gameOptions.healthDrainBotplay)
-    SWRITE(int,  gameDisabledModCount)
-    WRITE(char, gameDisabledModCount * MOD_NAME_MAX, gameDisabledMods[0][0])
-    WRITE(char, MENU_MUSIC_NAME_MAX, gameOptions.menuMusic[0])
-    SWRITE(char, gameOptions.strumBgPercent)
-    SWRITE(char, gameOptions.strumMobileVisible)
-    WRITE(short, 12, gameOptions.laneHSB[0][0])
-    SWRITE(char, gameOptions.hiddenNotesAlt)
-    SWRITE(char, gameOptions.horizontalMenu)
-    SWRITE(char, gameOptions.loseIcon)
-    SWRITE(char, gameOptions.streamingJsonParse)
-    SWRITE(char, gameOptions.hitSoundBotplay)
+    const int ok = GameData_WriteFile(f);
+    if (fclose(f) != 0 || !ok) {
+        remove(SAVE_TMP);
+        Log_WarnF("[ SAVE ] falha ao gravar %s (save antigo mantido)", SAVE_TMP);
+        return;
+    }
+
+    /* Windows: rename nao sobrescreve, entao remove o antigo antes. */
+    remove(SAVE_FILE);
+    if (rename(SAVE_TMP, SAVE_FILE) != 0)
+        Log_WarnF("[ SAVE ] nao foi possivel trocar %s", SAVE_FILE);
 }
 
 void GameData_Stop(void) {
     GameData_Flush();
-    fclose(saveFile);
 }

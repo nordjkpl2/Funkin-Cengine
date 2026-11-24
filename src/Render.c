@@ -46,7 +46,8 @@ void Render_SetCamera(Camera2D *camera)
     s_savedZoom = camera->zoom;
     s_savedOffset = camera->offset;
 
-    camera->zoom = s_savedZoom * RayGame_ZoomFactor();
+    /* O desenho sempre acontece no canvas (ver Game.c): o zoom da janela nao entra na camera. */
+    camera->zoom = s_savedZoom;
     camera->offset = (Vector2){
         RayGame_CanvasWidth() * 0.5f,
         RayGame_CanvasHeight() * 0.5f

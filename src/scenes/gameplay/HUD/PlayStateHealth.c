@@ -3,7 +3,7 @@
  * PlayStateHealth.c - vida, barra de vida e icones do PlayState.
  */
 
-#include "scenes/gameplay/PlayStateHealth.h"
+#include "scenes/gameplay/HUD/PlayStateHealth.h"
 #include "GameData.h"
 #include <math.h>
 

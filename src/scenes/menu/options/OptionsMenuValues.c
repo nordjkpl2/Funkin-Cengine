@@ -55,6 +55,7 @@ Option options[OPTION_COUNT] = {
     [OPTION_ZOOMFACTOR_UI] = {.text = "UI beat zoom", .type = OPTION_VALUE_FLOAT, .max = 3, .min = 0, .step = 0.1f, .altStep = 1},
     [OPTION_ZOOMFACTOR_GAME] = {.text = "Game beat zoom", .type = OPTION_VALUE_FLOAT, .max = 3, .min = 0, .step = 0.1f, .altStep = 1},
     [OPTION_NOTES_LABEL] = {.text = "Notes", .type = OPTION_VALUE_LABEL},
+    [OPTION_NOTE_SPLASH] = {.text = "Note Splashes", .type = OPTION_VALUE_BOOL},
     [OPTION_STRUM_BG] = {.text = "Strumline Background", .type = OPTION_VALUE_LIST, .options = strum_bg_names, .step = 1, .min = 0, .max = 10},
     [OPTION_STRUM_MOBILE] = {.text = "Keys Monitor", .type = OPTION_VALUE_BOOL},
     [OPTION_HIDDEN_NOTES] = {.text = "Hidden Notes", .type = OPTION_VALUE_LIST, .options = hidden_notes_names, .step = 1, .min = 0, .max = 3},
@@ -196,6 +197,7 @@ void ApplyBoolValue(void) {
         case OPTION_BOPPING_ICONS: gameOptions.bopIcons = on; break;
         case OPTION_LOSE_ICON:     gameOptions.loseIcon = on; break;
         case OPTION_STRUM_MOBILE:  gameOptions.strumMobileVisible = on; break;
+        case OPTION_NOTE_SPLASH:   gameOptions.noteSplashes = on; break;
         case OPTION_FILL_SCREEN:   gameOptions.fillScreen = on; break;
         case OPTION_STREAM_JSON:   gameOptions.streamingJsonParse = on; break;
         case OPTION_BOTPLAY:       gameOptions.botplay = on; break;
@@ -387,6 +389,7 @@ void Options_LoadValues(void) {
     options[OPTION_LOSE_ICON].value = gameOptions.loseIcon;
     options[OPTION_STRUM_BG].value = gameOptions.strumBgPercent / 10;
     options[OPTION_STRUM_MOBILE].value = gameOptions.strumMobileVisible;
+    options[OPTION_NOTE_SPLASH].value = gameOptions.noteSplashes;
     options[OPTION_HIDDEN_NOTES].value = gameOptions.hiddenNotesAlt;
     options[OPTION_VSYNC].value = gameOptions.vsync;
     // Mesma regra do VSYNC ligado: Uncapped FPS e Framerate ficam inativos (vermelhos) ao entrar na cena.

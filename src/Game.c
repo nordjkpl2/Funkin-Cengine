@@ -285,12 +285,12 @@ float RayGame_ZoomFactor(void)
 
 int RayGame_CanvasWidth(void)
 {
-    return gameOptions.fillScreen ? RAYGAME_CANVAS_WIDTH : width;
+    return RAYGAME_CANVAS_WIDTH;
 }
 
 int RayGame_CanvasHeight(void)
 {
-    return gameOptions.fillScreen ? RAYGAME_CANVAS_HEIGHT : height;
+    return RAYGAME_CANVAS_HEIGHT;
 }
 
 Vector2 RayGame_MouseWorld(void)
@@ -460,9 +460,9 @@ void RayGame_GameLoop(void)
         const double tDraw0 = 0.0;
 #endif
 
-        /* Com efeito de tela ligado, o canvas sempre passa pelo render target (mesmo sem fillScreen). */
-        const bool fxOn = stretchReady && ShaderFx_IsActive();
-        if ((gameOptions.fillScreen || fxOn) && stretchReady)
+        /* Sempre desenha no canvas 1280x720 (render target) e so depois escala para a janela:
+           cameras, HUD e textos ficam no mesmo espaco, com ou sem Stretch. */
+        if (stretchReady)
         {
             BeginTextureMode(stretchTarget);
             ClearBackground(BLACK);

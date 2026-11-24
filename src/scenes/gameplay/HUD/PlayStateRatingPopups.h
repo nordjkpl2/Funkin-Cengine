@@ -9,7 +9,7 @@
 #define PLAYSTATE_RATINGPOPUPS_H
 
 #include "Render.h"
-#include "scenes/gameplay/PlayStatePlayerInput.h"
+#include "scenes/gameplay/notes/PlayStatePlayerInput.h"
 
 /* Carrega ui.animset/ui.png uma vez (entre as musicas) e prepara o popup.
    Retorna o conjunto de animacoes da UI, para a contagem. */

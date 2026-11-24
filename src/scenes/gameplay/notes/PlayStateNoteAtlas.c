@@ -9,7 +9,7 @@
  * brilho de cada coluna (GameData_LaneShift) a cada pixel; alpha e preservado.
  */
 
-#include "scenes/gameplay/PlayStateNoteAtlas.h"
+#include "scenes/gameplay/notes/PlayStateNoteAtlas.h"
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>

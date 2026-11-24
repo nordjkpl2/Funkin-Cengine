@@ -139,3 +139,20 @@ IMAGE: Failed to load image data
 LOAD [Spacathon] init: 0.0 ms, chart: 9.5 ms, sounds: 47.0 ms, characters: 410.1 ms, stage: 3.3 ms, song audio: 9.1 ms, notes: 223.5 ms, ui: 0.0 ms, warmup: 0.3 ms, (textures on main thread: 402.6 ms) total: 702.8 ms
 LOAD [Trauma] init: 0.0 ms, chart: 23.3 ms, sounds: 26.1 ms, characters: 470.8 ms, stage: 1479.6 ms, song audio: 4.8 ms, notes: 248.4 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 1933.6 ms) total: 2253.2 ms
 LOAD [Astray] init: 27.5 ms, chart: 4.0 ms, sounds: 62.0 ms, characters: 447.9 ms, stage: 9.0 ms, song audio: 5.6 ms, notes: 280.1 ms, ui: 10.2 ms, warmup: 0.2 ms, (textures on main thread: 490.2 ms) total: 846.4 ms
+LOAD [Astray] init: 8.0 ms, chart: 17.8 ms, sounds: 242.4 ms, characters: 291.4 ms, stage: 14.0 ms, song audio: 1.7 ms, notes: 229.2 ms, ui: 33.3 ms, warmup: 0.2 ms, (textures on main thread: 305.0 ms) total: 838.0 ms
+[WARN] Personagem 'oldfucker' nao encontrado: usando dad padrao
+[WARN] Personagem 'bf_shityourself' nao encontrado: usando bf padrao
+[WARN] Stage 'CHEESEBURGER' nao encontrado: usando stage vazio
+LOAD [oaisuhsansofiasfansfpoasifjkanfmaslfjasbwkfnawfawffajbw] init: 0.0 ms, chart: 48.2 ms, sounds: 36.2 ms, characters: 170.3 ms, stage: 0.2 ms, song audio: 1.7 ms, notes: 228.8 ms, ui: 0.0 ms, warmup: 0.3 ms, (textures on main thread: 154.0 ms) total: 485.7 ms
+LOAD [absolute-zero-2] init: 1.4 ms, chart: 0.4 ms, sounds: 172.4 ms, characters: 459.5 ms, stage: 1547.5 ms, song audio: 3.5 ms, notes: 232.4 ms, ui: 8.8 ms, warmup: 0.1 ms, (textures on main thread: 1967.9 ms) total: 2426.1 ms
+LOAD [absolute-zero] init: 0.0 ms, chart: 21.8 ms, sounds: 1.1 ms, characters: 484.5 ms, stage: 1242.8 ms, song audio: 10.7 ms, notes: 229.1 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 1725.5 ms) total: 1990.2 ms
+LOAD [absolute-zero] init: 23.4 ms, chart: 7.1 ms, sounds: 58.6 ms, characters: 430.1 ms, stage: 1299.6 ms, song audio: 1.7 ms, notes: 0.2 ms, ui: 9.6 ms, warmup: 0.2 ms, (textures on main thread: 1758.7 ms) total: 1830.5 ms
+LOAD [absolute-zero] init: 0.0 ms, chart: 9.9 ms, sounds: 1.0 ms, characters: 469.6 ms, stage: 1279.5 ms, song audio: 2.0 ms, notes: 0.2 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 1747.1 ms) total: 1762.5 ms
+LOAD [absolute-zero] init: 0.0 ms, chart: 9.6 ms, sounds: 1.1 ms, characters: 471.8 ms, stage: 1249.6 ms, song audio: 1.6 ms, notes: 0.2 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 1719.6 ms) total: 1734.1 ms
+LOAD [absolute-zero] init: 0.0 ms, chart: 10.2 ms, sounds: 2.2 ms, characters: 479.1 ms, stage: 1226.7 ms, song audio: 1.7 ms, notes: 0.2 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 1703.5 ms) total: 1720.3 ms
+LOAD [Fatigue] init: 0.0 ms, chart: 20.6 ms, sounds: 101.5 ms, characters: 445.1 ms, stage: 5.4 ms, song audio: 2.1 ms, notes: 0.1 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 428.0 ms) total: 574.9 ms
+LOAD [b] init: 0.0 ms, chart: 0.9 ms, sounds: 0.6 ms, characters: 155.0 ms, stage: 0.0 ms, song audio: 7.7 ms, notes: 0.0 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 154.2 ms) total: 164.5 ms
+LOAD [abandonment] init: 0.0 ms, chart: 36.0 ms, sounds: 50.1 ms, characters: 409.0 ms, stage: 1386.9 ms, song audio: 2.3 ms, notes: 0.2 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 1763.2 ms) total: 1884.7 ms
+LOAD [b] init: 0.0 ms, chart: 0.9 ms, sounds: 0.7 ms, characters: 156.6 ms, stage: 0.0 ms, song audio: 3.6 ms, notes: 0.0 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 155.8 ms) total: 162.0 ms
+LOAD [absolute-zero] init: 1.2 ms, chart: 9.3 ms, sounds: 59.7 ms, characters: 413.4 ms, stage: 1292.6 ms, song audio: 1.6 ms, notes: 237.8 ms, ui: 8.2 ms, warmup: 0.2 ms, (textures on main thread: 1711.5 ms) total: 2024.0 ms
+LOAD [absolute-zero] init: 0.0 ms, chart: 13.2 ms, sounds: 1.2 ms, characters: 474.1 ms, stage: 1233.4 ms, song audio: 1.7 ms, notes: 230.2 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 1705.4 ms) total: 1953.9 ms

@@ -5,9 +5,9 @@
 
 
 #include "characters/Character.h"
-#include "scenes/gameplay/PlayStateDeath.h"
-#include "scenes/gameplay/PlayStateAudio.h"
-#include "scenes/gameplay/PlayStateCamera.h"
+#include "scenes/gameplay/flow/PlayStateDeath.h"
+#include "scenes/gameplay/audio/PlayStateAudio.h"
+#include "scenes/gameplay/visual/PlayStateCamera.h"
 #include "raymath.h"
 
 static int deathAnimations[3];

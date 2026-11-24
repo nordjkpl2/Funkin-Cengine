@@ -3,10 +3,10 @@
  * PlayStateAnimations.c - personagens do PlayState (oponente, BF, GF).
  */
 
-#include "scenes/gameplay/PlayStateAnimations.h"
-#include "scenes/gameplay/PlayStateDeath.h"
-#include "scenes/gameplay/PlayStateHealth.h"
-#include "scenes/gameplay/PlayStateStage.h"
+#include "scenes/gameplay/characters/PlayStateAnimations.h"
+#include "scenes/gameplay/flow/PlayStateDeath.h"
+#include "scenes/gameplay/HUD/PlayStateHealth.h"
+#include "scenes/gameplay/stage/PlayStateStage.h"
 #include "GameData.h"
 #include "Game.h"
 #include <stddef.h>

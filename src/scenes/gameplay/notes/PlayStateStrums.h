@@ -10,7 +10,7 @@
 #define PLAYSTATE_STRUMS_H
 
 #include "logic/notes/Note.h"
-#include "scenes/gameplay/PlayStatePlayerInput.h"
+#include "scenes/gameplay/notes/PlayStatePlayerInput.h"
 
 #define PLAYSTATE_LANES 4
 

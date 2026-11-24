@@ -10,7 +10,7 @@
 #include "GameData.h"
 #include "logic/notes/Note.h"
 #include "scenes/api/NoteSkinCache.h"
-#include "scenes/gameplay/PlayStateNoteSpawn.h"
+#include "scenes/gameplay/notes/PlayStateNoteSpawn.h"
 #include "rendering/TextMeasure.h"
 #include <math.h>
 #include <stdio.h>

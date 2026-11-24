@@ -3,7 +3,7 @@
  * PlayStateCamera.c - cameras de jogo e HUD do PlayState.
  */
 
-#include "scenes/gameplay/PlayStateCamera.h"
+#include "scenes/gameplay/visual/PlayStateCamera.h"
 #include "raymath.h"
 #include "scenes/gameplay/events/PlayStateParallax.h"
 

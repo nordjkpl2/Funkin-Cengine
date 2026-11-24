@@ -13,20 +13,21 @@
 #include "scenes/menu/storymode/StoryMode.h"
 #include "logic/notes/Note.h"
 #include "data/Song.h"
-#include "scenes/gameplay/PlayStateStage.h"
-#include "scenes/gameplay/PlayStateHealth.h"
-#include "scenes/gameplay/PlayStateAudio.h"
-#include "scenes/gameplay/PlayStateText.h"
-#include "scenes/gameplay/PlayStateNoteSpawn.h"
-#include "scenes/gameplay/PlayStatePlayerInput.h"
-#include "scenes/gameplay/PlayStateCamera.h"
-#include "scenes/gameplay/PlayStateStrums.h"
-#include "scenes/gameplay/PlayStatePause.h"
-#include "scenes/gameplay/PlayStateDeath.h"
-#include "scenes/gameplay/PlayStateIntro.h"
-#include "scenes/gameplay/PlayStateBeat.h"
-#include "scenes/gameplay/PlayStateAnimations.h"
-#include "scenes/gameplay/PlayStateRatingPopups.h"
+#include "scenes/gameplay/stage/PlayStateStage.h"
+#include "scenes/gameplay/HUD/PlayStateHealth.h"
+#include "scenes/gameplay/audio/PlayStateAudio.h"
+#include "scenes/gameplay/HUD/PlayStateText.h"
+#include "scenes/gameplay/notes/PlayStateNoteSpawn.h"
+#include "scenes/gameplay/notes/PlayStatePlayerInput.h"
+#include "scenes/gameplay/visual/PlayStateCamera.h"
+#include "scenes/gameplay/notes/PlayStateStrums.h"
+#include "scenes/gameplay/flow/PlayStatePause.h"
+#include "scenes/gameplay/flow/PlayStateDeath.h"
+#include "scenes/gameplay/flow/PlayStateIntro.h"
+#include "scenes/gameplay/characters/PlayStateBeat.h"
+#include "scenes/gameplay/characters/PlayStateAnimations.h"
+#include "scenes/gameplay/HUD/PlayStateRatingPopups.h"
+#include "scenes/gameplay/visual/PlayStateNoteSplash.h"
 #include "scenes/gameplay/events/PlayStateEventsInGameplay.h"
 #include "Log.h"
 #include "rendering/cpu/ImagePrefetch.h"
@@ -100,6 +101,7 @@ static void Event_BotHit(Note* note) {
         PlayStateHealth_Add(botGain);
     PlayStateAnimations_BotHit(note->id);
     PlayStateStrums_ConfirmBf(note->id);
+    PlayStateNoteSplash_Spawn(note->id);
 }
 
 static void Event_PlayerHold(void) {
@@ -110,6 +112,7 @@ static void Event_PlayerHold(void) {
 static void Event_PlayerHit(Note* note, PlayerRating rating) {
     PlayStateRatingPopups_Show(rating);
     PlayStateAnimations_PlayerHit(note->id);
+    PlayStateNoteSplash_Spawn(note->id);
 }
 
 static void SetupEvents(void) {
@@ -169,6 +172,7 @@ static void ResetState(void) {
     PlayStateHealth_Reset();
     PlayStateCamera_Reset(PlayStateAnimations_Dad());
     PlayStateRatingPopups_Reset();
+    PlayStateNoteSplash_Reset();
     PlayStatePause_Reset();
     PlayStateDeath_Reset();
 }
@@ -317,6 +321,7 @@ static void PlayState_Create([[maybe_unused]] RayScene* scene) {
     PlayStateAudio_StartPaused();
     LoadMark("notes");
 
+    PlayStateNoteSplash_Load();
     PlayStateBeat_Start(&song);
     const Vector2 dad = DadPosition();
     PlayStateCamera_SetPosition(dad.x, dad.y);
@@ -536,6 +541,7 @@ static void DrawWorld(float dt) {
 static void DrawHud(float dt) {
     PlayStateStrums_DrawBackdrop();
     PlayStateStrums_Draw();
+    PlayStateNoteSplash_Draw(dt);
 
     const PlayStateNoteView view = NoteView();
     PlayStateNoteSpawn_Draw(&view);

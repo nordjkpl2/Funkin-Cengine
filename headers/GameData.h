@@ -8,7 +8,8 @@
 #define MENU_MUSIC_NAME_MAX 64
 
 /* Opcoes do jogador (salvas em assets/save.data). Para criar uma opcao nova:
-   campo aqui, valor padrao em GameData_Defaults() e leitura/escrita em GameData.c. */
+   campo aqui, valor padrao em GameData_Defaults(), faixa em GameData_Sanitize() e uma linha em saveFields
+   (GameData.c) com um id novo (ids nunca reaproveitados). Nao precisa mudar a versao do save. */
 typedef struct GameOptions {
     char menuMusic[MENU_MUSIC_NAME_MAX]; /* faixa de menu escolhida (nome sem extensao); vazio = padrao */
     char showScore, bopIcons, vsync, fillScreen;
@@ -18,6 +19,7 @@ typedef struct GameOptions {
     char healthDrainBotplay;  /* botplay ganha/perde vida como o jogador (padrao: off; off = barra travada) */
     char streamingJsonParse;  /* chart JSON em janelas por secao (streaming): menos RAM em charts grandes (padrao: off) */
     char hitSoundBotplay;     /* som de acerto tambem quando o botplay acerta (padrao: off) */
+    char noteSplashes;        /* splash nos receptores ao acertar uma nota (padrao: on) */
     char strumBgPercent;      /* fundo preto atras dos receptores: 0 = off, 10..100 = opacidade em % */
     char strumMobileVisible;  /* 1 = tela dividida em 4 colunas com as cores das notas */
     char hiddenNotesAlt;      /* Hidden Notes: 0 Off, 1 Alternate, 2 Only Playable, 3 Alternate Playable (ver GameData_HiddenShowsSide) */

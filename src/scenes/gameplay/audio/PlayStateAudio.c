@@ -6,7 +6,7 @@
  * sincronia nao quebrar. O "mix" so decide quais tem volume: as silenciadas ficam em volume 0.
  */
 
-#include "scenes/gameplay/PlayStateAudio.h"
+#include "scenes/gameplay/audio/PlayStateAudio.h"
 #include <math.h>
 #include <stdio.h>
 #include "Game.h"

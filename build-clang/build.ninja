@@ -569,6 +569,33 @@ build CMakeFiles/FunkinCengine.dir/src/scenes/api/NoteSkinCache.c.obj: C_COMPILE
   OBJECT_FILE_DIR = CMakeFiles\FunkinCengine.dir\src\scenes\api
   TARGET_SUPPORT_DIR = CMakeFiles\FunkinCengine.dir
 
+build CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/HUD/PlayStateHealth.c.obj: C_COMPILER__FunkinCengine_unscanned_Release D$:/dev/funkin$ c/src/scenes/gameplay/HUD/PlayStateHealth.c || cmake_object_order_depends_target_FunkinCengine
+  CONFIG = Release
+  DEP_FILE = CMakeFiles\FunkinCengine.dir\src\scenes\gameplay\HUD\PlayStateHealth.c.obj.d
+  FLAGS = -Os -DNDEBUG -std=c23 -Os -ffunction-sections -fdata-sections -fmerge-all-constants -funroll-loops -fomit-frame-pointer -fno-math-errno -fno-common -fno-ident -DNDEBUG -DPLATFORM_DESKTOP -DGRAPHICS_API_OPENGL_33 -flto=thin -DFNF_DEBUG_STATS
+  INCLUDES = -I"D:/dev/funkin c/headers" -I"D:/dev/funkin c/src" -I"D:/dev/funkin c/lib" -I"D:/dev/funkin c/lib/raylib55/src" -I"D:/dev/funkin c/lib/raylib55/src/external/glfw/include"
+  OBJECT_DIR = CMakeFiles\FunkinCengine.dir
+  OBJECT_FILE_DIR = CMakeFiles\FunkinCengine.dir\src\scenes\gameplay\HUD
+  TARGET_SUPPORT_DIR = CMakeFiles\FunkinCengine.dir
+
+build CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/HUD/PlayStateRatingPopups.c.obj: C_COMPILER__FunkinCengine_unscanned_Release D$:/dev/funkin$ c/src/scenes/gameplay/HUD/PlayStateRatingPopups.c || cmake_object_order_depends_target_FunkinCengine
+  CONFIG = Release
+  DEP_FILE = CMakeFiles\FunkinCengine.dir\src\scenes\gameplay\HUD\PlayStateRatingPopups.c.obj.d
+  FLAGS = -Os -DNDEBUG -std=c23 -Os -ffunction-sections -fdata-sections -fmerge-all-constants -funroll-loops -fomit-frame-pointer -fno-math-errno -fno-common -fno-ident -DNDEBUG -DPLATFORM_DESKTOP -DGRAPHICS_API_OPENGL_33 -flto=thin -DFNF_DEBUG_STATS
+  INCLUDES = -I"D:/dev/funkin c/headers" -I"D:/dev/funkin c/src" -I"D:/dev/funkin c/lib" -I"D:/dev/funkin c/lib/raylib55/src" -I"D:/dev/funkin c/lib/raylib55/src/external/glfw/include"
+  OBJECT_DIR = CMakeFiles\FunkinCengine.dir
+  OBJECT_FILE_DIR = CMakeFiles\FunkinCengine.dir\src\scenes\gameplay\HUD
+  TARGET_SUPPORT_DIR = CMakeFiles\FunkinCengine.dir
+
+build CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/HUD/PlayStateText.c.obj: C_COMPILER__FunkinCengine_unscanned_Release D$:/dev/funkin$ c/src/scenes/gameplay/HUD/PlayStateText.c || cmake_object_order_depends_target_FunkinCengine
+  CONFIG = Release
+  DEP_FILE = CMakeFiles\FunkinCengine.dir\src\scenes\gameplay\HUD\PlayStateText.c.obj.d
+  FLAGS = -Os -DNDEBUG -std=c23 -Os -ffunction-sections -fdata-sections -fmerge-all-constants -funroll-loops -fomit-frame-pointer -fno-math-errno -fno-common -fno-ident -DNDEBUG -DPLATFORM_DESKTOP -DGRAPHICS_API_OPENGL_33 -flto=thin -DFNF_DEBUG_STATS
+  INCLUDES = -I"D:/dev/funkin c/headers" -I"D:/dev/funkin c/src" -I"D:/dev/funkin c/lib" -I"D:/dev/funkin c/lib/raylib55/src" -I"D:/dev/funkin c/lib/raylib55/src/external/glfw/include"
+  OBJECT_DIR = CMakeFiles\FunkinCengine.dir
+  OBJECT_FILE_DIR = CMakeFiles\FunkinCengine.dir\src\scenes\gameplay\HUD
+  TARGET_SUPPORT_DIR = CMakeFiles\FunkinCengine.dir
+
 build CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/PlayState.c.obj: C_COMPILER__FunkinCengine_unscanned_Release D$:/dev/funkin$ c/src/scenes/gameplay/PlayState.c || cmake_object_order_depends_target_FunkinCengine
   CONFIG = Release
   DEP_FILE = CMakeFiles\FunkinCengine.dir\src\scenes\gameplay\PlayState.c.obj.d
@@ -578,139 +605,31 @@ build CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/PlayState.c.obj: C_COMPIL
   OBJECT_FILE_DIR = CMakeFiles\FunkinCengine.dir\src\scenes\gameplay
   TARGET_SUPPORT_DIR = CMakeFiles\FunkinCengine.dir
 
-build CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/PlayStateAnimations.c.obj: C_COMPILER__FunkinCengine_unscanned_Release D$:/dev/funkin$ c/src/scenes/gameplay/PlayStateAnimations.c || cmake_object_order_depends_target_FunkinCengine
+build CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/audio/PlayStateAudio.c.obj: C_COMPILER__FunkinCengine_unscanned_Release D$:/dev/funkin$ c/src/scenes/gameplay/audio/PlayStateAudio.c || cmake_object_order_depends_target_FunkinCengine
   CONFIG = Release
-  DEP_FILE = CMakeFiles\FunkinCengine.dir\src\scenes\gameplay\PlayStateAnimations.c.obj.d
+  DEP_FILE = CMakeFiles\FunkinCengine.dir\src\scenes\gameplay\audio\PlayStateAudio.c.obj.d
   FLAGS = -Os -DNDEBUG -std=c23 -Os -ffunction-sections -fdata-sections -fmerge-all-constants -funroll-loops -fomit-frame-pointer -fno-math-errno -fno-common -fno-ident -DNDEBUG -DPLATFORM_DESKTOP -DGRAPHICS_API_OPENGL_33 -flto=thin -DFNF_DEBUG_STATS
   INCLUDES = -I"D:/dev/funkin c/headers" -I"D:/dev/funkin c/src" -I"D:/dev/funkin c/lib" -I"D:/dev/funkin c/lib/raylib55/src" -I"D:/dev/funkin c/lib/raylib55/src/external/glfw/include"
   OBJECT_DIR = CMakeFiles\FunkinCengine.dir
-  OBJECT_FILE_DIR = CMakeFiles\FunkinCengine.dir\src\scenes\gameplay
+  OBJECT_FILE_DIR = CMakeFiles\FunkinCengine.dir\src\scenes\gameplay\audio
   TARGET_SUPPORT_DIR = CMakeFiles\FunkinCengine.dir
 
-build CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/PlayStateAudio.c.obj: C_COMPILER__FunkinCengine_unscanned_Release D$:/dev/funkin$ c/src/scenes/gameplay/PlayStateAudio.c || cmake_object_order_depends_target_FunkinCengine
+build CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/characters/PlayStateAnimations.c.obj: C_COMPILER__FunkinCengine_unscanned_Release D$:/dev/funkin$ c/src/scenes/gameplay/characters/PlayStateAnimations.c || cmake_object_order_depends_target_FunkinCengine
   CONFIG = Release
-  DEP_FILE = CMakeFiles\FunkinCengine.dir\src\scenes\gameplay\PlayStateAudio.c.obj.d
+  DEP_FILE = CMakeFiles\FunkinCengine.dir\src\scenes\gameplay\characters\PlayStateAnimations.c.obj.d
   FLAGS = -Os -DNDEBUG -std=c23 -Os -ffunction-sections -fdata-sections -fmerge-all-constants -funroll-loops -fomit-frame-pointer -fno-math-errno -fno-common -fno-ident -DNDEBUG -DPLATFORM_DESKTOP -DGRAPHICS_API_OPENGL_33 -flto=thin -DFNF_DEBUG_STATS
   INCLUDES = -I"D:/dev/funkin c/headers" -I"D:/dev/funkin c/src" -I"D:/dev/funkin c/lib" -I"D:/dev/funkin c/lib/raylib55/src" -I"D:/dev/funkin c/lib/raylib55/src/external/glfw/include"
   OBJECT_DIR = CMakeFiles\FunkinCengine.dir
-  OBJECT_FILE_DIR = CMakeFiles\FunkinCengine.dir\src\scenes\gameplay
+  OBJECT_FILE_DIR = CMakeFiles\FunkinCengine.dir\src\scenes\gameplay\characters
   TARGET_SUPPORT_DIR = CMakeFiles\FunkinCengine.dir
 
-build CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/PlayStateBeat.c.obj: C_COMPILER__FunkinCengine_unscanned_Release D$:/dev/funkin$ c/src/scenes/gameplay/PlayStateBeat.c || cmake_object_order_depends_target_FunkinCengine
+build CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/characters/PlayStateBeat.c.obj: C_COMPILER__FunkinCengine_unscanned_Release D$:/dev/funkin$ c/src/scenes/gameplay/characters/PlayStateBeat.c || cmake_object_order_depends_target_FunkinCengine
   CONFIG = Release
-  DEP_FILE = CMakeFiles\FunkinCengine.dir\src\scenes\gameplay\PlayStateBeat.c.obj.d
+  DEP_FILE = CMakeFiles\FunkinCengine.dir\src\scenes\gameplay\characters\PlayStateBeat.c.obj.d
   FLAGS = -Os -DNDEBUG -std=c23 -Os -ffunction-sections -fdata-sections -fmerge-all-constants -funroll-loops -fomit-frame-pointer -fno-math-errno -fno-common -fno-ident -DNDEBUG -DPLATFORM_DESKTOP -DGRAPHICS_API_OPENGL_33 -flto=thin -DFNF_DEBUG_STATS
   INCLUDES = -I"D:/dev/funkin c/headers" -I"D:/dev/funkin c/src" -I"D:/dev/funkin c/lib" -I"D:/dev/funkin c/lib/raylib55/src" -I"D:/dev/funkin c/lib/raylib55/src/external/glfw/include"
   OBJECT_DIR = CMakeFiles\FunkinCengine.dir
-  OBJECT_FILE_DIR = CMakeFiles\FunkinCengine.dir\src\scenes\gameplay
-  TARGET_SUPPORT_DIR = CMakeFiles\FunkinCengine.dir
-
-build CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/PlayStateCamera.c.obj: C_COMPILER__FunkinCengine_unscanned_Release D$:/dev/funkin$ c/src/scenes/gameplay/PlayStateCamera.c || cmake_object_order_depends_target_FunkinCengine
-  CONFIG = Release
-  DEP_FILE = CMakeFiles\FunkinCengine.dir\src\scenes\gameplay\PlayStateCamera.c.obj.d
-  FLAGS = -Os -DNDEBUG -std=c23 -Os -ffunction-sections -fdata-sections -fmerge-all-constants -funroll-loops -fomit-frame-pointer -fno-math-errno -fno-common -fno-ident -DNDEBUG -DPLATFORM_DESKTOP -DGRAPHICS_API_OPENGL_33 -flto=thin -DFNF_DEBUG_STATS
-  INCLUDES = -I"D:/dev/funkin c/headers" -I"D:/dev/funkin c/src" -I"D:/dev/funkin c/lib" -I"D:/dev/funkin c/lib/raylib55/src" -I"D:/dev/funkin c/lib/raylib55/src/external/glfw/include"
-  OBJECT_DIR = CMakeFiles\FunkinCengine.dir
-  OBJECT_FILE_DIR = CMakeFiles\FunkinCengine.dir\src\scenes\gameplay
-  TARGET_SUPPORT_DIR = CMakeFiles\FunkinCengine.dir
-
-build CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/PlayStateDeath.c.obj: C_COMPILER__FunkinCengine_unscanned_Release D$:/dev/funkin$ c/src/scenes/gameplay/PlayStateDeath.c || cmake_object_order_depends_target_FunkinCengine
-  CONFIG = Release
-  DEP_FILE = CMakeFiles\FunkinCengine.dir\src\scenes\gameplay\PlayStateDeath.c.obj.d
-  FLAGS = -Os -DNDEBUG -std=c23 -Os -ffunction-sections -fdata-sections -fmerge-all-constants -funroll-loops -fomit-frame-pointer -fno-math-errno -fno-common -fno-ident -DNDEBUG -DPLATFORM_DESKTOP -DGRAPHICS_API_OPENGL_33 -flto=thin -DFNF_DEBUG_STATS
-  INCLUDES = -I"D:/dev/funkin c/headers" -I"D:/dev/funkin c/src" -I"D:/dev/funkin c/lib" -I"D:/dev/funkin c/lib/raylib55/src" -I"D:/dev/funkin c/lib/raylib55/src/external/glfw/include"
-  OBJECT_DIR = CMakeFiles\FunkinCengine.dir
-  OBJECT_FILE_DIR = CMakeFiles\FunkinCengine.dir\src\scenes\gameplay
-  TARGET_SUPPORT_DIR = CMakeFiles\FunkinCengine.dir
-
-build CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/PlayStateHealth.c.obj: C_COMPILER__FunkinCengine_unscanned_Release D$:/dev/funkin$ c/src/scenes/gameplay/PlayStateHealth.c || cmake_object_order_depends_target_FunkinCengine
-  CONFIG = Release
-  DEP_FILE = CMakeFiles\FunkinCengine.dir\src\scenes\gameplay\PlayStateHealth.c.obj.d
-  FLAGS = -Os -DNDEBUG -std=c23 -Os -ffunction-sections -fdata-sections -fmerge-all-constants -funroll-loops -fomit-frame-pointer -fno-math-errno -fno-common -fno-ident -DNDEBUG -DPLATFORM_DESKTOP -DGRAPHICS_API_OPENGL_33 -flto=thin -DFNF_DEBUG_STATS
-  INCLUDES = -I"D:/dev/funkin c/headers" -I"D:/dev/funkin c/src" -I"D:/dev/funkin c/lib" -I"D:/dev/funkin c/lib/raylib55/src" -I"D:/dev/funkin c/lib/raylib55/src/external/glfw/include"
-  OBJECT_DIR = CMakeFiles\FunkinCengine.dir
-  OBJECT_FILE_DIR = CMakeFiles\FunkinCengine.dir\src\scenes\gameplay
-  TARGET_SUPPORT_DIR = CMakeFiles\FunkinCengine.dir
-
-build CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/PlayStateIntro.c.obj: C_COMPILER__FunkinCengine_unscanned_Release D$:/dev/funkin$ c/src/scenes/gameplay/PlayStateIntro.c || cmake_object_order_depends_target_FunkinCengine
-  CONFIG = Release
-  DEP_FILE = CMakeFiles\FunkinCengine.dir\src\scenes\gameplay\PlayStateIntro.c.obj.d
-  FLAGS = -Os -DNDEBUG -std=c23 -Os -ffunction-sections -fdata-sections -fmerge-all-constants -funroll-loops -fomit-frame-pointer -fno-math-errno -fno-common -fno-ident -DNDEBUG -DPLATFORM_DESKTOP -DGRAPHICS_API_OPENGL_33 -flto=thin -DFNF_DEBUG_STATS
-  INCLUDES = -I"D:/dev/funkin c/headers" -I"D:/dev/funkin c/src" -I"D:/dev/funkin c/lib" -I"D:/dev/funkin c/lib/raylib55/src" -I"D:/dev/funkin c/lib/raylib55/src/external/glfw/include"
-  OBJECT_DIR = CMakeFiles\FunkinCengine.dir
-  OBJECT_FILE_DIR = CMakeFiles\FunkinCengine.dir\src\scenes\gameplay
-  TARGET_SUPPORT_DIR = CMakeFiles\FunkinCengine.dir
-
-build CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/PlayStateNoteAtlas.c.obj: C_COMPILER__FunkinCengine_unscanned_Release D$:/dev/funkin$ c/src/scenes/gameplay/PlayStateNoteAtlas.c || cmake_object_order_depends_target_FunkinCengine
-  CONFIG = Release
-  DEP_FILE = CMakeFiles\FunkinCengine.dir\src\scenes\gameplay\PlayStateNoteAtlas.c.obj.d
-  FLAGS = -Os -DNDEBUG -std=c23 -Os -ffunction-sections -fdata-sections -fmerge-all-constants -funroll-loops -fomit-frame-pointer -fno-math-errno -fno-common -fno-ident -DNDEBUG -DPLATFORM_DESKTOP -DGRAPHICS_API_OPENGL_33 -flto=thin -DFNF_DEBUG_STATS
-  INCLUDES = -I"D:/dev/funkin c/headers" -I"D:/dev/funkin c/src" -I"D:/dev/funkin c/lib" -I"D:/dev/funkin c/lib/raylib55/src" -I"D:/dev/funkin c/lib/raylib55/src/external/glfw/include"
-  OBJECT_DIR = CMakeFiles\FunkinCengine.dir
-  OBJECT_FILE_DIR = CMakeFiles\FunkinCengine.dir\src\scenes\gameplay
-  TARGET_SUPPORT_DIR = CMakeFiles\FunkinCengine.dir
-
-build CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/PlayStateNoteSpawn.c.obj: C_COMPILER__FunkinCengine_unscanned_Release D$:/dev/funkin$ c/src/scenes/gameplay/PlayStateNoteSpawn.c || cmake_object_order_depends_target_FunkinCengine
-  CONFIG = Release
-  DEP_FILE = CMakeFiles\FunkinCengine.dir\src\scenes\gameplay\PlayStateNoteSpawn.c.obj.d
-  FLAGS = -Os -DNDEBUG -std=c23 -Os -ffunction-sections -fdata-sections -fmerge-all-constants -funroll-loops -fomit-frame-pointer -fno-math-errno -fno-common -fno-ident -DNDEBUG -DPLATFORM_DESKTOP -DGRAPHICS_API_OPENGL_33 -flto=thin -DFNF_DEBUG_STATS
-  INCLUDES = -I"D:/dev/funkin c/headers" -I"D:/dev/funkin c/src" -I"D:/dev/funkin c/lib" -I"D:/dev/funkin c/lib/raylib55/src" -I"D:/dev/funkin c/lib/raylib55/src/external/glfw/include"
-  OBJECT_DIR = CMakeFiles\FunkinCengine.dir
-  OBJECT_FILE_DIR = CMakeFiles\FunkinCengine.dir\src\scenes\gameplay
-  TARGET_SUPPORT_DIR = CMakeFiles\FunkinCengine.dir
-
-build CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/PlayStatePause.c.obj: C_COMPILER__FunkinCengine_unscanned_Release D$:/dev/funkin$ c/src/scenes/gameplay/PlayStatePause.c || cmake_object_order_depends_target_FunkinCengine
-  CONFIG = Release
-  DEP_FILE = CMakeFiles\FunkinCengine.dir\src\scenes\gameplay\PlayStatePause.c.obj.d
-  FLAGS = -Os -DNDEBUG -std=c23 -Os -ffunction-sections -fdata-sections -fmerge-all-constants -funroll-loops -fomit-frame-pointer -fno-math-errno -fno-common -fno-ident -DNDEBUG -DPLATFORM_DESKTOP -DGRAPHICS_API_OPENGL_33 -flto=thin -DFNF_DEBUG_STATS
-  INCLUDES = -I"D:/dev/funkin c/headers" -I"D:/dev/funkin c/src" -I"D:/dev/funkin c/lib" -I"D:/dev/funkin c/lib/raylib55/src" -I"D:/dev/funkin c/lib/raylib55/src/external/glfw/include"
-  OBJECT_DIR = CMakeFiles\FunkinCengine.dir
-  OBJECT_FILE_DIR = CMakeFiles\FunkinCengine.dir\src\scenes\gameplay
-  TARGET_SUPPORT_DIR = CMakeFiles\FunkinCengine.dir
-
-build CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/PlayStatePlayerInput.c.obj: C_COMPILER__FunkinCengine_unscanned_Release D$:/dev/funkin$ c/src/scenes/gameplay/PlayStatePlayerInput.c || cmake_object_order_depends_target_FunkinCengine
-  CONFIG = Release
-  DEP_FILE = CMakeFiles\FunkinCengine.dir\src\scenes\gameplay\PlayStatePlayerInput.c.obj.d
-  FLAGS = -Os -DNDEBUG -std=c23 -Os -ffunction-sections -fdata-sections -fmerge-all-constants -funroll-loops -fomit-frame-pointer -fno-math-errno -fno-common -fno-ident -DNDEBUG -DPLATFORM_DESKTOP -DGRAPHICS_API_OPENGL_33 -flto=thin -DFNF_DEBUG_STATS
-  INCLUDES = -I"D:/dev/funkin c/headers" -I"D:/dev/funkin c/src" -I"D:/dev/funkin c/lib" -I"D:/dev/funkin c/lib/raylib55/src" -I"D:/dev/funkin c/lib/raylib55/src/external/glfw/include"
-  OBJECT_DIR = CMakeFiles\FunkinCengine.dir
-  OBJECT_FILE_DIR = CMakeFiles\FunkinCengine.dir\src\scenes\gameplay
-  TARGET_SUPPORT_DIR = CMakeFiles\FunkinCengine.dir
-
-build CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/PlayStateRatingPopups.c.obj: C_COMPILER__FunkinCengine_unscanned_Release D$:/dev/funkin$ c/src/scenes/gameplay/PlayStateRatingPopups.c || cmake_object_order_depends_target_FunkinCengine
-  CONFIG = Release
-  DEP_FILE = CMakeFiles\FunkinCengine.dir\src\scenes\gameplay\PlayStateRatingPopups.c.obj.d
-  FLAGS = -Os -DNDEBUG -std=c23 -Os -ffunction-sections -fdata-sections -fmerge-all-constants -funroll-loops -fomit-frame-pointer -fno-math-errno -fno-common -fno-ident -DNDEBUG -DPLATFORM_DESKTOP -DGRAPHICS_API_OPENGL_33 -flto=thin -DFNF_DEBUG_STATS
-  INCLUDES = -I"D:/dev/funkin c/headers" -I"D:/dev/funkin c/src" -I"D:/dev/funkin c/lib" -I"D:/dev/funkin c/lib/raylib55/src" -I"D:/dev/funkin c/lib/raylib55/src/external/glfw/include"
-  OBJECT_DIR = CMakeFiles\FunkinCengine.dir
-  OBJECT_FILE_DIR = CMakeFiles\FunkinCengine.dir\src\scenes\gameplay
-  TARGET_SUPPORT_DIR = CMakeFiles\FunkinCengine.dir
-
-build CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/PlayStateStage.c.obj: C_COMPILER__FunkinCengine_unscanned_Release D$:/dev/funkin$ c/src/scenes/gameplay/PlayStateStage.c || cmake_object_order_depends_target_FunkinCengine
-  CONFIG = Release
-  DEP_FILE = CMakeFiles\FunkinCengine.dir\src\scenes\gameplay\PlayStateStage.c.obj.d
-  FLAGS = -Os -DNDEBUG -std=c23 -Os -ffunction-sections -fdata-sections -fmerge-all-constants -funroll-loops -fomit-frame-pointer -fno-math-errno -fno-common -fno-ident -DNDEBUG -DPLATFORM_DESKTOP -DGRAPHICS_API_OPENGL_33 -flto=thin -DFNF_DEBUG_STATS
-  INCLUDES = -I"D:/dev/funkin c/headers" -I"D:/dev/funkin c/src" -I"D:/dev/funkin c/lib" -I"D:/dev/funkin c/lib/raylib55/src" -I"D:/dev/funkin c/lib/raylib55/src/external/glfw/include"
-  OBJECT_DIR = CMakeFiles\FunkinCengine.dir
-  OBJECT_FILE_DIR = CMakeFiles\FunkinCengine.dir\src\scenes\gameplay
-  TARGET_SUPPORT_DIR = CMakeFiles\FunkinCengine.dir
-
-build CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/PlayStateStrums.c.obj: C_COMPILER__FunkinCengine_unscanned_Release D$:/dev/funkin$ c/src/scenes/gameplay/PlayStateStrums.c || cmake_object_order_depends_target_FunkinCengine
-  CONFIG = Release
-  DEP_FILE = CMakeFiles\FunkinCengine.dir\src\scenes\gameplay\PlayStateStrums.c.obj.d
-  FLAGS = -Os -DNDEBUG -std=c23 -Os -ffunction-sections -fdata-sections -fmerge-all-constants -funroll-loops -fomit-frame-pointer -fno-math-errno -fno-common -fno-ident -DNDEBUG -DPLATFORM_DESKTOP -DGRAPHICS_API_OPENGL_33 -flto=thin -DFNF_DEBUG_STATS
-  INCLUDES = -I"D:/dev/funkin c/headers" -I"D:/dev/funkin c/src" -I"D:/dev/funkin c/lib" -I"D:/dev/funkin c/lib/raylib55/src" -I"D:/dev/funkin c/lib/raylib55/src/external/glfw/include"
-  OBJECT_DIR = CMakeFiles\FunkinCengine.dir
-  OBJECT_FILE_DIR = CMakeFiles\FunkinCengine.dir\src\scenes\gameplay
-  TARGET_SUPPORT_DIR = CMakeFiles\FunkinCengine.dir
-
-build CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/PlayStateText.c.obj: C_COMPILER__FunkinCengine_unscanned_Release D$:/dev/funkin$ c/src/scenes/gameplay/PlayStateText.c || cmake_object_order_depends_target_FunkinCengine
-  CONFIG = Release
-  DEP_FILE = CMakeFiles\FunkinCengine.dir\src\scenes\gameplay\PlayStateText.c.obj.d
-  FLAGS = -Os -DNDEBUG -std=c23 -Os -ffunction-sections -fdata-sections -fmerge-all-constants -funroll-loops -fomit-frame-pointer -fno-math-errno -fno-common -fno-ident -DNDEBUG -DPLATFORM_DESKTOP -DGRAPHICS_API_OPENGL_33 -flto=thin -DFNF_DEBUG_STATS
-  INCLUDES = -I"D:/dev/funkin c/headers" -I"D:/dev/funkin c/src" -I"D:/dev/funkin c/lib" -I"D:/dev/funkin c/lib/raylib55/src" -I"D:/dev/funkin c/lib/raylib55/src/external/glfw/include"
-  OBJECT_DIR = CMakeFiles\FunkinCengine.dir
-  OBJECT_FILE_DIR = CMakeFiles\FunkinCengine.dir\src\scenes\gameplay
+  OBJECT_FILE_DIR = CMakeFiles\FunkinCengine.dir\src\scenes\gameplay\characters
   TARGET_SUPPORT_DIR = CMakeFiles\FunkinCengine.dir
 
 build CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/events/PlayStateEventsInGameplay.c.obj: C_COMPILER__FunkinCengine_unscanned_Release D$:/dev/funkin$ c/src/scenes/gameplay/events/PlayStateEventsInGameplay.c || cmake_object_order_depends_target_FunkinCengine
@@ -729,6 +648,96 @@ build CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/events/PlayStateParallax.
   INCLUDES = -I"D:/dev/funkin c/headers" -I"D:/dev/funkin c/src" -I"D:/dev/funkin c/lib" -I"D:/dev/funkin c/lib/raylib55/src" -I"D:/dev/funkin c/lib/raylib55/src/external/glfw/include"
   OBJECT_DIR = CMakeFiles\FunkinCengine.dir
   OBJECT_FILE_DIR = CMakeFiles\FunkinCengine.dir\src\scenes\gameplay\events
+  TARGET_SUPPORT_DIR = CMakeFiles\FunkinCengine.dir
+
+build CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/flow/PlayStateDeath.c.obj: C_COMPILER__FunkinCengine_unscanned_Release D$:/dev/funkin$ c/src/scenes/gameplay/flow/PlayStateDeath.c || cmake_object_order_depends_target_FunkinCengine
+  CONFIG = Release
+  DEP_FILE = CMakeFiles\FunkinCengine.dir\src\scenes\gameplay\flow\PlayStateDeath.c.obj.d
+  FLAGS = -Os -DNDEBUG -std=c23 -Os -ffunction-sections -fdata-sections -fmerge-all-constants -funroll-loops -fomit-frame-pointer -fno-math-errno -fno-common -fno-ident -DNDEBUG -DPLATFORM_DESKTOP -DGRAPHICS_API_OPENGL_33 -flto=thin -DFNF_DEBUG_STATS
+  INCLUDES = -I"D:/dev/funkin c/headers" -I"D:/dev/funkin c/src" -I"D:/dev/funkin c/lib" -I"D:/dev/funkin c/lib/raylib55/src" -I"D:/dev/funkin c/lib/raylib55/src/external/glfw/include"
+  OBJECT_DIR = CMakeFiles\FunkinCengine.dir
+  OBJECT_FILE_DIR = CMakeFiles\FunkinCengine.dir\src\scenes\gameplay\flow
+  TARGET_SUPPORT_DIR = CMakeFiles\FunkinCengine.dir
+
+build CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/flow/PlayStateIntro.c.obj: C_COMPILER__FunkinCengine_unscanned_Release D$:/dev/funkin$ c/src/scenes/gameplay/flow/PlayStateIntro.c || cmake_object_order_depends_target_FunkinCengine
+  CONFIG = Release
+  DEP_FILE = CMakeFiles\FunkinCengine.dir\src\scenes\gameplay\flow\PlayStateIntro.c.obj.d
+  FLAGS = -Os -DNDEBUG -std=c23 -Os -ffunction-sections -fdata-sections -fmerge-all-constants -funroll-loops -fomit-frame-pointer -fno-math-errno -fno-common -fno-ident -DNDEBUG -DPLATFORM_DESKTOP -DGRAPHICS_API_OPENGL_33 -flto=thin -DFNF_DEBUG_STATS
+  INCLUDES = -I"D:/dev/funkin c/headers" -I"D:/dev/funkin c/src" -I"D:/dev/funkin c/lib" -I"D:/dev/funkin c/lib/raylib55/src" -I"D:/dev/funkin c/lib/raylib55/src/external/glfw/include"
+  OBJECT_DIR = CMakeFiles\FunkinCengine.dir
+  OBJECT_FILE_DIR = CMakeFiles\FunkinCengine.dir\src\scenes\gameplay\flow
+  TARGET_SUPPORT_DIR = CMakeFiles\FunkinCengine.dir
+
+build CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/flow/PlayStatePause.c.obj: C_COMPILER__FunkinCengine_unscanned_Release D$:/dev/funkin$ c/src/scenes/gameplay/flow/PlayStatePause.c || cmake_object_order_depends_target_FunkinCengine
+  CONFIG = Release
+  DEP_FILE = CMakeFiles\FunkinCengine.dir\src\scenes\gameplay\flow\PlayStatePause.c.obj.d
+  FLAGS = -Os -DNDEBUG -std=c23 -Os -ffunction-sections -fdata-sections -fmerge-all-constants -funroll-loops -fomit-frame-pointer -fno-math-errno -fno-common -fno-ident -DNDEBUG -DPLATFORM_DESKTOP -DGRAPHICS_API_OPENGL_33 -flto=thin -DFNF_DEBUG_STATS
+  INCLUDES = -I"D:/dev/funkin c/headers" -I"D:/dev/funkin c/src" -I"D:/dev/funkin c/lib" -I"D:/dev/funkin c/lib/raylib55/src" -I"D:/dev/funkin c/lib/raylib55/src/external/glfw/include"
+  OBJECT_DIR = CMakeFiles\FunkinCengine.dir
+  OBJECT_FILE_DIR = CMakeFiles\FunkinCengine.dir\src\scenes\gameplay\flow
+  TARGET_SUPPORT_DIR = CMakeFiles\FunkinCengine.dir
+
+build CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/notes/PlayStateNoteAtlas.c.obj: C_COMPILER__FunkinCengine_unscanned_Release D$:/dev/funkin$ c/src/scenes/gameplay/notes/PlayStateNoteAtlas.c || cmake_object_order_depends_target_FunkinCengine
+  CONFIG = Release
+  DEP_FILE = CMakeFiles\FunkinCengine.dir\src\scenes\gameplay\notes\PlayStateNoteAtlas.c.obj.d
+  FLAGS = -Os -DNDEBUG -std=c23 -Os -ffunction-sections -fdata-sections -fmerge-all-constants -funroll-loops -fomit-frame-pointer -fno-math-errno -fno-common -fno-ident -DNDEBUG -DPLATFORM_DESKTOP -DGRAPHICS_API_OPENGL_33 -flto=thin -DFNF_DEBUG_STATS
+  INCLUDES = -I"D:/dev/funkin c/headers" -I"D:/dev/funkin c/src" -I"D:/dev/funkin c/lib" -I"D:/dev/funkin c/lib/raylib55/src" -I"D:/dev/funkin c/lib/raylib55/src/external/glfw/include"
+  OBJECT_DIR = CMakeFiles\FunkinCengine.dir
+  OBJECT_FILE_DIR = CMakeFiles\FunkinCengine.dir\src\scenes\gameplay\notes
+  TARGET_SUPPORT_DIR = CMakeFiles\FunkinCengine.dir
+
+build CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/notes/PlayStateNoteSpawn.c.obj: C_COMPILER__FunkinCengine_unscanned_Release D$:/dev/funkin$ c/src/scenes/gameplay/notes/PlayStateNoteSpawn.c || cmake_object_order_depends_target_FunkinCengine
+  CONFIG = Release
+  DEP_FILE = CMakeFiles\FunkinCengine.dir\src\scenes\gameplay\notes\PlayStateNoteSpawn.c.obj.d
+  FLAGS = -Os -DNDEBUG -std=c23 -Os -ffunction-sections -fdata-sections -fmerge-all-constants -funroll-loops -fomit-frame-pointer -fno-math-errno -fno-common -fno-ident -DNDEBUG -DPLATFORM_DESKTOP -DGRAPHICS_API_OPENGL_33 -flto=thin -DFNF_DEBUG_STATS
+  INCLUDES = -I"D:/dev/funkin c/headers" -I"D:/dev/funkin c/src" -I"D:/dev/funkin c/lib" -I"D:/dev/funkin c/lib/raylib55/src" -I"D:/dev/funkin c/lib/raylib55/src/external/glfw/include"
+  OBJECT_DIR = CMakeFiles\FunkinCengine.dir
+  OBJECT_FILE_DIR = CMakeFiles\FunkinCengine.dir\src\scenes\gameplay\notes
+  TARGET_SUPPORT_DIR = CMakeFiles\FunkinCengine.dir
+
+build CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/notes/PlayStatePlayerInput.c.obj: C_COMPILER__FunkinCengine_unscanned_Release D$:/dev/funkin$ c/src/scenes/gameplay/notes/PlayStatePlayerInput.c || cmake_object_order_depends_target_FunkinCengine
+  CONFIG = Release
+  DEP_FILE = CMakeFiles\FunkinCengine.dir\src\scenes\gameplay\notes\PlayStatePlayerInput.c.obj.d
+  FLAGS = -Os -DNDEBUG -std=c23 -Os -ffunction-sections -fdata-sections -fmerge-all-constants -funroll-loops -fomit-frame-pointer -fno-math-errno -fno-common -fno-ident -DNDEBUG -DPLATFORM_DESKTOP -DGRAPHICS_API_OPENGL_33 -flto=thin -DFNF_DEBUG_STATS
+  INCLUDES = -I"D:/dev/funkin c/headers" -I"D:/dev/funkin c/src" -I"D:/dev/funkin c/lib" -I"D:/dev/funkin c/lib/raylib55/src" -I"D:/dev/funkin c/lib/raylib55/src/external/glfw/include"
+  OBJECT_DIR = CMakeFiles\FunkinCengine.dir
+  OBJECT_FILE_DIR = CMakeFiles\FunkinCengine.dir\src\scenes\gameplay\notes
+  TARGET_SUPPORT_DIR = CMakeFiles\FunkinCengine.dir
+
+build CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/notes/PlayStateStrums.c.obj: C_COMPILER__FunkinCengine_unscanned_Release D$:/dev/funkin$ c/src/scenes/gameplay/notes/PlayStateStrums.c || cmake_object_order_depends_target_FunkinCengine
+  CONFIG = Release
+  DEP_FILE = CMakeFiles\FunkinCengine.dir\src\scenes\gameplay\notes\PlayStateStrums.c.obj.d
+  FLAGS = -Os -DNDEBUG -std=c23 -Os -ffunction-sections -fdata-sections -fmerge-all-constants -funroll-loops -fomit-frame-pointer -fno-math-errno -fno-common -fno-ident -DNDEBUG -DPLATFORM_DESKTOP -DGRAPHICS_API_OPENGL_33 -flto=thin -DFNF_DEBUG_STATS
+  INCLUDES = -I"D:/dev/funkin c/headers" -I"D:/dev/funkin c/src" -I"D:/dev/funkin c/lib" -I"D:/dev/funkin c/lib/raylib55/src" -I"D:/dev/funkin c/lib/raylib55/src/external/glfw/include"
+  OBJECT_DIR = CMakeFiles\FunkinCengine.dir
+  OBJECT_FILE_DIR = CMakeFiles\FunkinCengine.dir\src\scenes\gameplay\notes
+  TARGET_SUPPORT_DIR = CMakeFiles\FunkinCengine.dir
+
+build CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/stage/PlayStateStage.c.obj: C_COMPILER__FunkinCengine_unscanned_Release D$:/dev/funkin$ c/src/scenes/gameplay/stage/PlayStateStage.c || cmake_object_order_depends_target_FunkinCengine
+  CONFIG = Release
+  DEP_FILE = CMakeFiles\FunkinCengine.dir\src\scenes\gameplay\stage\PlayStateStage.c.obj.d
+  FLAGS = -Os -DNDEBUG -std=c23 -Os -ffunction-sections -fdata-sections -fmerge-all-constants -funroll-loops -fomit-frame-pointer -fno-math-errno -fno-common -fno-ident -DNDEBUG -DPLATFORM_DESKTOP -DGRAPHICS_API_OPENGL_33 -flto=thin -DFNF_DEBUG_STATS
+  INCLUDES = -I"D:/dev/funkin c/headers" -I"D:/dev/funkin c/src" -I"D:/dev/funkin c/lib" -I"D:/dev/funkin c/lib/raylib55/src" -I"D:/dev/funkin c/lib/raylib55/src/external/glfw/include"
+  OBJECT_DIR = CMakeFiles\FunkinCengine.dir
+  OBJECT_FILE_DIR = CMakeFiles\FunkinCengine.dir\src\scenes\gameplay\stage
+  TARGET_SUPPORT_DIR = CMakeFiles\FunkinCengine.dir
+
+build CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/visual/PlayStateCamera.c.obj: C_COMPILER__FunkinCengine_unscanned_Release D$:/dev/funkin$ c/src/scenes/gameplay/visual/PlayStateCamera.c || cmake_object_order_depends_target_FunkinCengine
+  CONFIG = Release
+  DEP_FILE = CMakeFiles\FunkinCengine.dir\src\scenes\gameplay\visual\PlayStateCamera.c.obj.d
+  FLAGS = -Os -DNDEBUG -std=c23 -Os -ffunction-sections -fdata-sections -fmerge-all-constants -funroll-loops -fomit-frame-pointer -fno-math-errno -fno-common -fno-ident -DNDEBUG -DPLATFORM_DESKTOP -DGRAPHICS_API_OPENGL_33 -flto=thin -DFNF_DEBUG_STATS
+  INCLUDES = -I"D:/dev/funkin c/headers" -I"D:/dev/funkin c/src" -I"D:/dev/funkin c/lib" -I"D:/dev/funkin c/lib/raylib55/src" -I"D:/dev/funkin c/lib/raylib55/src/external/glfw/include"
+  OBJECT_DIR = CMakeFiles\FunkinCengine.dir
+  OBJECT_FILE_DIR = CMakeFiles\FunkinCengine.dir\src\scenes\gameplay\visual
+  TARGET_SUPPORT_DIR = CMakeFiles\FunkinCengine.dir
+
+build CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/visual/PlayStateNoteSplash.c.obj: C_COMPILER__FunkinCengine_unscanned_Release D$:/dev/funkin$ c/src/scenes/gameplay/visual/PlayStateNoteSplash.c || cmake_object_order_depends_target_FunkinCengine
+  CONFIG = Release
+  DEP_FILE = CMakeFiles\FunkinCengine.dir\src\scenes\gameplay\visual\PlayStateNoteSplash.c.obj.d
+  FLAGS = -Os -DNDEBUG -std=c23 -Os -ffunction-sections -fdata-sections -fmerge-all-constants -funroll-loops -fomit-frame-pointer -fno-math-errno -fno-common -fno-ident -DNDEBUG -DPLATFORM_DESKTOP -DGRAPHICS_API_OPENGL_33 -flto=thin -DFNF_DEBUG_STATS
+  INCLUDES = -I"D:/dev/funkin c/headers" -I"D:/dev/funkin c/src" -I"D:/dev/funkin c/lib" -I"D:/dev/funkin c/lib/raylib55/src" -I"D:/dev/funkin c/lib/raylib55/src/external/glfw/include"
+  OBJECT_DIR = CMakeFiles\FunkinCengine.dir
+  OBJECT_FILE_DIR = CMakeFiles\FunkinCengine.dir\src\scenes\gameplay\visual
   TARGET_SUPPORT_DIR = CMakeFiles\FunkinCengine.dir
 
 build CMakeFiles/FunkinCengine.dir/src/scenes/menu/EnterToPlay.c.obj: C_COMPILER__FunkinCengine_unscanned_Release D$:/dev/funkin$ c/src/scenes/menu/EnterToPlay.c || cmake_object_order_depends_target_FunkinCengine
@@ -1153,7 +1162,7 @@ build CMakeFiles/FunkinCengine.dir/lib/yyjson.c.obj: C_COMPILER__FunkinCengine_u
 #############################################
 # Link the executable D:\dev\funkin c\FunkinCengine.exe
 
-build D$:/dev/funkin$ c/FunkinCengine.exe: C_EXECUTABLE_LINKER__FunkinCengine_Release CMakeFiles/raylib_objects.dir/lib/raylib55/src/raudio.c.obj CMakeFiles/raylib_objects.dir/lib/raylib55/src/rcore.c.obj CMakeFiles/raylib_objects.dir/lib/raylib55/src/rmodels.c.obj CMakeFiles/raylib_objects.dir/lib/raylib55/src/rshapes.c.obj CMakeFiles/raylib_objects.dir/lib/raylib55/src/rtext.c.obj CMakeFiles/raylib_objects.dir/lib/raylib55/src/rtextures.c.obj CMakeFiles/raylib_objects.dir/lib/raylib55/src/utils.c.obj CMakeFiles/raylib_objects.dir/lib/raylib55/src/rglfw.c.obj CMakeFiles/FunkinCengine.dir/main.c.obj CMakeFiles/FunkinCengine.dir/src/Game.c.obj CMakeFiles/FunkinCengine.dir/src/GameData.c.obj CMakeFiles/FunkinCengine.dir/src/Render.c.obj CMakeFiles/FunkinCengine.dir/src/characters/Character.c.obj CMakeFiles/FunkinCengine.dir/src/characters/CharacterJson.c.obj CMakeFiles/FunkinCengine.dir/src/characters/CharacterXML.c.obj CMakeFiles/FunkinCengine.dir/src/characters/Girlfriend.c.obj CMakeFiles/FunkinCengine.dir/src/core/DirWalk.c.obj CMakeFiles/FunkinCengine.dir/src/core/Log.c.obj CMakeFiles/FunkinCengine.dir/src/core/ModList.c.obj CMakeFiles/FunkinCengine.dir/src/core/ModPath.c.obj CMakeFiles/FunkinCengine.dir/src/data/JsonStream.c.obj CMakeFiles/FunkinCengine.dir/src/data/ModLayout.c.obj CMakeFiles/FunkinCengine.dir/src/data/Song.c.obj CMakeFiles/FunkinCengine.dir/src/data/SongChartFind.c.obj CMakeFiles/FunkinCengine.dir/src/data/SongJson.c.obj CMakeFiles/FunkinCengine.dir/src/data/SongList.c.obj CMakeFiles/FunkinCengine.dir/src/data/SongStream.c.obj CMakeFiles/FunkinCengine.dir/src/data/Week.c.obj CMakeFiles/FunkinCengine.dir/src/data/modimport/ModImport.c.obj CMakeFiles/FunkinCengine.dir/src/data/modimport/ModImportAnalyze.c.obj CMakeFiles/FunkinCengine.dir/src/data/modimport/ModImportCharacters.c.obj CMakeFiles/FunkinCengine.dir/src/data/modimport/ModImportFiles.c.obj CMakeFiles/FunkinCengine.dir/src/data/modimport/ModImportFormat.c.obj CMakeFiles/FunkinCengine.dir/src/data/modimport/ModImportParse.c.obj CMakeFiles/FunkinCengine.dir/src/data/modimport/ModImportPath.c.obj CMakeFiles/FunkinCengine.dir/src/data/modimport/ModImportVSlice.c.obj CMakeFiles/FunkinCengine.dir/src/logic/animations/AnimSetBinary.c.obj CMakeFiles/FunkinCengine.dir/src/logic/animations/AnimSetCharacterXML.c.obj CMakeFiles/FunkinCengine.dir/src/logic/animations/AnimSetParseUtil.c.obj CMakeFiles/FunkinCengine.dir/src/logic/animations/AnimSetSparrow.c.obj CMakeFiles/FunkinCengine.dir/src/logic/animations/AnimationSets.c.obj CMakeFiles/FunkinCengine.dir/src/logic/animations/CharacterAnims.c.obj CMakeFiles/FunkinCengine.dir/src/logic/beatmanager/BeatManager.c.obj CMakeFiles/FunkinCengine.dir/src/logic/notes/Note.c.obj CMakeFiles/FunkinCengine.dir/src/logic/stage/Stage.c.obj CMakeFiles/FunkinCengine.dir/src/logic/stage/StageJson.c.obj CMakeFiles/FunkinCengine.dir/src/logic/stage/StageLuaParse.c.obj CMakeFiles/FunkinCengine.dir/src/rendering/Display.c.obj CMakeFiles/FunkinCengine.dir/src/rendering/TextMeasure.c.obj CMakeFiles/FunkinCengine.dir/src/rendering/cpu/ImagePrefetch.c.obj CMakeFiles/FunkinCengine.dir/src/rendering/cpu/PngDecode.c.obj CMakeFiles/FunkinCengine.dir/src/rendering/shaders/ShaderFx.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/LoadingState.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/api/EndStartLoader.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/api/FontLoader.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/api/NoteSkinCache.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/PlayState.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/PlayStateAnimations.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/PlayStateAudio.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/PlayStateBeat.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/PlayStateCamera.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/PlayStateDeath.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/PlayStateHealth.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/PlayStateIntro.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/PlayStateNoteAtlas.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/PlayStateNoteSpawn.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/PlayStatePause.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/PlayStatePlayerInput.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/PlayStateRatingPopups.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/PlayStateStage.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/PlayStateStrums.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/PlayStateText.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/events/PlayStateEventsInGameplay.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/events/PlayStateParallax.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/menu/EnterToPlay.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/menu/MenuBackground.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/menu/MenuMusic.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/menu/MenuState.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/menu/freeplay/Freeplay.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/menu/freeplay/FreeplayIcon.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/menu/modding/ModdingMenu.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/menu/modding/ModdingMenuDraw.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/menu/modding/ModdingMenuInput.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/menu/options/OptionsMenu.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/menu/options/OptionsMenuIcons.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/menu/options/OptionsMenuNoteColors.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/menu/options/OptionsMenuScreens.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/menu/options/OptionsMenuValues.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/menu/storymode/StoryCover.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/menu/storymode/StoryMode.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/modding/ModdingCommon.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/modding/charactereditor/CharEditor.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/modding/charactereditor/CharEditorIO.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/modding/charteditor/ChartEditor.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/modding/charteditor/audio/EditorAudio.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/modding/charteditor/data/EditorCharactersAndLists.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/modding/charteditor/data/EditorChartLoad.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/modding/charteditor/data/EditorChartModel.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/modding/charteditor/data/EditorChartSave.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/modding/charteditor/data/EditorEvents.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/modding/charteditor/data/EditorFiles.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/modding/charteditor/data/EditorSection.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/modding/charteditor/data/EditorStagePos.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/modding/charteditor/data/EditorUndo.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/modding/charteditor/grid/EditorGrid.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/modding/charteditor/grid/EditorTimeline.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/modding/charteditor/ui/EditorIcons.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/modding/charteditor/ui/EditorPanels.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/modding/charteditor/ui/EditorPicker.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/modding/charteditor/ui/EditorWidgets.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/modding/stageeditor/StageEditor.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/modding/stageeditor/StageEditorIO.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/modding/weekeditor/WeekEditor.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/modding/weekeditor/WeekEditorIO.c.obj CMakeFiles/FunkinCengine.dir/src/threads/Sync.c.obj CMakeFiles/FunkinCengine.dir/src/threads/Thread.c.obj CMakeFiles/FunkinCengine.dir/src/threads/cpu/Jobs.c.obj CMakeFiles/FunkinCengine.dir/src/widgets-and-menus-ui/SearchBox.c.obj CMakeFiles/FunkinCengine.dir/lib/yxml.c.obj CMakeFiles/FunkinCengine.dir/lib/yyjson.c.obj || raylib_objects
+build D$:/dev/funkin$ c/FunkinCengine.exe: C_EXECUTABLE_LINKER__FunkinCengine_Release CMakeFiles/raylib_objects.dir/lib/raylib55/src/raudio.c.obj CMakeFiles/raylib_objects.dir/lib/raylib55/src/rcore.c.obj CMakeFiles/raylib_objects.dir/lib/raylib55/src/rmodels.c.obj CMakeFiles/raylib_objects.dir/lib/raylib55/src/rshapes.c.obj CMakeFiles/raylib_objects.dir/lib/raylib55/src/rtext.c.obj CMakeFiles/raylib_objects.dir/lib/raylib55/src/rtextures.c.obj CMakeFiles/raylib_objects.dir/lib/raylib55/src/utils.c.obj CMakeFiles/raylib_objects.dir/lib/raylib55/src/rglfw.c.obj CMakeFiles/FunkinCengine.dir/main.c.obj CMakeFiles/FunkinCengine.dir/src/Game.c.obj CMakeFiles/FunkinCengine.dir/src/GameData.c.obj CMakeFiles/FunkinCengine.dir/src/Render.c.obj CMakeFiles/FunkinCengine.dir/src/characters/Character.c.obj CMakeFiles/FunkinCengine.dir/src/characters/CharacterJson.c.obj CMakeFiles/FunkinCengine.dir/src/characters/CharacterXML.c.obj CMakeFiles/FunkinCengine.dir/src/characters/Girlfriend.c.obj CMakeFiles/FunkinCengine.dir/src/core/DirWalk.c.obj CMakeFiles/FunkinCengine.dir/src/core/Log.c.obj CMakeFiles/FunkinCengine.dir/src/core/ModList.c.obj CMakeFiles/FunkinCengine.dir/src/core/ModPath.c.obj CMakeFiles/FunkinCengine.dir/src/data/JsonStream.c.obj CMakeFiles/FunkinCengine.dir/src/data/ModLayout.c.obj CMakeFiles/FunkinCengine.dir/src/data/Song.c.obj CMakeFiles/FunkinCengine.dir/src/data/SongChartFind.c.obj CMakeFiles/FunkinCengine.dir/src/data/SongJson.c.obj CMakeFiles/FunkinCengine.dir/src/data/SongList.c.obj CMakeFiles/FunkinCengine.dir/src/data/SongStream.c.obj CMakeFiles/FunkinCengine.dir/src/data/Week.c.obj CMakeFiles/FunkinCengine.dir/src/data/modimport/ModImport.c.obj CMakeFiles/FunkinCengine.dir/src/data/modimport/ModImportAnalyze.c.obj CMakeFiles/FunkinCengine.dir/src/data/modimport/ModImportCharacters.c.obj CMakeFiles/FunkinCengine.dir/src/data/modimport/ModImportFiles.c.obj CMakeFiles/FunkinCengine.dir/src/data/modimport/ModImportFormat.c.obj CMakeFiles/FunkinCengine.dir/src/data/modimport/ModImportParse.c.obj CMakeFiles/FunkinCengine.dir/src/data/modimport/ModImportPath.c.obj CMakeFiles/FunkinCengine.dir/src/data/modimport/ModImportVSlice.c.obj CMakeFiles/FunkinCengine.dir/src/logic/animations/AnimSetBinary.c.obj CMakeFiles/FunkinCengine.dir/src/logic/animations/AnimSetCharacterXML.c.obj CMakeFiles/FunkinCengine.dir/src/logic/animations/AnimSetParseUtil.c.obj CMakeFiles/FunkinCengine.dir/src/logic/animations/AnimSetSparrow.c.obj CMakeFiles/FunkinCengine.dir/src/logic/animations/AnimationSets.c.obj CMakeFiles/FunkinCengine.dir/src/logic/animations/CharacterAnims.c.obj CMakeFiles/FunkinCengine.dir/src/logic/beatmanager/BeatManager.c.obj CMakeFiles/FunkinCengine.dir/src/logic/notes/Note.c.obj CMakeFiles/FunkinCengine.dir/src/logic/stage/Stage.c.obj CMakeFiles/FunkinCengine.dir/src/logic/stage/StageJson.c.obj CMakeFiles/FunkinCengine.dir/src/logic/stage/StageLuaParse.c.obj CMakeFiles/FunkinCengine.dir/src/rendering/Display.c.obj CMakeFiles/FunkinCengine.dir/src/rendering/TextMeasure.c.obj CMakeFiles/FunkinCengine.dir/src/rendering/cpu/ImagePrefetch.c.obj CMakeFiles/FunkinCengine.dir/src/rendering/cpu/PngDecode.c.obj CMakeFiles/FunkinCengine.dir/src/rendering/shaders/ShaderFx.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/LoadingState.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/api/EndStartLoader.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/api/FontLoader.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/api/NoteSkinCache.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/HUD/PlayStateHealth.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/HUD/PlayStateRatingPopups.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/HUD/PlayStateText.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/PlayState.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/audio/PlayStateAudio.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/characters/PlayStateAnimations.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/characters/PlayStateBeat.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/events/PlayStateEventsInGameplay.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/events/PlayStateParallax.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/flow/PlayStateDeath.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/flow/PlayStateIntro.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/flow/PlayStatePause.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/notes/PlayStateNoteAtlas.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/notes/PlayStateNoteSpawn.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/notes/PlayStatePlayerInput.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/notes/PlayStateStrums.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/stage/PlayStateStage.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/visual/PlayStateCamera.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/visual/PlayStateNoteSplash.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/menu/EnterToPlay.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/menu/MenuBackground.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/menu/MenuMusic.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/menu/MenuState.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/menu/freeplay/Freeplay.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/menu/freeplay/FreeplayIcon.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/menu/modding/ModdingMenu.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/menu/modding/ModdingMenuDraw.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/menu/modding/ModdingMenuInput.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/menu/options/OptionsMenu.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/menu/options/OptionsMenuIcons.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/menu/options/OptionsMenuNoteColors.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/menu/options/OptionsMenuScreens.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/menu/options/OptionsMenuValues.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/menu/storymode/StoryCover.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/menu/storymode/StoryMode.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/modding/ModdingCommon.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/modding/charactereditor/CharEditor.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/modding/charactereditor/CharEditorIO.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/modding/charteditor/ChartEditor.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/modding/charteditor/audio/EditorAudio.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/modding/charteditor/data/EditorCharactersAndLists.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/modding/charteditor/data/EditorChartLoad.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/modding/charteditor/data/EditorChartModel.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/modding/charteditor/data/EditorChartSave.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/modding/charteditor/data/EditorEvents.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/modding/charteditor/data/EditorFiles.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/modding/charteditor/data/EditorSection.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/modding/charteditor/data/EditorStagePos.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/modding/charteditor/data/EditorUndo.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/modding/charteditor/grid/EditorGrid.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/modding/charteditor/grid/EditorTimeline.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/modding/charteditor/ui/EditorIcons.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/modding/charteditor/ui/EditorPanels.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/modding/charteditor/ui/EditorPicker.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/modding/charteditor/ui/EditorWidgets.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/modding/stageeditor/StageEditor.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/modding/stageeditor/StageEditorIO.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/modding/weekeditor/WeekEditor.c.obj CMakeFiles/FunkinCengine.dir/src/scenes/modding/weekeditor/WeekEditorIO.c.obj CMakeFiles/FunkinCengine.dir/src/threads/Sync.c.obj CMakeFiles/FunkinCengine.dir/src/threads/Thread.c.obj CMakeFiles/FunkinCengine.dir/src/threads/cpu/Jobs.c.obj CMakeFiles/FunkinCengine.dir/src/widgets-and-menus-ui/SearchBox.c.obj CMakeFiles/FunkinCengine.dir/lib/yxml.c.obj CMakeFiles/FunkinCengine.dir/lib/yyjson.c.obj || raylib_objects
   CONFIG = Release
   FLAGS = -Os -DNDEBUG
   LINK_FLAGS = -Os -DNDEBUG -mwindows -Os -flto=thin -fuse-ld=lld -Wl,--gc-sections,--icf=all,-O12

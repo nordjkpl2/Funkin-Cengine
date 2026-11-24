@@ -4,8 +4,8 @@
  */
 
 
-#include "scenes/gameplay/PlayStateRatingPopups.h"
-#include "scenes/gameplay/PlayStateHealth.h"
+#include "scenes/gameplay/HUD/PlayStateRatingPopups.h"
+#include "scenes/gameplay/HUD/PlayStateHealth.h"
 #include "GameData.h"
 #include "raymath.h"
 

@@ -4,8 +4,8 @@
  */
 
 #include "scenes/api/FontLoader.h"
-#include "scenes/gameplay/PlayStatePause.h"
-#include "scenes/gameplay/PlayStateAudio.h"
+#include "scenes/gameplay/flow/PlayStatePause.h"
+#include "scenes/gameplay/audio/PlayStateAudio.h"
 #include "raymath.h"
 #include "rendering/TextMeasure.h"
 #include <math.h>

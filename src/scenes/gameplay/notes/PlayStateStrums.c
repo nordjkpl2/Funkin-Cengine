@@ -5,8 +5,8 @@
 
 #include "scenes/api/FontLoader.h"
 #include "logic/notes/Note.h"
-#include "scenes/gameplay/PlayStateStrums.h"
-#include "scenes/gameplay/PlayStateBeat.h"
+#include "scenes/gameplay/notes/PlayStateStrums.h"
+#include "scenes/gameplay/characters/PlayStateBeat.h"
 #include "GameData.h"
 #include "rendering/TextMeasure.h"
 

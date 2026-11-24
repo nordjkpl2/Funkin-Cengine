@@ -6,9 +6,9 @@
  * conteudo, a ancora ou o zoom da janela mudam. Desenhar e so um blit.
  */
 
-#include "scenes/gameplay/PlayStateText.h"
-#include "scenes/gameplay/PlayStateAudio.h"
-#include "scenes/gameplay/PlayStateHealth.h"
+#include "scenes/gameplay/HUD/PlayStateText.h"
+#include "scenes/gameplay/audio/PlayStateAudio.h"
+#include "scenes/gameplay/HUD/PlayStateHealth.h"
 #include "GameData.h"
 #include "Game.h"
 #include <math.h>

@@ -14,7 +14,7 @@
 #include "Log.h"
 #include "rendering/cpu/ImagePrefetch.h"
 #include "rendering/shaders/ShaderFx.h"
-#include "scenes/gameplay/PlayStateAnimations.h"
+#include "scenes/gameplay/characters/PlayStateAnimations.h"
 #include "scenes/api/FontLoader.h"
 
 #define SCREEN_W 1280.0f

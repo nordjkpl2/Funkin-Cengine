@@ -4,8 +4,8 @@
  */
 
 #include "scenes/api/NoteSkinCache.h"
-#include "scenes/gameplay/PlayStateNoteAtlas.h"
-#include "scenes/gameplay/PlayStateNoteSpawn.h"
+#include "scenes/gameplay/notes/PlayStateNoteAtlas.h"
+#include "scenes/gameplay/notes/PlayStateNoteSpawn.h"
 #include "data/SongStream.h"
 #include <float.h>
 #include <math.h>

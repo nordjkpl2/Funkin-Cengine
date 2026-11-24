@@ -4,7 +4,7 @@
  */
 
 
-#include "scenes/gameplay/PlayStateIntro.h"
+#include "scenes/gameplay/flow/PlayStateIntro.h"
 #include "raymath.h"
 
 #define SCREEN_W 1280.0f

@@ -4,7 +4,7 @@
  * Usa Stage.c apenas como parser; aqui ficam texturas, desenho e liberacao.
  */
 
-#include "scenes/gameplay/PlayStateStage.h"
+#include "scenes/gameplay/stage/PlayStateStage.h"
 #include "logic/stage/Stage.h"
 #include "logic/stage/StageLuaParse.h"
 #include "logic/stage/StageJson.h"

@@ -3,13 +3,13 @@
  * PlayStateBeat.c - relogio da musica do PlayState.
  */
 
-#include "scenes/gameplay/PlayStateBeat.h"
+#include "scenes/gameplay/characters/PlayStateBeat.h"
 #include <math.h>
-#include "scenes/gameplay/PlayStateAnimations.h"
-#include "scenes/gameplay/PlayStateAudio.h"
-#include "scenes/gameplay/PlayStateCamera.h"
-#include "scenes/gameplay/PlayStateHealth.h"
-#include "scenes/gameplay/PlayStateIntro.h"
+#include "scenes/gameplay/characters/PlayStateAnimations.h"
+#include "scenes/gameplay/audio/PlayStateAudio.h"
+#include "scenes/gameplay/visual/PlayStateCamera.h"
+#include "scenes/gameplay/HUD/PlayStateHealth.h"
+#include "scenes/gameplay/flow/PlayStateIntro.h"
 #include "logic/beatmanager/BeatManager.h"
 #include "GameData.h"
 
