@@ -17,7 +17,7 @@ typedef enum {
     MOD_STUB
 } ModdingMode;
 
-#define TAB_COUNT 5 /* numero de entradas em tabs[] (ModdingMenu.c) */
+#define TAB_COUNT 6 /* numero de entradas em tabs[] (ModdingMenu.c) */
 
 /* Importer: origem do mod -> assets/mods/<nome>. */
 #define MODDING_PATH_CAP 512

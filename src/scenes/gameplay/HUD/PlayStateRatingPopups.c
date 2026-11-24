@@ -7,6 +7,7 @@
 #include "scenes/gameplay/HUD/PlayStateRatingPopups.h"
 #include "scenes/gameplay/HUD/PlayStateHealth.h"
 #include "GameData.h"
+#include "data/EffectsConfig.h"
 #include "raymath.h"
 
 static RayAnimationHandler uiAssets;
@@ -29,7 +30,7 @@ const RayAnimationHandler* PlayStateRatingPopups_LoadUi(void) {
 
     Render_DefaultAnimated(&popupObj);
     popupObj.animationSet = uiAssets;
-    popupObj.scaleX = popupObj.scaleY = 0.6f;
+    popupObj.scaleX = popupObj.scaleY = 0.6f;  /* tamanho real vem de EffectsConfig em Show */
 
     return &uiAssets;
 }
@@ -44,9 +45,13 @@ void PlayStateRatingPopups_Show(PlayerRating rating) {
 
     AnimatedObject_SetAnimation(&popupObj, ratingAnim[rating]);
 
+    // Escala e deslocamento por rating (Effects Editor). Indice = PlayerRating.
+    const EffectsPopup* cfg = &EffectsConfig_Get()->popups[rating];
+    popupObj.scaleX = popupObj.scaleY = (float)cfg->scalePct / 100.0f;
+
     const Vector2 size = AnimatedObject_Sizes(&popupObj);
-    popupObj.position.x = PlayStateHealth_CenterX(size.x);
-    popupObj.position.y = PlayStateHealth_BarY() + GetRandomValue(-1000, 1000) / 200.0f;
+    popupObj.position.x = PlayStateHealth_CenterX(size.x) + (float)cfg->offsetX;
+    popupObj.position.y = PlayStateHealth_BarY() + GetRandomValue(-1000, 1000) / 200.0f + (float)cfg->offsetY;
     popupVelocity = -150.0f;
     popupTimer = 1.0f;
 }

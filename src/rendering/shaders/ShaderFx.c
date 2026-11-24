@@ -103,14 +103,27 @@ static const char kFsBlackness[] =
     "    finalColor = vec4(clamp(col, 0.0, 1.0), 1.0);\n"
     "}\n";
 
+/* Preto e branco: luminancia pura. intensidade 0..1 = quanto da cor some (1 = tudo cinza). */
+static const char kFsGrayscale[] =
+    "#version 330\n"
+    "in vec2 fragTexCoord;\n"
+    "uniform sampler2D texture0;\n"
+    "uniform float uAmt;\n"
+    "out vec4 finalColor;\n"
+    "void main() {\n"
+    "    vec4 t = texture(texture0, fragTexCoord);\n"
+    "    float l = dot(t.rgb, vec3(0.299, 0.587, 0.114));\n"
+    "    finalColor = vec4(mix(t.rgb, vec3(l), uAmt), t.a);\n"
+    "}\n";
+
 typedef struct {
     Shader sh;
     int locRes, locTime, locAmt, locAnim;
     char ok;
 } FxSlot;
 
-#define FX_COUNT 3
-static FxSlot slots[FX_COUNT];   /* [0] = TV, [1] = glitch, [2] = blackness */
+#define FX_COUNT 4
+static FxSlot slots[FX_COUNT];   /* [0] = TV, [1] = glitch, [2] = blackness, [3] = grayscale */
 static char triedLoad;
 static ShaderFxKind curKind = SHADERFX_NONE;
 static float curAmt, curAnim;
@@ -135,6 +148,7 @@ static void EnsureLoaded(void) {
     FxSlot_Load(&slots[0], kFsTv);
     FxSlot_Load(&slots[1], kFsGlitch);
     FxSlot_Load(&slots[2], kFsBlackness);
+    FxSlot_Load(&slots[3], kFsGrayscale);
 }
 
 static FxSlot* CurSlot(void) {
@@ -147,7 +161,7 @@ static FxSlot* CurSlot(void) {
 void ShaderFx_Set(ShaderFxKind kind, float intensity, float speed) {
     curAmt = Clampf(intensity, 0.0f, 1.0f);
     curAnim = Clampf(speed, 0.0f, 2.0f);
-    curKind = (kind == SHADERFX_TV || kind == SHADERFX_GLITCH || kind == SHADERFX_BLACKNESS) ? kind : SHADERFX_NONE;
+    curKind = (kind == SHADERFX_TV || kind == SHADERFX_GLITCH || kind == SHADERFX_BLACKNESS || kind == SHADERFX_GRAYSCALE) ? kind : SHADERFX_NONE;
     if (curAmt <= 0.0f) curKind = SHADERFX_NONE;
 }
 

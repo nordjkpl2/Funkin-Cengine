@@ -13,7 +13,8 @@ typedef enum {
     SHADERFX_NONE = 0,
     SHADERFX_TV,
     SHADERFX_GLITCH,
-    SHADERFX_BLACKNESS
+    SHADERFX_BLACKNESS,
+    SHADERFX_GRAYSCALE
 } ShaderFxKind;
 
 void ShaderFx_Set(ShaderFxKind kind, float intensity, float speed);

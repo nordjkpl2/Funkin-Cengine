@@ -45,7 +45,10 @@ void Song_Parse(Song *song, const char *songDataPath)
     if (song == NULL || songDataPath == NULL) Log_Fatal("invalid song path");
     memset(song, 0, sizeof(*song));
     file = fopen(songDataPath, "rb");
-    if (file == NULL) Log_FatalF("could not open file %s", songDataPath);
+    if (file == NULL) {
+        Log_WarnF("json not found: %s", songDataPath);
+        return;
+    }
 
     File_ReadString(file, song->player1);
     File_ReadString(file, song->player2);
@@ -162,7 +165,7 @@ void Song_LoadSongFromDir(Song *song, const char *dirPath, char streaming)
     memset(song, 0, sizeof(*song));
     if (Song_TryLoadChart(dirPath, "", song, streaming)) return;
     if (Song_TryLoadBinary(dirPath, song)) return;
-    Log_FatalF("no valid chart found for song directory: %s", dirPath);
+    Log_WarnF("json not found: %s", dirPath);
 }
 
 void Song_LoadSongFromDirDiff(Song *song, const char *dirPath, const char *diff, char streaming)
@@ -171,8 +174,8 @@ void Song_LoadSongFromDirDiff(Song *song, const char *dirPath, const char *diff,
     memset(song, 0, sizeof(*song));
     if (Song_TryLoadChart(dirPath, diff, song, streaming)) return;
     if (Song_TryLoadBinary(dirPath, song)) return;
-    Log_FatalF("no valid chart found for song directory: %s (difficulty: %s)",
-               dirPath, diff != NULL ? diff : "default");
+    Log_WarnF("json not found: %s (difficulty: %s)",
+              dirPath, diff != NULL ? diff : "default");
 }
 
 char Song_HasChart(const char *dirPath)

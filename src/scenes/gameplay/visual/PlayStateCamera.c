@@ -6,6 +6,8 @@
 #include "scenes/gameplay/visual/PlayStateCamera.h"
 #include "raymath.h"
 #include "scenes/gameplay/events/PlayStateParallax.h"
+#include "scenes/gameplay/events/PlayStateCameraMove.h"
+#include "data/EffectsConfig.h"
 
 static Character* followTarget;
 static Camera2D camGame;
@@ -22,6 +24,7 @@ void PlayStateCamera_SetSpeed(float speed) {
 void PlayStateCamera_Reset(Character* initialTarget) {
     followSpeed = 1.0f;
     PlayStateParallax_Reset();
+    PlayStateCameraMove_Reset();
     followTarget = initialTarget;
 
     camGame = (Camera2D) {
@@ -56,15 +59,21 @@ void PlayStateCamera_Bump(float hudZoom, float gameZoom) {
 }
 
 void PlayStateCamera_Update(float deltaTime, float defaultGameZoom) {
+    // Camera base (Effects Editor) + evento Camera Move, somados ao seguir o personagem.
+    const EffectsCamera* base = &EffectsConfig_Get()->camera;
+    const Vector2 move = PlayStateCameraMove_Offset();
+
     Vector2 goal = followTarget->object.position;
-    goal.x += followTarget->cameraOffset.x;
-    goal.y += followTarget->cameraOffset.y;
+    goal.x += followTarget->cameraOffset.x + (float)base->offsetX + move.x;
+    goal.y += followTarget->cameraOffset.y + (float)base->offsetY + move.y;
 
     camGame.target.x = Lerp(camGame.target.x, goal.x, deltaTime * 5 * followSpeed);
     camGame.target.y = Lerp(camGame.target.y, goal.y, deltaTime * 5 * followSpeed);
-    camGame.zoom = Lerp(camGame.zoom, defaultGameZoom, deltaTime * 8);
+    const float zoomGoal = defaultGameZoom * ((float)base->zoomPct / 100.0f) * PlayStateCameraMove_Zoom();
+    camGame.zoom = Lerp(camGame.zoom, zoomGoal, deltaTime * 8);
     camHUD.zoom = Lerp(camHUD.zoom, 1, deltaTime * 8);
 
+    PlayStateCameraMove_Update(deltaTime);
     PlayStateParallax_Update(deltaTime);
 }
 

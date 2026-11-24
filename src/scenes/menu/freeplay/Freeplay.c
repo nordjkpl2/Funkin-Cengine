@@ -1,7 +1,10 @@
 /*
  * Friday Night Funkin' C Engine (c) 2026 nordjkpl
- * Freeplay.c - lista de musicas e painel da musica selecionada.
- * A busca do icone fica em FreeplayIcon.c e so roda quando a selecao muda.
+ * Freeplay.c - seletor de musicas: lista a esquerda, card da musica selecionada a direita.
+ * Visual inspirado no Freeplay do FNF e em seletores de jogos de ritmo: fundo com o icone
+ * esmaecido, linha selecionada em destaque, card com capa e contador.
+ * Icones: a busca e a decodificacao sao pedidas com antecedencia (vizinhos da selecao),
+ * entao trocar de musica nao trava a thread principal.
  */
 
 #include "scenes/api/FontLoader.h"
@@ -24,30 +27,37 @@
 #define SCREEN_W 1280.0f
 #define SCREEN_H 720.0f
 
-#define LIST_STEP 92.0f
-#define LIST_VISIBLE_RADIUS 6.0f   // linhas desenhadas para cada lado da selecao
-#define LIST_CULL_TOP -90.0f
+/* Lista */
+#define ROW_X 128.0f            /* x da linha selecionada */
+#define ROW_CENTER_Y 372.0f     /* y do centro da linha selecionada */
+#define ROW_STEP 74.0f
+#define ROW_VISIBLE 7.0f        /* linhas desenhadas para cada lado */
+#define ROW_INDENT 24.0f        /* recuo por linha de distancia */
+#define ROW_MAX_W 680.0f        /* largura maxima da pilula (antes do card) */
 #define LIST_SCROLL_SPEED 10.0f
+#define SELECT_EASE 12.0f       /* velocidade do pulso ao trocar de musica */
+#define WARM_RADIUS 4           /* quantas musicas de cada lado ja ficam com icone pronto */
 
-#define PANEL_X 850.0f
-#define PANEL_W 360.0f
-#define ICON_X 920.0f
-#define ICON_Y 112.0f
-#define ICON_SIZE 224.0f
+/* Card */
+#define CARD_X 852.0f
+#define CARD_Y 96.0f
+#define CARD_W 392.0f
+#define CARD_H 520.0f
+#define COVER_SIZE 300.0f
+#define COVER_X (CARD_X + (CARD_W - COVER_SIZE) * 0.5f)
+#define COVER_Y (CARD_Y + 26.0f)
+#define CARD_PAD 24.0f
 
-static const Color PANEL_BG = {0, 0, 0, 125};
-static const Color PANEL_BORDER = {110, 105, 155, 170};
-static const Color PANEL_LABEL = {190, 185, 220, 255};
-static const Color ICON_FRAME_BG = {18, 18, 28, 255};
-static const Color ICON_FRAME_BORDER = {190, 165, 255, 220};
-static const Color ICON_EMPTY_BG = {38, 38, 52, 255};
+static const Color ACCENT = {255, 92, 176, 255};          /* rosa FNF */
+static const Color CYAN = {120, 230, 255, 255};
+static const Color TEXT_IDLE = {200, 196, 226, 255};
+static const Color TEXT_DIM = {150, 146, 178, 255};
+static const Color ROW_BG = {40, 26, 72, 235};
+static const Color CARD_BG = {12, 10, 26, 222};
+static const Color CARD_EDGE = {120, 100, 200, 150};
+static const Color SHADOW = {0, 0, 0, 120};
+static const Color ICON_EMPTY_BG = {36, 32, 58, 255};
 static const Color ICON_EMPTY_TEXT = {150, 145, 170, 255};
-static const Color OPPONENT_LABEL = {175, 170, 205, 255};
-static const Color OPPONENT_NAME = {255, 220, 100, 255};
-static const Color ROW_BG = {20, 18, 38, 170};
-static const Color ROW_ACCENT = {255, 215, 90, 255};
-static const Color ROW_TEXT_IDLE = {205, 205, 220, 165};
-static const Color ROW_ARROW = {255, 220, 90, 255};
 
 static SongEntry* songs;
 static int songCount;
@@ -57,11 +67,14 @@ static int shownCount;
 static int selectedSong;
 static SearchBox search;
 static float listOffset;
+static float selectPulse = 1.0f;   /* 0 logo apos trocar a musica, sobe ate 1 */
+static float backFade = 1.0f;      /* 0 logo apos trocar, sobe ate 1 (fundo com o icone) */
 
 static RayGraphicObject bg;
 static Camera2D cam;
 
-/* Layout do painel: so muda quando a selecao muda, entao nao mede texto por frame. */
+/* Layout do titulo: mede so quando a selecao muda. */
+static float titleSize;
 static float titleX;
 static char counterText[48];
 
@@ -69,18 +82,36 @@ static char counterText[48];
 /* Selecao                                                             */
 /* ------------------------------------------------------------------ */
 
-/* Carrega o icone e refaz o texto do painel da musica selecionada. */
 static const SongEntry* CurrentSong(void) {
     return songs + shown[selectedSong];
 }
 
+/* Pede icones dos vizinhos em background: quando o jogador descer, o icone ja estara pronto. */
+static void WarmAround(void) {
+    for (int d = 1; d <= WARM_RADIUS; ++d) {
+        if (selectedSong + d < shownCount) FreeplayIcon_Warm(songs + shown[selectedSong + d]);
+        if (selectedSong - d >= 0) FreeplayIcon_Warm(songs + shown[selectedSong - d]);
+    }
+}
+
 static void SelectSong(void) {
-    FreeplayIcon_Load(songs + shown[selectedSong]);
+    FreeplayIcon_Load(CurrentSong());
 
-    const Vector2 size = MeasureTextEx(mainFont, CurrentSong()->name, 34.0f, 2.0f);
-    titleX = fmaxf(PANEL_X + (PANEL_W - size.x) * 0.5f, PANEL_X + 16.0f);
+    // Titulo cabe no card: diminui a fonte se for longo (so ao trocar de musica).
+    titleSize = 34.0f;
+    static TextMeasure titleMeasure;
+    Vector2 size = TextMeasure_Get(&titleMeasure, mainFont, CurrentSong()->name, titleSize, 2.0f);
+    if (size.x > CARD_W - 2.0f * CARD_PAD) {
+        titleSize = fmaxf(18.0f, titleSize * (CARD_W - 2.0f * CARD_PAD) / size.x);
+        size = MeasureTextEx(mainFont, CurrentSong()->name, titleSize, 2.0f);
+    }
+    titleX = CARD_X + (CARD_W - size.x) * 0.5f;
 
-    snprintf(counterText, sizeof(counterText), "TRACK %d / %d", selectedSong + 1, shownCount);
+    snprintf(counterText, sizeof(counterText), "%02d / %02d", selectedSong + 1, shownCount);
+
+    selectPulse = 0.0f;
+    backFade = 0.0f;
+    WarmAround();
 }
 
 /* Refaz a lista filtrada; mantem a musica atual se ainda aparecer. So roda ao aplicar a busca. */
@@ -155,11 +186,14 @@ static void Freeplay_Create([[maybe_unused]] RayScene* scene) {
         }
         for (int i = 0; i < songCount; ++i) shown[i] = i;
         shownCount = songCount;
+        FreeplayIcon_Init(songs, songCount);
         SelectSong();
     }
 }
 
 static void Freeplay_Update([[maybe_unused]] RayScene* scene) {
+    const float dt = fmaxf(RayGame_DeltaTime(), 0.0f);
+
     if (songCount <= 0) {
         if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_BACKSPACE)) MenuState_SetScene();
         return;
@@ -203,9 +237,13 @@ static void Freeplay_Update([[maybe_unused]] RayScene* scene) {
         }
     }
 
-    // Rolagem independente de framerate.
-    const float factor = 1.0f - expf(-LIST_SCROLL_SPEED * fmaxf(RayGame_DeltaTime(), 0.0f));
+    // Rolagem e pulsos independentes de framerate.
+    const float factor = 1.0f - expf(-LIST_SCROLL_SPEED * dt);
     listOffset += ((float)selectedSong - listOffset) * factor;
+
+    const float ease = 1.0f - expf(-SELECT_EASE * dt);
+    selectPulse += (1.0f - selectPulse) * ease;
+    backFade += (1.0f - backFade) * ease;
 }
 
 /* ------------------------------------------------------------------ */
@@ -228,72 +266,114 @@ static Rectangle SquareCrop(Texture2D texture) {
     return source;
 }
 
-static void DrawIconFrame(void) {
-    const int frameX = (int)(ICON_X - 8.0f), frameY = (int)(ICON_Y - 8.0f);
-    const int frameSize = (int)(ICON_SIZE + 16.0f);
-
-    DrawRectangle(frameX, frameY, frameSize, frameSize, ICON_FRAME_BG);
-    DrawRectangleLines(frameX, frameY, frameSize, frameSize, ICON_FRAME_BORDER);
+/* Fundo: o icone da musica, grande e esmaecido, por tras de um gradiente escuro. */
+static void DrawBackdrop(void) {
+    Render_DrawGraphicObject(&bg);
+    DrawRectangle(0, 0, (int)SCREEN_W, (int)SCREEN_H, (Color){8, 6, 18, 150});
 
     if (FreeplayIcon_IsLoaded()) {
         const Texture2D texture = FreeplayIcon_Texture();
-        DrawTexturePro(texture, SquareCrop(texture), (Rectangle) {ICON_X, ICON_Y, ICON_SIZE, ICON_SIZE},
-                       (Vector2) {0.0f, 0.0f}, 0.0f, WHITE);
-        return;
+        const float a = 0.45f * backFade;
+        DrawTexturePro(texture, SquareCrop(texture), (Rectangle){-120.0f, -40.0f, SCREEN_W + 240.0f, SCREEN_W + 240.0f},
+                       (Vector2){0.0f, 0.0f}, 0.0f, Fade(WHITE, a));
     }
 
-    DrawRectangle((int)ICON_X, (int)ICON_Y, (int)ICON_SIZE, (int)ICON_SIZE, ICON_EMPTY_BG);
-    static const char* const missing = "NO ICON";
-    static TextMeasure missingMeasure;
-    const Vector2 size = TextMeasure_Get(&missingMeasure, mainFont, missing, 25.0f, 2.0f);
-    DrawTextEx(mainFont, missing,
-               (Vector2) {ICON_X + (ICON_SIZE - size.x) * 0.5f, ICON_Y + (ICON_SIZE - size.y) * 0.5f},
-               25.0f, 2.0f, ICON_EMPTY_TEXT);
-}
-
-static void DrawSelectedPanel(void) {
-    DrawRectangle((int)PANEL_X, 62, (int)PANEL_W, 590, PANEL_BG);
-    DrawRectangleLines((int)PANEL_X, 62, (int)PANEL_W, 590, PANEL_BORDER);
-
-    DrawTextEx(mainFont, "SELECTED TRACK", (Vector2) {PANEL_X + 24.0f, 82.0f}, 21.0f, 2.0f, PANEL_LABEL);
-
-    DrawIconFrame();
-
-    const char* title = CurrentSong()->name;
-    DrawTextEx(mainFont, title, (Vector2) {titleX + 2.0f, 375.0f}, 34.0f, 2.0f, (Color) {0, 0, 0, 210});
-    DrawTextEx(mainFont, title, (Vector2) {titleX, 373.0f}, 34.0f, 2.0f, WHITE);
-
-    DrawTextEx(mainFont, "OPPONENT", (Vector2) {PANEL_X + 24.0f, 435.0f}, 19.0f, 2.0f, OPPONENT_LABEL);
-    DrawTextEx(mainFont, FreeplayIcon_Opponent(), (Vector2) {PANEL_X + 24.0f, 462.0f}, 25.0f, 2.0f, OPPONENT_NAME);
-
-    DrawTextEx(mainFont, counterText, (Vector2) {PANEL_X + 24.0f, 555.0f}, 19.0f, 1.5f, PANEL_LABEL);
+    DrawRectangleGradientV(0, 0, (int)SCREEN_W, (int)SCREEN_H, (Color){0, 0, 0, 90}, (Color){0, 0, 0, 200});
 }
 
 static void DrawSongRow(int i) {
-    const float y = 360.0f + ((float)i - listOffset) * LIST_STEP;
-    if (y < LIST_CULL_TOP || y > SCREEN_H)
+    const float dist = (float)i - listOffset;
+    const float ad = fabsf(dist);
+    const float y = ROW_CENTER_Y + dist * ROW_STEP;
+    if (y < -60.0f || y > SCREEN_H + 40.0f)
         return; // fora da tela
 
-    const bool isSelected = i == selectedSong;
-    const float x = 145.0f - fabsf((float)i - listOffset) * 24.0f;
+    const float sel = fmaxf(0.0f, 1.0f - ad);          /* 1 = selecionada, 0 = longe */
+    const float x = ROW_X + fminf(ad, 3.0f) * ROW_INDENT;
+    const float size = 36.0f + 10.0f * sel;
     const char* name = songs[shown[i]].name;
 
-    if (isSelected) {
-        DrawRectangle(105, (int)(y - 8.0f), 675, 78, ROW_BG);
-        DrawRectangle(105, (int)(y - 8.0f), 5, 78, ROW_ACCENT);
+    if (sel > 0.01f) {
+        const Rectangle pill = {x - 26.0f, y - 22.0f, ROW_MAX_W * (0.85f + 0.15f * sel), 60.0f};
+        DrawRectangleRounded(pill, 0.5f, 12, Fade(ROW_BG, sel));
+        DrawRectangle((int)pill.x, (int)(pill.y + 10.0f), 5, 40, Fade(ACCENT, sel));
     }
 
-    const Color shadow = {0, 0, 0, isSelected ? 230 : 120};
-    DrawTextEx(mainFont, name, (Vector2) {x + 4.0f, y + 4.0f}, 52.0f, 3.0f, shadow);
-    DrawTextEx(mainFont, name, (Vector2) {x, y}, 52.0f, 3.0f, isSelected ? WHITE : ROW_TEXT_IDLE);
+    const unsigned char alpha = (unsigned char)(255.0f * fmaxf(0.25f, 1.0f - ad * 0.16f));
+    const Color main = {
+        (unsigned char)(TEXT_IDLE.r + (255 - TEXT_IDLE.r) * sel),
+        (unsigned char)(TEXT_IDLE.g + (255 - TEXT_IDLE.g) * sel),
+        (unsigned char)(TEXT_IDLE.b + (255 - TEXT_IDLE.b) * sel),
+        alpha
+    };
 
-    if (isSelected)
-        DrawTextEx(mainFont, ">", (Vector2) {x - 45.0f, y - 1.0f}, 55.0f, 3.0f, ROW_ARROW);
+    const Vector2 textPos = {x, y - size * 0.25f};
+    DrawTextEx(mainFont, name, (Vector2){textPos.x + 2.0f, textPos.y + 3.0f}, size, 2.0f,
+               (Color){0, 0, 0, (unsigned char)(160.0f * sel + 40.0f)});
+    DrawTextEx(mainFont, name, textPos, size, 2.0f, main);
+}
+
+static void DrawIconCover(void) {
+    const float pulse = 1.0f + 0.04f * (1.0f - selectPulse);   /* entra com leve zoom */
+    const float side = COVER_SIZE * pulse;
+    const Rectangle frame = {COVER_X + (COVER_SIZE - side) * 0.5f, COVER_Y + (COVER_SIZE - side) * 0.5f, side, side};
+
+    DrawRectangleRounded((Rectangle){frame.x + 6.0f, frame.y + 8.0f, frame.width, frame.height}, 0.08f, 10, SHADOW);
+    DrawRectangleRounded(frame, 0.08f, 10, ICON_EMPTY_BG);
+
+    if (FreeplayIcon_IsLoaded()) {
+        const Texture2D texture = FreeplayIcon_Texture();
+        DrawTexturePro(texture, SquareCrop(texture), frame, (Vector2){0.0f, 0.0f}, 0.0f, WHITE);
+    } else {
+        static const char* const missing = "NO ICON";
+        static TextMeasure missingMeasure;
+        const Vector2 size = TextMeasure_Get(&missingMeasure, mainFont, missing, 25.0f, 2.0f);
+        DrawTextEx(mainFont, missing,
+                   (Vector2){frame.x + (frame.width - size.x) * 0.5f, frame.y + (frame.height - size.y) * 0.5f},
+                   25.0f, 2.0f, ICON_EMPTY_TEXT);
+    }
+    DrawRectangleRoundedLinesEx(frame, 0.08f, 10, 2.0f, Fade(ACCENT, 0.6f + 0.4f * selectPulse));
+}
+
+static void DrawSelectedCard(void) {
+    DrawRectangleRounded((Rectangle){CARD_X + 6.0f, CARD_Y + 10.0f, CARD_W, CARD_H}, 0.05f, 10, SHADOW);
+    DrawRectangleRounded((Rectangle){CARD_X, CARD_Y, CARD_W, CARD_H}, 0.05f, 10, CARD_BG);
+    DrawRectangleRoundedLinesEx((Rectangle){CARD_X, CARD_Y, CARD_W, CARD_H}, 0.05f, 10, 1.5f, CARD_EDGE);
+
+    DrawIconCover();
+
+    // Titulo, centralizado; a fonte ja foi ajustada em SelectSong.
+    const char* title = CurrentSong()->name;
+    const float ty = COVER_Y + COVER_SIZE + 22.0f;
+    DrawTextEx(mainFont, title, (Vector2){titleX + 2.0f, ty + 2.0f}, titleSize, 2.0f, (Color){0, 0, 0, 200});
+    DrawTextEx(mainFont, title, (Vector2){titleX, ty}, titleSize, 2.0f, WHITE);
+
+    // Oponente.
+    const float oy = ty + 62.0f;
+    DrawTextEx(mainFont, "OPPONENT", (Vector2){CARD_X + CARD_PAD, oy}, 17.0f, 2.0f, TEXT_DIM);
+    DrawTextEx(mainFont, FreeplayIcon_Opponent(), (Vector2){CARD_X + CARD_PAD, oy + 22.0f}, 24.0f, 2.0f, ACCENT);
+
+    // Contador e barra de progresso da lista.
+    const float by = CARD_Y + CARD_H - 62.0f;
+    DrawTextEx(mainFont, counterText, (Vector2){CARD_X + CARD_PAD, by}, 26.0f, 2.0f, CYAN);
+    const float barW = CARD_W - 2.0f * CARD_PAD;
+    const float frac = shownCount > 0 ? (float)(selectedSong + 1) / (float)shownCount : 0.0f;
+    DrawRectangleRounded((Rectangle){CARD_X + CARD_PAD, by + 40.0f, barW, 6.0f}, 0.5f, 6, (Color){50, 44, 80, 255});
+    DrawRectangleRounded((Rectangle){CARD_X + CARD_PAD, by + 40.0f, barW * frac, 6.0f}, 0.5f, 6, CYAN);
+}
+
+/* Tecla em "caixa" para a legenda de ajuda. */
+static void DrawKeyHint(float x, float y, const char* key, const char* action) {
+    static TextMeasure keyMeasure;
+    const Vector2 k = TextMeasure_Get(&keyMeasure, mainFont, key, 16.0f, 1.0f);
+    DrawRectangleRounded((Rectangle){x, y, k.x + 16.0f, 26.0f}, 0.3f, 6, (Color){255, 255, 255, 30});
+    DrawTextEx(mainFont, key, (Vector2){x + 8.0f, y + 4.0f}, 16.0f, 1.0f, WHITE);
+    DrawTextEx(mainFont, action, (Vector2){x + k.x + 24.0f, y + 5.0f}, 16.0f, 1.0f, TEXT_DIM);
 }
 
 static void Freeplay_Draw([[maybe_unused]] RayScene* scene) {
     Render_SetCamera(&cam);
-    Render_DrawGraphicObject(&bg);
+    DrawBackdrop();
 
     if (songCount <= 0) {
         DrawTextEx(mainFont, "NO SONGS FOUND", (Vector2) {150.0f, 330.0f}, 42.0f, 3.0f, WHITE);
@@ -313,17 +393,20 @@ static void Freeplay_Draw([[maybe_unused]] RayScene* scene) {
     }
 
     // So as linhas perto da selecao; as demais nem sao percorridas.
-    const int first = (int)fmaxf(0.0f, floorf(listOffset - LIST_VISIBLE_RADIUS));
-    const int last = (int)fminf((float)(shownCount - 1), ceilf(listOffset + LIST_VISIBLE_RADIUS));
+    const int first = (int)fmaxf(0.0f, floorf(listOffset - ROW_VISIBLE));
+    const int last = (int)fminf((float)(shownCount - 1), ceilf(listOffset + ROW_VISIBLE));
     for (int i = first; i <= last; ++i)
         DrawSongRow(i);
 
-    DrawSelectedPanel();
+    DrawSelectedCard();
 
     SearchBox_Draw(&search, mainFont);
 
-    DrawTextEx(mainFont, "UP / DOWN  SELECT TRACK     CLICK SEARCH TO FILTER", (Vector2) {105.0f, 660.0f}, 19.0f, 1.5f, (Color) {245, 220, 120, 255});
-    DrawTextEx(mainFont, "ENTER / SPACE PLAY     ESC BACK", (Vector2) {800.0f, 675.0f}, 17.0f, 1.0f, (Color) {220, 215, 235, 230});
+    // Ajuda no rodape, em caixas de tecla.
+    DrawKeyHint(105.0f, 662.0f, "UP / DOWN", "escolher");
+    DrawKeyHint(275.0f, 662.0f, "ENTER", "jogar");
+    DrawKeyHint(370.0f, 662.0f, "ESC", "voltar");
+    DrawKeyHint(470.0f, 662.0f, "CLICK SEARCH", "filtrar");
 
     Render_StopCamera();
 }

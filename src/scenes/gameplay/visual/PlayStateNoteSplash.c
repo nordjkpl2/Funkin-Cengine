@@ -9,14 +9,14 @@
 #include "scenes/gameplay/visual/PlayStateNoteSplash.h"
 #include "scenes/gameplay/notes/PlayStateStrums.h"
 #include "GameData.h"
+#include "data/EffectsConfig.h"
 
 #define SPLASH_TEXTURE "assets/images/noteSplashes-sparkles.png"
 #define SPLASH_ANIMSET "assets/images/noteSplashes-sparkles.xml"
 /* O parser do Sparrow tira os digitos finais do nome do frame, sobrando o espaco: "splash sparkles red 10000" -> "splash sparkles red " */
 #define SPLASH_ANIM_NAME "splash sparkles red " /* as 4 cores do XML tem os mesmos frames */
 #define SPLASH_FPS 24
-#define SPLASH_SCALE 0.8f         /* ajuste visual inicial, tunar com o receptor */
-#define SPLASH_ALPHA 153          /* ~0.6, como a Psych */
+#define SPLASH_DEFAULT_SCALE 0.8f /* padrao do Effects Editor (scalePct 80) */
 
 /* Vida = 4 frames / 24fps ~= 0.167s. Em spam de 32avos (~0.04s por nota) ficam ~5 vivos por coluna. */
 #define SPLASH_LANE_MAX_ALIVE 8
@@ -36,14 +36,16 @@ static char splashLoaded;
 static Splash pool[PLAYSTATE_LANES][SPLASH_LANE_MAX_ALIVE];
 
 void PlayStateNoteSplash_Load(void) {
-    if (splashLoaded)
-        return;
-    splashLoaded = 1;
+    const EffectsSplash* cfg = &EffectsConfig_Get()->splash;
 
-    splashSet = AnimationSet_LoadAnimations(SPLASH_ANIMSET, Render_LoadTexture(SPLASH_TEXTURE));
+    // Textura carrega uma vez; fps vem do Effects Editor e e reaplicado a cada entrada no PlayState.
+    if (!splashLoaded) {
+        splashLoaded = 1;
+        splashSet = AnimationSet_LoadAnimations(SPLASH_ANIMSET, Render_LoadTexture(SPLASH_TEXTURE));
+    }
 
     int anim = -1;
-    AnimationSet_SetData(anim, splashSet, SPLASH_ANIM_NAME, SPLASH_FPS, 0, 0, 0);
+    AnimationSet_SetData(anim, splashSet, SPLASH_ANIM_NAME, cfg->fps, 0, 0, 0);
     splashAnim = anim;
     if (splashAnim < 0)
         return;
@@ -84,19 +86,22 @@ void PlayStateNoteSplash_Spawn(int lane) {
     }
 
     // Centro do receptor do BF da coluna; o splash fica centralizado nele.
+    const EffectsSplash* cfg = &EffectsConfig_Get()->splash;
+    const float scale = (float)cfg->scalePct / 100.0f;
     const RayAnimatedObject* strum = &PlayStateStrums_Bf()[lane].object;
     const Vector2 strumSize = AnimatedObject_Sizes(strum);
-    const float halfW = splashSize.x * SPLASH_SCALE * 0.5f;
-    const float halfH = splashSize.y * SPLASH_SCALE * 0.5f;
+    const float halfW = splashSize.x * scale * 0.5f;
+    const float halfH = splashSize.y * scale * 0.5f;
 
     RayAnimatedObject* o = &slot->object;
     Render_DefaultAnimated(o);
     o->animationSet = splashSet;
-    o->scaleX = SPLASH_SCALE;
-    o->scaleY = SPLASH_SCALE;
-    o->color = (Color){255, 255, 255, SPLASH_ALPHA};
-    o->position.x = strum->position.x + strumSize.x * 0.5f - halfW;
-    o->position.y = strum->position.y + strumSize.y * 0.5f - halfH;
+    o->scaleX = scale;
+    o->scaleY = scale;
+    const Color tint = EffectsConfig_TintColor(cfg->tint);
+    o->color = (Color){tint.r, tint.g, tint.b, (unsigned char)(cfg->alphaPct * 255 / 100)};
+    o->position.x = strum->position.x + strumSize.x * 0.5f - halfW + (float)cfg->offsetX;
+    o->position.y = strum->position.y + strumSize.y * 0.5f - halfH + (float)cfg->offsetY;
     AnimatedObject_SetAnimation(o, splashAnim);
 
     slot->life = splashLife;

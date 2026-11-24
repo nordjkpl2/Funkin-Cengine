@@ -660,9 +660,10 @@ static void Edit_DrawPanel_Events(float x, float y) {
         const char* lab2 = (t != NULL) ? t->label2 : "valor 2:";
         // shader e parallax: intensidade e velocidade 0..100 (passos de 10)
         const char fx = (t != NULL && (t->usesShader || strcmp(t->name, "Camera Parallax") == 0));
-        const int lo1 = img ? -4000 : 0, hi1 = img ? 4000 : chr ? 2 : (fx ? 100 : 60000);
-        const int st1 = (img || fx) ? 10 : chr ? 1 : 50;
-        const int lo2 = img ? -4000 : 0, hi2 = img ? 4000 : 100, st2 = 10;
+        const char cam = (t != NULL && strcmp(t->name, "Camera Move") == 0);  // zoom % + x/y com sinal
+        const int lo1 = img ? -4000 : cam ? 50 : 0, hi1 = img ? 4000 : chr ? 2 : cam ? 200 : (fx ? 100 : 60000);
+        const int st1 = (img || fx || cam) ? 10 : chr ? 1 : 50;
+        const int lo2 = (img || cam) ? -4000 : 0, hi2 = (img || cam) ? 4000 : 100, st2 = 10;
 
         Ed_DrawText(mainFont, lab1, (Vector2){x, y + 4}, 20, 1, WHITE);
         if(EdButton((Rectangle){x + 110, y, 36, 32}, "-", 22)) EvStepInt(e->v1, sizeof(e->v1), -st1, lo1, hi1);
@@ -682,8 +683,9 @@ static void Edit_DrawPanel_Events(float x, float y) {
 
         if(t != NULL && t->label3 != NULL) {
             Ed_DrawText(mainFont, t->label3, (Vector2){x, y + 4}, 20, 1, WHITE);
-            if(EdButton((Rectangle){x + 110, y, 36, 32}, "-", 22)) EvStepInt(e->v3, sizeof(e->v3), -10, 10, 1000);
-            if(EdButton((Rectangle){x + 250, y, 36, 32}, "+", 22)) EvStepInt(e->v3, sizeof(e->v3), 10, 10, 1000);
+            const int lo3 = cam ? -4000 : 10;  // Camera Move: y aceita negativo
+            if(EdButton((Rectangle){x + 110, y, 36, 32}, "-", 22)) EvStepInt(e->v3, sizeof(e->v3), -10, lo3, 1000);
+            if(EdButton((Rectangle){x + 250, y, 36, 32}, "+", 22)) EvStepInt(e->v3, sizeof(e->v3), 10, lo3, 1000);
             snprintf(tb, sizeof(tb), "%s", e->v3);
             Ed_DrawText(mainFont, tb, (Vector2){x + 156, y + 4}, 20, 1, WHITE);
             y += 40;
@@ -720,7 +722,7 @@ static void Edit_DrawPanel_Events(float x, float y) {
 
 // preview do shader do evento selecionado (so na aba Events); fora disso, sem efeito
 void Edit_ShaderPreview(void) {
-    // o menu (picker de musicas) nunca recebe o shader
+    // o picker de musicas nao usa shader de tela
     if(ceMode == CE_PICKER) {
         ShaderFx_Reset();
         return;

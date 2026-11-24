@@ -608,6 +608,14 @@ void Picker_Draw(void) {
     Render_StopCamera();
 }
 
+/* Move a selecao com volta: passou do fim vai pro inicio e vice-versa. Ao dar a volta, a lista pula sem animar. */
+static void Picker_Move(int delta, int rows) {
+    const int prev = pickerSel;
+    pickerSel = ((prev + delta) % rows + rows) % rows;
+    const bool wrapped = delta > 0 ? pickerSel < prev : pickerSel > prev;
+    if(wrapped) pickerOffset = (float)pickerSel;
+}
+
 void Picker_Update(void) {
     // arrastou arquivo pra janela
     if(IsFileDropped()) {
@@ -640,21 +648,14 @@ void Picker_Update(void) {
     const bool typing = SearchBox_Focused(&pickSearch);
     if(SearchBox_Update(&pickSearch)) Picker_ApplyFilter();
 
-    int rows = 1 + pickShownCount;
-    if(IsKeyPressed(KEY_DOWN) || (!typing && IsKeyPressed(KEY_S))) {
-        pickerSel++;
-        if(pickerSel >= rows) pickerSel = 0;
-    }
-    if(IsKeyPressed(KEY_UP) || (!typing && IsKeyPressed(KEY_W))) {
-        pickerSel--;
-        if(pickerSel < 0) pickerSel = rows - 1;
-    }
+    const int rows = 1 + pickShownCount;
+    if(IsKeyPressed(KEY_DOWN) || (!typing && IsKeyPressed(KEY_S)))
+        Picker_Move(1, rows);
+    if(IsKeyPressed(KEY_UP) || (!typing && IsKeyPressed(KEY_W)))
+        Picker_Move(-1, rows);
     const float wheel = GetMouseWheelMove();
-    if(wheel != 0.0f) {
-        pickerSel += wheel > 0.0f ? -1 : 1;
-        if(pickerSel < 0) pickerSel = 0;
-        if(pickerSel >= rows) pickerSel = rows - 1;
-    }
+    if(wheel != 0.0f)
+        Picker_Move(wheel > 0.0f ? -1 : 1, rows);
     if(!typing && IsKeyPressed(KEY_R))
         Picker_Refresh();
     if(!typing && IsKeyPressed(KEY_N))

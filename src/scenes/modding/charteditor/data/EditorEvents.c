@@ -123,7 +123,7 @@ char EdEvents_Save(const char* dir) {
         yyjson_mut_arr_append(ev, yyjson_mut_strcpy(doc, e->v1));
         yyjson_mut_arr_append(ev, yyjson_mut_strcpy(doc, e->v2));
         // Show Image: v3 (escala) + s1 (imagem); Change Character: s1 (nome); Music Credit: s1 (criador)
-        if(strcmp(e->name, "Show Image") == 0 || strcmp(e->name, "Change Character") == 0 || strcmp(e->name, "Music Credit") == 0) {
+        if(strcmp(e->name, "Show Image") == 0 || strcmp(e->name, "Change Character") == 0 || strcmp(e->name, "Music Credit") == 0 || strcmp(e->name, "Camera Move") == 0) {
             yyjson_mut_arr_append(ev, yyjson_mut_strcpy(doc, e->v3));
             yyjson_mut_arr_append(ev, yyjson_mut_strcpy(doc, e->s1));
         }

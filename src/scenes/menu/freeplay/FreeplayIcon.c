@@ -8,6 +8,7 @@
 #include "Render.h"
 #include "scenes/menu/freeplay/FreeplayIcon.h"
 #include "yyjson.h"
+#include "rendering/cpu/ImagePrefetch.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -321,16 +322,16 @@ static bool FindIconPath(const char* songDir, const char* modRoot, const char* h
 /* Cache                                                               */
 /* ------------------------------------------------------------------ */
 
-/* Memo: resolucao (caminho + oponente) por musica. Evita refazer a busca em disco a cada seta. */
-#define MEMO_SLOTS 32
-/* Texturas: LRU pequeno por caminho. Icones se repetem entre musicas do mesmo oponente. */
-#define TEX_SLOTS 8
+/*
+ * Memo: uma entrada por musica (indice = posicao em songs[]). Resolver o caminho le disco,
+ * entao cada musica so e resolvida uma vez. Texturas: LRU pequeno; icones se repetem por oponente.
+ */
+#define TEX_SLOTS 12
 
 typedef struct {
-    const SongEntry* song;
     char path[PATH_MAX_LEN];       /* vazio = nada achado */
     char opponent[NAME_MAX_LEN];
-    bool used;
+    char resolved;
 } IconMemo;
 
 typedef struct {
@@ -340,13 +341,14 @@ typedef struct {
     bool used;
 } IconTexture;
 
-static IconMemo memo[MEMO_SLOTS];
-static int memoNext;
+static const SongEntry* memoBase;  /* songs[] de quem chamou Init */
+static IconMemo* memo;
+static int memoCount;
 static IconTexture textures[TEX_SLOTS];
 static unsigned long long useClock;
 
-/* Caminho do icone (ou vazio) e oponente da musica. Le disco: so no memo. */
-static void ResolvePath(SongEntry* song, char opponent[NAME_MAX_LEN], char out[PATH_MAX_LEN]) {
+/* Caminho do icone (ou vazio) e oponente da musica. Le disco: so uma vez por musica. */
+static void ResolvePath(const SongEntry* song, char opponent[NAME_MAX_LEN], char out[PATH_MAX_LEN]) {
     char modRoot[PATH_MAX_LEN] = {0};
     (void)GetModRoot(song->dir, modRoot, sizeof(modRoot));
 
@@ -354,9 +356,10 @@ static void ResolvePath(SongEntry* song, char opponent[NAME_MAX_LEN], char out[P
     opponent[0] = '\0';
     if (song->opp[0] && IsSafeAssetName(song->opp)) {
         CopyString(opponent, NAME_MAX_LEN, song->opp);
-    } else if (SongList_Opponent(song->dir, opponent) && IsSafeAssetName(opponent)) {
-        CopyString(song->opp, sizeof(song->opp), opponent);
+    } else {
+        (void)SongList_Opponent(song->dir, opponent);
     }
+    if (!IsSafeAssetName(opponent)) opponent[0] = '\0';
     if (!opponent[0]) CopyString(opponent, NAME_MAX_LEN, "unknown");
 
     out[0] = '\0';
@@ -378,16 +381,15 @@ static void ResolvePath(SongEntry* song, char opponent[NAME_MAX_LEN], char out[P
         CopyString(out, PATH_MAX_LEN, "assets/images/icons/bf.png");
 }
 
-static IconMemo* MemoFor(SongEntry* song) {
-    for (int i = 0; i < MEMO_SLOTS; ++i)
-        if (memo[i].used && memo[i].song == song) return memo + i;
-
-    IconMemo* slot = memo + memoNext;
-    memoNext = (memoNext + 1) % MEMO_SLOTS;
-    slot->song = song;
-    slot->used = true;
-    ResolvePath(song, slot->opponent, slot->path);
-    return slot;
+/* Garante que o memo da musica esta resolvido; devolve a entrada (ou NULL se fora da lista). */
+static IconMemo* MemoFor(const SongEntry* song) {
+    if (!memo || !song || song < memoBase || song >= memoBase + memoCount) return NULL;
+    IconMemo* m = memo + (song - memoBase);
+    if (!m->resolved) {
+        ResolvePath(song, m->opponent, m->path);
+        m->resolved = 1;
+    }
+    return m;
 }
 
 /* Textura para o caminho: reaproveita a do cache ou descarrega a menos usada. */
@@ -421,6 +423,14 @@ static Texture2D TextureForPath(const char* path) {
 /* API                                                                 */
 /* ------------------------------------------------------------------ */
 
+void FreeplayIcon_Init(const SongEntry* songs, int count) {
+    FreeplayIcon_Unload();
+    memoBase = songs;
+    memoCount = count > 0 ? count : 0;
+    memo = memoCount > 0 ? calloc((size_t)memoCount, sizeof(IconMemo)) : NULL;
+    if (memo == NULL) memoCount = 0;
+}
+
 /* Solta tudo: texturas, memo e icone atual. Chamar ao entrar e sair do Freeplay. */
 void FreeplayIcon_Unload(void) {
     for (int i = 0; i < TEX_SLOTS; ++i) {
@@ -428,8 +438,10 @@ void FreeplayIcon_Unload(void) {
             UnloadTexture(textures[i].texture);
     }
     memset(textures, 0, sizeof(textures));
-    memset(memo, 0, sizeof(memo));
-    memoNext = 0;
+    free(memo);
+    memo = NULL;
+    memoCount = 0;
+    memoBase = NULL;
     useClock = 0;
 
     icon = (Texture2D){0};
@@ -438,13 +450,14 @@ void FreeplayIcon_Unload(void) {
 }
 
 /* Troca o icone atual. Nao descarrega: a textura continua no cache. */
-void FreeplayIcon_Load(SongEntry* song) {
+void FreeplayIcon_Load(const SongEntry* song) {
     icon = (Texture2D){0};
     iconLoaded = false;
     opponentName[0] = '\0';
     if (!song) return;
 
     const IconMemo* m = MemoFor(song);
+    if (m == NULL) return;
     CopyString(opponentName, sizeof(opponentName), m->opponent);
     if (m->path[0] == '\0') return;
 
@@ -452,8 +465,15 @@ void FreeplayIcon_Load(SongEntry* song) {
     iconLoaded = icon.id != 0;
 }
 
+/* Pede a decodificacao em fundo do icone da musica (sem subir para a GPU). Nao bloqueia. */
+void FreeplayIcon_Warm(const SongEntry* song) {
+    const IconMemo* m = MemoFor(song);
+    if (m != NULL && m->path[0] != '\0')
+        ImagePrefetch_Start(m->path);
+}
+
 /* Carrega sem cache (uso: lista do Chart Editor). Quem chama descarrega. */
-Texture2D FreeplayIcon_Resolve(SongEntry* song) {
+Texture2D FreeplayIcon_Resolve(const SongEntry* song) {
     if (!song) return (Texture2D){0};
 
     char opponent[NAME_MAX_LEN];

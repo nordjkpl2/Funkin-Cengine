@@ -19,11 +19,13 @@
 
 #define SCREEN_W 1280.0f
 #include "scenes/gameplay/events/PlayStateParallax.h"
+#include "scenes/gameplay/events/PlayStateCameraMove.h"
 #define SCREEN_H 720.0f
 #define SHOW_IMAGE_NAME "Show Image"
 #define HIDE_IMAGE_NAME "Hide Image"
 #define CHANGE_CHAR_NAME "Change Character"
 #define CAMERA_PARALLAX_NAME "Camera Parallax"
+#define CAMERA_MOVE_NAME "Camera Move"
 #define LETTERBOX_NAME "Letterbox"
 #define MUSIC_CREDIT_NAME "Music Credit"
 #define CREDIT_DEFAULT_MS 4000.0
@@ -39,8 +41,10 @@ const PlayStateEventType playStateEventTypes[] = {
     {"Shader TV",     "TV velha: linhas, vinheta, granulado", 50, 0, 0, "intensidade %:", "animacao %:", NULL, 0, 1},
     {"Shader Glitch", "glitch: fatias, separacao RGB, blocos", 50, 0, 0, "intensidade %:", "animacao %:", NULL, 0, 1},
     {"Shader Blackness", "buraco negro: puxa pro centro, escurece", 50, 0, 0, "intensidade %:", "animacao %:", NULL, 0, 1},
+    {"Shader Grayscale", "tudo em preto e branco (intensidade % = quanto da cor some; animacao sem efeito)", 100, 0, 0, "intensidade %:", "animacao %:", NULL, 0, 1},
     {"Shader Off",    "desliga o shader de tela", 0, 0, 0, NULL, NULL, NULL, 0, 1},
     {"Camera Parallax", "camera 3D: afasta (zoom out) e balanca em profundidade (0 desliga)", 100, 0, 0, "intensidade %:", "velocidade %:", NULL, 0, 0},
+    {CAMERA_MOVE_NAME, "camera: zoom % (100 = normal), x e y em px do mundo (transicao suave)", 100, 0, 0, "zoom %:", "x (px):", "y (px):", 0, 0},
     {CHANGE_CHAR_NAME, "troca o personagem: 0=oponente 1=bf 2=gf (nome do personagem)", 0, 0, 0, "alvo (0/1/2):", NULL, NULL, 0, 0, 1},
     {LETTERBOX_NAME, "barras de filme preto em cima e embaixo (duracao ms, altura % da tela; 0 tira)", 1000, 12, 0, "tempo", "altura %:", NULL, 0},
     {MUSIC_CREDIT_NAME, "disco com titulo da musica e criador (duracao ms; texto = nome do criador)", 4000, 0, 0, "tempo (ms):", NULL, NULL, 0, 0, 0, 1},
@@ -152,6 +156,7 @@ void PlayStateEvents_ApplyShader(const char* name, double intensityPct, double a
     if (strcmp(name, "Shader TV") == 0) ShaderFx_Set(SHADERFX_TV, amt, spd);
     else if (strcmp(name, "Shader Glitch") == 0) ShaderFx_Set(SHADERFX_GLITCH, amt, spd);
     else if (strcmp(name, "Shader Blackness") == 0) ShaderFx_Set(SHADERFX_BLACKNESS, amt, spd);
+    else if (strcmp(name, "Shader Grayscale") == 0) ShaderFx_Set(SHADERFX_GRAYSCALE, amt, spd);
     else if (strcmp(name, "Shader Off") == 0) ShaderFx_Reset();
 }
 
@@ -162,6 +167,10 @@ static void Fire(const PsEvent* e) {
     }
     if (strcmp(e->name, CAMERA_PARALLAX_NAME) == 0) {
         PlayStateParallax_Set((float)(e->v1 / 100.0), (float)(e->v2 > 0.0 ? e->v2 / 100.0 : 1.0));
+        return;
+    }
+    if (strcmp(e->name, CAMERA_MOVE_NAME) == 0) {
+        PlayStateCameraMove_Set((float)e->v1, (float)e->v2, (float)e->v3);
         return;
     }
     if (strcmp(e->name, SHOW_IMAGE_NAME) == 0) {
@@ -262,6 +271,7 @@ void PlayStateEvents_Unload(void) {
     hasCredit = 0;
     ShaderFx_Reset();
     PlayStateParallax_Reset();
+    PlayStateCameraMove_Reset();
 }
 
 void PlayStateEvents_Load(const char* songDir) {
@@ -302,6 +312,8 @@ void PlayStateEvents_Load(const char* songDir) {
                     /* Show Image: escala ausente = 100 %; nome da imagem na posicao 4 */
                     yyjson_val* j3 = yyjson_arr_get(ev, 3);
                     e->v3 = (j3 != NULL && (yyjson_is_num(j3) || yyjson_is_str(j3))) ? NumOf(j3) : 100.0;
+                    if (strcmp(e->name, CAMERA_MOVE_NAME) == 0 && !(j3 != NULL && yyjson_is_num(j3)))
+                        e->v3 = 0.0; /* Camera Move: y ausente = 0 px (nao 100) */
                     yyjson_val* j4 = yyjson_arr_get(ev, 4);
                     e->img[0] = '\0';
                     if (j4 != NULL && yyjson_is_str(j4))
@@ -326,6 +338,7 @@ void PlayStateEvents_Reset(void) {
     curMs = 0.0;
     ShaderFx_Reset();
     PlayStateParallax_Reset();
+    PlayStateCameraMove_Reset();
 }
 
 void PlayStateEvents_SeekTo(double seconds) {
