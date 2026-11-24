@@ -58,5 +58,6 @@ void Modding_DrawBackground(void);
 void Modding_DrawImport(void);
 void Modding_DrawStub(void);
 void Modding_DrawList(void);
+int Modding_TabHit(int i, Vector2 m); /* 1 se o ponto m (coords do mundo) esta sobre a aba i */
 
 #endif

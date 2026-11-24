@@ -95,7 +95,7 @@ static void RayGame_UpdateViewport(bool force)
 
 #if defined(FNF_DEBUG_STATS)
 /* Overlay de debug (F3): so existe se compilar com -DFNF_DEBUG_STATS (cmake -DFNF_DEBUG_STATS=ON). */
-static struct { char on; double upd, draw, end; unsigned int calls, flushes; } dbg = { .on = 1 };
+static struct { char on; double upd, draw, end; unsigned int calls, flushes; } dbg = { .on = 0 };
 
 static inline void RayGame_EndFrame(double tDraw0)
 {

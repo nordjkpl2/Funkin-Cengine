@@ -56,19 +56,20 @@ static void LoadDefaultStage(PlayStateStage* stage, Girlfriend* gf, Character* d
         stage->defaultCameraZoom = 0.9f;
 }
 
-// Stage padrao ("stage") com <stage>.json: as posicoes do json somam na posicao padrao (como no LoadModStage).
+// Stage padrao ("stage") com <stage>.json. Igual a Psych: boyfriend/opponent/girlfriend sao a
+// posicao BASE absoluta do stage; a posicao do personagem (position do JSON + psychShift, guardada
+// em offX) e somada por cima (startCharacterPos). Sem o json, vale o padrao fixo do LoadDefaultStage.
 static float defaultCamBf[2], defaultCamDad[2];
-static char ApplyDefaultStageJson(const char* songDir, Girlfriend* gf, Character* dad, Character* bf) {
+static char ApplyDefaultStageJson(const char* songDir, Girlfriend* gf, Character* dad, Character* bf,
+                                  Vector2 offGf, Vector2 offDad, Vector2 offBf) {
     char jsonPath[300];
     if (!Stage_FindJsonAllowStage("stage", songDir, jsonPath)) return 0;
     StageMeta meta;
     if (!Stage_LoadJson(jsonPath, &meta)) return 0;
-    gf->object.position.x += meta.girlfriend[0] - 640.0f * 0.05f;
-    gf->object.position.y += meta.girlfriend[1] - 360.0f * 0.05f;
-    dad->object.position.x += meta.opponent[0];
-    dad->object.position.y += meta.opponent[1];
-    bf->object.position.x += meta.boyfriend[0];
-    bf->object.position.y += meta.boyfriend[1];
+    gf->object.position = (Vector2) {meta.girlfriend[0] - 640.0f * 0.05f + offGf.x,
+                                     meta.girlfriend[1] - 360.0f * 0.05f + offGf.y};
+    dad->object.position = (Vector2) {meta.opponent[0] + offDad.x, meta.opponent[1] + offDad.y};
+    bf->object.position = (Vector2) {meta.boyfriend[0] + offBf.x, meta.boyfriend[1] + offBf.y};
     defaultCamBf[0] = meta.cameraBoyfriend[0]; defaultCamBf[1] = meta.cameraBoyfriend[1];
     defaultCamDad[0] = meta.cameraOpponent[0]; defaultCamDad[1] = meta.cameraOpponent[1];
     return 1;
@@ -344,8 +345,10 @@ void PlayStateStage_Load(PlayStateStage* stage, const char* stageName, const cha
         free(stage->animObjects);
         memset(stage, 0, sizeof(*stage));
         stage->cameraSpeed = 1.0f;
+        // offset de cada personagem (position do JSON + psychShift) antes do padrao sobrescrever
+        const Vector2 offGf = gf->object.position, offDad = dad->object.position, offBf = bf->object.position;
         LoadDefaultStage(stage, gf, dad, bf);
-        if (ApplyDefaultStageJson(songDir, gf, dad, bf)) {
+        if (ApplyDefaultStageJson(songDir, gf, dad, bf, offGf, offDad, offBf)) {
             cameraOffsetBf = defaultCamBf;
             cameraOffsetDad = defaultCamDad;
         }

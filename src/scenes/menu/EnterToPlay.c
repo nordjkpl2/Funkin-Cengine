@@ -13,8 +13,9 @@
 #include "Game.h"
 #include "logic/beatmanager/BeatManager.h"
 
-#define TITLE_FADE_DURATION 2.0f
 #define TITLE_TRANSITION_TIME 3.0f
+#define TITLE_WIPE_SPEED 1600.0f
+#define TITLE_WIPE_EDGE 160.0f
 #define TITLE_SLIDE_START 1.0f
 #define TITLE_SLIDE_SPEED 700.0f
 #define TITLE_LOGO_LERP_SPEED 10.0f
@@ -29,7 +30,6 @@ static Vector2 fnfBaseSize;
 
 static float logoScale = 1.0f;
 static float logoOffset;
-static float fadeTime;
 static float enterElapsed;
 
 static bool pressedEnter;
@@ -49,7 +49,6 @@ static void EnterToPlay_Create([[maybe_unused]] RayScene *scene)
 
     logoScale = 1.0f;
     logoOffset = 0.0f;
-    fadeTime = 0.0f;
     enterElapsed = 0.0f;
 
     cam = (Camera2D){
@@ -126,7 +125,6 @@ static void EnterToPlay_Update([[maybe_unused]] RayScene *scene)
         {
             pressedEnter = true;
             enterElapsed = 0.0f;
-            fadeTime = TITLE_FADE_DURATION;
         }
     }
     else
@@ -146,13 +144,34 @@ static void EnterToPlay_Update([[maybe_unused]] RayScene *scene)
             logoOffset -= slide;
         }
     }
+}
 
-    if (fadeTime > 0.0f)
+/* Cortina branca subindo de baixo para cima, com borda suave (só 2 retângulos). */
+static void EnterToPlay_DrawWipe(void)
+{
+    const float top = 720.0f - TITLE_WIPE_SPEED * enterElapsed;
+
+    if (top >= 720.0f)
+        return;
+
+    if (top <= 0.0f)
     {
-        fadeTime -= dt;
-        if (fadeTime < 0.0f)
-            fadeTime = 0.0f;
+        DrawRectangle(0, 0, 1280, 720, BLACK);
+        return;
     }
+
+    DrawRectangleGradientV(
+        0,
+        (int)top,
+        1280,
+        (int)TITLE_WIPE_EDGE,
+        (Color){0, 0, 0, 0},
+        BLACK
+    );
+
+    const int fillY = (int)top + (int)TITLE_WIPE_EDGE;
+    if (fillY < 720)
+        DrawRectangle(0, fillY, 1280, 720 - fillY, BLACK);
 }
 
 static void EnterToPlay_Draw([[maybe_unused]] RayScene *scene)
@@ -186,12 +205,8 @@ static void EnterToPlay_Draw([[maybe_unused]] RayScene *scene)
         );
     }
 
-    if (fadeTime > 0.0f)
-    {
-        const float alphaFactor = fadeTime / TITLE_FADE_DURATION;
-        const unsigned char alpha = (unsigned char)(255.0f * alphaFactor);
-        DrawRectangle(0, 0, 1280, 720, (Color){255, 255, 255, alpha});
-    }
+    if (pressedEnter)
+        EnterToPlay_DrawWipe();
 }
 
 static void EnterToPlay_Destroy([[maybe_unused]] RayScene *scene)

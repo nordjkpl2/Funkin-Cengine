@@ -21,13 +21,14 @@
 
 #define POS_STEP 10.0f
 
-/* indices: 0 = boyfriend, 1 = opponent (dad), 2 = girlfriend */
+/* indices: 0 = boyfriend, 1 = opponent (dad), 2 = girlfriend, 3 = camera_boyfriend, 4 = camera_opponent */
+#define POS_ROWS 5
 static char cacheKey[400];
 static char jsonPath[300];
 static char hasJson = 0;
 static char open = 0;     /* seta "positions" aberta */
 static char dirty = 0;    /* ha mudanca nao salva */
-static float pos[3][2];
+static float pos[POS_ROWS][2];
 
 /* Recarrega so quando trocam a stage ou a pasta da musica. */
 static void Reload(const char* stage, const char* songDir) {
@@ -53,6 +54,8 @@ static void Reload(const char* stage, const char* songDir) {
     memcpy(pos[0], meta.boyfriend, sizeof(pos[0]));
     memcpy(pos[1], meta.opponent, sizeof(pos[1]));
     memcpy(pos[2], meta.girlfriend, sizeof(pos[2]));
+    memcpy(pos[3], meta.cameraBoyfriend, sizeof(pos[3]));
+    memcpy(pos[4], meta.cameraOpponent, sizeof(pos[4]));
 }
 
 /* Regrava so as posicoes no json, mantendo os outros campos. */
@@ -73,6 +76,8 @@ static void Save(void) {
     ModEd_PutRealArr2(doc, root, "boyfriend", pos[0][0], pos[0][1]);
     ModEd_PutRealArr2(doc, root, "opponent", pos[1][0], pos[1][1]);
     ModEd_PutRealArr2(doc, root, "girlfriend", pos[2][0], pos[2][1]);
+    ModEd_PutRealArr2(doc, root, "camera_boyfriend", pos[3][0], pos[3][1]);
+    ModEd_PutRealArr2(doc, root, "camera_opponent", pos[4][0], pos[4][1]);
     const bool ok = yyjson_mut_write_file(jsonPath, doc, YYJSON_WRITE_PRETTY, NULL, NULL);
     yyjson_mut_doc_free(doc);
     dirty = ok ? 0 : dirty;
@@ -93,8 +98,8 @@ float StagePos_Draw(float x, float y, const char* stage, const char* songDir, ch
         return y + 30 - top;
     }
 
-    static const char* names[3] = {"BF:", "Dad:", "GF:"};
-    for(int i = 0; i < 3; i++) {
+    static const char* names[POS_ROWS] = {"BF:", "Dad:", "GF:", "cBF:", "cDad:"};
+    for(int i = 0; i < POS_ROWS; i++) {
         const float ry = y + i * 34.0f;
         Ed_DrawText(mainFont, names[i], (Vector2){x, ry + 4}, 20, 1, WHITE);
         for(int a = 0; a < 2; a++) {
@@ -113,7 +118,7 @@ float StagePos_Draw(float x, float y, const char* stage, const char* songDir, ch
             }
         }
     }
-    const float by = y + 3 * 34.0f + 4;
+    const float by = y + POS_ROWS * 34.0f + 4;
     if(EdButton((Rectangle){x, by, 190, 32}, dirty ? "SALVAR POSICOES *" : "SALVAR POSICOES", 20) && !blocked && dirty)
         Save();
     return by + 32 - top + 4;

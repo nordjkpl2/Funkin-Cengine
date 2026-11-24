@@ -103,6 +103,8 @@ static Rectangle coverFitDst; // capa inteira (contain) por cima do fundo; width
 static Texture2D backgroundTexture;
 static Camera2D storyCamera;
 static float discAngle;
+static int diffIndex = 1;   // 0 easy, 1 normal, 2 hard (padrao normal, como Psych/original)
+static const char* const DIFF_NAMES[3] = {"EASY", "NORMAL", "HARD"};
 
 static char deleteConfirm;
 static char deletePrompt[TEXT_MAX];
@@ -308,7 +310,7 @@ static void ToggleHiddenWeeks(void) {
 static void StartSelectedWeek(void) {
     if (!weeks || selected < 0 || selected >= weekCount) return;
 
-    WeekRun_Start(weeks + selected, 1);
+    WeekRun_Start(weeks + selected, diffIndex);
     const char* songDir = WeekRun_Dir();
 
     if (!songDir || !songDir[0]) {
@@ -421,6 +423,12 @@ static void StoryMode_Update([[maybe_unused]] RayScene* scene) {
     if (weekCount <= 0)
         return;
 
+    // Dificuldade: setas esquerda/direita (A/D), com volta, como as setas da Psych.
+    if (IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_A))
+        diffIndex = (diffIndex + 2) % 3;
+    if (IsKeyPressed(KEY_RIGHT) || IsKeyPressed(KEY_D))
+        diffIndex = (diffIndex + 1) % 3;
+
     UpdateTrackScrollInput();
 
     // Roda do mouse move a selecao do menu (cima/baixo), como as setas.
@@ -495,6 +503,17 @@ static void DrawHero(void) {
                HERO_TITLE_SIZE, 1.5f, COLOR_TEXT);
     DrawTextEx(mainFont, heroCount, (Vector2) {HERO_TITLE_X + 2.0f, HERO_COUNT_Y},
                16.0f, 1.5f, COLOR_ACCENT);
+
+    // Seletor de dificuldade ao lado da contagem: "< NORMAL >".
+    const float countW = MeasureTextEx(mainFont, heroCount, 16.0f, 1.5f).x;
+    const float diffX = HERO_TITLE_X + 2.0f + countW + 26.0f;
+    const Rectangle pill = {diffX - 10.0f, HERO_COUNT_Y - 5.0f,
+                            MeasureTextEx(mainFont, DIFF_NAMES[diffIndex], 16.0f, 1.5f).x + 58.0f, 26.0f};
+    DrawRectangleRounded(pill, 0.5f, 8, (Color) {255, 205, 92, 34});
+    DrawRectangleRoundedLinesEx(pill, 0.5f, 8, 1.0f, (Color) {255, 205, 92, 150});
+    DrawTextEx(mainFont, "<", (Vector2) {diffX, HERO_COUNT_Y}, 16.0f, 1.5f, COLOR_ACCENT);
+    DrawTextEx(mainFont, DIFF_NAMES[diffIndex], (Vector2) {diffX + 20.0f, HERO_COUNT_Y}, 16.0f, 1.5f, COLOR_TEXT);
+    DrawTextEx(mainFont, ">", (Vector2) {pill.x + pill.width - 18.0f, HERO_COUNT_Y}, 16.0f, 1.5f, COLOR_ACCENT);
 }
 
 static void DrawWeekRow(int i) {
@@ -683,7 +702,7 @@ static void DrawStatus(void) {
 }
 
 static void DrawHelpLine(void) {
-    DrawTextEx(mainFont, "UP / DOWN  SELECT     ENTER  PLAY     7  HIDDEN     DEL  DELETE     ESC  BACK",
+    DrawTextEx(mainFont, "UP / DOWN  SELECT     LEFT / RIGHT  DIFFICULTY     ENTER  PLAY     7  HIDDEN     DEL  DELETE     ESC  BACK",
                (Vector2) {58.0f, 690.0f}, 14.0f, 1.0f, COLOR_MUTED);
 }
 

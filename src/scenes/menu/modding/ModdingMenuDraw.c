@@ -404,23 +404,43 @@ static void Modding_DrawTabIcon(int tab, float x, float y, float size, Color c)
     }
 }
 
+static TextMeasure tabMeasure[TAB_COUNT]; // nomes das abas sao fixos
+static const float tabFontSize = 80.0f;
+static const float tabShadow = 5.0f;
+
+/* Posicao da aba i (acompanha o offset animado). */
+static Vector2 Modding_TabPosition(int i)
+{
+    const float distance = (float)i - offset;
+    const float absDistance = (distance < 0.0f) ? -distance : distance;
+
+    return (Vector2){
+        tabShadow + 150.0f - absDistance * 30.0f,
+        tabShadow + 360.0f + distance * 90.0f
+    };
+}
+
+int Modding_TabHit(int i, Vector2 m)
+{
+    const Vector2 p = Modding_TabPosition(i);
+    const float textW = TextMeasure_Get(&tabMeasure[i], mainFont, tabs[i], tabFontSize, 5).x;
+    const Rectangle r = {p.x - 10.0f, p.y - 10.0f,
+                         textW + 24.0f + tabFontSize + 40.0f, tabFontSize + 20.0f};
+
+    return CheckCollisionPointRec(m, r);
+}
+
 void Modding_DrawList(void)
 {
-    static TextMeasure tabMeasure[TAB_COUNT]; // nomes das abas sao fixos
     Modding_DrawBackground();
 
     for (int i = 0; i < TAB_COUNT; ++i) {
-        const float distance = (float)i - offset;
-        const float absDistance = (distance < 0.0f) ? -distance : distance;
         const int selectedItem = (selected == i);
         Color textColor = fontColor;
         Color shadowColor = outlineColor;
-        const float fontSize = 80.0f;
-        const float shadow = 5.0f;
-        Vector2 position = {
-            shadow + 150.0f - absDistance * 30.0f,
-            shadow + 360.0f + distance * 90.0f
-        };
+        const float fontSize = tabFontSize;
+        const float shadow = tabShadow;
+        Vector2 position = Modding_TabPosition(i);
 
         // Selecionado em verde, igual ao menu principal.
         if (selectedItem)
@@ -430,12 +450,19 @@ void Modding_DrawList(void)
         shadowColor.a = selectedItem ? 255 : 100;
 
         const float iconX = position.x - shadow + TextMeasure_Get(&tabMeasure[i], mainFont, tabs[i], fontSize, 5).x + 24.0f;
+        // icone do selecionado: maior e dentro de uma caixa verde, para destacar a aba ativa
+        const float iconSize = fontSize * (selectedItem ? 0.92f : 0.8f);
+        if (selectedItem) {
+            const Rectangle box = {iconX - 12.0f, position.y - 4.0f, iconSize + 24.0f, iconSize + 20.0f};
+            DrawRectangleRounded(box, 0.3f, 8, Fade(selectedColor, 0.18f));
+            DrawRectangleRoundedLinesEx(box, 0.3f, 8, 3.0f, selectedColor);
+        }
         DrawTextEx(mainFont, tabs[i], position, fontSize, 5, shadowColor);
-        Modding_DrawTabIcon(i, iconX + shadow, position.y + 6.0f, fontSize * 0.8f, shadowColor);
+        Modding_DrawTabIcon(i, iconX + shadow, position.y + 6.0f, iconSize, shadowColor);
         position.x -= shadow;
         position.y -= shadow;
         DrawTextEx(mainFont, tabs[i], position, fontSize, 5, textColor);
-        Modding_DrawTabIcon(i, iconX, position.y + 6.0f, fontSize * 0.8f, textColor);
+        Modding_DrawTabIcon(i, iconX, position.y + 6.0f, iconSize, textColor);
     }
 
     Render_StopCamera();

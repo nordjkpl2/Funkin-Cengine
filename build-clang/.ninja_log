@@ -385,3 +385,28 @@
 41	81	8172645797996176	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
 86	179	8172645798437293	CMakeFiles/FunkinCengine.dir/src/scenes/menu/freeplay/Freeplay.c.obj	5835d826c816f924
 179	3594	8172645799366565	D:/dev/funkin c/FunkinCengine.exe	99322e49f006c849
+34	78	8172664457966578	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+87	217	8172664458498953	CMakeFiles/FunkinCengine.dir/src/scenes/menu/modding/ModdingMenuDraw.c.obj	f7a1143df5119a3
+84	224	8172664458467110	CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/stage/PlayStateStage.c.obj	44b8f66b8c2dfb8e
+92	239	8172664458538952	CMakeFiles/FunkinCengine.dir/src/scenes/menu/storymode/StoryMode.c.obj	bd694547e98728e
+97	264	8172664458590881	CMakeFiles/FunkinCengine.dir/src/scenes/modding/charteditor/data/EditorStagePos.c.obj	93b6af9fac12a7c7
+264	5636	8172664460263183	D:/dev/funkin c/FunkinCengine.exe	99322e49f006c849
+48	88	8172668261008842	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+94	191	8172668261474180	CMakeFiles/FunkinCengine.dir/src/scenes/menu/EnterToPlay.c.obj	eecc8d4ccd71f2ac
+192	3602	8172668262451309	D:/dev/funkin c/FunkinCengine.exe	99322e49f006c849
+38	76	8172669065396526	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+81	162	8172669065821699	CMakeFiles/FunkinCengine.dir/src/scenes/menu/EnterToPlay.c.obj	eecc8d4ccd71f2ac
+163	3787	8172669066639356	D:/dev/funkin c/FunkinCengine.exe	99322e49f006c849
+52	103	8172669616579600	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+108	184	8172669617140044	CMakeFiles/FunkinCengine.dir/src/scenes/menu/EnterToPlay.c.obj	eecc8d4ccd71f2ac
+184	3345	8172669617894445	D:/dev/funkin c/FunkinCengine.exe	99322e49f006c849
+49	102	8172670434321015	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+111	187	8172670434940514	CMakeFiles/FunkinCengine.dir/src/scenes/menu/EnterToPlay.c.obj	eecc8d4ccd71f2ac
+107	196	8172670434901101	CMakeFiles/FunkinCengine.dir/src/Game.c.obj	6623ac047e5567b7
+197	3453	8172670435799593	D:/dev/funkin c/FunkinCengine.exe	99322e49f006c849
+45	86	8172671516971659	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+92	220	8172671517443715	CMakeFiles/FunkinCengine.dir/src/scenes/menu/modding/ModdingMenu.c.obj	439e388882579b6b
+101	221	8172671517528906	CMakeFiles/FunkinCengine.dir/src/scenes/menu/modding/ModdingMenuInput.c.obj	e690a4a07092b121
+96	257	8172671517478828	CMakeFiles/FunkinCengine.dir/src/scenes/menu/modding/ModdingMenuDraw.c.obj	f7a1143df5119a3
+43	94	8172671706662240	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+101	4345	8172671707241385	D:/dev/funkin c/FunkinCengine.exe	99322e49f006c849

@@ -161,8 +161,30 @@ static void ModdingMenu_Update([[maybe_unused]] RayScene *scene)
         }
     }
 
+    /* Mouse: mover sobre uma aba seleciona; clique esquerdo seleciona e abre (igual ao Enter). */
+    int clicked = 0;
+    {
+        const Vector2 m = RayGame_MouseWorld();
+        const Vector2 delta = GetMouseDelta();
+        int hovered = -1;
+
+        for (int i = 0; i < TAB_COUNT && hovered < 0; ++i) {
+            if (Modding_TabHit(i, m))
+                hovered = i;
+        }
+
+        if (hovered >= 0) {
+            if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+                selected = hovered;
+                clicked = 1;
+            } else if (delta.x != 0.0f || delta.y != 0.0f) {
+                selected = hovered;
+            }
+        }
+    }
+
     if (IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_ENTER) ||
-        IsKeyPressed(KEY_KP_ENTER)) {
+        IsKeyPressed(KEY_KP_ENTER) || clicked) {
         switch (selected) {
             case 0:
                 ChartEditor_SetScene();

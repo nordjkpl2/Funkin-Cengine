@@ -165,3 +165,4 @@ LOAD [macrosm] init: 0.0 ms, chart: 8.1 ms, sounds: 1.4 ms, characters: 484.5 ms
 LOAD [guilt] init: 0.0 ms, chart: 5.6 ms, sounds: 30.1 ms, characters: 508.7 ms, stage: 28.4 ms, song audio: 4.2 ms, notes: 224.4 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 502.6 ms) total: 801.6 ms
 LOAD [guilt] init: 0.0 ms, chart: 26.9 ms, sounds: 1.7 ms, characters: 420.2 ms, stage: 3.0 ms, song audio: 1.7 ms, notes: 227.3 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 421.4 ms) total: 680.9 ms
 LOAD [guilt] init: 0.0 ms, chart: 9.6 ms, sounds: 1.3 ms, characters: 419.0 ms, stage: 2.5 ms, song audio: 1.8 ms, notes: 224.4 ms, ui: 0.0 ms, warmup: 0.1 ms, (textures on main thread: 419.7 ms) total: 658.7 ms
+LOAD [moribund] init: 18.1 ms, chart: 286.8 ms, sounds: 112.3 ms, characters: 558.4 ms, stage: 15.5 ms, song audio: 1.7 ms, notes: 231.7 ms, ui: 9.8 ms, warmup: 0.2 ms, (textures on main thread: 568.7 ms) total: 1234.6 ms
