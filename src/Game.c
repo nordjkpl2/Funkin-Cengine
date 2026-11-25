@@ -13,6 +13,7 @@
 #include "threads/Thread.h"
 #include "rendering/Display.h"
 #include "rendering/shaders/ShaderFx.h"
+#include "rendering/cpu/ImagePrefetch.h"
 #if defined(FNF_DEBUG_STATS)
 #include "rlgl.h"
 #endif
@@ -175,6 +176,15 @@ static inline void RayGame_DrawOverlay(void)
         DrawText(dbgLine1, 10, 70, 18, YELLOW);
         DrawText(dbgLine2, 12, 94, 18, dbgShadow);
         DrawText(dbgLine2, 10, 92, 18, YELLOW);
+
+        /* Falhas do prefetch de imagens (so as que deram errado; o motivo vai para o log). */
+        const ImagePrefetchStats *pf = ImagePrefetch_Stats();
+        const unsigned pfFails = pf->pathInvalid + pf->notPng + pf->tooBig + pf->overBudget
+                               + pf->noSlot + pf->submitFailed + pf->decodeFailed;
+        const char *dbgLine3 = TextFormat("prefetch falhas %u (orc %u, slot %u, decod %u, nPNG %u)",
+                                          pfFails, pf->overBudget, pf->noSlot, pf->decodeFailed, pf->notPng);
+        DrawText(dbgLine3, 12, 116, 18, dbgShadow);
+        DrawText(dbgLine3, 10, 114, 18, pfFails > 0 ? ORANGE : YELLOW);
     }
 #endif
 

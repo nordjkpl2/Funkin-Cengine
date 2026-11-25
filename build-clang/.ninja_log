@@ -1,5 +1,5 @@
 # ninja log v7
-43	101	8172748914344844	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+18	79	8172748917594257	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
 312	1019	8170774940323073	CMakeFiles/FNF_C_ENGINE.dir/src/GameData.c.obj	c323c494a1c6a8eb
 59	2241	8156873801758605	CMakeFiles/FNF_C_ENGINE.dir/src/Log.c.obj	881c0d8d86c8c7c8
 86	381	8169175964050132	CMakeFiles/FNF_C_ENGINE.dir/main.c.obj	c149f41c55a0a91b
@@ -50,8 +50,8 @@
 118	225	8170811305317460	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayStateText.c.obj	5bc49fd6cff72f21
 333	1739	8170774940520865	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayState.c.obj	4d49e48b2e806a05
 1322	1664	8169175976413044	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/gameplay/PlayStateStage.c.obj	4c5919e6812aadea
-89	341	8172748916575560	build.ninja	d326d16b80b4f275
-89	341	8172748916545542	D:/dev/funkin c/build-clang/cmake_install.cmake	d326d16b80b4f275
+101	392	8173240059438699	build.ninja	d326d16b80b4f275
+101	392	8173240059388643	D:/dev/funkin c/build-clang/cmake_install.cmake	d326d16b80b4f275
 67	248	8169337342573632	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/menu/MenuState.c.obj	20d56ba81941268b
 87	291	8156462884009688	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/menu/TitleState.c.obj	a6260f3de2715e25
 107	376	8167923495570082	CMakeFiles/FNF_C_ENGINE.dir/src/scenes/menu/OptionsMenu.c.obj	b1fa538e02a831b9
@@ -251,7 +251,7 @@
 1174	1362	8170823199410657	CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/PlayStateIntro.c.obj	9e356f91fbfc62
 1190	1399	8170823199560680	CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/PlayStateNoteAtlas.c.obj	2352c2651e8874bc
 167	428	8170886728599532	CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/PlayStateEventsInGameplay.c.obj	f65e04c29d7a763c
-97	479	8172739966325824	CMakeFiles/FunkinCengine.dir/src/data/modimport/ModImportVSlice.c.obj	ffda147d605b962c
+85	461	8172748918264381	CMakeFiles/FunkinCengine.dir/src/data/modimport/ModImportVSlice.c.obj	ffda147d605b962c
 200	459	8172621820400302	CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/PlayStateNoteSpawn.c.obj	b5f0f5f476f6fa6e
 205	455	8172621820450301	CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/PlayStatePlayerInput.c.obj	802f706aa6b879da
 112	227	8171039657565191	CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/PlayStatePause.c.obj	d3a601d841cf82dd
@@ -308,7 +308,7 @@
 110	3666	8170823188767368	CMakeFiles/FunkinCengine.dir/src/core/Log.c.obj	4ce361de82395795
 2387	3893	8170823211536466	CMakeFiles/FunkinCengine.dir/lib/yyjson.c.obj	f0e2ba1ba1dd5596
 906	4518	8170823196728169	CMakeFiles/FunkinCengine.dir/src/rendering/cpu/PngDecode.c.obj	d058cb2d95043d31
-234	3150	8172742304608117	D:/dev/funkin c/FunkinCengine.exe	1899e1a1d7786a2b
+461	3794	8172748922023300	D:/dev/funkin c/FunkinCengine.exe	96b23055da76a818
 130	223	8172695922045938	CMakeFiles/FunkinCengine.dir/src/rendering/shaders/ShaderFx.c.obj	395b032d05bdf535
 99	326	8172676857940162	CMakeFiles/FunkinCengine.dir/src/scenes/modding/charteditor/data/EditorStagePos.c.obj	93b6af9fac12a7c7
 173	308	8170886728659570	CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/PlayStateParallax.c.obj	cd2b799ea7d9cbb0
@@ -336,9 +336,46 @@
 72	325	8172638874229024	CMakeFiles/FunkinCengine.dir/src/data/EffectsConfig.c.obj	ff9300710f5e766
 122	281	8172638874719036	CMakeFiles/FunkinCengine.dir/src/scenes/modding/effectseditor/EffectsEditor.c.obj	f18679aeaae8d2b2
 87	198	8172695962385219	CMakeFiles/FunkinCengine.dir/src/scenes/menu/options/OptionsMenuGameplayExtra.c.obj	aac068b995452654
-101	392	8172748916575560	build.ninja	d326d16b80b4f275
-101	392	8172748916575560	D:/dev/funkin c/build-clang/cmake_install.cmake	d326d16b80b4f275
-18	79	8172748917594257	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
 90	189	8172748918314304	CMakeFiles/FunkinCengine.dir/src/rendering/shaders/ShaderTranslate.c.obj	5eb6d58b8c9139d6
-85	461	8172748918264381	CMakeFiles/FunkinCengine.dir/src/data/modimport/ModImportVSlice.c.obj	ffda147d605b962c
-461	3794	8172748922023300	D:/dev/funkin c/FunkinCengine.exe	96b23055da76a818
+74	110	8173240061900878	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+136	343	8173240062516555	CMakeFiles/FunkinCengine.dir/src/Render.c.obj	ff309b8dd0f6c0b1
+131	358	8173240062466046	CMakeFiles/FunkinCengine.dir/src/Game.c.obj	6623ac047e5567b7
+150	371	8173240062661682	CMakeFiles/FunkinCengine.dir/src/rendering/cpu/ImagePrefetch.c.obj	7bfde06ea62cd9ff
+159	383	8173240062751762	CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/PlayState.c.obj	f13f665ee6a00a36
+172	398	8173240062881744	CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/stage/PlayStateStage.c.obj	44b8f66b8c2dfb8e
+165	413	8173240062811750	CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/events/PlayStateEventsInGameplay.c.obj	1ab2c340a5e5a42
+183	427	8173240062993370	CMakeFiles/FunkinCengine.dir/src/scenes/menu/freeplay/FreeplayIcon.c.obj	92ba0ce23340ebe2
+144	437	8173240062596455	CMakeFiles/FunkinCengine.dir/src/characters/Character.c.obj	ba63e11a7291b661
+437	4251	8173240065526106	D:/dev/funkin c/FunkinCengine.exe	96b23055da76a818
+47	89	8173245228190874	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+102	243	8173245228746198	CMakeFiles/FunkinCengine.dir/src/Render.c.obj	ff309b8dd0f6c0b1
+120	250	8173245228921403	CMakeFiles/FunkinCengine.dir/src/rendering/cpu/ImagePrefetch.c.obj	7bfde06ea62cd9ff
+94	251	8173245228657141	CMakeFiles/FunkinCengine.dir/src/Game.c.obj	6623ac047e5567b7
+108	253	8173245228806285	CMakeFiles/FunkinCengine.dir/src/characters/Character.c.obj	ba63e11a7291b661
+131	280	8173245229031560	CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/PlayState.c.obj	f13f665ee6a00a36
+147	291	8173245229188687	CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/stage/PlayStateStage.c.obj	44b8f66b8c2dfb8e
+141	314	8173245229128663	CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/events/PlayStateEventsInGameplay.c.obj	1ab2c340a5e5a42
+155	331	8173245229278683	CMakeFiles/FunkinCengine.dir/src/scenes/menu/freeplay/FreeplayIcon.c.obj	92ba0ce23340ebe2
+331	3298	8173245231029152	D:/dev/funkin c/FunkinCengine.exe	96b23055da76a818
+46	89	8173245780419007	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+22	71	8173249330553313	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+76	209	8173249331092258	CMakeFiles/FunkinCengine.dir/src/Game.c.obj	6623ac047e5567b7
+81	211	8173249331142111	CMakeFiles/FunkinCengine.dir/src/Render.c.obj	ff309b8dd0f6c0b1
+90	218	8173249331232134	CMakeFiles/FunkinCengine.dir/src/rendering/cpu/ImagePrefetch.c.obj	7bfde06ea62cd9ff
+85	232	8173249331182122	CMakeFiles/FunkinCengine.dir/src/characters/Character.c.obj	ba63e11a7291b661
+107	261	8173249331402136	CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/stage/PlayStateStage.c.obj	44b8f66b8c2dfb8e
+94	263	8173249331272130	CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/PlayState.c.obj	f13f665ee6a00a36
+104	296	8173249331372136	CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/events/PlayStateEventsInGameplay.c.obj	1ab2c340a5e5a42
+113	309	8173249331456684	CMakeFiles/FunkinCengine.dir/src/scenes/menu/freeplay/FreeplayIcon.c.obj	92ba0ce23340ebe2
+309	3563	8173249333421356	D:/dev/funkin c/FunkinCengine.exe	96b23055da76a818
+41	82	8173249920909462	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+19	57	8173250809869770	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+63	173	8173250810316246	CMakeFiles/FunkinCengine.dir/src/rendering/cpu/ImagePrefetch.c.obj	7bfde06ea62cd9ff
+173	3939	8173250811413603	D:/dev/funkin c/FunkinCengine.exe	96b23055da76a818
+40	85	8173253210619715	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+90	267	8173253211115940	CMakeFiles/FunkinCengine.dir/src/scenes/modding/charteditor/ui/EditorPanels.c.obj	3e5abb0e456800b0
+268	3358	8173253212892241	D:/dev/funkin c/FunkinCengine.exe	96b23055da76a818
+54	99	8173254758521442	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+25	61	8173255941774238	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+66	215	8173255942184299	CMakeFiles/FunkinCengine.dir/src/scenes/modding/charteditor/ui/EditorPanels.c.obj	3e5abb0e456800b0
+216	3218	8173255943675736	D:/dev/funkin c/FunkinCengine.exe	96b23055da76a818

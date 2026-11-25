@@ -419,6 +419,7 @@ static char evPickOpen;
 static char evPickShaders;  // picker abre so com os shaders de tela
 static TxtBox evSearchBox;
 static TxtBox evImgBox;     // nome da imagem do Show Image selecionado
+static TxtBox evMsBox;      // tempo (ms) editavel do Music Credit selecionado
 static int evSelected = -1; // indice em edEvents (-1 = nenhum)
 
 // busca sem diferenciar maiusculas (needle vazio casa tudo)
@@ -675,8 +676,42 @@ static void Edit_DrawPanel_Events(float x, float y) {
         Ed_DrawText(mainFont, lab1, (Vector2){x, y + 4}, 20, 1, WHITE);
         if(EdButton((Rectangle){x + 110, y, 36, 32}, "-", 22)) EvStepInt(e->v1, sizeof(e->v1), -st1, lo1, hi1);
         if(EdButton((Rectangle){x + 250, y, 36, 32}, "+", 22)) EvStepInt(e->v1, sizeof(e->v1), st1, lo1, hi1);
-        snprintf(tb, sizeof(tb), "%s", e->v1);
-        Ed_DrawText(mainFont, tb, (Vector2){x + 156, y + 4}, 20, 1, WHITE);
+        const char msCredit = (t != NULL && strcmp(t->name, "Music Credit") == 0);
+        if(msCredit) {
+            // tempo editavel (so digitos); "++" soma 100
+            static int msSel = -2;
+            static int msGen = -1;
+            if(msSel != evSelected || msGen != edEventsGen) {
+                msSel = evSelected;
+                msGen = edEventsGen;
+                snprintf(evMsBox.buf, sizeof(evMsBox.buf), "%s", e->v1);
+            }
+            Rectangle mr = {x + 156, y, 86, 32};
+            const char msBlocked = (ceDlg != DLG_NONE || activeDrop || menuOpen);
+            TxtBox_Update(&evMsBox, mr, msBlocked);
+            TxtBox_Draw(&evMsBox, mr, "ms");
+            if(focusBox == &evMsBox) {
+                // digitando: so digitos vao para v1
+                char dig[16];
+                size_t k = 0;
+                for(const char* p = evMsBox.buf; *p != 0 && k < sizeof(dig) - 1; p++)
+                    if(*p >= '0' && *p <= '9') dig[k++] = *p;
+                dig[k] = 0;
+                if(strcmp(dig, evMsBox.buf) != 0) snprintf(evMsBox.buf, sizeof(evMsBox.buf), "%s", dig);
+                if(k > 0 && strcmp(dig, e->v1) != 0) {
+                    snprintf(e->v1, sizeof(e->v1), "%s", dig);
+                    chart.dirty = 1;
+                }
+            } else {
+                // fora do campo: limita a faixa e mostra o valor real (inclui +/- e ++)
+                EvStepInt(e->v1, sizeof(e->v1), 0, lo1, hi1);
+                snprintf(evMsBox.buf, sizeof(evMsBox.buf), "%s", e->v1);
+            }
+            if(EdButton((Rectangle){x + 294, y, 46, 32}, "++", 20)) EvStepInt(e->v1, sizeof(e->v1), 100, lo1, hi1);
+        } else {
+            snprintf(tb, sizeof(tb), "%s", e->v1);
+            Ed_DrawText(mainFont, tb, (Vector2){x + 156, y + 4}, 20, 1, WHITE);
+        }
         y += 40;
 
         if(!chr && !txt) {
