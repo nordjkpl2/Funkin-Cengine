@@ -118,6 +118,10 @@ It’s being developed by me, and I’m writing the code from scratch, so it mig
 
   > W Render
 
+  > better menu options than oficial fnf (this is not a critic)
+
+  > shaders and other things support
+
   </details>
 
 <div align="left">
