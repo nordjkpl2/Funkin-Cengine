@@ -4,6 +4,7 @@
  * Entrada invalida cai fora; lista vazia volta ao padrao. O arquivo nunca quebra o jogo.
  */
 #include "data/config/NotesplashConfig.h"
+#include "data/config/EffectsConfig.h"
 #include "yyjson.h"
 
 #include <stdio.h>
@@ -20,6 +21,7 @@ void NotesplashConfig_Defaults(NotesplashList* out) {
     out->active = 0;
     strcpy(out->entries[0].animset, "assets/images/noteSplashes-sparkles.xml");
     strcpy(out->entries[0].prefix, "splash sparkles red ");
+    out->entries[0].tint = -1;
 }
 
 static void CopyStr(char* dst, size_t size, const char* src) {
@@ -40,6 +42,9 @@ static void ReadFromJson(yyjson_val* root, NotesplashList* list) {
         if (animset == NULL || prefix == NULL || prefix[0] == '\0') continue;
         CopyStr(tmp.entries[tmp.count].animset, sizeof(tmp.entries[0].animset), animset);
         CopyStr(tmp.entries[tmp.count].prefix, sizeof(tmp.entries[0].prefix), prefix);
+        const yyjson_val* tintVal = yyjson_obj_get(item, "tint");
+        int tint = yyjson_is_num(tintVal) ? (int)yyjson_get_num(tintVal) : -1;
+        tmp.entries[tmp.count].tint = (tint < 0 || tint >= EFFECTS_TINTS) ? -1 : tint;
         tmp.count++;
     }
     if (tmp.count == 0) return;
@@ -90,6 +95,7 @@ char NotesplashConfig_Save(void) {
         yyjson_mut_val* o = yyjson_mut_obj(doc);
         yyjson_mut_obj_add_strcpy(doc, o, "animset", current.entries[i].animset);
         yyjson_mut_obj_add_strcpy(doc, o, "prefix", current.entries[i].prefix);
+        yyjson_mut_obj_add_int(doc, o, "tint", current.entries[i].tint);
         yyjson_mut_arr_add_val(arr, o);
     }
 

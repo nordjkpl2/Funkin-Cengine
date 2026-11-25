@@ -16,6 +16,7 @@
 typedef struct {
     char animset[NOTESPLASH_PATH_MAX];   /* xml Sparrow, ex.: assets/images/noteSplashes-sparkles.xml */
     char prefix[NOTESPLASH_PREFIX_MAX];  /* prefixo da animacao sem os digitos finais, ex.: "splash sparkles red " */
+    int tint;                            /* -1 = usa o tint do Effects Editor; senao indice em EffectsConfig_TintColor */
 } NotesplashEntry;
 
 typedef struct {

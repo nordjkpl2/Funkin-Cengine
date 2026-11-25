@@ -34,6 +34,11 @@ void ShaderFx_Remove(ShaderFxKind kind);                             /* tira um 
 void ShaderFx_Reset(void);                                           /* esvazia a pilha */
 int  ShaderFx_IsActive(void);                                        /* 1 = ha efeito ligado e o shader carregou */
 void ShaderFx_Present(Texture2D src, Rectangle dst, float w, float h); /* desenha o canvas em dst com a pilha */
+/* Ondulacao do fundo: fora da pilha (nao conta nos 3). Usada so nas imagens de tras do stage.
+ * SetBackgroundWave: intensidade 0 desliga. Begin/End: envolvem os desenhos (Begin retorna 1 se ligou o shader). */
+void ShaderFx_SetBackgroundWave(float intensity, float speed);
+int  ShaderFx_BeginBackgroundWave(void);
+void ShaderFx_EndBackgroundWave(void);
 void ShaderFx_Unload(void);                                          /* antes de fechar a janela */
 
 #endif /* RENDERING_SHADER_FX_H */

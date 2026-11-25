@@ -337,6 +337,27 @@ static const char kFsDepth[] =
     "    finalColor = vec4(clamp(col, 0.0, 1.0), 1.0);\n"
     "}\n";
 
+/* Ondulacao do fundo: NAO e da pilha. Roda so nas imagens da camada de tras do stage
+ * (ShaderFx_BeginBackgroundWave / EndBackgroundWave), deslocando a UV por senoides. */
+static const char kFsWave[] =
+    "#version 330\n"
+    "in vec2 fragTexCoord;\n"
+    "in vec4 fragColor;\n"
+    "uniform sampler2D texture0;\n"
+    "uniform vec4 colDiffuse;\n"
+    "uniform float uTime;\n"
+    "uniform float uAmt;\n"
+    "uniform float uAnim;\n"
+    "out vec4 finalColor;\n"
+    "void main() {\n"
+    "    float t = uTime * uAnim;\n"
+    "    vec2 uv = fragTexCoord;\n"
+    "    uv.x += sin(uv.y * 18.0 + t * 2.4) * 0.020 * uAmt;\n"
+    "    uv.y += sin(uv.x * 12.0 + t * 1.7) * 0.012 * uAmt;\n"
+    "    vec4 c = texture(texture0, uv);\n"
+    "    finalColor = c * colDiffuse * fragColor;\n"                   /* mantem tint e alpha do sprite */
+    "}\n";
+
 typedef struct {
     Shader sh;
     int locRes, locTime, locAmt, locAnim;
@@ -347,9 +368,10 @@ typedef struct {
     float lastRes[2], lastAmt, lastAnim;
 } FxSlot;
 
-#define FX_COUNT 11
+#define FX_COUNT 12
 #define FX_STACK_MAX 3       /* efeitos ao mesmo tempo */
-static FxSlot slots[FX_COUNT];   /* [0] = TV, [1] = glitch, [2] = blackness, [3] = grayscale, [4] = bloom, [5] = space, [6] = pulse, [7] = distortion, [8] = chromatic */
+#define WAVE_SLOT 11         /* ondulacao do fundo: fora da pilha (on = ligada) */
+static FxSlot slots[FX_COUNT];   /* [0] = TV, [1] = glitch, ..., [10] = depth, [11] = wave (fundo) */
 static ShaderFxKind order[FX_STACK_MAX];   /* ordem da pilha: order[0] = aplicado primeiro */
 static int orderLen;
 static char triedLoad;
@@ -385,6 +407,7 @@ static void EnsureLoaded(void) {
     FxSlot_Load(&slots[8], kFsChromatic);
     FxSlot_Load(&slots[9], kFsDissolve);
     FxSlot_Load(&slots[10], kFsDepth);
+    FxSlot_Load(&slots[WAVE_SLOT], kFsWave);
 }
 
 static int IsValidKind(ShaderFxKind k) {
@@ -519,6 +542,30 @@ void ShaderFx_Present(Texture2D src, Rectangle dst, float w, float h) {
         cur = rt->texture;
     }
     DrawPass(act[n - 1], cur, srcRect, dst, w, h);
+}
+
+void ShaderFx_SetBackgroundWave(float intensity, float speed) {
+    FxSlot* w = &slots[WAVE_SLOT];
+    const float amt = Clampf(intensity, 0.0f, 1.0f);
+    if (!gameOptions.shaders || amt <= 0.0f) { w->on = 0; return; }
+    w->amt = amt;
+    w->anim = Clampf(speed, 0.0f, 2.0f);
+    w->on = 1;
+}
+
+/* Liga o shader de ondulacao para as proximas imagens desenhadas. 1 = precisa de EndBackgroundWave. */
+int ShaderFx_BeginBackgroundWave(void) {
+    FxSlot* w = &slots[WAVE_SLOT];
+    if (!w->on) return 0;
+    EnsureLoaded();
+    if (!w->ok) return 0;
+    SetUniforms(w, 0.0f, 0.0f);   /* o shader nao usa uRes: 0 e ignorado */
+    BeginShaderMode(w->sh);
+    return 1;
+}
+
+void ShaderFx_EndBackgroundWave(void) {
+    EndShaderMode();
 }
 
 void ShaderFx_Unload(void) {

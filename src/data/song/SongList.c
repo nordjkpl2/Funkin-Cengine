@@ -463,6 +463,47 @@ static char SongList_HasChartForSong(const char *songDir)
     return Song_HasChart(path);
 }
 
+/* Conjunto de diretorios ja adicionados: tabela hash aberta com indices em entries (O(1) por musica). */
+static int *seenSlot;
+static unsigned seenMask;
+
+static unsigned Dir_Hash(const char *s)
+{
+    unsigned h = 2166136261u;
+    for (; *s; ++s) h = (h ^ (unsigned char)*s) * 16777619u;
+    return h;
+}
+
+static void Seen_Put(int idx)
+{
+    unsigned p = Dir_Hash(entries[idx].dir) & seenMask;
+    while (seenSlot[p] >= 0) p = (p + 1) & seenMask;
+    seenSlot[p] = idx;
+}
+
+static int Seen_Find(const char *dir)
+{
+    if (!seenSlot) return -1;
+    unsigned p = Dir_Hash(dir) & seenMask;
+    while (seenSlot[p] >= 0) {
+        if (strcmp(entries[seenSlot[p]].dir, dir) == 0) return seenSlot[p];
+        p = (p + 1) & seenMask;
+    }
+    return -1;
+}
+
+/* Recria a tabela com 'size' posicoes (potencia de 2) e reinsere todas as entradas. */
+static void Seen_Rebuild(unsigned size)
+{
+    int *grown = (int *)malloc(sizeof(int) * size);
+    if (!grown) return;
+    free(seenSlot);
+    seenSlot = grown;
+    seenMask = size - 1;
+    for (unsigned i = 0; i < size; ++i) seenSlot[i] = -1;
+    for (int i = 0; i < entryCount; ++i) Seen_Put(i);
+}
+
 static void Scan_Add(const char *dirPath, const char *displayName)
 {
     char normalized[256];
@@ -470,8 +511,7 @@ static void Scan_Add(const char *dirPath, const char *displayName)
     if (!SongList_HasChartForSong(dirPath)) return;
 
     Path_Normalize(dirPath, normalized, sizeof(normalized));
-    for (int i = 0; i < entryCount; ++i)
-        if (strcmp(entries[i].dir, normalized) == 0) return;
+    if (Seen_Find(normalized) >= 0) return;
 
     if (entryCount >= entryCap) {
         int newCap = entryCap ? entryCap * 2 : 16;
@@ -491,6 +531,11 @@ static void Scan_Add(const char *dirPath, const char *displayName)
     /* O oponente NAO e lido aqui (parsearia o chart inteiro de cada musica):
        quem precisa (FreeplayIcon) chama SongList_Opponent sob demanda e grava em entry->opp. */
     SongList_FindWeekIcon(Dir_BaseName(normalized), entry->weekIcon);
+
+    if (!seenSlot || (unsigned)entryCount * 2u > seenMask + 1u)
+        Seen_Rebuild(seenSlot ? (seenMask + 1u) * 2u : 256u);
+    else
+        Seen_Put(entryCount - 1);
 }
 
 static void Scan_SongFolders(const char *songsDirectory)
@@ -587,6 +632,9 @@ int SongList_Scan(SongEntry **outEntries)
     entries = NULL;
     entryCount = 0;
     entryCap = 0;
+    free(seenSlot);
+    seenSlot = NULL;
+    seenMask = 0;
 
     SongList_LoadWeekIcons("assets/weeks");
     Scan_SongFolders("assets/songs");
@@ -600,6 +648,9 @@ int SongList_Scan(SongEntry **outEntries)
     entries = NULL;
     entryCount = 0;
     entryCap = 0;
+    free(seenSlot);
+    seenSlot = NULL;
+    seenMask = 0;
     weekIconCount = 0;
     return result;
 }

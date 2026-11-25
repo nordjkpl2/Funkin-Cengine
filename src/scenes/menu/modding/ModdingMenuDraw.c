@@ -430,40 +430,47 @@ int Modding_TabHit(int i, Vector2 m)
     return CheckCollisionPointRec(m, r);
 }
 
+/* Desenha as abas em passadas por textura (fonte / formas): cada troca de textura custa um flush do batch. */
 void Modding_DrawList(void)
 {
     Modding_DrawBackground();
 
+    Vector2 pos[TAB_COUNT];
+    Color textCol[TAB_COUNT], shadowCol[TAB_COUNT];
+    float iconX[TAB_COUNT], iconSize[TAB_COUNT];
     for (int i = 0; i < TAB_COUNT; ++i) {
         const int selectedItem = (selected == i);
-        Color textColor = fontColor;
-        Color shadowColor = outlineColor;
-        const float fontSize = tabFontSize;
-        const float shadow = tabShadow;
-        Vector2 position = Modding_TabPosition(i);
-
+        textCol[i] = fontColor;
+        shadowCol[i] = outlineColor;
+        pos[i] = Modding_TabPosition(i);
         // Selecionado em verde, igual ao menu principal.
-        if (selectedItem)
-            textColor = selectedColor;
-        else
-            textColor.a = 150;
-        shadowColor.a = selectedItem ? 255 : 100;
-
-        const float iconX = position.x - shadow + TextMeasure_Get(&tabMeasure[i], mainFont, tabs[i], fontSize, 5).x + 24.0f;
+        if (selectedItem) textCol[i] = selectedColor;
+        else textCol[i].a = 150;
+        shadowCol[i].a = selectedItem ? 255 : 100;
+        iconX[i] = pos[i].x - tabShadow + TextMeasure_Get(&tabMeasure[i], mainFont, tabs[i], tabFontSize, 5).x + 24.0f;
         // icone do selecionado: maior e dentro de uma caixa verde, para destacar a aba ativa
-        const float iconSize = fontSize * (selectedItem ? 0.92f : 0.8f);
-        if (selectedItem) {
-            const Rectangle box = {iconX - 12.0f, position.y - 4.0f, iconSize + 24.0f, iconSize + 20.0f};
-            DrawRectangleRounded(box, 0.3f, 8, Fade(selectedColor, 0.18f));
-            DrawRectangleRoundedLinesEx(box, 0.3f, 8, 3.0f, selectedColor);
-        }
-        DrawTextEx(mainFont, tabs[i], position, fontSize, 5, shadowColor);
-        Modding_DrawTabIcon(i, iconX + shadow, position.y + 6.0f, iconSize, shadowColor);
-        position.x -= shadow;
-        position.y -= shadow;
-        DrawTextEx(mainFont, tabs[i], position, fontSize, 5, textColor);
-        Modding_DrawTabIcon(i, iconX, position.y + 6.0f, iconSize, textColor);
+        iconSize[i] = tabFontSize * (selectedItem ? 0.92f : 0.8f);
     }
+
+    // passada 1: formas (caixa do selecionado)
+    for (int i = 0; i < TAB_COUNT; ++i) {
+        if (selected != i) continue;
+        const Rectangle box = {iconX[i] - 12.0f, pos[i].y - 4.0f, iconSize[i] + 24.0f, iconSize[i] + 20.0f};
+        DrawRectangleRounded(box, 0.3f, 8, Fade(selectedColor, 0.18f));
+        DrawRectangleRoundedLinesEx(box, 0.3f, 8, 3.0f, selectedColor);
+    }
+    // passada 2: textos de sombra (fonte)
+    for (int i = 0; i < TAB_COUNT; ++i)
+        DrawTextEx(mainFont, tabs[i], pos[i], tabFontSize, 5, shadowCol[i]);
+    // passada 3: icones de sombra (formas)
+    for (int i = 0; i < TAB_COUNT; ++i)
+        Modding_DrawTabIcon(i, iconX[i] + tabShadow, pos[i].y + 6.0f, iconSize[i], shadowCol[i]);
+    // passada 4: textos (fonte), deslocados pela sombra
+    for (int i = 0; i < TAB_COUNT; ++i)
+        DrawTextEx(mainFont, tabs[i], (Vector2){pos[i].x - tabShadow, pos[i].y - tabShadow}, tabFontSize, 5, textCol[i]);
+    // passada 5: icones (formas)
+    for (int i = 0; i < TAB_COUNT; ++i)
+        Modding_DrawTabIcon(i, iconX[i], pos[i].y - tabShadow + 6.0f, iconSize[i], textCol[i]);
 
     Render_StopCamera();
 }

@@ -21,6 +21,13 @@ void Ed_DrawText(Font f, const char* t, Vector2 p, float size, float spacing, Co
     DrawTextEx(f, t, p, size, spacing, c);
 }
 
+/* Titulo de painel: barra de destaque colorida + texto branco. */
+void Ed_DrawHeader(float x, float y, const char* t, Color c)
+{
+    DrawRectangleRounded((Rectangle){x, y + 2, 4, 20}, 0.5f, 4, c);
+    Ed_DrawText(mainFont, t, (Vector2){x + 12, y}, 22, 1, WHITE);
+}
+
 static float backTimer = 0;
 
 NumBox* focusNum = NULL;
@@ -94,8 +101,9 @@ void TxtBox_Update(TxtBox* box, Rectangle r, char blocked) {
 }
 
 void TxtBox_Draw(TxtBox* box, Rectangle r, const char* hint) {
-    DrawRectangleRec(r, (Color) {20, 20, 20, 255});
-    DrawRectangleLinesEx(r, 1, (focusBox == box) ? GREEN : GRAY);
+    const char focused = (focusBox == box);
+    DrawRectangleRounded(r, 0.25f, 6, (Color) {16, 18, 26, 255});
+    DrawRectangleRoundedLinesEx(r, 0.25f, 6, 1.2f, focused ? GREEN : (Color) {90, 96, 120, 255});
     const char* txt = (box->buf[0] != 0) ? box->buf : hint;
     Color c = (box->buf[0] != 0) ? WHITE : (Color) {120, 120, 120, 255};
     Ed_DrawText(mainFont, txt, (Vector2) {r.x + 6, r.y + 6}, 20, 1, c);
@@ -204,8 +212,8 @@ char EdButton(Rectangle r, const char* label, int fs) {
         return 0;
     Vector2 m = EdMouseWorld();
     char hov = (m.x >= r.x && m.x <= r.x + r.width && m.y >= r.y && m.y <= r.y + r.height);
-    DrawRectangleRec(r, hov ? (Color) {60, 60, 60, 255} : (Color) {30, 30, 30, 255});
-    DrawRectangleLinesEx(r, 1, hov ? GREEN : GRAY);
+    DrawRectangleRounded(r, 0.25f, 6, hov ? (Color) {52, 58, 80, 255} : (Color) {26, 30, 42, 255});
+    DrawRectangleRoundedLinesEx(r, 0.25f, 6, 1.2f, hov ? GREEN : (Color) {90, 96, 120, 255});
     Vector2 s = TextMeasure_Get(BtnMeasureSlot(label), mainFont, label, fs, 1);
     Ed_DrawText(mainFont, label, (Vector2) {r.x + (r.width - s.x) / 2, r.y + (r.height - s.y) / 2}, fs, 1, WHITE);
     return hov && IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
@@ -224,13 +232,17 @@ char EdDropBtn(Rectangle r, char open) {
         return 0;
     Vector2 m = EdMouseWorld();
     char hov = (m.x >= r.x && m.x <= r.x + r.width && m.y >= r.y && m.y <= r.y + r.height);
-    DrawRectangleRec(r, hov ? (Color) {60, 60, 60, 255} : (Color) {30, 30, 30, 255});
-    DrawRectangleLinesEx(r, 1, hov ? GREEN : GRAY);
-    Vector2 c = {r.x + r.width / 2, r.y + r.height / 2};
-    if(open)
-        DrawTriangle((Vector2) {c.x - 7, c.y + 4}, (Vector2) {c.x + 7, c.y + 4}, (Vector2) {c.x, c.y - 5}, WHITE);
-    else
-        DrawTriangle((Vector2) {c.x - 7, c.y - 4}, (Vector2) {c.x + 7, c.y - 4}, (Vector2) {c.x, c.y + 5}, WHITE);
+    // so o realce no hover; a seta e linhas (DrawTriangle some quando o sentido dos vertices esta errado)
+    if(hov) DrawRectangleRounded(r, 0.3f, 4, (Color) {255, 255, 255, 30});
+    const Color col = hov || open ? GREEN : (Color) {200, 200, 200, 255};
+    const float cx = r.x + r.width * 0.5f, cy = r.y + r.height * 0.5f;
+    if(open) {
+        DrawLineEx((Vector2) {cx - 6, cy + 3}, (Vector2) {cx, cy - 3}, 2.5f, col);
+        DrawLineEx((Vector2) {cx, cy - 3}, (Vector2) {cx + 6, cy + 3}, 2.5f, col);
+    } else {
+        DrawLineEx((Vector2) {cx - 6, cy - 3}, (Vector2) {cx, cy + 3}, 2.5f, col);
+        DrawLineEx((Vector2) {cx, cy + 3}, (Vector2) {cx + 6, cy - 3}, 2.5f, col);
+    }
     return hov && IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
 }
 

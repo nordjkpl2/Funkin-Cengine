@@ -59,5 +59,7 @@ char EdMenuItem(Rectangle r, const char* label);
 char EdMenuItemIcon(Rectangle r, const char* label, EdIcon icon);
 // texto com sombra (legivel sobre fundo da mesma cor)
 void Ed_DrawText(Font f, const char* t, Vector2 p, float size, float spacing, Color c);
+/* Titulo de painel com barra de destaque colorida a esquerda. */
+void Ed_DrawHeader(float x, float y, const char* t, Color c);
 
 #endif

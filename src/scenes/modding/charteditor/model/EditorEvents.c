@@ -129,7 +129,7 @@ char EdEvents_Save(const char* dir) {
         }
     }
 
-    bool ok = yyjson_mut_write_file(p, doc, YYJSON_WRITE_PRETTY, NULL, NULL);
+    bool ok = yyjson_mut_write_file(p, doc, 0, NULL, NULL);  /* compacto */
     yyjson_mut_doc_free(doc);
     return ok ? 1 : 0;
 }

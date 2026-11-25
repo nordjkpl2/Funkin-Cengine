@@ -65,3 +65,7 @@ LOAD [absolute-zero] init: 1.6 ms, chart: 9.9 ms, sounds: 59.9 ms, characters: 4
 LOAD [absolute-zero] init: 0.0 ms, chart: 14.0 ms, sounds: 1.9 ms, characters: 479.8 ms, stage: 1287.5 ms, song audio: 1.6 ms, notes: 235.1 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 1765.1 ms) total: 2020.1 ms
 [WARN] ImagePrefetch: sem orcamento de memoria, carrega na hora (assets/mods/images/absolute-zeroBG.png)
 LOAD [absolute-zero] init: 0.7 ms, chart: 7.8 ms, sounds: 70.2 ms, characters: 439.9 ms, stage: 1384.7 ms, song audio: 1.7 ms, notes: 241.5 ms, ui: 11.4 ms, warmup: 0.2 ms, (textures on main thread: 1833.0 ms) total: 2158.1 ms
+[WARN] ImagePrefetch: nao e PNG valido (assets/mods/images/singularitybg.png)
+IMAGE: Failed to load image data
+LOAD [Singularity] init: 1.3 ms, chart: 125.1 ms, sounds: 90.8 ms, characters: 77.6 ms, stage: 1.4 ms, song audio: 1.8 ms, notes: 231.6 ms, ui: 9.2 ms, warmup: 0.1 ms, (textures on main thread: 82.9 ms) total: 538.8 ms
+LOAD [ampersand] init: 0.8 ms, chart: 20.5 ms, sounds: 133.0 ms, characters: 384.3 ms, stage: 17.1 ms, song audio: 3.3 ms, notes: 226.6 ms, ui: 9.9 ms, warmup: 0.2 ms, (textures on main thread: 375.7 ms) total: 795.7 ms

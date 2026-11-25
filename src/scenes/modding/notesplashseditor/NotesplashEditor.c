@@ -36,7 +36,7 @@
 #define LIST_Y 130.0f
 #define ROW_H 52.0f
 #define VALUE_X 330.0f
-#define MAX_FIELDS 6
+#define MAX_FIELDS 8
 #define SPLASH_PERIOD 0.6f
 #define TOAST_TIME 1.6f
 
@@ -44,6 +44,8 @@ typedef enum {
     FLD_ENTRY = 0,
     FLD_SHEET,
     FLD_ANIM,
+    FLD_TINT,
+    FLD_OPEN,
     FLD_SET_ACTIVE,
     FLD_NEW,
     FLD_REMOVE
@@ -229,6 +231,8 @@ static int BuildFields(Field out[MAX_FIELDS]) {
     out[n++] = (Field){FLD_SHEET, "Arquivo (atlas)", &sheetIdx, sheetCount > 0 ? sheetCount - 1 : 0};
     out[n++] = (Field){FLD_ANIM, "Animacao", &animIdx,
                        sheetCount > 0 && sheets[sheetIdx].prefixCount > 0 ? sheets[sheetIdx].prefixCount - 1 : 0};
+    out[n++] = (Field){FLD_TINT, "Cor da animacao", NULL, 0};
+    out[n++] = (Field){FLD_OPEN, "Abrir atlas (PNG)", NULL, 0};
     out[n++] = (Field){FLD_SET_ACTIVE, "Usar na gameplay", NULL, 0};
     out[n++] = (Field){FLD_NEW, "Nova entrada (copia)", NULL, 0};
     out[n++] = (Field){FLD_REMOVE, "Remover entrada", NULL, 0};
@@ -248,19 +252,52 @@ static void FormatValue(const Field* f, char* buf, size_t size) {
             if (sheetCount == 0 || sheets[sheetIdx].prefixCount == 0) snprintf(buf, size, "-");
             else snprintf(buf, size, "%s", sheets[sheetIdx].prefixes[animIdx]);
             break;
+        case FLD_TINT: {
+            const int t = draft.entries[entry].tint;
+            snprintf(buf, size, "%s", t < 0 ? "padrao (Effects)" : EffectsConfig_TintName(t));
+            break;
+        }
         case FLD_SET_ACTIVE:
             snprintf(buf, size, "%s", draft.active == entry ? "ativa" : "definir");
             break;
         case FLD_NEW:
         case FLD_REMOVE:
+        case FLD_OPEN:
         default:
             snprintf(buf, size, "ENTER");
             break;
     }
 }
 
+/* Cor da entrada: ciclo circular sobre -1 (padrao do Effects) e os tints 0..EFFECTS_TINTS-1. */
+static void CycleTint(int dir) {
+    NotesplashEntry* e = &draft.entries[entry];
+    const int slots = EFFECTS_TINTS + 1;
+    const int cur = e->tint + 1;
+    e->tint = (cur + dir % slots + slots) % slots - 1;
+    dirty = 1;
+}
+
+/* Abre o PNG do atlas com o programa padrao do sistema. */
+static void OpenAtlas(void) {
+    char tex[NOTESPLASH_PATH_MAX];
+    if (sheetCount == 0 || !NotesplashConfig_TexturePath(draft.entries[entry].animset, tex, sizeof(tex))) {
+        Toast("atlas sem PNG");
+        return;
+    }
+    char full[NOTESPLASH_PATH_MAX + 256];
+    snprintf(full, sizeof(full), "%s/%s", GetWorkingDirectory(), tex);
+    OpenURL(full);
+}
+
 static void RunAction(FieldId id) {
     switch (id) {
+        case FLD_TINT:
+            CycleTint(1);
+            break;
+        case FLD_OPEN:
+            OpenAtlas();
+            break;
         case FLD_SET_ACTIVE:
             if (draft.active == entry) return;
             draft.active = entry;
@@ -318,6 +355,7 @@ static void Cycle(const Field* f, int dir) {
 
 static void Activate(const Field* f, int dir) {
     if (f->value != NULL) Cycle(f, dir);
+    else if (f->id == FLD_TINT) CycleTint(dir);
     else RunAction(f->id);
 }
 
@@ -381,7 +419,8 @@ static void DrawPreview(void) {
 
     const float scale = (float)cfg->scalePct / 100.0f;
     const Vector2 size = AnimatedObject_Sizes(&previewObj);
-    const Color tint = EffectsConfig_TintColor(cfg->tint);
+    const int entryTint = draft.entries[entry].tint;
+    const Color tint = EffectsConfig_TintColor(entryTint >= 0 ? entryTint : cfg->tint);
     previewObj.scaleX = previewObj.scaleY = scale;
     previewObj.color = (Color){tint.r, tint.g, tint.b, (unsigned char)(cfg->alphaPct * 255 / 100)};
     previewObj.position.x = cx - size.x * scale * 0.5f + (float)cfg->offsetX;
@@ -435,6 +474,8 @@ static void Editor_Update([[maybe_unused]] RayScene* scene) {
         const int step = (shift && fields[field].id == FLD_ENTRY) ? 5 : 1;
         Field f = fields[field];
         for (int i = 0; i < step; i++) Cycle(&f, dir);
+    } else if (dir != 0 && fields[field].id == FLD_TINT) {
+        CycleTint(dir);
     }
 
     // Clique numa linha: acao executa; campo troca (metade esquerda volta, direita avanca).
@@ -464,7 +505,8 @@ static void DrawFields(const Field* fields, int n) {
         char value[80];
         FormatValue(&fields[i], value, sizeof(value));
         char shown[96];
-        if (fields[i].value != NULL) snprintf(shown, sizeof(shown), "<  %s  >", value);
+        const bool cyclable = fields[i].value != NULL || fields[i].id == FLD_TINT;
+        if (cyclable) snprintf(shown, sizeof(shown), "<  %s  >", value);
         else snprintf(shown, sizeof(shown), "[ %s ]", value);
         DrawTextEx(mainFont, shown, (Vector2){VALUE_X, y + 8.0f}, 20.0f, 1.0f, sel ? (Color){255, 220, 100, 255} : (Color){230, 230, 240, 255});
     }

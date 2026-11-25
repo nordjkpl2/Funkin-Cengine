@@ -222,8 +222,9 @@ void Edit_DrawTabs(void) {
         Rectangle r = {x0 + t * (tw + 4), y0, tw, 26};
         char active = (activeTab == t);
         char hov = (m.x >= r.x && m.x <= r.x + r.width && m.y >= r.y && m.y <= r.y + r.height);
-        DrawRectangleRec(r, active ? (Color){45,90,45,255} : hov ? (Color){60,60,60,255} : (Color){28,28,28,255});
-        DrawRectangleLinesEx(r, 1, active ? GREEN : GRAY);
+        DrawRectangleRounded(r, 0.3f, 6, active ? (Color){40,80,50,255} : hov ? (Color){52,56,72,255} : (Color){26,30,42,255});
+        DrawRectangleRoundedLinesEx(r, 0.3f, 6, 1.0f, active ? GREEN : (Color){90,96,120,255});
+        if(active) DrawRectangleRounded((Rectangle){r.x + 14, r.y + r.height - 3, r.width - 28, 3}, 0.5f, 4, GREEN);
         Vector2 s = TextMeasure_Get(&tabM[t], mainFont, ChartTab_Name(t), 18, 1);
         Ed_DrawText(mainFont, ChartTab_Name(t), (Vector2){r.x + (r.width - s.x) / 2, r.y + 4}, 18, 1, active ? GREEN : WHITE);
         // com menu aberto, as abas ficam por baixo dele: o clique e do menu (senao troca de aba e fecha o menu)
@@ -243,11 +244,13 @@ static void DrawDropField(float x, float y, float boxW, const char* label, TxtBo
                           int dropId, char blocked) {
     Ed_DrawText(mainFont, label, (Vector2){x, y + 4}, 22, 1, WHITE);
 
+    // a seta fica dentro da propria caixa (sem quadrado separado); a caixa de texto ocupa o resto
     const Rectangle field = {x + SONG_FIELD_X, y, boxW, 32};
-    TxtBox_Update(box, field, blocked);
-    TxtBox_Draw(box, field, hint);
+    const Rectangle text = {field.x, y, boxW - 28, 32};
+    TxtBox_Update(box, text, blocked);
+    TxtBox_Draw(box, text, hint);
 
-    const Rectangle button = {field.x + boxW + 6, y, 30, 32};
+    const Rectangle button = {field.x + boxW - 28, y, 28, 32};
     if(EdDropBtn(button, activeDrop == dropId)) {
         if(activeDrop == dropId) {
             activeDrop = DROP_NONE;
@@ -255,9 +258,9 @@ static void DrawDropField(float x, float y, float boxW, const char* label, TxtBo
             activeDrop = dropId;
             dropBox = box;
             dropCount = Lists_Get(dropId, &dropNames);   // scan so agora, na 1a abertura
-            dropX = button.x;
-            dropY = button.y + button.height + 4;
-            dropW = boxW + 36;
+            dropX = field.x;
+            dropY = field.y + field.height + 4;
+            dropW = boxW;
             dropJustOpened = 1;
         }
         focusBox = NULL;
@@ -287,7 +290,7 @@ static void Edit_DrawPanel_Song(float x, float y) {
     const char blocked = (ceDlg != DLG_NONE || activeDrop || menuOpen);
     const float boxW = SongFieldWidth();
 
-    Ed_DrawText(mainFont, "SONG", (Vector2){x, y}, 22, 1, GREEN);
+    Ed_DrawHeader(x, y, "SONG", GREEN);
     y += 34;
     DrawDropField(x, y, boxW, "Boyfriend:", &p1Box, "bf", DROP_BOYFRIEND, blocked);
     y += 38;
@@ -328,7 +331,7 @@ static void Edit_DrawPanel_Section(float x, float y) {
     char buf[96];
     SecFollowCursor();
     snprintf(buf, sizeof(buf), "SECTION %d/%d", secIdx + 1, chart.nsec);
-    Ed_DrawText(mainFont, buf, (Vector2){x, y}, 22, 1, GREEN);
+    Ed_DrawHeader(x, y, buf, GREEN);
     y += 32;
     Ed_DrawText(mainFont, "turn (TAB):", (Vector2){x, y + 4}, 22, 1, WHITE);
     if(EdButton((Rectangle){x + 150, y, 180, 32}, chart.secs[secIdx].mustHit ? "boyfriend" : "opponent", 20)) {
@@ -366,7 +369,7 @@ static void Edit_DrawPanel_Data(float x, float y) {
     char buf[160];
     char tbuf[32];
     SecFollowCursor();
-    Ed_DrawText(mainFont, "DATA", (Vector2){x, y}, 22, 1, GREEN);
+    Ed_DrawHeader(x, y, "DATA", GREEN);
     y += 32;
     EdTimeFmt(tbuf, sizeof(tbuf), cursorMs);
     snprintf(buf, sizeof(buf), "cursor: %s", tbuf);
@@ -396,7 +399,7 @@ static void Edit_DrawPanel_Data(float x, float y) {
 }
 
 static void Edit_DrawPanel_Charting(float x, float y) {
-    Ed_DrawText(mainFont, "CHARTING", (Vector2){x, y}, 22, 1, GREEN);
+    Ed_DrawHeader(x, y, "CHARTING", GREEN);
     y += 34;
     if(EdButton((Rectangle){x, y, 190, 40}, playing ? "PAUSAR" : "OUVIR", 22)) Audio_Toggle();
     y += 50;
@@ -419,7 +422,7 @@ static char evPickOpen;
 static char evPickShaders;  // picker abre so com os shaders de tela
 static TxtBox evSearchBox;
 static TxtBox evImgBox;     // nome da imagem do Show Image selecionado
-static TxtBox evMsBox;      // tempo (ms) editavel do Music Credit selecionado
+static TxtBox evNumBox[3];  // valores 1..3 do evento selecionado (campo de texto numerico)
 static int evSelected = -1; // indice em edEvents (-1 = nenhum)
 
 // busca sem diferenciar maiusculas (needle vazio casa tudo)
@@ -457,14 +460,39 @@ static void EvAddFromType(const PlayStateEventType* t) {
 }
 
 // seletor: lista com rolagem (linhas inteiras, igual ao menu de faixas)
-#define EV_PICK_ROW_H 58
-#define EV_PICK_ROWS 4
+#define EV_PICK_ROW_H 52
+#define EV_PICK_ROWS 6
 #define EV_PICK_LIST_H (EV_PICK_ROW_H * EV_PICK_ROWS)
-#define EV_PICK_W 340
+#define EV_PICK_W 470
+#define EV_ICON_S 30
+
+// pseudo icone do evento: quadrado arredondado com a sigla (iniciais) e cor fixa pelo nome
+static void EvDrawIcon(Rectangle r, const char* name) {
+    unsigned h = 2166136261u;
+    for(const char* p = name; *p; p++) h = (h ^ (unsigned char)*p) * 16777619u;
+    DrawRectangleRounded(r, 0.3f, 6, ColorFromHSV((float)(h % 360u), 0.5f, 0.9f));
+
+    char ab[3] = {0, 0, 0};
+    int k = 0;
+    char word = 1;
+    for(const char* p = name; *p && k < 2; p++) {
+        const char c = *p;
+        const char isLetter = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
+        if(isLetter && word) ab[k++] = (char)((c >= 'a' && c <= 'z') ? c - 32 : c);
+        word = !isLetter;
+    }
+    const float fs = 15.0f;
+    const Vector2 s = MeasureTextEx(mainFont, ab, fs, 1);
+    DrawTextEx(mainFont, ab, (Vector2){r.x + (r.width - s.x) * 0.5f, r.y + (r.height - s.y) * 0.5f}, fs, 1, (Color){20, 20, 30, 255});
+}
 static int evPickTop;                       // primeira linha visivel
 static char evPickDrag;                     // arrastando a barra
 static char evPickLastQ[sizeof(evSearchBox.buf)];  // busca anterior (muda -> volta ao topo)
 static Rectangle evPickBox;                 // area da lista (ultimo desenho), p/ roda do mouse
+#define EV_LIST_ROWS 5                      // linhas visiveis da lista de eventos da musica
+#define EV_LIST_ROW_H 32
+static int evListTop;                       // primeira linha visivel da lista da musica
+static Rectangle evListBox;                 // area da lista da musica (ultimo desenho)
 
 static char EvPickMatch(const PlayStateEventType* t) {
     if(evPickShaders && !t->usesShader) return 0;
@@ -489,6 +517,17 @@ char Edit_EventPickerWheel(float wheel) {
     int maxTop = EvPickMaxTop(EvPickCount());
     if(evPickTop < 0) evPickTop = 0;
     if(evPickTop > maxTop) evPickTop = maxTop;
+    return 1;
+}
+
+/* Roda do mouse sobre a lista de eventos da musica: rola as linhas e retorna 1. */
+char Edit_EventListWheel(float wheel) {
+    if(activeTab != TAB_EVENTS || evPickOpen || wheel == 0) return 0;
+    if(!CheckCollisionPointRec(EdMouseWorld(), evListBox)) return 0;
+    evListTop += wheel > 0 ? -1 : 1;
+    int maxTop = edEventCount > EV_LIST_ROWS ? edEventCount - EV_LIST_ROWS : 0;
+    if(evListTop < 0) evListTop = 0;
+    if(evListTop > maxTop) evListTop = maxTop;
     return 1;
 }
 
@@ -544,26 +583,34 @@ static void Edit_DrawEventPicker(float x, float y) {
     }
 
     // so desenha as linhas visiveis (linha inteira, sem corte)
+    // mesmo visual do seletor de preset (Options > Note Colors): linha com hover, clique adiciona
+    const Vector2 mouse = EdMouseWorld();
+    const bool canClick = !(ceDlg != DLG_NONE || activeDrop || menuOpen);
     int idx = 0, row = 0;
     for(int i = 0; i < playStateEventTypeCount && row < EV_PICK_ROWS; i++) {
         const PlayStateEventType* t = &playStateEventTypes[i];
         if(!EvPickMatch(t)) continue;
         if(idx++ < evPickTop) continue;
-        const float ry = y + (float)(row * EV_PICK_ROW_H) + 2;
+        const Rectangle rr = {x + 4, y + (float)(row * EV_PICK_ROW_H) + 3, EV_PICK_W - 16, EV_PICK_ROW_H - 6};
         row++;
-        if(EdButton((Rectangle){x + 4, ry, EV_PICK_W - 20, 32}, t->name, 20)) {
+        const bool hov = canClick && CheckCollisionPointRec(mouse, rr);
+        DrawRectangleRounded(rr, 0.25f, 6, hov ? (Color){52, 60, 86, 255} : (Color){28, 32, 46, 255});
+        if(hov) DrawRectangleRoundedLinesEx(rr, 0.25f, 6, 1.5f, GREEN);
+        EvDrawIcon((Rectangle){rr.x + 8, rr.y + (rr.height - EV_ICON_S) * 0.5f, EV_ICON_S, EV_ICON_S}, t->name);
+
+        DrawTextEx(mainFont, t->name, (Vector2){rr.x + 50, rr.y + 5}, 20, 1, hov ? GREEN : WHITE);
+        // descricao: encolhe a fonte se nao cabe na largura (nao vaza pra fora da caixa)
+        const float maxW = rr.width - 60.0f;
+        float fs = 15.0f;
+        const float tw = MeasureTextEx(mainFont, t->description, fs, 1).x;
+        if(tw > maxW) fs = fmaxf(10.0f, fs * maxW / tw);
+        DrawTextEx(mainFont, t->description, (Vector2){rr.x + 50, rr.y + 28}, fs, 1, (Color){255, 214, 80, 255});
+
+        if(hov && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             EvAddFromType(t);
             EvClosePicker();
             return;
         }
-        // descricao: encolhe a fonte se nao cabe na largura (nao vaza pra fora da caixa)
-        const float maxW = EV_PICK_W - 24.0f;
-        float fs = 16.0f;
-        const float tw = MeasureTextEx(mainFont, t->description, fs, 1).x;
-        if(tw > maxW) fs = fmaxf(10.0f, fs * maxW / tw);
-        DrawTextEx(mainFont, t->description, (Vector2){x + 8, ry + 36}, fs, 1, (Color){255, 214, 80, 255});
-        // separador entre as linhas
-        DrawRectangle((int)(x + 8), (int)(ry + EV_PICK_ROW_H - 4), EV_PICK_W - 24, 1, (Color){60, 70, 90, 255});
     }
 }
 
@@ -587,9 +634,31 @@ static void EvStepInt(char* field, size_t n, int delta, int lo, int hi) {
     }
 }
 
+/* Campo numerico editavel: digitando, so digitos (e '-' no inicio) vao para o evento; fora do campo, limita a faixa. */
+static void EvNumField(int slot, Rectangle r, char* field, size_t n, int lo, int hi) {
+    TxtBox* b = &evNumBox[slot];
+    TxtBox_Update(b, r, (ceDlg != DLG_NONE || activeDrop || menuOpen));
+    TxtBox_Draw(b, r, "");
+    if(focusBox == b) {
+        char dig[16];
+        size_t k = 0;
+        for(const char* p = b->buf; *p != 0 && k < sizeof(dig) - 1; p++)
+            if((*p >= '0' && *p <= '9') || (*p == '-' && k == 0)) dig[k++] = *p;
+        dig[k] = 0;
+        if(strcmp(dig, b->buf) != 0) snprintf(b->buf, sizeof(b->buf), "%s", dig);
+        if(k > 0 && strcmp(dig, field) != 0) {
+            snprintf(field, n, "%s", dig);
+            chart.dirty = 1;
+        }
+    } else {
+        EvStepInt(field, n, 0, lo, hi);
+        snprintf(b->buf, sizeof(b->buf), "%s", field);
+    }
+}
+
 static void Edit_DrawPanel_Events(float x, float y) {
     char tb[96];
-    Ed_DrawText(mainFont, "EVENTS", (Vector2){x, y}, 22, 1, GREEN);
+    Ed_DrawHeader(x, y, "EVENTS", GREEN);
     y += 34;
     EdTimeFmt(tb, sizeof(tb), cursorMs);
     char curBuf[96];
@@ -634,21 +703,39 @@ static void Edit_DrawPanel_Events(float x, float y) {
 
     Ed_DrawText(mainFont, "eventos da musica:", (Vector2){x, y}, 20, 1, GREEN);
     y += 28;
-    int shown = 0;
-    for(int i = 0; i < edEventCount && y < 600; i++) {
+    // lista com rolagem (roda do mouse): so EV_LIST_ROWS linhas por vez, com barra lateral
+    const float listTop = y;
+    const int maxTop = edEventCount > EV_LIST_ROWS ? edEventCount - EV_LIST_ROWS : 0;
+    if(evListTop > maxTop) evListTop = maxTop;
+    if(evListTop < 0) evListTop = 0;
+    const int rowsDrawn = (edEventCount - evListTop < EV_LIST_ROWS) ? edEventCount - evListTop : EV_LIST_ROWS;
+    evListBox = (Rectangle){x - 6, listTop - 4, 392, EV_LIST_ROWS * EV_LIST_ROW_H + 8};
+    DrawRectangleRounded(evListBox, 0.08f, 6, (Color){14, 16, 24, 170});
+    for(int k = 0; k < rowsDrawn; k++) {
+        const int i = evListTop + k;
+        const float ry = listTop + k * EV_LIST_ROW_H;
         char row[120];
         snprintf(row, sizeof(row), "%.0fms  %s", edEvents[i].time, edEvents[i].name);
-        if(EdButton((Rectangle){x, y, 300, 28}, row, 18)) evSelected = (evSelected == i) ? -1 : i;
-        if(EdButton((Rectangle){x + 310, y, 36, 28}, "X", 18)) {
+        if(evSelected == i)  // linha selecionada: fundo verde suave
+            DrawRectangleRounded((Rectangle){x - 2, ry - 2, 352, 30}, 0.25f, 6, (Color){60, 120, 80, 140});
+        EvDrawIcon((Rectangle){x, ry, 28, 28}, edEvents[i].name);
+        if(EdButton((Rectangle){x + 34, ry, 266, 28}, row, 18)) evSelected = (evSelected == i) ? -1 : i;
+        if(EdButton((Rectangle){x + 310, ry, 36, 28}, "X", 18)) {
             EdEvent_RemoveAt(i);
             if(evSelected == i) evSelected = -1;
             else if(evSelected > i) evSelected--;
             chart.dirty = 1;
             return;
         }
-        y += 32;
-        shown++;
     }
+    if(edEventCount > EV_LIST_ROWS) {  // barra de rolagem: trilho + alca proporcional
+        const float trackY = listTop, trackH = EV_LIST_ROWS * EV_LIST_ROW_H - 4;
+        const float thumbH = trackH * EV_LIST_ROWS / edEventCount;
+        const float thumbY = trackY + (trackH - thumbH) * evListTop / maxTop;
+        DrawRectangleRounded((Rectangle){x + 370, trackY, 6, trackH}, 0.5f, 4, (Color){50, 54, 70, 255});
+        DrawRectangleRounded((Rectangle){x + 370, thumbY, 6, thumbH}, 0.5f, 4, (Color){120, 200, 140, 255});
+    }
+    y = listTop + rowsDrawn * EV_LIST_ROW_H;
     if(edEventCount == 0) Ed_DrawText(mainFont, "(nenhum)", (Vector2){x, y + 4}, 18, 1, YELLOW);
     y += 40;
 
@@ -682,51 +769,18 @@ static void Edit_DrawPanel_Events(float x, float y) {
 
         Ed_DrawText(mainFont, lab1, (Vector2){x, y + 4}, 20, 1, WHITE);
         if(EdButton((Rectangle){x + 110, y, 36, 32}, "-", 22)) EvStepInt(e->v1, sizeof(e->v1), -st1, lo1, hi1);
+        EvNumField(0, (Rectangle){x + 150, y, 86, 32}, e->v1, sizeof(e->v1), lo1, hi1);
         if(EdButton((Rectangle){x + 250, y, 36, 32}, "+", 22)) EvStepInt(e->v1, sizeof(e->v1), st1, lo1, hi1);
+        // Music Credit: tempo em ms; "++" soma 100
         const char msCredit = (t != NULL && strcmp(t->name, "Music Credit") == 0);
-        if(msCredit) {
-            // tempo editavel (so digitos); "++" soma 100
-            static int msSel = -2;
-            static int msGen = -1;
-            if(msSel != evSelected || msGen != edEventsGen) {
-                msSel = evSelected;
-                msGen = edEventsGen;
-                snprintf(evMsBox.buf, sizeof(evMsBox.buf), "%s", e->v1);
-            }
-            Rectangle mr = {x + 156, y, 86, 32};
-            const char msBlocked = (ceDlg != DLG_NONE || activeDrop || menuOpen);
-            TxtBox_Update(&evMsBox, mr, msBlocked);
-            TxtBox_Draw(&evMsBox, mr, "ms");
-            if(focusBox == &evMsBox) {
-                // digitando: so digitos vao para v1
-                char dig[16];
-                size_t k = 0;
-                for(const char* p = evMsBox.buf; *p != 0 && k < sizeof(dig) - 1; p++)
-                    if(*p >= '0' && *p <= '9') dig[k++] = *p;
-                dig[k] = 0;
-                if(strcmp(dig, evMsBox.buf) != 0) snprintf(evMsBox.buf, sizeof(evMsBox.buf), "%s", dig);
-                if(k > 0 && strcmp(dig, e->v1) != 0) {
-                    snprintf(e->v1, sizeof(e->v1), "%s", dig);
-                    chart.dirty = 1;
-                }
-            } else {
-                // fora do campo: limita a faixa e mostra o valor real (inclui +/- e ++)
-                EvStepInt(e->v1, sizeof(e->v1), 0, lo1, hi1);
-                snprintf(evMsBox.buf, sizeof(evMsBox.buf), "%s", e->v1);
-            }
-            if(EdButton((Rectangle){x + 294, y, 46, 32}, "++", 20)) EvStepInt(e->v1, sizeof(e->v1), 100, lo1, hi1);
-        } else {
-            snprintf(tb, sizeof(tb), "%s", e->v1);
-            Ed_DrawText(mainFont, tb, (Vector2){x + 156, y + 4}, 20, 1, WHITE);
-        }
+        if(msCredit && EdButton((Rectangle){x + 294, y, 46, 32}, "++", 20)) EvStepInt(e->v1, sizeof(e->v1), 100, lo1, hi1);
         y += 40;
 
         if(!chr && !txt) {
             Ed_DrawText(mainFont, lab2, (Vector2){x, y + 4}, 20, 1, WHITE);
             if(EdButton((Rectangle){x + 110, y, 36, 32}, "-", 22)) EvStepInt(e->v2, sizeof(e->v2), -st2, lo2, hi2);
+            EvNumField(1, (Rectangle){x + 150, y, 86, 32}, e->v2, sizeof(e->v2), lo2, hi2);
             if(EdButton((Rectangle){x + 250, y, 36, 32}, "+", 22)) EvStepInt(e->v2, sizeof(e->v2), st2, lo2, hi2);
-            snprintf(tb, sizeof(tb), "%s", e->v2);
-            Ed_DrawText(mainFont, tb, (Vector2){x + 156, y + 4}, 20, 1, WHITE);
             y += 40;
         }
 
@@ -734,9 +788,8 @@ static void Edit_DrawPanel_Events(float x, float y) {
             Ed_DrawText(mainFont, t->label3, (Vector2){x, y + 4}, 20, 1, WHITE);
             const int lo3 = cam ? -4000 : 10;  // Camera Move: y aceita negativo
             if(EdButton((Rectangle){x + 110, y, 36, 32}, "-", 22)) EvStepInt(e->v3, sizeof(e->v3), -10, lo3, 1000);
+            EvNumField(2, (Rectangle){x + 150, y, 86, 32}, e->v3, sizeof(e->v3), lo3, 1000);
             if(EdButton((Rectangle){x + 250, y, 36, 32}, "+", 22)) EvStepInt(e->v3, sizeof(e->v3), 10, lo3, 1000);
-            snprintf(tb, sizeof(tb), "%s", e->v3);
-            Ed_DrawText(mainFont, tb, (Vector2){x + 156, y + 4}, 20, 1, WHITE);
             y += 40;
         }
 
@@ -815,20 +868,28 @@ void Edit_DrawPanel(void) {
     else if(activeTab == TAB_DATA) Edit_DrawPanel_Data(x, y + 30);
     else if(activeTab == TAB_CHARTING) Edit_DrawPanel_Charting(x, y + 30);
     else Edit_DrawPanel_Events(x, y + 30);
-    // ajuda no espaco de baixo, sem bloco: limao com sombra p/ destacar no fundo roxo
-    {
-        Color help = (Color){190, 255, 90, 255};
-        Color shade = (Color){0, 0, 0, 200};
-        const char* hs[4] = {
-            "space play  F5 test  CTRL+S save  TAB turn  T grid",
-            "W/S scroll  N/X part  C/V copy/paste  ,/. bpm  ESC list",
-            "click adds  right-click deletes  wheel = scroll",
-            "G/H prev/next part  HOME goto part start"
-        };
-        float hy[4] = {648, 668, 688, 708};
-        for(int hi = 0; hi < 4; hi++) {
-            Ed_DrawText(mainFont, hs[hi], (Vector2){PANEL_X + 2, hy[hi] + 2}, 15, 1, shade);
-            Ed_DrawText(mainFont, hs[hi], (Vector2){PANEL_X, hy[hi]}, 15, 1, help);
-        }
-    }
+    // linha de ajuda enxuta: so aponta o TAB; a lista completa abre no overlay
+    Ed_DrawText(mainFont, "TAB = atalhos", (Vector2){PANEL_X, 690}, 18, 1, (Color){190, 255, 90, 255});
+}
+
+/* Overlay de atalhos: TAB abre/fecha, fundo preto cobrindo a tela. */
+static char edHelpOpen = 0;
+static const char* const edHelpLines[] = {
+    "space play   F5 test   CTRL+S save   Q turn   T grid",
+    "W/S scroll   N/X part   C/V copy/paste   ,/. bpm   ESC list",
+    "click adds   right-click deletes   wheel = scroll",
+    "G/H prev/next part   HOME goto part start"
+};
+
+void Edit_ToggleHelp(void) {
+    edHelpOpen = !edHelpOpen;
+}
+
+void Edit_DrawHelpOverlay(void) {
+    if(!edHelpOpen) return;
+    DrawRectangle(0, 0, 1280, 720, (Color){0, 0, 0, 255});
+    Ed_DrawHeader(120, 120, "ATALHOS", GREEN);
+    for(int i = 0; i < 4; i++)
+        Ed_DrawText(mainFont, edHelpLines[i], (Vector2){120, 190 + i * 44}, 26, 1, WHITE);
+    Ed_DrawText(mainFont, "TAB fecha", (Vector2){120, 420}, 20, 1, YELLOW);
 }

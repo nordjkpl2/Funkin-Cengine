@@ -103,7 +103,8 @@ void PlayStateNoteSplash_Spawn(int lane, char bfSide) {
     o->animationSet = splashSet;
     o->scaleX = scale;
     o->scaleY = scale;
-    const Color tint = EffectsConfig_TintColor(cfg->tint);
+    const int entryTint = NotesplashConfig_Active()->tint;
+    const Color tint = EffectsConfig_TintColor(entryTint >= 0 ? entryTint : cfg->tint);
     o->color = (Color){tint.r, tint.g, tint.b, (unsigned char)(cfg->alphaPct * 255 / 100)};
     o->position.x = strum->position.x + strumSize.x * 0.5f - halfW + (float)cfg->offsetX;
     o->position.y = strum->position.y + strumSize.y * 0.5f - halfH + (float)cfg->offsetY;

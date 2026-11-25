@@ -11,6 +11,7 @@
 #include "core/ModPath.h"
 #include "core/Log.h"
 #include "rendering/cpu/ImagePrefetch.h"
+#include "rendering/shaders/ShaderFx.h"
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
@@ -359,6 +360,9 @@ void PlayStateStage_Load(PlayStateStage* stage, const char* stageName, const cha
 
 void PlayStateStage_DrawBack(PlayStateStage* stage, char paused)
 {
+    /* Ondulacao do fundo (evento "Shader Wave"): so esta camada, fora da pilha de shaders. */
+    const int wave = ShaderFx_BeginBackgroundWave();
+
     for (int i = 0; i < stage->backgroundObjects; i++)
         Render_DrawGraphicObject(stage->objects + i);
 
@@ -366,6 +370,8 @@ void PlayStateStage_DrawBack(PlayStateStage* stage, char paused)
         if (!paused) AnimatedObject_UpdateFrame(stage->animObjects + i);
         Render_DrawAnimatedObject(stage->animObjects + i);
     }
+
+    if (wave) ShaderFx_EndBackgroundWave();
 }
 
 void PlayStateStage_DrawFront(PlayStateStage* stage, char paused)

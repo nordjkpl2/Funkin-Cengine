@@ -72,6 +72,7 @@ static int* pickShown;        // indices de pickerSongs que passam no filtro
 static int pickShownCount;
 static Texture2D* pickIcons;  // um por musica (id 0 = ainda nao carregou / sem icone)
 static unsigned char* pickTried;
+static int pickWinLo = 0, pickWinHi = -1; // janela (posicoes em pickShown) com icones tratados
 
 static void Picker_FreeIcons(void) {
     if(pickIcons) {
@@ -82,6 +83,21 @@ static void Picker_FreeIcons(void) {
     free(pickTried);
     pickIcons = NULL;
     pickTried = NULL;
+    pickWinLo = 0;
+    pickWinHi = -1;
+}
+
+// Solta todos os icones carregados (usado quando o filtro muda as posicoes)
+static void Picker_ResetIcons(void) {
+    if(pickIcons) {
+        for(int i = 0; i < pickerCount; i++) {
+            if(pickIcons[i].id != 0) UnloadTexture(pickIcons[i]);
+            pickIcons[i] = (Texture2D) {0};
+            pickTried[i] = 0;
+        }
+    }
+    pickWinLo = 0;
+    pickWinHi = -1;
 }
 
 void Picker_Free(void) {
@@ -93,6 +109,7 @@ void Picker_Free(void) {
 }
 
 static void Picker_ApplyFilter(void) {
+    Picker_ResetIcons();
     pickShownCount = 0;
     for(int i = 0; i < pickerCount; i++)
         if(SearchBox_Match(&pickSearch, pickerSongs[i].name))
@@ -126,22 +143,31 @@ void Picker_Refresh(void) {
 
 // carrega no maximo 1 icone por frame (le disco) e solta os que ficaram longe
 static void Picker_StreamIcons(void) {
-    if(!pickIcons) return;
+    if(!pickIcons || pickShownCount <= 0) return;
     const int center = pickerSel - 1; // posicao na lista filtrada
-    bool loadedOne = false;
-    for(int k = 0; k < pickShownCount; k++) {
+    int lo = center - PICK_ICON_KEEP;
+    int hi = center + PICK_ICON_KEEP;
+    if(lo < 0) lo = 0;
+    if(hi > pickShownCount - 1) hi = pickShownCount - 1;
+    // solta so o que saiu da janela desde a ultima vez (custo proporcional a janela, nao a lista)
+    for(int k = pickWinLo; k <= pickWinHi; k++) {
+        if(k >= lo && k <= hi) continue;
         const int idx = pickShown[k];
-        const int dist = abs(k - center);
-        if(dist > PICK_ICON_KEEP) {
-            if(pickIcons[idx].id != 0) {
-                UnloadTexture(pickIcons[idx]);
-                pickIcons[idx] = (Texture2D) {0};
-            }
-            pickTried[idx] = 0;
-        } else if(!loadedOne && !pickTried[idx]) {
+        if(pickIcons[idx].id != 0) {
+            UnloadTexture(pickIcons[idx]);
+            pickIcons[idx] = (Texture2D) {0};
+        }
+        pickTried[idx] = 0;
+    }
+    pickWinLo = lo;
+    pickWinHi = hi;
+    // carrega no maximo 1 icone por frame, o primeiro pendente da janela
+    for(int k = lo; k <= hi; k++) {
+        const int idx = pickShown[k];
+        if(!pickTried[idx]) {
             pickTried[idx] = 1;
             pickIcons[idx] = FreeplayIcon_Resolve(&pickerSongs[idx]);
-            loadedOne = true;
+            break;
         }
     }
 }
@@ -585,7 +611,7 @@ static bool Picker_RowGeom(int i, PickRow* r) {
     r->fill.a = (pickerSel == i) ? 255 : 150;
     r->out.a = (pickerSel == i) ? 255 : 100;
     if(i == 0) r->fill = (pickerSel == 0) ? GREEN : (Color) {150, 255, 150, 150};
-    r->hasBox = i > 0;
+    r->hasBox = i > 0 && pickerSel == i;   // so a selecionada mostra o icone; as outras ficam so com o nome
     if(r->hasBox) {
         r->a = (pickerSel == i) ? 255 : 150;
         r->fr = (Rectangle) {iconX - 6.0f, y - 4.0f, PICK_ICON_SIZE + 12.0f, PICK_ICON_SIZE + 12.0f};
@@ -622,7 +648,10 @@ void Picker_Draw(void) {
             (Color) {255, 255, 255, rows[k].a});
     }
     // Passada 3: textos (titulo, "?", nomes, mensagens e dica), todos com a textura da fonte.
-    DrawTextEx(mainFont, "song selector", (Vector2) {150, 60}, 48, 4, WHITE);
+    // cartao escuro atras da lista + titulo com barra de destaque
+    DrawRectangleRounded((Rectangle) {130, 40, 780, 650}, 0.04f, 8, (Color) {8, 10, 18, 170});
+    DrawRectangleRounded((Rectangle) {150, 56, 6, 40}, 0.5f, 4, GREEN);
+    DrawTextEx(mainFont, "song selector", (Vector2) {166, 60}, 48, 4, WHITE);
     for(int k = 0; k < n; ++k) {
         const PickRow* r = &rows[k];
         if(r->hasBox && r->icon.id == 0) {
@@ -636,8 +665,9 @@ void Picker_Draw(void) {
     }
     if(pickShownCount == 0 && pickerCount > 0)
         DrawTextEx(mainFont, "nenhuma musica encontrada", (Vector2) {260, 400}, 32, 2, (Color) {255, 200, 120, 255});
+    DrawRectangleRounded((Rectangle) {140, 684, 760, 28}, 0.4f, 6, (Color) {20, 24, 36, 220});
     DrawTextEx(mainFont, "ENTER open   R update   N new   arraste um .json pra ca   ESC return",
-        (Vector2) {150, 690}, 20, 1, (Color) {200, 200, 200, 255});
+        (Vector2) {156, 689}, 20, 1, (Color) {200, 200, 200, 255});
 
     // Caixas de busca e botoes por ultimo (formas e textos proprios).
     SearchBox_Draw(&pickSearch, mainFont);

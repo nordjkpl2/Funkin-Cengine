@@ -215,6 +215,10 @@ static void Edit_UpdateKeys(void) {
         return;
     }
     if(IsKeyPressed(KEY_TAB)) {
+        Edit_ToggleHelp();
+        return;
+    }
+    if(IsKeyPressed(KEY_Q)) {  // TAB virou atalhos; a troca de quem canta fica no Q
         EdTouchSec(secIdx);
         chart.secs[secIdx].mustHit = !chart.secs[secIdx].mustHit;
         EdStatusMsg(chart.secs[secIdx].mustHit ? "Turn: You" : "Turn: Opponent");
@@ -396,7 +400,7 @@ static void Edit_Update(void) {
 
     // roda do mouse = sobe/desce
     float wheel = GetMouseWheelMove();
-    if(wheel != 0 && !Edit_EventPickerWheel(wheel)) {
+    if(wheel != 0 && !Edit_EventPickerWheel(wheel) && !Edit_EventListWheel(wheel)) {
         Vector2 m = EdMouseWorld();
         int shift = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
         int ctrl = IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL);
@@ -446,6 +450,7 @@ static void Edit_Draw(void) {
     Edit_DrawPanel();
     Edit_DrawMenuBar();
     CharDrop_Draw();
+    Edit_DrawHelpOverlay();
     Render_StopCamera();
 }
 

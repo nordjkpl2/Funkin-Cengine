@@ -49,7 +49,8 @@ const PlayStateEventType playStateEventTypes[] = {
     {"Shader Chromatic", "aberracao cromatica: separa vermelho e azul do centro (intensidade % = forca, animacao % = pulso)", 50, 0, 0, "intensidade %:", "animacao %:", NULL, 0, 1},
     {"Shader Dissolve", "dissolver: pedacos da tela somem por ruido, borda laranja (intensidade % = quanto sumiu, animacao % = velocidade)", 50, 0, 0, "intensidade %:", "animacao %:", NULL, 0, 1},
     {"Shader Depth", "profundidade: paralaxe pelo brilho + nevoa no fundo (intensidade % = forca, animacao % = balanco da camera)", 50, 0, 0, "intensidade %:", "animacao %:", NULL, 0, 1},
-    {"Shader Off",    "desliga o shader de tela", 0, 0, 0, NULL, NULL, NULL, 0, 1},
+    {"Shader Wave",   "ondulacao do fundo do stage (nao conta nos 3 shaders; intensidade % = forca, animacao % = velocidade)", 50, 0, 0, "intensidade %:", "animacao %:", NULL, 0, 1},
+    {"Shader Off",    "desliga o shader de tela e a ondulacao do fundo", 0, 0, 0, NULL, NULL, NULL, 0, 1},
     {"Camera Parallax", "camera 3D: afasta (zoom out) e balanca em profundidade (0 desliga)", 100, 0, 0, "intensidade %:", "velocidade %:", NULL, 0, 0},
     {CAMERA_MOVE_NAME, "camera: zoom % (100 = normal), x e y em px do mundo (transicao suave)", 100, 0, 0, "zoom %:", "x (px):", "y (px):", 0, 0},
     {CHANGE_CHAR_NAME, "troca o personagem: 0=oponente 1=bf 2=gf (nome do personagem)", 0, 0, 0, "alvo (0/1/2):", NULL, NULL, 0, 0, 1},
@@ -172,7 +173,8 @@ void PlayStateEvents_ApplyShader(const char* name, double intensityPct, double a
     else if (strcmp(name, "Shader Chromatic") == 0) ShaderFx_Push(SHADERFX_CHROMATIC, amt, spd);
     else if (strcmp(name, "Shader Dissolve") == 0) ShaderFx_Push(SHADERFX_DISSOLVE, amt, spd);
     else if (strcmp(name, "Shader Depth") == 0) ShaderFx_Push(SHADERFX_DEPTH, amt, spd);
-    else if (strcmp(name, "Shader Off") == 0) ShaderFx_Reset();
+    else if (strcmp(name, "Shader Wave") == 0) ShaderFx_SetBackgroundWave(amt, spd);   /* fora da pilha */
+    else if (strcmp(name, "Shader Off") == 0) ShaderFx_Reset();                        /* limpa pilha e ondulacao */
 }
 
 static void Fire(const PsEvent* e) {
