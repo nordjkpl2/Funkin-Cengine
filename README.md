@@ -124,6 +124,8 @@ It’s being developed by me, and I’m writing the code from scratch, so it mig
 
   > community fan made
 
+  > less memory ram and resources use (i think)
+
   </details>
 
 <div align="left">
