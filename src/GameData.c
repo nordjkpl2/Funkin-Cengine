@@ -88,12 +88,19 @@ static const SaveField saveFields[] = {
     SAVE_FIELD(27, noteSplashes,       1,                    0,                  1),
     { 28, game_scheme_keys[SCHEME_CUSTOM], (uint16_t)sizeof(game_scheme_keys[SCHEME_CUSTOM]), SF_RAW, 0, 0, 0 },
     SAVE_FIELD(29, shaders,            1,                    0,                  1),
+    SAVE_FIELD(30, coopOn,             0,                    0,                  1),
+    SAVE_FIELD(31, playAsOpponent,     0,                    0,                  1),
+    { 32, gameOptions.coopName, (uint16_t)sizeof(gameOptions.coopName), SF_RAW, 0, 0, 0 },
+    { 33, gameOptions.coopKeys, (uint16_t)sizeof(gameOptions.coopKeys), SF_RAW, 0, 0, 0 },
 };
 #define SAVE_FIELD_COUNT (sizeof(saveFields) / sizeof(saveFields[0]))
 
 /* ------------------------------------------------------------------ */
 /* Padroes e validacao                                                 */
 /* ------------------------------------------------------------------ */
+
+/* Teclas padrao do Co-Op: jogador 1 = WASD, jogador 2 = DFJK. */
+static const int coopDefaultKeys[2][4] = {{KEY_A, KEY_S, KEY_W, KEY_D}, {KEY_D, KEY_F, KEY_J, KEY_K}};
 
 static void GameData_Defaults(void) {
     gameDisabledModCount = 0;
@@ -103,6 +110,7 @@ static void GameData_Defaults(void) {
     game_scheme_keys[SCHEME_CUSTOM][3] = KEY_RIGHT;
 
     memset(&gameOptions, 0, sizeof(gameOptions));
+    memcpy(gameOptions.coopKeys, coopDefaultKeys, sizeof(coopDefaultKeys));
     for (size_t i = 0; i < SAVE_FIELD_COUNT; i++) {
         const SaveField* f = &saveFields[i];
         switch (f->kind) {
@@ -200,6 +208,12 @@ static void GameData_SanitizeRaw(void) {
     for (int k = 0; k < 4; k++)
         if (game_scheme_keys[SCHEME_CUSTOM][k] <= 0)
             game_scheme_keys[SCHEME_CUSTOM][k] = defaultArrows[k];
+
+    for (int p = 0; p < 2; p++) {
+        o->coopName[p][COOP_NAME_MAX - 1] = 0;
+        for (int k = 0; k < 4; k++)
+            if (o->coopKeys[p][k] <= 0) o->coopKeys[p][k] = coopDefaultKeys[p][k];
+    }
 }
 
 static void GameData_Sanitize(void) {

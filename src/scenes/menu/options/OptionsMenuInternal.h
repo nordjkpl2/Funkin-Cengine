@@ -11,6 +11,7 @@
 #include "threads/cpu/Jobs.h"
 #include "widgets-and-menus-ui/SearchBox.h"
 #include <stdbool.h>
+#include <stddef.h>
 
 #define SCREEN_H 720.0f
 
@@ -199,6 +200,7 @@ typedef enum {
     OPTION_BOTPLAY,
     OPTION_HITSOUND_BOTPLAY,
     OPTION_HEALTH_DRAIN_BOTPLAY,
+    OPTION_GAMEPLAY_EXTRA,
     OPTION_HORIZONTAL_MENU,
     OPTION_HEADER_MUSIC,
     OPTION_MENU_MUSIC,
@@ -241,6 +243,7 @@ void Tab_Step(int dir);
 void Options_ResetToDefault(void);
 
 /* OptionsMenuScreens.c */
+void Options_KeyName(int key, char* out, size_t size); /* nome curto da tecla (A, SPACE, LEFT...) */
 void Capture_Begin(void);
 void Capture_Update(void);
 void Capture_Draw(void);
@@ -255,6 +258,11 @@ void NoteColorScreen_Destroy(void);
 void NoteColors_DrawLanePreview(int lane, float cx, float cy, float scale);  /* nota + receptor reais da skin */
 void NoteColors_ReleaseFx(void);
 void NoteColors_DrawNoteIcon(int lane, float cx, float cy, float scale);   /* so a nota (com a cor da coluna) */
+/* OptionsMenuGameplayExtra.c: tela Gameplay Extra (Co-Op e Play as) */
+extern bool gameplayExtraScreen;
+void GameplayExtra_Begin(void);
+void GameplayExtra_Update(void);
+void GameplayExtra_Draw(void);
 
 /* OptionsMenuIcons.c */
 void DrawOptionText(const char* text, float x, float y, int fontSize, Color fill, Color shadow);

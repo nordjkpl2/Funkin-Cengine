@@ -30,6 +30,9 @@ void PlayStateHealth_SetCharacterColors(const Character* dad, const Character* b
 
 /* Soma delta (positivo ou negativo). O topo e limitado a 1; abaixo de 0 = morte (so se mortal). */
 void PlayStateHealth_Add(float delta);
+/* Ganho (delta > 0) ou perda do lado do BF (bfSide = 1) ou do oponente (bfSide = 0). No Co-Op a barra e a do BF:
+   o lado do oponente mexe ao contrario (acerto do oponente tira vida do BF). Fora do Co-Op e igual a PlayStateHealth_Add. */
+void PlayStateHealth_AddForSide(float delta, char bfSide);
 /* Perda do drain do oponente: nunca leva a vida abaixo de 0 (nao mata). */
 void PlayStateHealth_Drain(float delta);
 char PlayStateHealth_IsDead(void);

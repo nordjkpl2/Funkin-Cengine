@@ -26,13 +26,16 @@ void PlayStateStrums_ConfirmDad(int lane);
 void PlayStateStrums_ConfirmBf(int lane);
 
 /* Anima os receptores do BF a partir das teclas deste frame. */
-void PlayStateStrums_ApplyInput(const PlayStatePlayerKeys* keys);
+void PlayStateStrums_ApplyInput(const PlayStatePlayerKeys* keys, char bfSide);
+
+/* Co-Op: nome dos jogadores acima dos receptores do BF e do oponente (desenhar no HUD). */
+void PlayStateStrums_DrawSideNames(const char* bfName, const char* dadName);
 
 /* Fundo do HUD (chamar antes de tudo): faixa preta dos receptores. */
 void PlayStateStrums_DrawBackdrop(void);
 
 /* Glow do monitor de teclas (Keys Monitor): chamar todo frame com keyDown[4] (zerado no botplay). */
-void PlayStateStrums_UpdateGlow(const char* keyDown);
+void PlayStateStrums_UpdateGlow(const PlayStatePlayerKeys* keys); /* keys[0] e keys[1] (jogador 1 e 2) */
 
 /* Monitor de teclas no canto superior direito (so com Keys Monitor ligado). Desenhar por cima das notas. */
 void PlayStateStrums_DrawKeyMonitor(void);

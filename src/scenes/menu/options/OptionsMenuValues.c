@@ -67,6 +67,7 @@ Option options[OPTION_COUNT] = {
     [OPTION_BOTPLAY] = {.text = "Botplay", .type = OPTION_VALUE_BOOL},
     [OPTION_HITSOUND_BOTPLAY] = {.text = "Hit Sound (Botplay)", .type = OPTION_VALUE_BOOL},
     [OPTION_HEALTH_DRAIN_BOTPLAY] = {.text = "Health Drain (Botplay)", .type = OPTION_VALUE_BOOL},
+    [OPTION_GAMEPLAY_EXTRA] = {.text = "Gameplay Extra", .type = OPTION_VALUE_ACTION},
     [OPTION_HORIZONTAL_MENU] = {.text = "Horizontal Menu", .type = OPTION_VALUE_BOOL},
     [OPTION_HEADER_MUSIC] = {.text = "[Musica]", .type = OPTION_VALUE_HEADER},
     [OPTION_MENU_MUSIC] = {.text = "Track", .type = OPTION_VALUE_LIST, .step = 1, .min = 0}, // options/max: Create

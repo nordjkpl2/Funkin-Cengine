@@ -15,7 +15,7 @@ void PlayStateNoteSplash_Load(void);
 void PlayStateNoteSplash_Reset(void);
 
 /* Splash na coluna (0..3) do receptor do BF. Sem cooldown: em spam, recicla o splash mais antigo da coluna. */
-void PlayStateNoteSplash_Spawn(int lane);
+void PlayStateNoteSplash_Spawn(int lane, char bfSide); /* bfSide: splash no receptor do BF (1) ou do oponente (0) */
 
 /* Anima e desenha os splashes ativos. Chamar logo depois dos receptores e antes das notas. */
 void PlayStateNoteSplash_Draw(float deltaTime);

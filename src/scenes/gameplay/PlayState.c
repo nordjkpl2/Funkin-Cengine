@@ -95,24 +95,31 @@ static void Event_OpponentHit(Note* note) {
     PlayStateStrums_ConfirmDad(note->id);
 }
 
+/* Acerto automatico do lado do BF (botplay, ou a IA no Play as oponente). */
 static void Event_BotHit(Note* note) {
-    PlayStatePlayerInput_AddScore(350); // sick fixo no botplay
-    if (botGain > 0.0f)
-        PlayStateHealth_Add(botGain);
+    if (gameOptions.botplay) {
+        PlayStatePlayerInput_AddScore(350); // sick fixo no botplay
+        if (botGain > 0.0f)
+            PlayStateHealth_Add(botGain);
+    }
+    else if (oppDrain > 0.0f)
+        PlayStateHealth_Drain(oppDrain);    // a IA do BF acertando desconta a vida, como o oponente
     PlayStateAnimations_BotHit(note->id);
     PlayStateStrums_ConfirmBf(note->id);
-    PlayStateNoteSplash_Spawn(note->id);
+    PlayStateNoteSplash_Spawn(note->id, 1);
 }
 
-static void Event_PlayerHold(void) {
-    PlayStateHealth_Add(0.04f * RayGame_DeltaTime());
-    PlayStateAnimations_PlayerHold();
+static void Event_PlayerHold(const Note* note) {
+    PlayStateHealth_AddForSide(0.04f * RayGame_DeltaTime(), (char)note->mustHit);
+    if (note->mustHit) PlayStateAnimations_PlayerHold();
+    else PlayStateAnimations_OpponentHold();   // jogador no lado do oponente (Co-Op ou Play as)
 }
 
 static void Event_PlayerHit(Note* note, PlayerRating rating) {
     PlayStateRatingPopups_Show(rating);
-    PlayStateAnimations_PlayerHit(note->id);
-    PlayStateNoteSplash_Spawn(note->id);
+    if (note->mustHit) PlayStateAnimations_PlayerHit(note->id);
+    else PlayStateAnimations_OpponentHit(note->id);
+    PlayStateNoteSplash_Spawn(note->id, note->mustHit);   // splash no receptor do lado que acertou
 }
 
 static void SetupEvents(void) {
@@ -282,7 +289,7 @@ static void PlayState_Create([[maybe_unused]] RayScene* scene) {
     LoadMark_Begin();
     Log_WarnClear();
     // Botplay nunca morre (com ou sem drain): a vida so cai ate 0.
-    PlayStateHealth_Init(SCROLL_IS_DOWN(gameOptions.scroll),!gameOptions.botplay);
+    PlayStateHealth_Init(SCROLL_IS_DOWN(gameOptions.scroll), !gameOptions.botplay && !gameOptions.coopOn); /* Co-Op: imortal */
     PlayStateText_Init(songDir);
 
     PlayStateNoteSpawn_Init();
@@ -441,10 +448,12 @@ static char UpdateSong(void) {
         return 1;
     }
 
-    PlayStatePlayerKeys keys = {0};   // botplay nao preenche: fica zerado e o monitor apaga
-    if (PlayStatePlayerInput_Update(PlayStateBeat_Time(), &keys))
-        PlayStateStrums_ApplyInput(&keys);
-    PlayStateStrums_UpdateGlow(keys.keyDown);
+    PlayStatePlayerKeys keys[2] = {{{0}}};   // botplay nao preenche: fica zerado e o monitor apaga
+    if (PlayStatePlayerInput_Update(PlayStateBeat_Time(), keys)) {
+        for (int slot = 0; slot < PlayStatePlayerInput_Slots(); slot++)
+            PlayStateStrums_ApplyInput(&keys[slot], PlayStatePlayerInput_SlotSideBf(slot));
+    }
+    PlayStateStrums_UpdateGlow(keys);
 
     // Hits automaticos, hold e miss das notas (antes ficava no Draw).
     const PlayStateNoteView view = NoteView();
@@ -538,9 +547,22 @@ static void DrawWorld(float dt) {
     Render_StopCamera();
 }
 
+/* Nome do jogador no Co-Op (vazio = "Player N"). */
+static void CoopName(int slot, char* out, size_t size) {
+    if (gameOptions.coopName[slot][0] != 0) (void)snprintf(out, size, "%s", gameOptions.coopName[slot]);
+    else (void)snprintf(out, size, "Player %d", slot + 1);
+}
+
 static void DrawHud(float dt) {
     PlayStateStrums_DrawBackdrop();
     PlayStateStrums_Draw();
+    if (gameOptions.coopOn) {
+        char name[2][COOP_NAME_MAX];
+        CoopName(0, name[0], sizeof(name[0]));
+        CoopName(1, name[1], sizeof(name[1]));
+        const int bfSlot = PlayStatePlayerInput_SlotSideBf(0) ? 0 : 1;   // jogador 1 ou 2 no lado do BF
+        PlayStateStrums_DrawSideNames(name[bfSlot], name[1 - bfSlot]);
+    }
     PlayStateNoteSplash_Draw(dt);
 
     const PlayStateNoteView view = NoteView();

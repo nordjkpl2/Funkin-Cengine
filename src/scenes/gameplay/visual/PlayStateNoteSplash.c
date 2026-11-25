@@ -65,7 +65,7 @@ void PlayStateNoteSplash_Reset(void) {
             pool[lane][i].active = 0;
 }
 
-void PlayStateNoteSplash_Spawn(int lane) {
+void PlayStateNoteSplash_Spawn(int lane, char bfSide) {
     if (!gameOptions.noteSplashes || splashAnim < 0 || (unsigned int)lane >= PLAYSTATE_LANES)
         return;
 
@@ -85,10 +85,10 @@ void PlayStateNoteSplash_Spawn(int lane) {
                 slot = &row[i];
     }
 
-    // Centro do receptor do BF da coluna; o splash fica centralizado nele.
+    // Centro do receptor do lado que acertou (BF ou oponente); o splash fica centralizado nele.
     const EffectsSplash* cfg = &EffectsConfig_Get()->splash;
     const float scale = (float)cfg->scalePct / 100.0f;
-    const RayAnimatedObject* strum = &PlayStateStrums_Bf()[lane].object;
+    const RayAnimatedObject* strum = &(bfSide ? PlayStateStrums_Bf() : PlayStateStrums_Dad())[lane].object;
     const Vector2 strumSize = AnimatedObject_Sizes(strum);
     const float halfW = splashSize.x * scale * 0.5f;
     const float halfH = splashSize.y * scale * 0.5f;

@@ -38,8 +38,17 @@ int PlayStatePlayerInput_Score(void);
 int PlayStatePlayerInput_Misses(void);
 void PlayStatePlayerInput_AddScore(int amount);
 
-/* Processa as teclas e acerta notas. Retorna 0 no botplay (nao ha input). */
-char PlayStatePlayerInput_Update(float songTime, PlayStatePlayerKeys* keys);
+/* Co-Op e Play as: quem controla a nota. 0 = jogador 1, 1 = jogador 2, -1 = automatico (oponente, BF da IA, botplay). */
+int PlayStatePlayerInput_Owner(const Note* note);
+/* Jogadores humanos na partida: 1, ou 2 no Co-Op. */
+int PlayStatePlayerInput_Slots(void);
+/* Tecla do jogador (slot 0 ou 1) na coluna lane. */
+int PlayStatePlayerInput_Key(int slot, int lane);
+/* 1 se o slot toca no lado do BF; 0 se toca no lado do oponente. */
+char PlayStatePlayerInput_SlotSideBf(int slot);
+
+/* Processa as teclas de cada jogador (keys[0] e keys[1]) e acerta notas. Retorna 0 no botplay (nao ha input). */
+char PlayStatePlayerInput_Update(float songTime, PlayStatePlayerKeys keys[2]);
 
 /* Marca a nota como perdida (vida, misses e callback). Ignorado no botplay. */
 void PlayStatePlayerInput_MissNote(Note* note);

@@ -21,7 +21,7 @@ static int captureKeys[4];
 static const char* captureMessage = "";
 
 /* Nome curto da tecla para mostrar na tela. */
-static void KeyName(int key, char* out, size_t size) {
+void Options_KeyName(int key, char* out, size_t size) {
     static const struct { int key; const char* name; } named[] = {
         {KEY_SPACE, "SPACE"}, {KEY_LEFT, "LEFT"}, {KEY_RIGHT, "RIGHT"}, {KEY_UP, "UP"}, {KEY_DOWN, "DOWN"},
         {KEY_COMMA, ","}, {KEY_PERIOD, "."}, {KEY_SEMICOLON, ";"}, {KEY_APOSTROPHE, "'"}, {KEY_SLASH, "/"},
@@ -120,7 +120,7 @@ void Capture_Draw(void) {
 
         // Caixa com a tecla escolhida (ou "...").
         char name[24] = "...";
-        if (captureKeys[k] != 0 && done) KeyName(captureKeys[k], name, sizeof(name));
+        if (captureKeys[k] != 0 && done) Options_KeyName(captureKeys[k], name, sizeof(name));
         const Rectangle box = {cx - CAP_BOX_W * 0.5f, CAP_CY + 120.0f, CAP_BOX_W, CAP_BOX_H};
         DrawRectangleRec(box, (Color) {30, 30, 30, 255});
         DrawRectangleLinesEx(box, current ? 4.0f : 2.0f, current ? WHITE : (done ? GREEN : GRAY));

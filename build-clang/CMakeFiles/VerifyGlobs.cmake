@@ -163,6 +163,7 @@ set(OLD_GLOB
   "D:/dev/funkin c/src/scenes/menu/modding/ModdingMenuDraw.c"
   "D:/dev/funkin c/src/scenes/menu/modding/ModdingMenuInput.c"
   "D:/dev/funkin c/src/scenes/menu/options/OptionsMenu.c"
+  "D:/dev/funkin c/src/scenes/menu/options/OptionsMenuGameplayExtra.c"
   "D:/dev/funkin c/src/scenes/menu/options/OptionsMenuIcons.c"
   "D:/dev/funkin c/src/scenes/menu/options/OptionsMenuNoteColors.c"
   "D:/dev/funkin c/src/scenes/menu/options/OptionsMenuScreens.c"

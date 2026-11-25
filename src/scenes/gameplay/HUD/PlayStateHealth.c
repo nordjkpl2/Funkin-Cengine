@@ -5,6 +5,7 @@
 
 #include "scenes/gameplay/HUD/PlayStateHealth.h"
 #include "GameData.h"
+#include <float.h>
 #include <math.h>
 
 static float health;          /* 0 - 1; abaixo de 0 = morte */
@@ -17,12 +18,15 @@ static float bopT;
 static float bobY;            /* calculado em Update, usado no Draw */
 static float sway;
 static float minHealth;       /* -inf se mortal (morre abaixo de 0), senao 0 */
+/* Play as oponente (sem Co-Op): "health" e a vida do jogador, que fica do lado do oponente na barra. */
+static char healthOnDad;
 
 /* area interna da barra em pixels inteiros: calculada uma vez no Init */
 static int innerX, innerY, innerW, innerH;
 
 void PlayStateHealth_Init(char top, char mortal) {
-    minHealth = mortal ? -INFINITY : 0.0f;
+    minHealth = mortal ? -FLT_MAX : 0.0f;   /* mortal: limite inferior finito (morre abaixo de 0) */
+    healthOnDad = gameOptions.playAsOpponent && !gameOptions.coopOn && !gameOptions.botplay;
     healthbarPadding = 4;
     healthbar.width = 600;
     healthbar.height = 17;
@@ -56,6 +60,10 @@ void PlayStateHealth_SetCharacterColors(const Character* dad, const Character* b
 void PlayStateHealth_Add(float delta) {
     const float h = health + delta;
     health = h > 1.0f ? 1.0f : (h < minHealth ? minHealth : h);
+}
+
+void PlayStateHealth_AddForSide(float delta, char bfSide) {
+    PlayStateHealth_Add(gameOptions.coopOn && !bfSide ? -delta : delta);
 }
 
 /* Drain do oponente: desce no maximo ate 0, sem matar o player (misses ainda podem matar). */
@@ -100,12 +108,14 @@ float PlayStateHealth_CenterX(float width) {
 
 void PlayStateHealth_Draw(Texture2D dadIcon, Texture2D bfIcon) {
     const int C = 35;
-    const bool dadLosing = gameOptions.loseIcon && health > ICON_LOSE_DAD;
-    const bool bfLosing = gameOptions.loseIcon && health < ICON_LOSE_BF;
+    /* vida do BF (a barra e desenhada desse ponto de vista); com Play as oponente, a do BF e o inverso */
+    const float bfHealth = healthOnDad ? 1.0f - health : health;
+    const bool dadLosing = gameOptions.loseIcon && bfHealth > ICON_LOSE_DAD;
+    const bool bfLosing = gameOptions.loseIcon && bfHealth < ICON_LOSE_BF;
     DrawRectangleRec(healthbar, BLACK);
 
-    /* so a morte (health < 0) precisa cortar em 0 */
-    const float shown = health < 0 ? 0.0f : health;
+    /* so a morte (vida < 0) precisa cortar em 0 */
+    const float shown = bfHealth < 0 ? 0.0f : (bfHealth > 1.0f ? 1.0f : bfHealth);
     const float middle = innerW * (1.0f - shown);
     const int splitX = innerX + (int)middle;
     const int dadW = splitX - innerX;

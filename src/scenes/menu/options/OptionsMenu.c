@@ -71,6 +71,8 @@ static bool resetArmed;
 static void ActivateCurrent(void) {
     Option* cur = options + currentOption;
 
+    if (currentOption == OPTION_GAMEPLAY_EXTRA) { GameplayExtra_Begin(); return; }
+
     if (cur->type == OPTION_VALUE_ACTION) {
         if (!resetArmed) { resetArmed = true; return; }
         resetArmed = false;
@@ -208,6 +210,10 @@ static void OptionsMenu_Update([[maybe_unused]] RayScene* scene) {
     }
     if (noteColorScreen) {
         NoteColorScreen_Update();
+        return;
+    }
+    if (gameplayExtraScreen) {
+        GameplayExtra_Update();
         return;
     }
 
@@ -422,6 +428,8 @@ static void OptionsMenu_Draw([[maybe_unused]] RayScene* scene) {
         DrawHint("a sound when hit a note");
     else if (currentOption == OPTION_STRUM_BG)
         DrawHint("background in notereceptor");
+    else if (currentOption == OPTION_GAMEPLAY_EXTRA)
+        DrawHint("ENTER: co-op and play as");
     else if (currentOption == OPTION_RESET_CONFIG)
         DrawHint(resetArmed ? "ENTER again to confirm: resets every option" : "ENTER: reset all options to default");
 
@@ -433,6 +441,8 @@ static void OptionsMenu_Draw([[maybe_unused]] RayScene* scene) {
         ThreadsScreen_Draw();
     else if (noteColorScreen)
         NoteColorScreen_Draw();
+    else if (gameplayExtraScreen)
+        GameplayExtra_Draw();
 
     Render_StopCamera();
 }

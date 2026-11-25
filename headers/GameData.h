@@ -6,6 +6,7 @@
 #include "raylib.h"
 
 #define MENU_MUSIC_NAME_MAX 64
+#define COOP_NAME_MAX 16 /* nome de jogador no Co-Op, com o \0 */
 
 /* Opcoes do jogador (salvas em assets/save.data). Para criar uma opcao nova (escalar):
    campo aqui e UMA linha no fim de saveFields (GameData.c) com id novo, padrao e faixa. Ids nunca reaproveitados. */
@@ -29,6 +30,10 @@ typedef struct GameOptions {
     int scheme, fps;
     int threadLimit; /* 0 = Auto (nucleos - 1); >0 = limite de threads de fundo (1..64) */
     float zoomFactorUI, zoomFactorGAME;
+    char coopOn;                     /* Gameplay Extra > Co-Op: 2 jogadores no mesmo teclado (padrao: off) */
+    char playAsOpponent;             /* Gameplay Extra > Play as: 0 = Boyfriend, 1 = Opponent (padrao: Boyfriend) */
+    char coopName[2][COOP_NAME_MAX]; /* nomes dos jogadores 1 e 2; vazio = "Player 1" / "Player 2" */
+    int coopKeys[2][4];              /* teclas (esq, baixo, cima, dir) de cada jogador; padrao: WASD e DFJK */
 } GameOptions;
 
 /* Onde o score aparece no HUD: canto inferior direito (Cengine) ou centro sob a barra (Psych). */

@@ -9,6 +9,7 @@
 #include "scenes/gameplay/characters/PlayStateBeat.h"
 #include "GameData.h"
 #include "rendering/TextMeasure.h"
+#include <math.h>
 
 #define SCREEN_W 1280.0f
 #define LANE_SPACING 110.0f
@@ -34,7 +35,7 @@ static StrumNote bfStrumline[PLAYSTATE_LANES];
 static Vector2 dadStrumIdleSizes[PLAYSTATE_LANES];
 static Vector2 bfStrumIdleSizes[PLAYSTATE_LANES];
 static float bfMiddleX = 475.0f; // middlescroll: X do 1o receptor do BF (centralizado)
-static float mobileGlow[PLAYSTATE_LANES]; // 0..1, sobe suave ao apertar a coluna e desce devagar (sem pisca)
+static float mobileGlow[2][PLAYSTATE_LANES]; // [jogador][coluna] 0..1, sobe suave ao apertar a coluna e desce devagar (sem pisca)
 
 static float StrumY(void) {
     if (SCROLL_IS_DOWN(gameOptions.scroll)) return 600.0f;
@@ -118,13 +119,15 @@ void PlayStateStrums_DrawBackdrop(void) {
 }
 
 /* Chamar todo frame (inclusive botplay, com keyDown zerado): sobe ao apertar, desce devagar. */
-void PlayStateStrums_UpdateGlow(const char* keyDown) {
+void PlayStateStrums_UpdateGlow(const PlayStatePlayerKeys* keys) {
     const float dt = GetFrameTime();
-    for (int i = 0; i < PLAYSTATE_LANES; i++) {
-        const float target = keyDown[i] ? 1.0f : 0.0f;
-        const float speed = target > mobileGlow[i] ? MOBILE_GLOW_RISE : MOBILE_GLOW_FALL;
-        const float step = speed * dt > 1.0f ? 1.0f : speed * dt;
-        mobileGlow[i] += (target - mobileGlow[i]) * step;
+    for (int s = 0; s < 2; s++) {
+        for (int i = 0; i < PLAYSTATE_LANES; i++) {
+            const float target = keys[s].keyDown[i] ? 1.0f : 0.0f;
+            const float speed = target > mobileGlow[s][i] ? MOBILE_GLOW_RISE : MOBILE_GLOW_FALL;
+            const float step = speed * dt > 1.0f ? 1.0f : speed * dt;
+            mobileGlow[s][i] += (target - mobileGlow[s][i]) * step;
+        }
     }
 }
 
@@ -141,27 +144,31 @@ void PlayStateStrums_DrawKeyMonitor(void) {
 
     const float total = PLAYSTATE_LANES * MONITOR_KEY + (PLAYSTATE_LANES - 1) * MONITOR_GAP;
     const float x0 = SCREEN_W - MONITOR_MARGIN - total;
-    const float y = MONITOR_TOP;
-    static TextMeasure labelMeasure[PLAYSTATE_LANES]; // rotulo da coluna muda so com o esquema de teclas
+    static TextMeasure labelMeasure[2][PLAYSTATE_LANES]; // rotulo da coluna muda so com as teclas
 
-    for (int i = 0; i < PLAYSTATE_LANES; i++) {
-        const Rectangle box = {x0 + i * (MONITOR_KEY + MONITOR_GAP), y, MONITOR_KEY, MONITOR_KEY};
+    // Uma linha por jogador: so o jogador 1, ou os 2 no Co-Op (empilhadas, do topo para baixo).
+    const int rows = PlayStatePlayerInput_Slots();
+    for (int s = 0; s < rows; s++) {
+        const float y = MONITOR_TOP + s * (MONITOR_KEY + MONITOR_GAP);
+        for (int i = 0; i < PLAYSTATE_LANES; i++) {
+            const Rectangle box = {x0 + i * (MONITOR_KEY + MONITOR_GAP), y, MONITOR_KEY, MONITOR_KEY};
 
-        DrawRectangleRec(box, (Color) {0, 0, 0, 150});
-        /* Cor da coluna: a cor base com o ajuste HSB da coluna (mesma conta do shader da nota). */
-        Color base = laneColors[i];
-        if (GameData_LaneShifted(i)) base = GameData_ShiftColor(base, GameData_LaneShift(i));
-        base.a = 255;
-        Color lit = base;
-        lit.a = (unsigned char)(255.0f * mobileGlow[i]);
-        DrawRectangleRec(box, lit);
-        DrawRectangleLinesEx(box, 2.0f, base);
+            DrawRectangleRec(box, (Color) {0, 0, 0, 150});
+            /* Cor da coluna: a cor base com o ajuste HSB da coluna (mesma conta do shader da nota). */
+            Color base = laneColors[i];
+            if (GameData_LaneShifted(i)) base = GameData_ShiftColor(base, GameData_LaneShift(i));
+            base.a = 255;
+            Color lit = base;
+            lit.a = (unsigned char)(255.0f * mobileGlow[s][i]);
+            DrawRectangleRec(box, lit);
+            DrawRectangleLinesEx(box, 2.0f, base);
 
-        char label[4];
-        MonitorLabel(game_scheme_keys[gameOptions.scheme][i], i, label);
-        const Vector2 ts = TextMeasure_Get(&labelMeasure[i], mainFont, label, MONITOR_FONT, 1.0f);
-        DrawTextEx(mainFont, label, (Vector2) {box.x + (MONITOR_KEY - ts.x) * 0.5f, box.y + (MONITOR_KEY - ts.y) * 0.5f},
-                   MONITOR_FONT, 1.0f, WHITE);
+            char label[4];
+            MonitorLabel(PlayStatePlayerInput_Key(s, i), i, label);
+            const Vector2 ts = TextMeasure_Get(&labelMeasure[s][i], mainFont, label, MONITOR_FONT, 1.0f);
+            DrawTextEx(mainFont, label, (Vector2) {box.x + (MONITOR_KEY - ts.x) * 0.5f, box.y + (MONITOR_KEY - ts.y) * 0.5f},
+                       MONITOR_FONT, 1.0f, WHITE);
+        }
     }
 }
 
@@ -188,6 +195,22 @@ void PlayStateStrums_Draw(void) {
     }
 }
 
+/* Co-Op: nome de cada jogador acima dos receptores do seu lado. */
+void PlayStateStrums_DrawSideNames(const char* bfName, const char* dadName) {
+    const float fontSize = 30.0f;
+    const float y = fmaxf(4.0f, StrumY() - 40.0f);
+    for (int side = 0; side < 2; side++) {
+        const RayAnimatedObject* first = side ? &bfStrumline[0].object : &dadStrumline[0].object;
+        const RayAnimatedObject* last = side ? &bfStrumline[PLAYSTATE_LANES - 1].object : &dadStrumline[PLAYSTATE_LANES - 1].object;
+        const char* text = side ? bfName : dadName;
+        const Vector2 ts = MeasureTextEx(mainFont, text, fontSize, 2.0f);
+        const float cx = (first->position.x + last->position.x) * 0.5f;
+        const Vector2 pos = {cx - ts.x * 0.5f, y};
+        DrawTextEx(mainFont, text, (Vector2) {pos.x + 2.0f, pos.y + 2.0f}, fontSize, 2.0f, (Color) {0, 0, 0, 200});
+        DrawTextEx(mainFont, text, pos, fontSize, 2.0f, WHITE);
+    }
+}
+
 void PlayStateStrums_ConfirmDad(int lane) {
     AnimatedObject_SetAnimation(&dadStrumline[lane].object, StrumNote_ConfirmAnimation(lane));
 }
@@ -196,10 +219,10 @@ void PlayStateStrums_ConfirmBf(int lane) {
     AnimatedObject_SetAnimation(&bfStrumline[lane].object, StrumNote_ConfirmAnimation(lane));
 }
 
-// Animacao dos receptores do BF a partir das teclas deste frame.
-void PlayStateStrums_ApplyInput(const PlayStatePlayerKeys* keys) {
+// Animacao dos receptores de um lado (BF ou oponente, conforme quem controla) a partir das teclas deste frame.
+void PlayStateStrums_ApplyInput(const PlayStatePlayerKeys* keys, char bfSide) {
     for (int i = 0; i < PLAYSTATE_LANES; i++) {
-        RayAnimatedObject* strum = &bfStrumline[i].object;
+        RayAnimatedObject* strum = bfSide ? &bfStrumline[i].object : &dadStrumline[i].object;
 
         if (keys->pressed[i])
             AnimatedObject_SetAnimation(strum, StrumNote_ConfirmAnimation(i));

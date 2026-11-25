@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "GameData.h"
+#include "scenes/gameplay/notes/PlayStatePlayerInput.h"
 #include "Log.h"
 #include "rlgl.h"
 
@@ -408,9 +409,10 @@ static void DrawSustainClipped(int lane, const StrumNote* strum, float k) {
                  trailBottom >= receptorY ? &end : NULL);
 }
 
-/* Tecla da lane segurada neste frame (botplay conta como sempre segurada). So e consultada quando ha sustain ativo. */
-static char LaneHeld(int lane) {
-    return gameOptions.botplay || IsKeyDown(game_scheme_keys[gameOptions.scheme][lane]);
+/* Tecla do dono da nota segurada neste frame (automatico conta como sempre segurada). So e consultada com sustain ativo. */
+static char LaneHeld(const Note* note) {
+    const int slot = PlayStatePlayerInput_Owner(note);
+    return slot < 0 || IsKeyDown(PlayStatePlayerInput_Key(slot, note->id));
 }
 
 /* Logica do sustain (hold/miss). Sem desenho: roda no Update. */
@@ -419,21 +421,21 @@ static void UpdateSustain(Note* note, const PlayStateNoteView* view) {
 
     const char shouldHold = Note_ShouldHold(note, view->time);
 
-    if (!note->mustHit) {
-        if (shouldHold) events.opponentHold();
-    }
-    else if (gameOptions.botplay) {
-        if (shouldHold) events.botHold();
+    if (PlayStatePlayerInput_Owner(note) < 0) {   // automatico: oponente, BF da IA ou botplay
+        if (shouldHold) {
+            if (note->mustHit) events.botHold();
+            else events.opponentHold();
+        }
     }
     else if (!note->pressed) {
         return;
     }
     else if (!view->paused && shouldHold) {
         const float tailLeft = (note->time + note->length) - view->time;
-        if (tailLeft > 0.12f && !LaneHeld(note->id))
+        if (tailLeft > 0.12f && !LaneHeld(note))
             events.miss(note);
         else
-            events.playerHold();
+            events.playerHold(note);
     }
 }
 
@@ -473,7 +475,7 @@ static void DrawSustain(const Note* note, const StrumNote* strum, float endHeigh
     }
 
     // Jogador ainda nao acertou a cabeca: sustain inteiro, sem corte.
-    if (note->mustHit && !gameOptions.botplay && !note->pressed) {
+    if (PlayStatePlayerInput_Owner(note) >= 0 && !note->pressed) {
         DrawSustainFull(note->id, fullyAbove);
         return;
     }
@@ -516,15 +518,11 @@ void PlayStateNoteSpawn_Update(const PlayStateNoteView* view) {
         if (note->time > cutoffTime)
             break;
 
-        // Oponente e botplay acertam exatamente no tempo da nota.
-        if (!note->pressed && time >= note->time) {
-            if (!note->mustHit) {
-                note->pressed = 1;
-                events.opponentHit(note);
-            } else if (gameOptions.botplay) {
-                note->pressed = 1;
-                events.botHit(note);
-            }
+        // Automaticos (oponente, BF da IA no Play as, botplay) acertam exatamente no tempo da nota.
+        if (!note->pressed && time >= note->time && PlayStatePlayerInput_Owner(note) < 0) {
+            note->pressed = 1;
+            if (note->mustHit) events.botHit(note);
+            else events.opponentHit(note);
         }
 
         if (note->length > 0)

@@ -18,7 +18,7 @@ typedef struct {
     void (*botHit)(Note* note);                 /* botplay acertou a nota do BF */
     void (*opponentHold)(void);                 /* oponente segurando sustain */
     void (*botHold)(void);                      /* botplay segurando sustain */
-    void (*playerHold)(void);                   /* jogador segurando sustain certo */
+    void (*playerHold)(const Note* note);                   /* jogador segurando sustain certo */
     void (*miss)(Note* note);                   /* nota perdida ou sustain solto */
 } PlayStateNoteEvents;
 
