@@ -4,3 +4,9 @@
 [WARN] ImagePrefetch: sem memoria para copiar a imagem, tenta de novo na hora (assets/mods/images/moribund 3-1.png)
 LOAD [moribund-3] init: 21.2 ms, chart: 159.3 ms, sounds: 231.6 ms, characters: 860.4 ms, stage: 24.5 ms, song audio: 17.5 ms, notes: 229.6 ms, ui: 9.3 ms, warmup: 0.2 ms, (textures on main thread: 831.9 ms) total: 1553.7 ms
 LOAD [moribund-3] init: 20.3 ms, chart: 139.4 ms, sounds: 63.3 ms, characters: 423.5 ms, stage: 7.1 ms, song audio: 2.0 ms, notes: 234.4 ms, ui: 9.9 ms, warmup: 0.2 ms, (textures on main thread: 457.3 ms) total: 900.1 ms
+LOAD [no-more] init: 0.8 ms, chart: 17.7 ms, sounds: 203.5 ms, characters: 356.2 ms, stage: 18.6 ms, song audio: 1.7 ms, notes: 227.0 ms, ui: 9.9 ms, warmup: 0.2 ms, (textures on main thread: 342.4 ms) total: 835.5 ms
+LOAD [no-more] init: 0.0 ms, chart: 24.1 ms, sounds: 3.9 ms, characters: 426.8 ms, stage: 4.6 ms, song audio: 1.6 ms, notes: 221.4 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 428.2 ms) total: 682.6 ms
+LOAD [no-more] init: 0.0 ms, chart: 20.8 ms, sounds: 1.5 ms, characters: 452.4 ms, stage: 3.8 ms, song audio: 1.7 ms, notes: 233.6 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 454.1 ms) total: 714.0 ms
+LOAD [no-more] init: 0.0 ms, chart: 20.3 ms, sounds: 49.3 ms, characters: 153.4 ms, stage: 3.3 ms, song audio: 1.7 ms, notes: 221.3 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 137.6 ms) total: 449.5 ms
+LOAD [no-more] init: 0.0 ms, chart: 15.1 ms, sounds: 16.1 ms, characters: 205.0 ms, stage: 4.4 ms, song audio: 1.9 ms, notes: 223.2 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 155.7 ms) total: 465.9 ms
+LOAD [no-more] init: 0.0 ms, chart: 22.9 ms, sounds: 1.8 ms, characters: 434.1 ms, stage: 5.5 ms, song audio: 1.7 ms, notes: 225.1 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 436.8 ms) total: 691.2 ms

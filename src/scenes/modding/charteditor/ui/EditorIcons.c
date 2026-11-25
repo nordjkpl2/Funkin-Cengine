@@ -1,14 +1,14 @@
 /* // * Friday Night Funkin´ c engine (c) 2026 nordjkpl */
 /* Chart Editor: carrega e solta os icones de vida do oponente e do jogador. */
 
-#include"data/Song.h"
-#include"data/SongList.h"
+#include"data/song/Song.h"
+#include"data/song/SongList.h"
 #include "core/ModPath.h"
 #include"yyjson.h"
-#include "scenes/modding/charteditor/data/EditorDataAndIO.h"
+#include "scenes/modding/charteditor/io/EditorDataAndIO.h"
 #include "scenes/modding/charteditor/grid/EditorGrid.h"
 #include "scenes/modding/charteditor/ui/EditorIcons.h"
-#include "scenes/modding/charteditor/data/EditorCharactersAndLists.h"
+#include "scenes/modding/charteditor/lists/EditorCharactersAndLists.h"
 
 void Editor_UnloadIcons(void) {
     if(edIconOOk) {

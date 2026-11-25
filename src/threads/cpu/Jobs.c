@@ -3,7 +3,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include "Jobs.h"
+#include "threads/cpu/Jobs.h"
 #include "threads/Sync.h"
 #include "threads/Thread.h"
 

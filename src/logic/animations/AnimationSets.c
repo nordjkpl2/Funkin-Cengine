@@ -8,7 +8,7 @@
 #include "logic/animations/AnimSetParseUtil.h"
 #include "logic/animations/AnimSetSparrow.h"
 #include "logic/animations/AnimSetBinary.h"
-#include "Log.h"
+#include "core/Log.h"
 
 #include <string.h>
 

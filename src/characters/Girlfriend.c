@@ -10,7 +10,7 @@
 #include "logic/animations/CharacterAnims.h"
 #include "characters/CharacterJson.h"
 #include "characters/CharacterXML.h"
-#include "Log.h"
+#include "core/Log.h"
 
 #include <stdarg.h>
 #include <stdbool.h>

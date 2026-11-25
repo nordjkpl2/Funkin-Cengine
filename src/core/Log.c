@@ -1,5 +1,5 @@
 /* // * Friday Night Funkin´ c engine (c) 2026 nordjkpl */
-#include "Log.h"
+#include "core/Log.h"
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>

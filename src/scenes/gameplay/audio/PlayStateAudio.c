@@ -10,7 +10,7 @@
 #include <math.h>
 #include <stdio.h>
 #include "Game.h"
-#include "Log.h"
+#include "core/Log.h"
 
 // slots de faixa vocal
 enum { VOX_MAIN = 0, VOX_PLAYER, VOX_OPP, VOX_COUNT };

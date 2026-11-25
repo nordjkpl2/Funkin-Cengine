@@ -1,0 +1,568 @@
+/* // * Friday Night Funkin´ c engine (c) 2026 nordjkpl */
+/* Chart Editor: listas de personagens, stages e noteskins (varredura de pastas) e as caixas ligadas a elas. */
+#include "scenes/api/NoteSkinCache.h"
+#include"data/song/Song.h"
+#include"data/song/SongList.h"
+#include "core/ModPath.h"
+#include "core/ModList.h"
+#include"logic/stage/Stage.h"
+#include"logic/notes/Note.h"
+#include"yyjson.h"
+#include "scenes/modding/charteditor/io/EditorDataAndIO.h"
+#include "scenes/modding/charteditor/ui/EditorWidgets.h"
+#include "scenes/modding/charteditor/grid/EditorGrid.h"
+#include "scenes/modding/charteditor/lists/EditorCharactersAndLists.h"
+
+SongEntry* pickerSongs;
+
+int pickerCount;
+
+char charNames[NAME_LIST_MAX][SONG_NAME_MAX];
+
+int charCount = 0;
+
+// lista de girlfriends (so precisa de png + animset, nao tem icone)
+char gfNames[NAME_LIST_MAX][SONG_NAME_MAX];
+
+int gfCount = 0;
+
+// stages que existem nas musicas (pro seletor de Stage)
+char stageNames[32][SONG_NAME_MAX];
+
+int stageCount = 0;
+
+static char StageOfDir(const char* dir, char out[SONG_NAME_MAX]) {
+    char p[300];
+    snprintf(p, sizeof(p), "%s/data.json", dir);
+    FILE* f = fopen(p, "rb");
+    if(f != NULL) {
+        fseek(f, 0, SEEK_END);
+        long size = ftell(f);
+        fseek(f, 0, SEEK_SET);
+        if(size > 0 && size < 8 * 1024 * 1024) {
+            char* buf = malloc((size_t)size + 1);
+            if(buf != NULL) {
+                if(fread(buf, 1, (size_t)size, f) == (size_t)size) {
+                    buf[size] = 0;
+                    yyjson_doc* doc = yyjson_read(buf, (size_t)size, 0);
+                    free(buf);
+                    if(doc != NULL) {
+                        yyjson_val* root = yyjson_doc_get_root(doc);
+                        if(root != NULL) {
+                            yyjson_val* js = yyjson_obj_get(root, "song");
+                            if(js == NULL) js = root;
+                            yyjson_val* jst = yyjson_obj_get(js, "stage");
+                            if(yyjson_is_str(jst)) {
+                                const char* s = yyjson_get_str(jst);
+                                strncpy(out, s, SONG_NAME_MAX - 1);
+                                out[SONG_NAME_MAX - 1] = 0;
+                                yyjson_doc_free(doc);
+                                fclose(f);
+                                return 1;
+                            }
+                        }
+                        yyjson_doc_free(doc);
+                    }
+                } else {
+                    free(buf);
+                }
+            }
+        }
+        fclose(f);
+    }
+    // binario: pula 2 strings, le a 3a (stage)
+    snprintf(p, sizeof(p), "%s/data.song", dir);
+    f = fopen(p, "rb");
+    if(f == NULL)
+        return 0;
+    for(int s = 0; s < 3; s++) {
+        int len = 0;
+        if(fread(&len, sizeof(int), 1, f) != 1 || len < 1 || len > SONG_NAME_MAX - 1) {
+            fclose(f);
+            return 0;
+        }
+        char tmp[SONG_NAME_MAX];
+        if(fread(tmp, 1, (size_t)len, f) != (size_t)len) {
+            fclose(f);
+            return 0;
+        }
+        tmp[len] = 0;
+        if(s == 2) {
+            strncpy(out, tmp, SONG_NAME_MAX - 1);
+            out[SONG_NAME_MAX - 1] = 0;
+        }
+    }
+    fclose(f);
+    return 1;
+}
+
+// raiz do mod de um songDir (assets/mods/<mod>/...), "" = base
+void EdModRoot(const char* songDir, char out[256]) {
+    (void)ModPath_Root(songDir, out, 256);
+}
+
+// Personagem valido numa raiz: .animset + (png do mesmo nome OU characters/<nome>.json, que aponta
+// para outra imagem, como "fatigue dave2"). Sem fantasma; icone nao e exigido (cai no bf/dad).
+static char CharFilesOk(const char* root, const char* name) {
+    char p[300];
+    snprintf(p, sizeof(p), "%s/images/characters/%s.animset", root, name);
+    if(!FileExists(p)) return 0;
+    snprintf(p, sizeof(p), "%s/images/characters/%s.png", root, name);
+    if(FileExists(p)) return 1;
+    snprintf(p, sizeof(p), "%s/characters/%s.json", root, name);
+    return FileExists(p);
+}
+
+static char SafeName(const char* name) {
+    return name != NULL && name[0] != 0 && strchr(name, '/') == NULL && strchr(name, '\\') == NULL &&
+           strstr(name, "..") == NULL;
+}
+
+// vale no mod da musica, no global ou em qualquer mod ativo
+char CharacterAssetForSong_Exists(const char* name, const char* songDir) {
+    if(!SafeName(name))
+        return 0;
+    if(CharFilesOk("assets", name))
+        return 1;
+    char modRoot[256];
+    EdModRoot(songDir, modRoot);
+    if(modRoot[0] != 0 && CharFilesOk(modRoot, name))
+        return 1;
+    char other[256];
+    return ModList_FindCharacterRoot(name, other, sizeof(other));
+}
+
+// girlfriend vale se tem animset + imagem (global, mod da musica ou mod ativo); "none"/"nogf" = sem girlfriend
+char GirlfriendAsset_Exists(const char* name, const char* songDir) {
+    if(name == NULL || name[0] == 0)
+        return 0;
+    if(strcmp(name, "none") == 0 || strcmp(name, "nogf") == 0 || strcmp(name, "__not_have_a_gf") == 0)
+        return 1;
+    return CharacterAssetForSong_Exists(name, songDir);
+}
+
+// json: assets/stages/<nome>.json, assets/data/stages/<nome>.json.
+// "stage" builtin continua valido. Fantasmas sem arquivo caem aqui.
+static char StageJsonGlobal_Exists(const char* name) {
+    char p[300];
+    snprintf(p, sizeof(p), "assets/stages/%s.json", name);
+    FILE* f = fopen(p, "rb");
+    if(f != NULL) { fclose(f); return 1; }
+    snprintf(p, sizeof(p), "assets/data/stages/%s.json", name);
+    f = fopen(p, "rb");
+    if(f != NULL) { fclose(f); return 1; }
+    return 0;
+}
+
+// .lua vale porque o exe converte na hora (Stage_ParseLua, sem LuaJIT)
+// mesma busca do jogo (Stage_FindJson / Stage_FindLua): mod da musica, global, pasta da musica
+char StageFileForSong_Exists(const char* name, const char* songDir) {
+    char p[300];
+    return Stage_FindJson(name, songDir, p) || Stage_FindLua(name, songDir, p);
+}
+
+char StageAsset_Exists(const char* name) {
+    if(name == NULL || name[0] == 0) return 0;
+    if(strchr(name, '/') != NULL || strchr(name, '\\') != NULL || strstr(name, "..") != NULL) return 0;
+    if(strcmp(name, "__not_have_a_stage") == 0) return 1;   // teste de render: sem stage
+    if(strcmp(name, "stage") == 0) {
+        FILE* a = fopen("assets/images/stage/stageback.png", "rb");
+        FILE* b = fopen("assets/images/stage/stagefront.png", "rb");
+        char ok = (a != NULL && b != NULL);
+        if(a != NULL) fclose(a);
+        if(b != NULL) fclose(b);
+        return ok;
+    }
+    if(StageJsonGlobal_Exists(name)) return 1;
+    {
+        // .lua global tambem vale: o exe parseia na hora
+        char p[300];
+        snprintf(p, sizeof(p), "assets/stages/%s.lua", name);
+        FILE* f = fopen(p, "rb");
+        if(f != NULL) { fclose(f); return 1; }
+        snprintf(p, sizeof(p), "assets/data/stages/%s.lua", name);
+        f = fopen(p, "rb");
+        if(f != NULL) { fclose(f); return 1; }
+    }
+    char p[300];
+    snprintf(p, sizeof(p), "assets/images/stage/%sback.png", name);
+    FILE* f = fopen(p, "rb");
+    if(f != NULL) { fclose(f); return 1; }
+    snprintf(p, sizeof(p), "assets/images/stage/%s.png", name);
+    f = fopen(p, "rb");
+    if(f != NULL) { fclose(f); return 1; }
+    snprintf(p, sizeof(p), "assets/images/stage/%sfront.png", name);
+    f = fopen(p, "rb");
+    if(f != NULL) { fclose(f); return 1; }
+    return 0;
+}
+
+// Stage de cada musica, lido do disco uma vez por Picker_Refresh (0 = nao lido, 1 = tem, 2 = sem).
+static char (*songStage)[SONG_NAME_MAX];
+static unsigned char* songStageState;
+static int songStageCap;
+
+void StageList_Invalidate(void) {
+    free(songStage);
+    free(songStageState);
+    songStage = NULL;
+    songStageState = NULL;
+    songStageCap = 0;
+}
+
+/* Adiciona as stages de uma pasta: arquivos que terminam em suffix (ex.: "back.png", ".json"); o nome e o resto. */
+static void StageNames_AddDir(const char* dir, const char* suffix) {
+    if(!DirectoryExists(dir))
+        return;
+    const size_t sl = strlen(suffix);
+    FilePathList list = LoadDirectoryFiles(dir);
+    for(unsigned int i = 0; i < list.count && stageCount < 32; i++) {
+        const char* p = list.paths[i];
+        const char* s1 = strrchr(p, '/');
+        const char* s2 = strrchr(p, '\\');
+        const char* b = (s1 > s2) ? s1 : s2;
+        b = (b != NULL) ? b + 1 : p;
+        const size_t len = strlen(b);
+        if(len <= sl || strcmp(b + len - sl, suffix) != 0)
+            continue;
+        if(len - sl >= SONG_NAME_MAX)
+            continue;
+        char name[SONG_NAME_MAX] = {0};
+        memcpy(name, b, len - sl);
+        char dup = 0;
+        for(int k = 0; k < stageCount && !dup; k++)
+            dup = strcmp(stageNames[k], name) == 0;
+        if(!dup) {
+            strncpy(stageNames[stageCount], name, SONG_NAME_MAX - 1);
+            stageNames[stageCount][SONG_NAME_MAX - 1] = 0;
+            stageCount++;
+        }
+    }
+    UnloadDirectoryFiles(list);
+}
+
+/* Stages de uma raiz (assets ou mod): imagens <nome>back.png e definicoes stages/<nome>.json. */
+static void StageNames_AddRoot(const char* root) {
+    char d[300];
+    snprintf(d, sizeof(d), "%s/images/stage", root);
+    StageNames_AddDir(d, "back.png");
+    snprintf(d, sizeof(d), "%s/stages", root);
+    StageNames_AddDir(d, ".json");
+}
+
+void StageList_Scan(void) {
+    stageCount = 0;
+    strcpy(stageNames[stageCount++], "__not_have_a_stage"); // primeira opcao: sem stage
+    if(songStageCap != pickerCount) {
+        StageList_Invalidate();
+        if(pickerCount > 0) {
+            songStage = calloc((size_t)pickerCount, sizeof(*songStage));
+            songStageState = calloc((size_t)pickerCount, 1);
+            if(songStage != NULL && songStageState != NULL)
+                songStageCap = pickerCount;
+            else
+                StageList_Invalidate();
+        }
+    }
+    for(int i = 0; i < pickerCount && stageCount < 32; i++) {
+        char stLocal[SONG_NAME_MAX] = {0};
+        char* st = stLocal;
+        if(songStageCap == pickerCount) {
+            if(songStageState[i] == 0) {
+                char tmp[SONG_NAME_MAX] = {0};
+                const char ok = StageOfDir(pickerSongs[i].dir, tmp) && tmp[0] != 0;
+                if(ok) memcpy(songStage[i], tmp, SONG_NAME_MAX);
+                songStageState[i] = ok ? 1 : 2;
+            }
+            if(songStageState[i] != 1)
+                continue;
+            st = songStage[i];
+        } else if(!StageOfDir(pickerSongs[i].dir, stLocal) || stLocal[0] == 0) {
+            continue;
+        }
+        if(!StageAsset_Exists(st) && !StageFileForSong_Exists(st, pickerSongs[i].dir))
+            continue;
+        char dup = 0;
+        for(int k = 0; k < stageCount; k++) {
+            if(strcmp(stageNames[k], st) == 0) {
+                dup = 1;
+                break;
+            }
+        }
+        if(!dup) {
+            strncpy(stageNames[stageCount], st, SONG_NAME_MAX - 1);
+            stageNames[stageCount][SONG_NAME_MAX - 1] = 0;
+            stageCount++;
+        }
+    }
+    // todas as stages disponiveis (assets e mods ativos), mesmo sem musica que as use
+    StageNames_AddRoot("assets");
+    StageNames_AddDir("assets/data/stages", ".json");
+    char modRootSt[256];
+    EdModRoot(chart.dir, modRootSt);
+    if(modRootSt[0] != 0)
+        StageNames_AddRoot(modRootSt);
+    for(int i = 0; i < ModList_Count(); i++) {
+        if(ModList_Enabled(i))
+            StageNames_AddRoot(ModList_Root(i));
+    }
+    if(stageCount == 1 && StageAsset_Exists("stage")) {
+        strncpy(stageNames[1], "stage", SONG_NAME_MAX - 1);
+        stageNames[1][SONG_NAME_MAX - 1] = 0;
+        stageCount = 2;
+    }
+}
+
+/* Lista os personagens de uma pasta (<raiz>/images/characters): cada .animset com imagem propria
+   (png do mesmo nome) ou com characters/<nome>.json. O icone nao e exigido. */
+static void NameList_ScanDir(char (*names)[SONG_NAME_MAX], int* count, const char* charDir) {
+    const int capacity = NAME_LIST_MAX;
+    if(!DirectoryExists(charDir))
+        return;
+    // raiz = charDir sem o sufixo "/images/characters"
+    char root[300];
+    snprintf(root, sizeof(root), "%s", charDir);
+    const size_t rl = strlen(root);
+    static const char tail[] = "/images/characters";
+    if(rl > sizeof(tail) - 1 && strcmp(root + rl - (sizeof(tail) - 1), tail) == 0)
+        root[rl - (sizeof(tail) - 1)] = 0;
+    FilePathList list = LoadDirectoryFilesEx(charDir, ".animset", false);
+    for(unsigned int i = 0; i < list.count && *count < capacity; i++) {
+        const char* p = list.paths[i];
+        size_t L = strlen(p);
+        const char* s1 = strrchr(p, '/');
+        const char* s2 = strrchr(p, '\\');
+        const char* b = (s1 > s2) ? s1 : s2;
+        b = (b != NULL) ? b + 1 : p;
+        size_t nlen = L - (size_t)(b - p) - 8;   // ".animset"
+        if(nlen < 1 || nlen > SONG_NAME_MAX - 1)
+            continue;
+        if(b[0] == '_' || strstr(b, "Title") != NULL)
+            continue;
+        char name[SONG_NAME_MAX];
+        memcpy(name, b, nlen);
+        name[nlen] = 0;
+        char dup = 0;
+        for(int k = 0; k < *count && !dup; k++)
+            dup = strcmp(names[k], name) == 0;
+        if(dup || !CharFilesOk(root, name))
+            continue;
+        memcpy(names[*count], name, nlen + 1);
+        (*count)++;
+    }
+    UnloadDirectoryFiles(list);
+}
+
+/* Refaz as listas de personagens (Boyfriend/Opponent) e de girlfriends (global + mod da musica). */
+void CharList_Scan(void) {
+    charCount = 0;
+    gfCount = 0;
+    ModList_Rescan();
+    strcpy(gfNames[gfCount++], "none"); // sem girlfriend
+    strcpy(gfNames[gfCount++], "__not_have_a_gf"); // teste de render: sem girlfriend
+
+    NameList_ScanDir(charNames, &charCount, "assets/images/characters");
+    NameList_ScanDir(gfNames, &gfCount, "assets/images/characters");
+
+    // chars do mod da musica (importador gera .animset + icones no mod)
+    char modRoot[256];
+    EdModRoot(chart.dir, modRoot);
+    if(modRoot[0] != 0) {
+        char cd[300];
+        snprintf(cd, sizeof(cd), "%s/images/characters", modRoot);
+        NameList_ScanDir(charNames, &charCount, cd);
+        NameList_ScanDir(gfNames, &gfCount, cd);
+    }
+
+    // demais mods ativos (o do chart ja foi; repetidos sao ignorados)
+    for(int i = 0; i < ModList_Count(); i++) {
+        if(!ModList_Enabled(i))
+            continue;
+        char cd[300];
+        snprintf(cd, sizeof(cd), "%s/images/characters", ModList_Root(i));
+        NameList_ScanDir(charNames, &charCount, cd);
+        NameList_ScanDir(gfNames, &gfCount, cd);
+    }
+}
+
+// note skin list (scan assets/images/notes/ e mod/images/notes/)
+char skinNames[SKIN_LIST_MAX][SONG_NAME_MAX];
+
+int skinCount = 0;
+
+TxtBox skinBox;
+
+static void NoteSkinList_ScanDir(const char* notesDir) {
+    if(!DirectoryExists(notesDir))
+        return;
+    FilePathList list = LoadDirectoryFiles(notesDir);
+    for(unsigned int i = 0; i < list.count && skinCount < SKIN_LIST_MAX; i++) {
+        const char* p = list.paths[i];
+        // so considera diretorios (pastas de skin)
+        if(!DirectoryExists(p))
+            continue;
+        const char* s1 = strrchr(p, '/');
+        const char* s2 = strrchr(p, '\\');
+        const char* b = (s1 > s2) ? s1 : s2;
+        b = (b != NULL) ? b + 1 : p;
+        size_t nlen = strlen(b);
+        if(nlen < 1 || nlen > SONG_NAME_MAX - 1)
+            continue;
+        // verifica se tem pelo menos as 4 sprites basicas
+        char fp[300];
+        int ok = 1;
+        const char* req[4] = {"left.png", "down.png", "up.png", "right.png"};
+        for(int r = 0; r < 4 && ok; r++) {
+            snprintf(fp, sizeof(fp), "%s/%s", p, req[r]);
+            FILE* f = fopen(fp, "rb");
+            if(f == NULL) ok = 0;
+            else fclose(f);
+        }
+        if(!ok) continue;
+        char dup = 0;
+        for(int k = 0; k < skinCount; k++) {
+            if(strcmp(skinNames[k], b) == 0) { dup = 1; break; }
+        }
+        if(!dup) {
+            memcpy(skinNames[skinCount], b, nlen);
+            skinNames[skinCount][nlen] = 0;
+            skinCount++;
+        }
+    }
+    UnloadDirectoryFiles(list);
+}
+
+/* Skins em <pasta>/: "NOTE_<nome>_assets" (nome = <nome>) ou, no formato Psych (arrowSkin), qualquer
+   "<X>_assets" (nome = "@<X>_assets"), sempre .png + .xml (ou .animset). */
+static void NoteSkinList_ScanAssets(const char* imagesDir) {
+    if(!DirectoryExists(imagesDir))
+        return;
+    FilePathList list = LoadDirectoryFiles(imagesDir);
+    for(unsigned int i = 0; i < list.count && skinCount < SKIN_LIST_MAX; i++) {
+        const char* p = list.paths[i];
+        const char* s1 = strrchr(p, '/');
+        const char* s2 = strrchr(p, '\\');
+        const char* b = (s1 > s2) ? s1 : s2;
+        b = (b != NULL) ? b + 1 : p;
+        const size_t len = strlen(b);
+        static const char suf[] = "_assets.png", pre[] = "NOTE";
+        const size_t sl = sizeof(suf) - 1;
+        if(len <= sl || strcmp(b + len - sl, suf) != 0)
+            continue;
+        const size_t baseLen = len - 4;   // sem ".png"
+        char base[SONG_NAME_MAX];
+        if(baseLen > SONG_NAME_MAX - 2)
+            continue;
+        memcpy(base, b, baseLen);
+        base[baseLen] = 0;
+        char name[SONG_NAME_MAX];
+        if(strncmp(base, "NOTE_", 5) == 0) {
+            if(baseLen <= 5 + 7)   // "NOTE_assets" (skin padrao) nao entra
+                continue;
+            snprintf(name, sizeof(name), "%.*s", (int)(baseLen - 5 - 7), base + 5);
+        } else if(strncmp(base, pre, sizeof(pre) - 1) == 0 && baseLen == sizeof(pre) - 1 + 7) {
+            continue;
+        } else {
+            snprintf(name, sizeof(name), "@%s", base);
+        }
+        char fp[300];
+        snprintf(fp, sizeof(fp), "%s/%s.xml", imagesDir, base);
+        char ok = FileExists(fp);
+        if(!ok) {
+            snprintf(fp, sizeof(fp), "%s/%s.animset", imagesDir, base);
+            ok = FileExists(fp);
+        }
+        if(!ok)
+            continue;
+        char dup = 0;
+        for(int k = 0; k < skinCount && !dup; k++)
+            dup = strcmp(skinNames[k], name) == 0;
+        if(!dup) {
+            snprintf(skinNames[skinCount], SONG_NAME_MAX, "%s", name);
+            skinCount++;
+        }
+    }
+    UnloadDirectoryFiles(list);
+}
+
+/* Skin das notas na previa do editor (vazio = padrao). "@x" = arrowSkin do Psych. */
+void Editor_ApplyNoteSkin(const char* name, const char* songDir) {
+    Note_SetCurrentSkin((name != NULL && name[0] != 0) ? Cache_GetNoteSkinPtr(name, songDir) : NULL);
+    EdArrows_Reset();   // as notas da grade copiam a skin: refaz com a nova
+}
+
+void NoteSkinList_Scan(void) {
+    skinCount = 0;
+    NoteSkinList_ScanDir("assets/images/notes");
+    NoteSkinList_ScanAssets("assets/images");
+    // skins do mod da musica
+    char modRoot[256];
+    EdModRoot(chart.dir, modRoot);
+    if(modRoot[0] != 0) {
+        char nd[300];
+        snprintf(nd, sizeof(nd), "%s/images/notes", modRoot);
+        NoteSkinList_ScanDir(nd);
+        snprintf(nd, sizeof(nd), "%s/images", modRoot);
+        NoteSkinList_ScanAssets(nd);
+    }
+    // demais mods ativos (o jogo tambem acha a skin neles)
+    for(int i = 0; i < ModList_Count(); i++) {
+        if(!ModList_Enabled(i))
+            continue;
+        char nd[300];
+        snprintf(nd, sizeof(nd), "%s/images", ModList_Root(i));
+        NoteSkinList_ScanAssets(nd);
+    }
+    // "default" sempre no topo (escolher = volta pras notas normais)
+    {
+        int w = 0;
+        for(int i = 0; i < skinCount; i++) {
+            if(strcmp(skinNames[i], "default") != 0) {
+                if(w != i) memcpy(skinNames[w], skinNames[i], sizeof(skinNames[0]));
+                w++;
+            }
+        }
+        skinCount = w;
+        if(skinCount >= SKIN_LIST_MAX) skinCount = SKIN_LIST_MAX - 1;
+        memmove(skinNames[1], skinNames[0], (size_t)skinCount * sizeof(skinNames[0]));
+        snprintf(skinNames[0], SONG_NAME_MAX, "default");
+        skinCount++;
+    }
+}
+
+static char listsStale = 1;   /* bit 1 = personagens/GF, 2 = stages, 4 = skins */
+
+void Lists_Invalidate(void) {
+    listsStale = 1 | 2 | 4;
+    charCount = gfCount = stageCount = skinCount = 0;
+}
+
+int Lists_Get(int dropId, char (**names)[SONG_NAME_MAX]) {
+    switch(dropId) {
+    case DROP_BOYFRIEND:
+    case DROP_OPPONENT:
+    case DROP_GIRLFRIEND:
+        if(listsStale & 1) { CharList_Scan(); listsStale &= ~1; }
+        if(dropId == DROP_GIRLFRIEND) { *names = gfNames; return gfCount; }
+        *names = charNames;
+        return charCount;
+    case DROP_STAGE:
+        if(listsStale & 2) { StageList_Scan(); listsStale &= ~2; }
+        *names = stageNames;
+        return stageCount;
+    case DROP_SKIN:
+        if(listsStale & 4) { NoteSkinList_Scan(); listsStale &= ~4; }
+        *names = skinNames;
+        return skinCount;
+    }
+    *names = NULL;
+    return 0;
+}
+
+TxtBox p1Box;
+
+TxtBox p2Box;
+
+TxtBox gfBox;
+
+TxtBox stageBox;

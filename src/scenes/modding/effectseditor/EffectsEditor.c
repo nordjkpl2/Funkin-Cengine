@@ -11,7 +11,8 @@
 #include "scenes/modding/effectseditor/EffectsEditor.h"
 #include "scenes/menu/modding/ModdingMenu.h"
 #include "scenes/api/FontLoader.h"
-#include "data/EffectsConfig.h"
+#include "data/config/EffectsConfig.h"
+#include "data/config/NotesplashConfig.h"
 #include "Render.h"
 #include "Game.h"
 
@@ -22,9 +23,6 @@
 #define SCREEN_W 1280.0f
 #define SCREEN_H 720.0f
 
-#define SPLASH_TEXTURE "assets/images/noteSplashes-sparkles.png"
-#define SPLASH_ANIMSET "assets/images/noteSplashes-sparkles.xml"
-#define SPLASH_ANIM_NAME "splash sparkles red "
 #define UI_ANIMSET "assets/images/ui.animset"
 #define UI_TEXTURE "assets/images/ui.png"
 
@@ -368,8 +366,13 @@ static void Editor_Create([[maybe_unused]] RayScene* scene) {
     splashT = 0.0f;
     popupT = 0.0f;
 
-    splashSet = AnimationSet_LoadAnimations(SPLASH_ANIMSET, Render_LoadTexture(SPLASH_TEXTURE));
-    AnimationSet_SetData(splashAnim, splashSet, SPLASH_ANIM_NAME, draft.splash.fps, 0, 0, 0);
+    // Splash = entrada ativa do Notesplash Editor (assets/notesplashes.json).
+    const NotesplashEntry* entry = NotesplashConfig_Active();
+    char texture[NOTESPLASH_PATH_MAX];
+    if (NotesplashConfig_TexturePath(entry->animset, texture, sizeof(texture))) {
+        splashSet = AnimationSet_LoadAnimations(entry->animset, Render_LoadTexture(texture));
+        AnimationSet_SetData(splashAnim, splashSet, entry->prefix, draft.splash.fps, 0, 0, 0);
+    }
     splashReady = splashAnim >= 0;
     if (splashReady) {
         Render_DefaultAnimated(&splashObj);

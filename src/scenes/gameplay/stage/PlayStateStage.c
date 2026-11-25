@@ -9,7 +9,7 @@
 #include "logic/stage/StageLuaParse.h"
 #include "logic/stage/StageJson.h"
 #include "core/ModPath.h"
-#include "Log.h"
+#include "core/Log.h"
 #include "rendering/cpu/ImagePrefetch.h"
 #include <math.h>
 #include <stdlib.h>

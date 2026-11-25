@@ -15,7 +15,7 @@
 #include "scenes/menu/MenuBackground.h"
 #include "scenes/menu/MenuState.h"
 #include "scenes/menu/storymode/StoryMode.h"
-#include "data/SongList.h"
+#include "data/song/SongList.h"
 #include "scenes/menu/storymode/StoryCover.h"
 
 #include <math.h>
@@ -23,7 +23,8 @@
 #include <stdio.h>
 #include <string.h>
 #include "Game.h"
-#include "data/Week.h"
+#include "data/week/Week.h"
+#include "rendering/TextMeasure.h"
 
 #define SCREEN_W 1280
 #define SCREEN_H 720
@@ -505,10 +506,11 @@ static void DrawHero(void) {
                16.0f, 1.5f, COLOR_ACCENT);
 
     // Seletor de dificuldade ao lado da contagem: "< NORMAL >".
-    const float countW = MeasureTextEx(mainFont, heroCount, 16.0f, 1.5f).x;
+    static TextMeasure countMeasure, diffMeasure;   // textos mudam so ao trocar de week/dificuldade
+    const float countW = TextMeasure_Get(&countMeasure, mainFont, heroCount, 16.0f, 1.5f).x;
     const float diffX = HERO_TITLE_X + 2.0f + countW + 26.0f;
     const Rectangle pill = {diffX - 10.0f, HERO_COUNT_Y - 5.0f,
-                            MeasureTextEx(mainFont, DIFF_NAMES[diffIndex], 16.0f, 1.5f).x + 58.0f, 26.0f};
+                            TextMeasure_Get(&diffMeasure, mainFont, DIFF_NAMES[diffIndex], 16.0f, 1.5f).x + 58.0f, 26.0f};
     DrawRectangleRounded(pill, 0.5f, 8, (Color) {255, 205, 92, 34});
     DrawRectangleRoundedLinesEx(pill, 0.5f, 8, 1.0f, (Color) {255, 205, 92, 150});
     DrawTextEx(mainFont, "<", (Vector2) {diffX, HERO_COUNT_Y}, 16.0f, 1.5f, COLOR_ACCENT);

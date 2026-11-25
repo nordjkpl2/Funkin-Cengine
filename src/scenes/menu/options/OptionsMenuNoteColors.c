@@ -287,7 +287,8 @@ static void DrawSliderBar(int s) {
     if (s == 0) (void)snprintf(value, sizeof(value), "%+d", v);
     else        (void)snprintf(value, sizeof(value), "%+d%%", v);
     DrawTextEx(mainFont, sliderNames[s], (Vector2) {r.x, r.y - 34.0f}, 26, 1.0f, focus ? YELLOW : GRAY);
-    const Vector2 vs = MeasureTextEx(mainFont, value, 26, 1.0f);
+    static TextMeasure valueMeasure[NC_SL_COUNT];   // um cache por slider: so muda quando o valor muda
+    const Vector2 vs = TextMeasure_Get(&valueMeasure[s], mainFont, value, 26, 1.0f);
     DrawTextEx(mainFont, value, (Vector2) {r.x + r.width - vs.x, r.y - 34.0f}, 26, 1.0f, focus ? WHITE : LIGHTGRAY);
 
     // Fundo da barra: matiz = arco-iris; saturacao = cinza -> cor quente; brilho = preto -> branco.
@@ -358,7 +359,8 @@ void NoteColorScreen_Draw(void) {
         DrawRectangleRounded(NC_PRESET_BTN, NC_ROUND, 6, (Color) {46, 46, 52, 255});
         DrawRectangleRoundedLinesEx(NC_PRESET_BTN, NC_ROUND, 6, 2.0f, WHITE);
         const char* pname = presets[0].name;
-        const Vector2 ps = MeasureTextEx(mainFont, pname, 22, 1.0f);
+        static TextMeasure presetMeasure;
+        const Vector2 ps = TextMeasure_Get(&presetMeasure, mainFont, pname, 22, 1.0f);
         DrawTextEx(mainFont, pname, (Vector2) {NC_PRESET_BTN.x + (NC_PRESET_BTN.width - ps.x) * 0.5f,
                    NC_PRESET_BTN.y + (NC_PRESET_BTN.height - ps.y) * 0.5f}, 22, 1.0f, WHITE);
     }

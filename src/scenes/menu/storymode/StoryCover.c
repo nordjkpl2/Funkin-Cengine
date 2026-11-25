@@ -15,7 +15,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "data/Week.h"
+#include "data/week/Week.h"
 
 #define PATH_MAX_LEN 512
 #define KEY_MAX_LEN 64

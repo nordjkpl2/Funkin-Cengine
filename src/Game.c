@@ -7,7 +7,7 @@
 
 #include "Game.h"
 #include "GameData.h"
-#include "Log.h"
+#include "core/Log.h"
 #include "threads/cpu/Jobs.h"
 #include "data/modimport/ModImport.h"
 #include "threads/Thread.h"

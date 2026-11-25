@@ -6,14 +6,14 @@
 #include "scenes/api/NoteSkinCache.h"
 #include "scenes/gameplay/notes/PlayStateNoteAtlas.h"
 #include "scenes/gameplay/notes/PlayStateNoteSpawn.h"
-#include "data/SongStream.h"
+#include "data/song/SongStream.h"
 #include <float.h>
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
 #include "GameData.h"
 #include "scenes/gameplay/notes/PlayStatePlayerInput.h"
-#include "Log.h"
+#include "core/Log.h"
 #include "rlgl.h"
 
 static RayAnimatedObject trail;

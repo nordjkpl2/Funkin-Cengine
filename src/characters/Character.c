@@ -12,7 +12,7 @@
 #include "characters/CharacterXML.h"
 #include "core/ModPath.h"
 #include "core/ModList.h"
-#include "Log.h"
+#include "core/Log.h"
 #include "rendering/cpu/ImagePrefetch.h"
 
 #include <math.h>

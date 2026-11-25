@@ -7,7 +7,7 @@
 #include "raymath.h"
 #include "scenes/gameplay/events/PlayStateParallax.h"
 #include "scenes/gameplay/events/PlayStateCameraMove.h"
-#include "data/EffectsConfig.h"
+#include "data/config/EffectsConfig.h"
 
 static Character* followTarget;
 static Camera2D camGame;

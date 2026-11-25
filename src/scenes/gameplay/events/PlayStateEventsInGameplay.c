@@ -11,7 +11,7 @@
 #include "yyjson.h"
 #include "core/ModPath.h"
 #include "Render.h"
-#include "Log.h"
+#include "core/Log.h"
 #include "rendering/cpu/ImagePrefetch.h"
 #include "rendering/shaders/ShaderFx.h"
 #include "scenes/gameplay/characters/PlayStateAnimations.h"

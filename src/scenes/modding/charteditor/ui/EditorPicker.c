@@ -2,20 +2,20 @@
 /* Chart Editor: lista de musicas, abrir/salvar/importar e o estado da sessao de edicao. */
 #include "scenes/api/FontLoader.h"
 #include "scenes/menu/MenuState.h"
-#include"data/Song.h"
-#include"data/SongList.h"
+#include"data/song/Song.h"
+#include"data/song/SongList.h"
 #include "core/ModPath.h"
 #include "Game.h"
 #include "raymath.h"
-#include "scenes/modding/charteditor/data/EditorDataAndIO.h"
+#include "scenes/modding/charteditor/io/EditorDataAndIO.h"
 #include "scenes/modding/charteditor/grid/EditorTimeline.h"
 #include "scenes/modding/charteditor/audio/EditorAudio.h"
 #include "scenes/modding/charteditor/ui/EditorWidgets.h"
 #include "scenes/modding/charteditor/ui/EditorPicker.h"
-#include "scenes/modding/charteditor/data/EditorCharactersAndLists.h"
+#include "scenes/modding/charteditor/lists/EditorCharactersAndLists.h"
 #include "scenes/modding/charteditor/ui/EditorIcons.h"
 #include "scenes/menu/freeplay/FreeplayIcon.h"
-#include "widgets-and-menus-ui/SearchBox.h"
+#include "ui/SearchBox.h"
 
 const char* ChartTab_Name(int t) {
     switch(t) {

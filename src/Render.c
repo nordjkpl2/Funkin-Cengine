@@ -96,15 +96,9 @@ Texture2D Render_LoadTexture(const char *path)
 {
     const double t0 = GetTime();
     Texture2D texture;
-    Image prefetched;
 
-    /* Imagem ja decodificada em outra thread? Entao so envia para a GPU. */
-    if (ImagePrefetch_Take(path, &prefetched))
-    {
-        texture = LoadTextureFromImage(prefetched);
-        UnloadImage(prefetched);
-    }
-    else
+    /* Imagem ja decodificada (outra thread ou cache)? Entao so envia para a GPU, sem copiar. */
+    if (!ImagePrefetch_Upload(path, &texture))
     {
         /* Wuffs (rapido) com fallback pro stb dentro do PngDecode_Load */
         Image img = PngDecode_Load(path);

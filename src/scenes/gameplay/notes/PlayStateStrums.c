@@ -203,7 +203,8 @@ void PlayStateStrums_DrawSideNames(const char* bfName, const char* dadName) {
         const RayAnimatedObject* first = side ? &bfStrumline[0].object : &dadStrumline[0].object;
         const RayAnimatedObject* last = side ? &bfStrumline[PLAYSTATE_LANES - 1].object : &dadStrumline[PLAYSTATE_LANES - 1].object;
         const char* text = side ? bfName : dadName;
-        const Vector2 ts = MeasureTextEx(mainFont, text, fontSize, 2.0f);
+        static TextMeasure sideMeasure[2];   // um cache por lado: o nome so muda ao trocar a musica
+        const Vector2 ts = TextMeasure_Get(&sideMeasure[side], mainFont, text, fontSize, 2.0f);
         const float cx = (first->position.x + last->position.x) * 0.5f;
         const Vector2 pos = {cx - ts.x * 0.5f, y};
         DrawTextEx(mainFont, text, (Vector2) {pos.x + 2.0f, pos.y + 2.0f}, fontSize, 2.0f, (Color) {0, 0, 0, 200});

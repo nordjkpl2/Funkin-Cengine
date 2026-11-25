@@ -1,7 +1,7 @@
 /* // * Friday Night Funkin´ c engine (c) 2026 nordjkpl */
 /* Chart Editor: caixas de texto/numero, botoes, listas e bloqueio do mouse. */
 #include "scenes/api/FontLoader.h"
-#include"data/Song.h"
+#include"data/song/Song.h"
 #include "core/ModPath.h"
 #include "Game.h"
 #include "GameData.h"
@@ -9,7 +9,7 @@
 #include "scenes/modding/charteditor/ui/EditorWidgets.h"
 #include "rendering/TextMeasure.h"
 #include <math.h>
-#include "scenes/modding/charteditor/data/EditorDataAndIO.h"
+#include "scenes/modding/charteditor/io/EditorDataAndIO.h"
 #include "scenes/modding/charteditor/grid/EditorTimeline.h"
 
 TxtBox* focusBox = NULL;

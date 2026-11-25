@@ -4,7 +4,7 @@
 #define _POSIX_C_SOURCE 200809L
 #endif
 #include <stdlib.h>
-#include "Thread.h"
+#include "threads/Thread.h"
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN

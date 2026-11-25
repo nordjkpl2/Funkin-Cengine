@@ -9,13 +9,11 @@
 #include "scenes/gameplay/visual/PlayStateNoteSplash.h"
 #include "scenes/gameplay/notes/PlayStateStrums.h"
 #include "GameData.h"
-#include "data/EffectsConfig.h"
+#include "data/config/EffectsConfig.h"
+#include "data/config/NotesplashConfig.h"
 
-#define SPLASH_TEXTURE "assets/images/noteSplashes-sparkles.png"
-#define SPLASH_ANIMSET "assets/images/noteSplashes-sparkles.xml"
-/* O parser do Sparrow tira os digitos finais do nome do frame, sobrando o espaco: "splash sparkles red 10000" -> "splash sparkles red " */
-#define SPLASH_ANIM_NAME "splash sparkles red " /* as 4 cores do XML tem os mesmos frames */
-#define SPLASH_FPS 24
+#include <string.h>
+
 #define SPLASH_DEFAULT_SCALE 0.8f /* padrao do Effects Editor (scalePct 80) */
 
 /* Vida = 4 frames / 24fps ~= 0.167s. Em spam de 32avos (~0.04s por nota) ficam ~5 vivos por coluna. */
@@ -28,24 +26,31 @@ typedef struct {
 } Splash;
 
 static RayAnimationHandler splashSet;
+static char splashAnimset[NOTESPLASH_PATH_MAX]; /* atlas carregado agora; vazio = nenhum */
 static int splashAnim = -1;
 static float splashLife;
 static Vector2 splashSize;          /* tamanho sem escala, medido uma vez no load */
-static char splashLoaded;
 
 static Splash pool[PLAYSTATE_LANES][SPLASH_LANE_MAX_ALIVE];
 
 void PlayStateNoteSplash_Load(void) {
     const EffectsSplash* cfg = &EffectsConfig_Get()->splash;
+    const NotesplashEntry* entry = NotesplashConfig_Active();
 
-    // Textura carrega uma vez; fps vem do Effects Editor e e reaplicado a cada entrada no PlayState.
-    if (!splashLoaded) {
-        splashLoaded = 1;
-        splashSet = AnimationSet_LoadAnimations(SPLASH_ANIMSET, Render_LoadTexture(SPLASH_TEXTURE));
+    // Atlas so e trocado se a entrada ativa mudou; fps vem do Effects Editor e e reaplicado a cada entrada no PlayState.
+    if (strcmp(splashAnimset, entry->animset) != 0) {
+        char texture[NOTESPLASH_PATH_MAX];
+        AnimationSet_FreeAll(&splashSet);
+        splashAnimset[0] = '\0';
+        if (NotesplashConfig_TexturePath(entry->animset, texture, sizeof(texture))) {
+            splashSet = AnimationSet_LoadAnimations(entry->animset, Render_LoadTexture(texture));
+            strcpy(splashAnimset, entry->animset);
+        }
     }
 
     int anim = -1;
-    AnimationSet_SetData(anim, splashSet, SPLASH_ANIM_NAME, cfg->fps, 0, 0, 0);
+    if (splashAnimset[0] != '\0')
+        AnimationSet_SetData(anim, splashSet, entry->prefix, cfg->fps, 0, 0, 0);
     splashAnim = anim;
     if (splashAnim < 0)
         return;

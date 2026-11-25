@@ -4,6 +4,8 @@
 *.o
 *.obj
 *.clangd
+.private/
+*.private
 compile_flags.txt
 .vscode/
 *.code-workspace

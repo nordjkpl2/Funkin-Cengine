@@ -5,7 +5,7 @@
 #include"logic/notes/Note.h"
 #include "raymath.h"
 #include "scenes/modding/charteditor/grid/EditorGrid.h"
-#include "scenes/modding/charteditor/data/EditorDataAndIO.h"
+#include "scenes/modding/charteditor/io/EditorDataAndIO.h"
 #include "scenes/modding/charteditor/grid/EditorTimeline.h"
 #include "scenes/modding/charteditor/audio/EditorAudio.h"
 #include "scenes/modding/charteditor/ui/EditorWidgets.h"

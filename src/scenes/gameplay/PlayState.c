@@ -12,7 +12,7 @@
 #include "scenes/menu/freeplay/Freeplay.h"
 #include "scenes/menu/storymode/StoryMode.h"
 #include "logic/notes/Note.h"
-#include "data/Song.h"
+#include "data/song/Song.h"
 #include "scenes/gameplay/stage/PlayStateStage.h"
 #include "scenes/gameplay/HUD/PlayStateHealth.h"
 #include "scenes/gameplay/audio/PlayStateAudio.h"
@@ -29,14 +29,14 @@
 #include "scenes/gameplay/HUD/PlayStateRatingPopups.h"
 #include "scenes/gameplay/visual/PlayStateNoteSplash.h"
 #include "scenes/gameplay/events/PlayStateEventsInGameplay.h"
-#include "Log.h"
+#include "core/Log.h"
 #include "rendering/cpu/ImagePrefetch.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include "Game.h"
 #include "GameData.h"
-#include "data/Week.h"
+#include "data/week/Week.h"
 
 #define SCREEN_W 1280.0f
 #define SCREEN_H 720.0f

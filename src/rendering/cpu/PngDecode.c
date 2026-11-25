@@ -20,7 +20,7 @@
 #endif
 #include "wuffs-unsupported-snapshot.c"
 
-#include "PngDecode.h"
+#include "rendering/cpu/PngDecode.h"
 
 #define PNG_MAX_DIM 16384
 

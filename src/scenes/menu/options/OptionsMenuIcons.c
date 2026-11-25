@@ -5,6 +5,7 @@
 #include "scenes/api/FontLoader.h"
 #include "scenes/menu/options/OptionsMenuInternal.h"
 #include "GameData.h"
+#include "rendering/TextMeasure.h"
 #include <math.h>
 
 /* Texto com sombra deslocada para cima/esquerda. */
@@ -320,7 +321,8 @@ static void DrawKeysMonitorIcon(float cx, float cy) {
         DrawRectangleRec(box, lit);
         DrawRectangleLinesEx(box, 2.0f, laneCol[i]);
 
-        const Vector2 ts = MeasureTextEx(mainFont, label, 16, 1.0f);
+        static TextMeasure keyMeasure[4];   // um cache por lane: a tecla so muda com a opcao
+        const Vector2 ts = TextMeasure_Get(&keyMeasure[i], mainFont, label, 16, 1.0f);
         DrawTextEx(mainFont, label, (Vector2) {box.x + (box.width - ts.x) * 0.5f, box.y + (box.height - ts.y) * 0.5f},
                    16, 1.0f, WHITE);
     }

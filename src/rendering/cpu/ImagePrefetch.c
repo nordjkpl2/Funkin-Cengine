@@ -4,9 +4,9 @@
 #include <stdatomic.h>
 #include <stdio.h>
 #include <string.h>
-#include "ImagePrefetch.h"
-#include "Log.h"
-#include "PngDecode.h"
+#include "rendering/cpu/ImagePrefetch.h"
+#include "core/Log.h"
+#include "rendering/cpu/PngDecode.h"
 #include "threads/Thread.h"
 #include "threads/cpu/Jobs.h"
 
@@ -14,7 +14,7 @@
 #define PF_PATH_MAX 260
 
 #define PF_CACHE_MAX 64
-#define PF_CACHE_CAP_BYTES ((size_t)10 * 1024 * 1024)
+#define PF_CACHE_CAP_BYTES ((size_t)15 * 1024 * 1024)
 
 enum { PF_FREE = 0, PF_RUNNING = 1, PF_READY = 2, PF_FAILED = 3 };
 
@@ -257,17 +257,9 @@ void ImagePrefetch_Start(const char* path) {
     }
 }
 
-/* Entrega uma copia (quem recebe chama UnloadImage). Usado pelo cache. */
-static bool Cache_Copy(PfCacheEntry* e, Image* out) {
-    Image copy = ImageCopy(e->img);
-    if(copy.data == NULL)
-        return false;
-    e->stamp = ++cacheTick;
-    *out = copy;
-    return true;
-}
-
-bool ImagePrefetch_Take(const char* path, Image* out) {
+/* Envia a imagem pronta para a GPU direto da memoria do cache (sem copia). A imagem continua
+   no cache para revisitas; so a imagem que nao cabe no cache e descarregada aqui. */
+bool ImagePrefetch_Upload(const char* path, Texture2D* out) {
     if(path == NULL || out == NULL)
         return false;
 
@@ -281,22 +273,29 @@ bool ImagePrefetch_Take(const char* path, Image* out) {
         }
         const size_t bytes = (size_t)s->img.width * s->img.height * 4;
         if(bytes > PF_CACHE_CAP_BYTES) {
-            // Grande demais para o cache: entrega direto a quem pediu (nada de decodificar de novo).
-            *out = s->img;
+            // Grande demais para o cache: sobe e descarrega (nada de decodificar de novo).
+            Image img = s->img;
             Pf_Release(s);
+            *out = LoadTextureFromImage(img);
+            UnloadImage(img);
             return true;
         }
-        // Imagem fica no cache (para revisitas); quem pediu recebe uma copia.
+        // Imagem fica no cache (para revisitas): a posse foi para o cache.
         PfCacheEntry* e = Cache_Put(path, s->img);
-        Pf_Release(s); // a posse ja foi para o cache
-        if(e != NULL && Cache_Copy(e, out))
+        Pf_Release(s);
+        if(e != NULL) {
+            e->stamp = ++cacheTick;
+            *out = LoadTextureFromImage(e->img);
             return true;
-        Pf_Refuse(&stats.decodeFailed, "sem memoria para copiar a imagem, tenta de novo na hora", path);
+        }
+        Pf_Refuse(&stats.decodeFailed, "sem memoria no cache, tenta de novo na hora", path);
         return false;
     }
 
     PfCacheEntry* e = Cache_Find(path);
-    if(e != NULL && Cache_Copy(e, out)) {
+    if(e != NULL) {
+        e->stamp = ++cacheTick;
+        *out = LoadTextureFromImage(e->img);
         stats.cacheHit++;
         return true;
     }

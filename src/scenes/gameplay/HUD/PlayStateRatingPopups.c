@@ -7,7 +7,7 @@
 #include "scenes/gameplay/HUD/PlayStateRatingPopups.h"
 #include "scenes/gameplay/HUD/PlayStateHealth.h"
 #include "GameData.h"
-#include "data/EffectsConfig.h"
+#include "data/config/EffectsConfig.h"
 #include "raymath.h"
 
 static RayAnimationHandler uiAssets;

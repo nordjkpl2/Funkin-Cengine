@@ -5,7 +5,7 @@
 
 #include <stdint.h>
 #include "Render.h"
-#include "data/Song.h"
+#include "data/song/Song.h"
 
 typedef struct {
     RayAnimatedObject object;

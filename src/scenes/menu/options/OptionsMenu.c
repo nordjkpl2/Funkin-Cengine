@@ -11,7 +11,7 @@
 #include "Game.h"
 #include "GameData.h"
 #include "raymath.h"
-#include "widgets-and-menus-ui/SearchBox.h"
+#include "ui/SearchBox.h"
 #include "scenes/menu/MenuMusic.h"
 #include "rendering/TextMeasure.h"
 #include <math.h>
@@ -315,7 +315,8 @@ static void DrawSelectionBar(float rowY, float height) {
 /* Dica do rodape: painel escuro com borda amarela (legivel em qualquer fundo). */
 static void DrawHint(const char* text) {
     const Vector2 pos = {ROW_X, SCREEN_H - 50.0f};
-    const Vector2 ts = MeasureTextEx(mainFont, text, 24, 2);
+    static TextMeasure hintMeasure;   // so muda quando a selecao muda o texto
+    const Vector2 ts = TextMeasure_Get(&hintMeasure, mainFont, text, 24, 2);
     const Rectangle box = {pos.x - 18.0f, pos.y - 8.0f, ts.x + 36.0f, ts.y + 16.0f};
     DrawRectangleRounded(box, 0.5f, 8, OPT_PANEL);
     DrawRectangleRoundedLinesEx(box, 0.5f, 8, 2.0f, OPT_ACCENT_DIM);
@@ -374,7 +375,8 @@ static void OptionsMenu_Draw([[maybe_unused]] RayScene* scene) {
             const float labelY = drawY + (ROW_FONT_SIZE - LABEL_FONT_SIZE) * 0.5f;
             DrawOptionText(o->text, HEADER_X, labelY, LABEL_FONT_SIZE, (Color) {190, 190, 190, 255}, (Color) {0, 0, 0, 100});
             // Divisor curto, da largura do proprio titulo (nao da linha inteira, como o [Header]).
-            const float labelW = MeasureTextEx(mainFont, o->text, LABEL_FONT_SIZE, TEXT_SPACING).x;
+            static TextMeasure labelMeasure[OPTION_COUNT];   // um cache por linha: o rotulo e fixo
+            const float labelW = TextMeasure_Get(&labelMeasure[i], mainFont, o->text, LABEL_FONT_SIZE, TEXT_SPACING).x;
             if (i == OPTION_NOTES_LABEL) DrawNotesLabelIcon(HEADER_X + labelW + 24.0f, labelY + LABEL_FONT_SIZE * 0.5f);
             DrawRectangleGradientH((int)HEADER_X, (int)(labelY + LABEL_FONT_SIZE + 3.0f), (int)labelW, 2,
                                    (Color) {OPT_ACCENT.r, OPT_ACCENT.g, OPT_ACCENT.b, 170}, (Color) {OPT_ACCENT.r, OPT_ACCENT.g, OPT_ACCENT.b, 0});

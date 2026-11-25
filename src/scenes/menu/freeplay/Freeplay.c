@@ -13,9 +13,9 @@
 #include "scenes/menu/MenuBackground.h"
 #include "scenes/menu/MenuState.h"
 #include "scenes/menu/freeplay/Freeplay.h"
-#include "data/SongList.h"
+#include "data/song/SongList.h"
 #include "scenes/menu/freeplay/FreeplayIcon.h"
-#include "widgets-and-menus-ui/SearchBox.h"
+#include "ui/SearchBox.h"
 #include "rendering/TextMeasure.h"
 #include <stdlib.h>
 

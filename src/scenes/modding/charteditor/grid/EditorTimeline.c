@@ -3,7 +3,7 @@
 
 #include "core/ModPath.h"
 #include "scenes/modding/charteditor/grid/EditorTimeline.h"
-#include "scenes/modding/charteditor/data/EditorDataAndIO.h"
+#include "scenes/modding/charteditor/io/EditorDataAndIO.h"
 
 // editor
 int secIdx = 0;

@@ -121,6 +121,8 @@ typedef struct {
     Shader sh;
     int locRes, locTime, locAmt, locAnim;
     char ok;
+    char synced;            /* ultimos valores enviados (so o tempo muda todo frame) */
+    float lastRes[2], lastAmt, lastAnim;
 } FxSlot;
 
 #define FX_COUNT 4
@@ -136,6 +138,7 @@ static float Clampf(float v, float lo, float hi) {
 static void FxSlot_Load(FxSlot* s, const char* fs) {
     s->sh = LoadShaderFromMemory(NULL, fs);
     s->ok = (s->sh.id != 0);
+    s->synced = 0;   /* programa novo: uniforms ainda nao enviados */
     if (!s->ok) return;
     s->locRes = GetShaderLocation(s->sh, "uRes");
     s->locTime = GetShaderLocation(s->sh, "uTime");
@@ -179,10 +182,22 @@ int ShaderFx_BeginDraw(float w, float h) {
     if (s == NULL) return 0;
     const float res[2] = {w, h};
     const float t = (float)GetTime();
-    SetShaderValue(s->sh, s->locRes, res, SHADER_UNIFORM_VEC2);
+    /* Uniforms ficam no programa: so reenvia os que mudaram (o tempo muda todo frame). */
+    if (!s->synced || s->lastRes[0] != w || s->lastRes[1] != h) {
+        SetShaderValue(s->sh, s->locRes, res, SHADER_UNIFORM_VEC2);
+        s->lastRes[0] = w;
+        s->lastRes[1] = h;
+    }
     SetShaderValue(s->sh, s->locTime, &t, SHADER_UNIFORM_FLOAT);
-    SetShaderValue(s->sh, s->locAmt, &curAmt, SHADER_UNIFORM_FLOAT);
-    SetShaderValue(s->sh, s->locAnim, &curAnim, SHADER_UNIFORM_FLOAT);
+    if (!s->synced || s->lastAmt != curAmt) {
+        SetShaderValue(s->sh, s->locAmt, &curAmt, SHADER_UNIFORM_FLOAT);
+        s->lastAmt = curAmt;
+    }
+    if (!s->synced || s->lastAnim != curAnim) {
+        SetShaderValue(s->sh, s->locAnim, &curAnim, SHADER_UNIFORM_FLOAT);
+        s->lastAnim = curAnim;
+    }
+    s->synced = 1;
     BeginShaderMode(s->sh);
     return 1;
 }
