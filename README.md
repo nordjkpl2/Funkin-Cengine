@@ -122,9 +122,9 @@ It’s being developed by me, and I’m writing the code from scratch, so it mig
 
 <div align="left">
   <div align="center">
-<img src="https://github.com/nordjkpl2/public-arquiv/blob/f84f34c17b8c8870152f1bfb32fb0e570b74ffb4/cengine1.png" width="400" height="400">
-<img src="https://github.com/nordjkpl2/public-arquiv/blob/f84f34c17b8c8870152f1bfb32fb0e570b74ffb4/cengine2.png" width="400" height="400">
-<img src="https://github.com/nordjkpl2/public-arquiv/blob/f84f34c17b8c8870152f1bfb32fb0e570b74ffb4/cengine3.png" width="400" height="400">
-<img src="https://github.com/nordjkpl2/public-arquiv/blob/f84f34c17b8c8870152f1bfb32fb0e570b74ffb4/cengine4.png" width="400" height="400">
-<img src="https://github.com/nordjkpl2/public-arquiv/blob/f84f34c17b8c8870152f1bfb32fb0e570b74ffb4/cengine5.png" width="400" height="400">
+<img src="https://github.com/nordjkpl2/public-arquiv/blob/f84f34c17b8c8870152f1bfb32fb0e570b74ffb4/cengine1.png" width="1400" height="1400">
+<img src="https://github.com/nordjkpl2/public-arquiv/blob/f84f34c17b8c8870152f1bfb32fb0e570b74ffb4/cengine2.png" width="1400" height="1400">
+<img src="https://github.com/nordjkpl2/public-arquiv/blob/f84f34c17b8c8870152f1bfb32fb0e570b74ffb4/cengine3.png" width="1400" height="1400">
+<img src="https://github.com/nordjkpl2/public-arquiv/blob/f84f34c17b8c8870152f1bfb32fb0e570b74ffb4/cengine4.png" width="1400" height="1400">
+<img src="https://github.com/nordjkpl2/public-arquiv/blob/f84f34c17b8c8870152f1bfb32fb0e570b74ffb4/cengine5.png" width="1400" height="1400">
 </div>
