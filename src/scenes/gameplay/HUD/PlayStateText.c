@@ -23,6 +23,10 @@
 #define TEXT_RIGHT_X 1270.0f
 // Tempo do topo, centralizado igual a barra de vida.
 #define TEXT_CENTER_X 600.0f
+// Posicoes extras do tempo (gameOptions.timePosition). Em rightdown fica logo acima do score.
+#define TIME_LOW_Y 690.0f
+#define TIME_RIGHTDOWN_Y 640.0f
+#define TIME_TOP_Y 15.0f
 
 // Margem do raster (px) para a sombra nao ser cortada.
 #define HUD_TEXT_PAD 4.0f
@@ -57,6 +61,7 @@ static int lastPsychMisses = -1;
 static int lastScoreDrawn = -1;
 static int lastMissesDrawn = -1;
 static int lastTimeSec = -1;
+static int lastTimePos = -1;
 
 static void HudText_Style(HudText* t, float size, Color color, Color shadow,
                           float shadowX, float shadowY, HudAlign align) {
@@ -247,6 +252,26 @@ void PlayStateText_Reset(void) {
     lastPsychScore = -1;
     lastPsychMisses = -1;
     lastTimeSec = -1;
+    lastTimePos = -1;
+}
+
+// Aplica gameOptions.timePosition ao texto do tempo (so mexe quando a opcao muda).
+static void ApplyTimePosition(void) {
+    if (gameOptions.timePosition == lastTimePos) return;
+    lastTimePos = gameOptions.timePosition;
+    HudAlign align = HUD_ALIGN_CENTER;
+    float x = TEXT_CENTER_X, y = TIME_TOP_Y;
+    switch (gameOptions.timePosition) {
+        case TIME_POS_LOW:       y = TIME_LOW_Y; break;
+        case TIME_POS_RIGHTUP:   align = HUD_ALIGN_RIGHT; x = TEXT_RIGHT_X; break;
+        case TIME_POS_RIGHTDOWN: align = HUD_ALIGN_RIGHT; x = TEXT_RIGHT_X; y = TIME_RIGHTDOWN_Y; break;
+        default: break;
+    }
+    if (hTime.align != align) {
+        hTime.align = align;
+        hTime.dirty = 1;
+    }
+    HudText_SetAnchor(&hTime, x, y);
 }
 
 // Atualiza o conteudo dos textos (so quando o valor muda) e rasteriza os que mudaram.
@@ -255,6 +280,7 @@ void PlayStateText_Refresh(int score, int misses, float songTime, char showScore
     char buf[64];
 
     // Tempo
+    ApplyTimePosition();
     {
         int currentSec = (int)(songTime < 0 ? 0 : songTime);
         if (currentSec != lastTimeSec) {

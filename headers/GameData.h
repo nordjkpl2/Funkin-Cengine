@@ -15,6 +15,7 @@ typedef struct GameOptions {
     char showScore, bopIcons, vsync, fillScreen;
     char botplay, ghost, scroll, hitSound, showFps;
     char scorePosition; /* SCORE_POS_CENGINE ou SCORE_POS_PSYCH */
+    char timePosition;  /* TIME_POS_*: onde o tempo da musica aparece (padrao: default) */
     char healthDrainPlay;     /* oponente acerta -> perde vida no jogo normal (padrao: off) */
     char healthDrainBotplay;  /* botplay ganha/perde vida como o jogador (padrao: off; off = barra travada) */
     char streamingJsonParse;  /* chart JSON em janelas por secao (streaming): menos RAM em charts grandes (padrao: off) */
@@ -39,6 +40,13 @@ typedef struct GameOptions {
 /* Onde o score aparece no HUD: canto inferior direito (Cengine) ou centro sob a barra (Psych). */
 #define SCORE_POS_CENGINE 0
 #define SCORE_POS_PSYCH   1
+
+/* Onde o tempo da musica aparece: topo central (default), embaixo central (low), topo direita (rightup)
+ * ou logo acima do score na direita (rightdown). Com o tempo na direita, o Keys Monitor vai para a esquerda. */
+#define TIME_POS_DEFAULT   0
+#define TIME_POS_LOW       1
+#define TIME_POS_RIGHTUP   2
+#define TIME_POS_RIGHTDOWN 3
 
 /* Estilo de scroll (gameOptions.scroll): Middledown = middlescroll + downscroll ao mesmo tempo. */
 #define SCROLL_UP         0

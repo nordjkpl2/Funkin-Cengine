@@ -75,7 +75,10 @@ typedef struct {
 } NoteColorPreset;
 static const NoteColorPreset presets[] = {
     {"Reimagined/Modern", {{9, 0, 40}, {11, 100, 35}, {40, 100, 28}, {9, 100, 29}}},
+    {"beach", {{102, 0, 40}, {17, 100, 35}, {19, 100, 28}, {-23, 100, 29}}},
 };
+#define NC_PRESET_COUNT ((int)(sizeof presets / sizeof presets[0]))
+static int presetIdx; /* proximo preset a aplicar (o botao mostra este nome) */
 
 static Rectangle LaneButton(int i) { return (Rectangle) {NC_LANE_X + (float)i * NC_LANE_STEP, NC_LANE_Y, NC_LANE_W, NC_LANE_H}; }
 static Rectangle SliderRect(int s) { return (Rectangle) {NC_SL_X, NC_SL_Y0 + (float)s * NC_SL_STEP, NC_SL_W, NC_SL_H}; }
@@ -101,9 +104,10 @@ static void ResetLane(void) {
 
 /* Aplica o preset em todas as colunas (offsets HSB; sliders e previa leem daqui a cada frame). */
 static void ApplyPreset(void) {
-    const NoteColorPreset* p = &presets[0];
+    const NoteColorPreset* p = &presets[presetIdx];
     for (int i = 0; i < 4; i++)
         for (int s = 0; s < NC_SL_COUNT; s++) gameOptions.laneHSB[i][s] = p->hsb[i][s];
+    presetIdx = (presetIdx + 1) % NC_PRESET_COUNT;
     drag = 0;
     wheelDrag = false;
 }
@@ -358,7 +362,7 @@ void NoteColorScreen_Draw(void) {
     if (presetOpen) {
         DrawRectangleRounded(NC_PRESET_BTN, NC_ROUND, 6, (Color) {46, 46, 52, 255});
         DrawRectangleRoundedLinesEx(NC_PRESET_BTN, NC_ROUND, 6, 2.0f, WHITE);
-        const char* pname = presets[0].name;
+        const char* pname = presets[presetIdx].name;
         static TextMeasure presetMeasure;
         const Vector2 ps = TextMeasure_Get(&presetMeasure, mainFont, pname, 22, 1.0f);
         DrawTextEx(mainFont, pname, (Vector2) {NC_PRESET_BTN.x + (NC_PRESET_BTN.width - ps.x) * 0.5f,

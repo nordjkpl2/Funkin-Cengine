@@ -19,6 +19,7 @@
 #define MONITOR_GAP 6.0f          // espaco entre eles
 #define MONITOR_MARGIN 20.0f      // distancia da borda direita
 #define MONITOR_TOP 20.0f         // distancia da borda superior
+#define MONITOR_LEFT_Y 50.0f      // lado esquerdo (tempo na direita): abaixo do BOTPLAY
 #define MONITOR_FONT 24
 #define MOBILE_GLOW_RISE 12.0f    // velocidade de subida (por segundo): acende rapido
 #define MOBILE_GLOW_FALL 4.0f     // velocidade de descida (por segundo): fade curto
@@ -143,13 +144,16 @@ void PlayStateStrums_DrawKeyMonitor(void) {
     if (!gameOptions.strumMobileVisible) return;
 
     const float total = PLAYSTATE_LANES * MONITOR_KEY + (PLAYSTATE_LANES - 1) * MONITOR_GAP;
-    const float x0 = SCREEN_W - MONITOR_MARGIN - total;
+    // Tempo na direita: monitor vai para a esquerda para nao sobrepor. Senao, canto superior direito.
+    const char timeOnRight = gameOptions.timePosition == TIME_POS_RIGHTUP || gameOptions.timePosition == TIME_POS_RIGHTDOWN;
+    const float x0 = timeOnRight ? MONITOR_MARGIN : SCREEN_W - MONITOR_MARGIN - total;
+    const float top = timeOnRight ? MONITOR_LEFT_Y : MONITOR_TOP;
     static TextMeasure labelMeasure[2][PLAYSTATE_LANES]; // rotulo da coluna muda so com as teclas
 
     // Uma linha por jogador: so o jogador 1, ou os 2 no Co-Op (empilhadas, do topo para baixo).
     const int rows = PlayStatePlayerInput_Slots();
     for (int s = 0; s < rows; s++) {
-        const float y = MONITOR_TOP + s * (MONITOR_KEY + MONITOR_GAP);
+        const float y = top + s * (MONITOR_KEY + MONITOR_GAP);
         for (int i = 0; i < PLAYSTATE_LANES; i++) {
             const Rectangle box = {x0 + i * (MONITOR_KEY + MONITOR_GAP), y, MONITOR_KEY, MONITOR_KEY};
 

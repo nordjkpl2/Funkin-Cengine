@@ -45,6 +45,8 @@ const PlayStateEventType playStateEventTypes[] = {
     {"Shader Bloom",  "brilho: pixels claros ganham halo (intensidade % = forca e raio)", 50, 0, 0, "intensidade %:", "animacao %:", NULL, 0, 1},
     {"Shader Space",  "espaco: nebulosa colorida + estrelas descendo e piscando (intensidade % = forca, animacao % = velocidade)", 50, 0, 0, "intensidade %:", "animacao %:", NULL, 0, 1},
     {"Shader Pulse",  "pulso: batida tum-tum no ritmo (zoom + clarao + borda; animacao % = BPM: 100 = 120)", 50, 0, 0, "intensidade %:", "animacao %:", NULL, 0, 1},
+    {"Shader Distortion", "distorcao: ondas de calor + curvatura de lente (intensidade % = forca, animacao % = velocidade)", 50, 0, 0, "intensidade %:", "animacao %:", NULL, 0, 1},
+    {"Shader Chromatic", "aberracao cromatica: separa vermelho e azul do centro (intensidade % = forca, animacao % = pulso)", 50, 0, 0, "intensidade %:", "animacao %:", NULL, 0, 1},
     {"Shader Off",    "desliga o shader de tela", 0, 0, 0, NULL, NULL, NULL, 0, 1},
     {"Camera Parallax", "camera 3D: afasta (zoom out) e balanca em profundidade (0 desliga)", 100, 0, 0, "intensidade %:", "velocidade %:", NULL, 0, 0},
     {CAMERA_MOVE_NAME, "camera: zoom % (100 = normal), x e y em px do mundo (transicao suave)", 100, 0, 0, "zoom %:", "x (px):", "y (px):", 0, 0},
@@ -156,13 +158,16 @@ static int FindImg(const char* name) {
 void PlayStateEvents_ApplyShader(const char* name, double intensityPct, double animPct) {
     const float amt = (float)(intensityPct / 100.0);
     const float spd = (float)(animPct / 100.0);
-    if (strcmp(name, "Shader TV") == 0) ShaderFx_Set(SHADERFX_TV, amt, spd);
-    else if (strcmp(name, "Shader Glitch") == 0) ShaderFx_Set(SHADERFX_GLITCH, amt, spd);
-    else if (strcmp(name, "Shader Blackness") == 0) ShaderFx_Set(SHADERFX_BLACKNESS, amt, spd);
-    else if (strcmp(name, "Shader Grayscale") == 0) ShaderFx_Set(SHADERFX_GRAYSCALE, amt, spd);
-    else if (strcmp(name, "Shader Bloom") == 0) ShaderFx_Set(SHADERFX_BLOOM, amt, spd);
-    else if (strcmp(name, "Shader Space") == 0) ShaderFx_Set(SHADERFX_SPACE, amt, spd);
-    else if (strcmp(name, "Shader Pulse") == 0) ShaderFx_Set(SHADERFX_PULSE, amt, spd);
+    /* Empilha: efeitos novos somam aos que ja estao ligados (max 3). "Shader Off" limpa tudo. */
+    if (strcmp(name, "Shader TV") == 0) ShaderFx_Push(SHADERFX_TV, amt, spd);
+    else if (strcmp(name, "Shader Glitch") == 0) ShaderFx_Push(SHADERFX_GLITCH, amt, spd);
+    else if (strcmp(name, "Shader Blackness") == 0) ShaderFx_Push(SHADERFX_BLACKNESS, amt, spd);
+    else if (strcmp(name, "Shader Grayscale") == 0) ShaderFx_Push(SHADERFX_GRAYSCALE, amt, spd);
+    else if (strcmp(name, "Shader Bloom") == 0) ShaderFx_Push(SHADERFX_BLOOM, amt, spd);
+    else if (strcmp(name, "Shader Space") == 0) ShaderFx_Push(SHADERFX_SPACE, amt, spd);
+    else if (strcmp(name, "Shader Pulse") == 0) ShaderFx_Push(SHADERFX_PULSE, amt, spd);
+    else if (strcmp(name, "Shader Distortion") == 0) ShaderFx_Push(SHADERFX_DISTORTION, amt, spd);
+    else if (strcmp(name, "Shader Chromatic") == 0) ShaderFx_Push(SHADERFX_CHROMATIC, amt, spd);
     else if (strcmp(name, "Shader Off") == 0) ShaderFx_Reset();
 }
 

@@ -536,16 +536,7 @@ void RayGame_GameLoop(void)
                 dstRect = (Rectangle){ ((float)width - cw) * 0.5f, ((float)height - ch) * 0.5f, cw, ch };
             }
 
-            const int fxDrawn = ShaderFx_BeginDraw((float)RAYGAME_CANVAS_WIDTH, (float)RAYGAME_CANVAS_HEIGHT);
-            DrawTexturePro(
-                stretchTarget.texture,
-                (Rectangle){ 0.0f, 0.0f, (float)RAYGAME_CANVAS_WIDTH, -(float)RAYGAME_CANVAS_HEIGHT },
-                dstRect,
-                (Vector2){0.0f, 0.0f},
-                0.0f,
-                WHITE
-            );
-            if (fxDrawn) ShaderFx_EndDraw();
+            ShaderFx_Present(stretchTarget.texture, dstRect, (float)RAYGAME_CANVAS_WIDTH, (float)RAYGAME_CANVAS_HEIGHT);
 
             RayGame_DrawOverlay();
             RayGame_EndFrame(tDraw0);

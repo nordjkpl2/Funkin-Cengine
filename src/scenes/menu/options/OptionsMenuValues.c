@@ -17,6 +17,7 @@ static const char* ghost_names[3] = {"On", "50/50", "Off"};
 static const char* scroll_names[4] = {"Normal", "Downscroll", "Middlescroll", "Middledown"};
 static const char* thread_names[2] = {"Auto", "Limited"};
 static const char* score_position_names[2] = {"Cengine", "Psych"};
+static const char* time_position_names[4] = {"Default", "Low", "Right Up", "Right Down"};
 static const char* note_colors_names[1] = {"Edit"};
 static const char* hidden_notes_names[4] = {"Off", "Alternate", "Only Playable", "Alternate Playable"};
 static const char* strum_bg_names[11] = {"Off", "10%", "20%", "30%", "40%", "50%", "60%", "70%", "80%", "90%", "100%"};
@@ -50,6 +51,7 @@ Option options[OPTION_COUNT] = {
     [OPTION_SCORE_LABEL] = {.text = "Score", .type = OPTION_VALUE_LABEL},
     [OPTION_SHOW_SCORE] = {.text = "Show Score", .type = OPTION_VALUE_BOOL},
     [OPTION_SCORE_POSITION] = {.text = "Score Position", .type = OPTION_VALUE_LIST, .options = score_position_names, .step = 1, .max = 1, .min = 0},
+    [OPTION_TIME_POSITION] = {.text = "Time Position", .type = OPTION_VALUE_LIST, .options = time_position_names, .step = 1, .max = 3, .min = 0},
     [OPTION_ICONS_LABEL] = {.text = "Icons", .type = OPTION_VALUE_LABEL},
     [OPTION_BOPPING_ICONS] = {.text = "Bopping Icons", .type = OPTION_VALUE_BOOL},
     [OPTION_LOSE_ICON] = {.text = "Losing Icon", .type = OPTION_VALUE_BOOL},
@@ -163,6 +165,7 @@ void ApplyNumValue(void) {
         case OPTION_ZOOMFACTOR_GAME:   gameOptions.zoomFactorGAME = o->value; break;
         case OPTION_ZOOMFACTOR_UI:     gameOptions.zoomFactorUI = o->value; break;
         case OPTION_SCORE_POSITION:    gameOptions.scorePosition = (char)(int)o->value; break;
+        case OPTION_TIME_POSITION:     gameOptions.timePosition = (char)(int)o->value; break;
         case OPTION_STRUM_BG:          gameOptions.strumBgPercent = (char)((int)o->value * 10); break;
         case OPTION_MENU_MUSIC:        ApplyMusicValue(); break;
     }
@@ -394,6 +397,7 @@ void Options_LoadValues(void) {
     options[OPTION_SHOW_SCORE].value = gameOptions.showScore;
     options[OPTION_SCORE_POSITION].value = gameOptions.scorePosition;
     options[OPTION_SCORE_POSITION].active = gameOptions.showScore;
+    options[OPTION_TIME_POSITION].value = gameOptions.timePosition;
     options[OPTION_BOPPING_ICONS].value = gameOptions.bopIcons;
     options[OPTION_LOSE_ICON].value = gameOptions.loseIcon;
     options[OPTION_STRUM_BG].value = gameOptions.strumBgPercent / 10;

@@ -117,8 +117,9 @@ static const char kFsGrayscale[] =
     "    finalColor = vec4(mix(t.rgb, vec3(l), uAmt), t.a);\n"
     "}\n";
 
-/* Bloom (brilho): 1 passe. Pega os pixels claros em dois aneis de 12 amostras ao redor
- * e soma por cima da imagem. intensidade = mais raio, mais limiar baixo e mais forca. */
+/* Bloom (brilho): 1 passe com 48 amostras em espiral (Vogel) dentro do raio, peso gaussiano.
+ * Limiar com joelho suave (sem corte seco) e um giro por pixel (ruido de gradiente) que
+ * troca o serrilhado/bandas por grao fino. intensidade = raio, forca e queda do limiar. */
 static const char kFsBloom[] =
     "#version 330\n"
     "in vec2 fragTexCoord;\n"
@@ -126,24 +127,80 @@ static const char kFsBloom[] =
     "uniform vec2 uRes;\n"
     "uniform float uAmt;\n"
     "out vec4 finalColor;\n"
+    "const int N = 48;\n"
+    "const float GOLDEN = 2.39996323;\n"
+    "vec3 bright(vec3 c, float thr) {\n"                          /* joelho suave: cai de 0 a thr+KNEE */
+    "    const float KNEE = 0.15;\n"
+    "    float l = max(c.r, max(c.g, c.b));\n"
+    "    float soft = clamp(l - thr + KNEE, 0.0, 2.0 * KNEE);\n"
+    "    soft = soft * soft / (4.0 * KNEE + 1e-4);\n"
+    "    float k = max(soft, l - thr) / max(l, 1e-4);\n"
+    "    return c * max(k, 0.0);\n"
+    "}\n"
     "void main() {\n"
     "    vec4 base = texture(texture0, fragTexCoord);\n"
     "    vec2 px = 1.0 / max(uRes, vec2(1.0));\n"
-    "    float radius = mix(2.0, 12.0, uAmt);\n"                    /* raio em pixels */
-    "    float thr = mix(0.9, 0.5, uAmt);\n"                        /* limiar de brilho */
+    "    float radius = mix(3.0, 24.0, uAmt);\n"                    /* raio em pixels */
+    "    float thr = mix(0.85, 0.45, uAmt);\n"                      /* limiar de brilho */
+    "    float rot = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715)))) * 6.2831853;\n"
     "    vec3 glow = vec3(0.0);\n"
-    "    for (int ring = 1; ring <= 2; ring++) {\n"
-    "        float r = radius * float(ring) * 0.5;\n"
-    "        float off = (ring == 2) ? 0.5 : 0.0;\n"               /* aneis alternados */
-    "        for (int i = 0; i < 12; i++) {\n"
-    "            float a = (float(i) + off) * 0.5235988;\n"        /* 2*pi/12 */
-    "            vec3 s = texture(texture0, fragTexCoord + vec2(cos(a), sin(a)) * r * px).rgb;\n"
-    "            glow += max(s - thr, vec3(0.0)) / (1.0 - thr);\n"
-    "        }\n"
+    "    float wsum = 0.0;\n"
+    "    for (int i = 0; i < N; i++) {\n"
+    "        float f = (float(i) + 0.5) / float(N);\n"
+    "        float r = sqrt(f);\n"                                  /* disco uniforme */
+    "        float a = float(i) * GOLDEN + rot;\n"
+    "        float w = exp(-2.5 * f);\n"                            /* gaussiano: centro pesa mais */
+    "        vec2 o = vec2(cos(a), sin(a)) * r * radius * px;\n"
+    "        glow += bright(texture(texture0, fragTexCoord + o).rgb, thr) * w;\n"
+    "        wsum += w;\n"
     "    }\n"
-    "    glow /= 24.0;\n"
-    "    vec3 col = base.rgb + glow * uAmt * 2.0;\n"
+    "    glow /= wsum;\n"
+    "    vec3 col = base.rgb + glow * uAmt * 2.5;\n"
     "    finalColor = vec4(clamp(col, 0.0, 1.0), base.a);\n"
+    "}\n";
+
+/* Distorcao: ondas de calor (senos cruzados que andam no tempo) + leve curvatura de lente.
+ * intensidade = forca do deslocamento; animacao = velocidade das ondas (0 = onda parada). */
+static const char kFsDistortion[] =
+    "#version 330\n"
+    "in vec2 fragTexCoord;\n"
+    "uniform sampler2D texture0;\n"
+    "uniform vec2 uRes;\n"
+    "uniform float uTime;\n"
+    "uniform float uAmt;\n"
+    "uniform float uAnim;\n"
+    "out vec4 finalColor;\n"
+    "void main() {\n"
+    "    float t = uTime * uAnim;\n"
+    "    float asp = uRes.x / max(uRes.y, 1.0);\n"
+    "    vec2 c = (fragTexCoord * 2.0 - 1.0) * vec2(asp, 1.0);\n"
+    "    float r2 = dot(c, c);\n"
+    "    float w1 = sin(c.y * 7.0 + t * 2.1 + sin(c.x * 3.0 - t * 0.7));\n"
+    "    float w2 = sin(c.x * 5.5 - t * 1.6 + c.y * 2.0);\n"
+    "    vec2 d = vec2(w1 / asp, w2) * uAmt * 0.012;\n"            /* deslocamento em UV (sem esticar) */
+    "    vec2 uv = fragTexCoord + d + (c / vec2(asp, 1.0)) * r2 * uAmt * 0.02;\n"  /* + curvatura (lente) */
+    "    uv = clamp(uv, 0.0, 1.0);\n"
+    "    finalColor = vec4(texture(texture0, uv).rgb, 1.0);\n"
+    "}\n";
+
+/* Aberracao cromatica: separa R e B radialmente do centro (mais forte nas bordas).
+ * intensidade = distancia da separacao; animacao > 0 faz ela pulsar no tempo. */
+static const char kFsChromatic[] =
+    "#version 330\n"
+    "in vec2 fragTexCoord;\n"
+    "uniform sampler2D texture0;\n"
+    "uniform float uTime;\n"
+    "uniform float uAmt;\n"
+    "uniform float uAnim;\n"
+    "out vec4 finalColor;\n"
+    "void main() {\n"
+    "    vec2 d = fragTexCoord - 0.5;\n"
+    "    float pulse = uAnim > 0.0 ? 0.75 + 0.25 * sin(uTime * uAnim * 6.0) : 1.0;\n"
+    "    vec2 off = d * (0.3 + length(d) * 1.4) * uAmt * 0.06 * pulse;\n"
+    "    float r = texture(texture0, fragTexCoord + off).r;\n"
+    "    vec4 g = texture(texture0, fragTexCoord);\n"
+    "    float b = texture(texture0, fragTexCoord - off).b;\n"
+    "    finalColor = vec4(r, g.g, b, g.a);\n"
     "}\n";
 
 /* Espaco: nebulosa em fbm (roxo/azul/rosa) entra em tela sobre a imagem, mais forte nas areas escuras,
@@ -230,15 +287,20 @@ typedef struct {
     Shader sh;
     int locRes, locTime, locAmt, locAnim;
     char ok;
+    char on;                /* efeito esta na pilha */
     char synced;            /* ultimos valores enviados (so o tempo muda todo frame) */
+    float amt, anim;       /* valores deste efeito */
     float lastRes[2], lastAmt, lastAnim;
 } FxSlot;
 
-#define FX_COUNT 7
-static FxSlot slots[FX_COUNT];   /* [0] = TV, [1] = glitch, [2] = blackness, [3] = grayscale, [4] = bloom, [5] = space, [6] = pulse */
+#define FX_COUNT 9
+#define FX_STACK_MAX 3       /* efeitos ao mesmo tempo */
+static FxSlot slots[FX_COUNT];   /* [0] = TV, [1] = glitch, [2] = blackness, [3] = grayscale, [4] = bloom, [5] = space, [6] = pulse, [7] = distortion, [8] = chromatic */
+static ShaderFxKind order[FX_STACK_MAX];   /* ordem da pilha: order[0] = aplicado primeiro */
+static int orderLen;
 static char triedLoad;
-static ShaderFxKind curKind = SHADERFX_NONE;
-static float curAmt, curAnim;
+static RenderTexture2D passTex[2];   /* ping-pong: cada passe le um e escreve no outro */
+static char passReady;
 
 static float Clampf(float v, float lo, float hi) {
     return v < lo ? lo : (v > hi ? hi : v);
@@ -265,33 +327,34 @@ static void EnsureLoaded(void) {
     FxSlot_Load(&slots[4], kFsBloom);
     FxSlot_Load(&slots[5], kFsSpace);
     FxSlot_Load(&slots[6], kFsPulse);
+    FxSlot_Load(&slots[7], kFsDistortion);
+    FxSlot_Load(&slots[8], kFsChromatic);
 }
 
-static FxSlot* CurSlot(void) {
-    if (curKind == SHADERFX_NONE) return NULL;
+static int IsValidKind(ShaderFxKind k) {
+    return k > SHADERFX_NONE && k <= SHADERFX_CHROMATIC;
+}
+
+/* Tira da pilha a posicao idx (o efeito continua carregado, so deixa de ser aplicado). */
+static void StackRemoveAt(int idx) {
+    slots[order[idx] - 1].on = 0;
+    for (int i = idx; i < orderLen - 1; i++) order[i] = order[i + 1];
+    orderLen--;
+}
+
+/* Pega os efeitos ligados na ordem da pilha que carregaram. Retorna quantos. */
+static int CollectActive(FxSlot* out[FX_STACK_MAX]) {
+    if (orderLen == 0) return 0;
     EnsureLoaded();
-    FxSlot* s = &slots[curKind - 1];
-    return s->ok ? s : NULL;
+    int n = 0;
+    for (int i = 0; i < orderLen; i++) {
+        FxSlot* s = &slots[order[i] - 1];
+        if (s->ok) out[n++] = s;
+    }
+    return n;
 }
 
-void ShaderFx_Set(ShaderFxKind kind, float intensity, float speed) {
-    curAmt = Clampf(intensity, 0.0f, 1.0f);
-    curAnim = Clampf(speed, 0.0f, 2.0f);
-    curKind = (kind == SHADERFX_TV || kind == SHADERFX_GLITCH || kind == SHADERFX_BLACKNESS || kind == SHADERFX_GRAYSCALE || kind == SHADERFX_BLOOM || kind == SHADERFX_SPACE || kind == SHADERFX_PULSE) ? kind : SHADERFX_NONE;
-    if (curAmt <= 0.0f || !gameOptions.shaders) curKind = SHADERFX_NONE; /* opcao Shaders off: nenhum efeito entra */
-}
-
-void ShaderFx_Reset(void) {
-    curKind = SHADERFX_NONE;
-}
-
-int ShaderFx_IsActive(void) {
-    return CurSlot() != NULL;
-}
-
-int ShaderFx_BeginDraw(float w, float h) {
-    FxSlot* s = CurSlot();
-    if (s == NULL) return 0;
+static void SetUniforms(FxSlot* s, float w, float h) {
     const float res[2] = {w, h};
     const float t = (float)GetTime();
     /* Uniforms ficam no programa: so reenvia os que mudaram (o tempo muda todo frame). */
@@ -301,30 +364,118 @@ int ShaderFx_BeginDraw(float w, float h) {
         s->lastRes[1] = h;
     }
     /* uTime so entra multiplicado por uAnim nos shaders: com uAnim = 0 (efeito parado) nao importa. */
-    if (!s->synced || curAnim > 0.0f)
+    if (!s->synced || s->anim > 0.0f)
         SetShaderValue(s->sh, s->locTime, &t, SHADER_UNIFORM_FLOAT);
-    if (!s->synced || s->lastAmt != curAmt) {
-        SetShaderValue(s->sh, s->locAmt, &curAmt, SHADER_UNIFORM_FLOAT);
-        s->lastAmt = curAmt;
+    if (!s->synced || s->lastAmt != s->amt) {
+        SetShaderValue(s->sh, s->locAmt, &s->amt, SHADER_UNIFORM_FLOAT);
+        s->lastAmt = s->amt;
     }
-    if (!s->synced || s->lastAnim != curAnim) {
-        SetShaderValue(s->sh, s->locAnim, &curAnim, SHADER_UNIFORM_FLOAT);
-        s->lastAnim = curAnim;
+    if (!s->synced || s->lastAnim != s->anim) {
+        SetShaderValue(s->sh, s->locAnim, &s->anim, SHADER_UNIFORM_FLOAT);
+        s->lastAnim = s->anim;
     }
     s->synced = 1;
-    BeginShaderMode(s->sh);
-    return 1;
 }
 
-void ShaderFx_EndDraw(void) {
+/* Um passe: src (com srcRect) desenhado em dst pelo shader do efeito. */
+static void DrawPass(FxSlot* s, Texture2D src, Rectangle srcRect, Rectangle dst, float w, float h) {
+    SetUniforms(s, w, h);
+    BeginShaderMode(s->sh);
+    DrawTexturePro(src, srcRect, dst, (Vector2){0.0f, 0.0f}, 0.0f, WHITE);
     EndShaderMode();
+}
+
+static int EnsurePassTex(float w, float h) {
+    const int iw = (int)w, ih = (int)h;
+    if (passReady && passTex[0].texture.width == iw && passTex[0].texture.height == ih) return 1;
+    if (passReady) {
+        UnloadRenderTexture(passTex[0]);
+        UnloadRenderTexture(passTex[1]);
+        passReady = 0;
+    }
+    passTex[0] = LoadRenderTexture(iw, ih);
+    passTex[1] = LoadRenderTexture(iw, ih);
+    passReady = (passTex[0].id != 0 && passTex[1].id != 0);
+    return passReady;
+}
+
+void ShaderFx_Reset(void) {
+    for (int i = 0; i < FX_COUNT; i++) slots[i].on = 0;
+    orderLen = 0;
+}
+
+void ShaderFx_Remove(ShaderFxKind kind) {
+    if (!IsValidKind(kind) || !slots[kind - 1].on) return;
+    for (int i = 0; i < orderLen; i++) {
+        if (order[i] == kind) {
+            StackRemoveAt(i);
+            return;
+        }
+    }
+}
+
+void ShaderFx_Push(ShaderFxKind kind, float intensity, float speed) {
+    if (!IsValidKind(kind)) return;
+    if (!gameOptions.shaders) { ShaderFx_Reset(); return; }   /* opcao Shaders off: nenhum efeito entra */
+    const float amt = Clampf(intensity, 0.0f, 1.0f);
+    if (amt <= 0.0f) { ShaderFx_Remove(kind); return; }
+    FxSlot* s = &slots[kind - 1];
+    s->amt = amt;
+    s->anim = Clampf(speed, 0.0f, 2.0f);
+    if (s->on) return;                       /* ja esta na pilha: so atualizou os valores */
+    if (orderLen == FX_STACK_MAX) StackRemoveAt(0);   /* cheia: sai o mais antigo */
+    order[orderLen++] = kind;
+    s->on = 1;
+}
+
+void ShaderFx_Set(ShaderFxKind kind, float intensity, float speed) {
+    ShaderFx_Reset();
+    ShaderFx_Push(kind, intensity, speed);
+}
+
+int ShaderFx_IsActive(void) {
+    FxSlot* act[FX_STACK_MAX];
+    return CollectActive(act) > 0;
+}
+
+/* Desenha o canvas (src) em dst passando pela pilha. Sem efeito: so DrawTexturePro.
+ * Com 2+ efeitos: os primeiros passes vao para texturas intermediarias e o ultimo vai para a tela. */
+void ShaderFx_Present(Texture2D src, Rectangle dst, float w, float h) {
+    FxSlot* act[FX_STACK_MAX];
+    const int n = CollectActive(act);
+    /* mesma inversao do RenderTexture usada no canvas, em todos os passes */
+    const Rectangle srcRect = {0.0f, 0.0f, w, -h};
+    if (n == 0) {
+        DrawTexturePro(src, srcRect, dst, (Vector2){0.0f, 0.0f}, 0.0f, WHITE);
+        return;
+    }
+    if (n == 1 || !EnsurePassTex(w, h)) {   /* sem textura extra: aplica so o ultimo */
+        DrawPass(act[n - 1], src, srcRect, dst, w, h);
+        return;
+    }
+    const Rectangle fullRect = {0.0f, 0.0f, w, h};
+    Texture2D cur = src;
+    for (int i = 0; i < n - 1; i++) {
+        RenderTexture2D* rt = &passTex[i & 1];
+        BeginTextureMode(*rt);
+        DrawPass(act[i], cur, srcRect, fullRect, w, h);
+        EndTextureMode();
+        cur = rt->texture;
+    }
+    DrawPass(act[n - 1], cur, srcRect, dst, w, h);
 }
 
 void ShaderFx_Unload(void) {
     for (int i = 0; i < FX_COUNT; i++) {
         if (slots[i].ok) UnloadShader(slots[i].sh);
         slots[i].ok = 0;
+        slots[i].on = 0;
     }
+    if (passReady) {
+        UnloadRenderTexture(passTex[0]);
+        UnloadRenderTexture(passTex[1]);
+        passReady = 0;
+    }
+    orderLen = 0;
     triedLoad = 0;
-    curKind = SHADERFX_NONE;
 }
