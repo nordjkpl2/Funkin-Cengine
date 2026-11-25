@@ -8,5 +8,6 @@
 
 char EdChart_Save(const EdChart* c);           /* formatado (uma nota por linha) */
 char EdChart_SaveCompressed(const EdChart* c); /* minificado, campos padrao omitidos */
+char EdChart_SaveBinary(const EdChart* c);     /* data.song binario na pasta da musica (formato legado) */
 
 #endif

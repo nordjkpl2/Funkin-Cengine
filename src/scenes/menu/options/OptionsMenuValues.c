@@ -7,6 +7,7 @@
 #include "scenes/menu/MenuMusic.h"
 #include "Game.h"
 #include "GameData.h"
+#include "rendering/shaders/ShaderFx.h"
 #include "raymath.h"
 #include "threads/Thread.h"
 #include "threads/cpu/Jobs.h"
@@ -37,6 +38,7 @@ Option options[OPTION_COUNT] = {
     [OPTION_VSYNC] = {.text = "V-SYNC", .type = OPTION_VALUE_BOOL},
     [OPTION_THREADS] = {.text = "Threads", .type = OPTION_VALUE_LIST, .options = thread_names, .step = 1, .max = 1, .min = 0},
     [OPTION_HEADER_RENDER] = {.text = "[Render]", .type = OPTION_VALUE_HEADER},
+    [OPTION_SHADERS] = {.text = "Shaders", .type = OPTION_VALUE_BOOL},
     [OPTION_STREAM_JSON] = {.text = "Streaming JSON (notes)", .type = OPTION_VALUE_BOOL},
     [OPTION_HEADER_GAMEPLAY] = {.text = "[Gameplay]", .type = OPTION_VALUE_HEADER},
     [OPTION_KEYBOARD_SCHEME] = {.text = "Scheme", .type = OPTION_VALUE_LIST, .options = game_available_schemes, .step = 1, .max = SCHEME_COUNT - 1, .min = 0},
@@ -189,6 +191,10 @@ void ApplyBoolValue(void) {
             options[OPTION_SHOW_FPS].dirty = true;
             break;
         case OPTION_SHOW_FPS:      gameOptions.showFps = on; break;
+        case OPTION_SHADERS:
+            gameOptions.shaders = on;
+            if (!on) ShaderFx_Reset(); // desliga o efeito que ja esta na tela
+            break;
         case OPTION_SHOW_SCORE:
             gameOptions.showScore = on;
             options[OPTION_SCORE_POSITION].active = on;   // so faz sentido escolher posicao com score visivel
@@ -408,6 +414,7 @@ void Options_LoadValues(void) {
     options[OPTION_ZOOMFACTOR_UI].value = gameOptions.zoomFactorUI;
     options[OPTION_FILL_SCREEN].value = gameOptions.fillScreen;
     options[OPTION_STREAM_JSON].value = gameOptions.streamingJsonParse;
+    options[OPTION_SHADERS].value = gameOptions.shaders;
     options[OPTION_BOTPLAY].value = gameOptions.botplay;
     options[OPTION_HORIZONTAL_MENU].value = gameOptions.horizontalMenu;
 

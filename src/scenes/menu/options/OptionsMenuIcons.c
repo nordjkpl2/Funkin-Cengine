@@ -393,6 +393,15 @@ static void DrawTechTreeIcon(float cx, float cy, Color color) {
     for (int k = 0; k < 4; k++) DrawCircleV(leaf[k], TREE_NODE_R - 1.0f, color);
 }
 
+/* Guarda-sol de praia (copa semicircular, haste e areia), para Shaders. */
+static void DrawBeachUmbrellaIcon(float cx, float cy, Color color) {
+    const Vector2 top = {cx, cy - 4.0f};
+
+    DrawCircleSector(top, 17.0f, 180.0f, 360.0f, 24, color);
+    DrawRoundLine(top, (Vector2) {cx, cy + 16.0f}, color);
+    DrawRoundLine((Vector2) {cx - 12.0f, cy + 16.0f}, (Vector2) {cx + 12.0f, cy + 16.0f}, color);
+}
+
 /* Rosto triste (circulo, olhos e boca curvada para baixo), para o Losing Icon. */
 static void DrawSadFaceIcon(float cx, float cy, Color color) {
     const float r = FACE_ICON_R;
@@ -499,6 +508,7 @@ void DrawExtraIcon(int i, float rowY, Color fill, Color shadow) {
             case OPTION_STREAM_JSON:    DrawResetIcon(cx, y, color); break;
             case OPTION_VSYNC:          DrawMonitorIcon(TV_X + TV_W * 0.5f + shift, y, color); break;
             case OPTION_THREADS:        DrawTechTreeIcon(cx, y, color); break;
+            case OPTION_SHADERS:        DrawBeachUmbrellaIcon(cx, y, color); break;
             case OPTION_LOSE_ICON:      DrawSadFaceIcon(cx, y, color); break;
             case OPTION_BOTPLAY:        DrawRobotIcon(cx, y, color); break;
             case OPTION_MENU_MUSIC:     DrawSmallNoteIcon(cx, y, color); break;

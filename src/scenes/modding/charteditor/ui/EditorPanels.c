@@ -151,14 +151,15 @@ void Edit_DrawMenuBar(void) {
     if(menuOpen == 0) return;
     float mx = (float)(PANEL_X + (menuOpen - 1) * 70);
     if(menuOpen == 1) {
-        Rectangle box = {mx, MENU_H, 230, 5 * 30 + 8};
+        Rectangle box = {mx, MENU_H, 230, 6 * 30 + 8};
         DrawRectangleRec(box, (Color){15,15,15,245});
         DrawRectangleLinesEx(box, 1, GREEN);
-        if(EdMenuItem((Rectangle){box.x + 4, box.y + 4, 222, 28}, "Save  Ctrl+S")) { menuOpen = 0; Editor_Save(); }
-        else if(EdMenuItem((Rectangle){box.x + 4, box.y + 32, 222, 28}, "Save As...")) { menuOpen = 0; saveAsBox.buf[0] = 0; importPath[0] = 0; ceDlg = DLG_SAVEAS; focusBox = &saveAsBox; }
-        else if(EdMenuItem((Rectangle){box.x + 4, box.y + 60, 222, 28}, "Save Compressed")) { menuOpen = 0; EdChart_SaveCompressed(&chart); EdStatusMsg("SALVO COMPRIMIDO"); }
-        else if(EdMenuItem((Rectangle){box.x + 4, box.y + 88, 222, 28}, "Save Events")) { menuOpen = 0; if(EdEvents_Save(chart.dir)) EdStatusMsg("EVENTOS SALVOS"); else EdStatusMsg("ERRO AO SALVAR EVENTOS"); }
-        else if(EdMenuItem((Rectangle){box.x + 4, box.y + 116, 222, 28}, "Back to list  ESC")) { menuOpen = 0; Editor_RequestLeave(); }
+        if(EdMenuItemIcon((Rectangle){box.x + 4, box.y + 4, 222, 28}, "Save  Ctrl+S", ED_ICON_SAVE)) { menuOpen = 0; Editor_Save(); }
+        else if(EdMenuItemIcon((Rectangle){box.x + 4, box.y + 32, 222, 28}, "Save As...", ED_ICON_SAVE)) { menuOpen = 0; saveAsBox.buf[0] = 0; importPath[0] = 0; ceDlg = DLG_SAVEAS; focusBox = &saveAsBox; }
+        else if(EdMenuItemIcon((Rectangle){box.x + 4, box.y + 60, 222, 28}, "Save Compressed", ED_ICON_SAVE)) { menuOpen = 0; EdChart_SaveCompressed(&chart); EdStatusMsg("SALVO COMPRIMIDO"); }
+        else if(EdMenuItemIcon((Rectangle){box.x + 4, box.y + 88, 222, 28}, "Save as binary", ED_ICON_SAVE)) { menuOpen = 0; if(EdChart_SaveBinary(&chart)) EdStatusMsg("SALVO BINARIO .song"); else EdStatusMsg("ERRO AO SALVAR BINARIO"); }
+        else if(EdMenuItemIcon((Rectangle){box.x + 4, box.y + 116, 222, 28}, "Save Events", ED_ICON_DOOR)) { menuOpen = 0; if(EdEvents_Save(chart.dir)) EdStatusMsg("EVENTOS SALVOS"); else EdStatusMsg("ERRO AO SALVAR EVENTOS"); }
+        else if(EdMenuItemIcon((Rectangle){box.x + 4, box.y + 144, 222, 28}, "Back to list  ESC", ED_ICON_BACK)) { menuOpen = 0; Editor_RequestLeave(); }
         else if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             if(!(m.x >= box.x && m.x <= box.x + box.width && m.y >= 0 && m.y <= box.y + box.height)) menuOpen = 0;
         }
@@ -166,11 +167,11 @@ void Edit_DrawMenuBar(void) {
         Rectangle box = {mx, MENU_H, 230, 5 * 30 + 8};
         DrawRectangleRec(box, (Color){15,15,15,245});
         DrawRectangleLinesEx(box, 1, GREEN);
-        if(EdMenuItem((Rectangle){box.x + 4, box.y + 4, 222, 28}, "Undo  Ctrl+Z")) { menuOpen = 0; Undo_Pop(); if(secIdx >= chart.nsec) secIdx = chart.nsec - 1; if(secIdx < 0) secIdx = 0; SecTimes_Invalidate(); chart.dirty = 1; }
-        else if(EdMenuItem((Rectangle){box.x + 4, box.y + 32, 222, 28}, "Copy part  C")) { menuOpen = 0; Edit_DoCopy(); }
-        else if(EdMenuItem((Rectangle){box.x + 4, box.y + 60, 222, 28}, "Paste at end  V")) { menuOpen = 0; Edit_DoPaste(); }
+        if(EdMenuItemIcon((Rectangle){box.x + 4, box.y + 4, 222, 28}, "Undo  Ctrl+Z", ED_ICON_RESTART)) { menuOpen = 0; Undo_Pop(); if(secIdx >= chart.nsec) secIdx = chart.nsec - 1; if(secIdx < 0) secIdx = 0; SecTimes_Invalidate(); chart.dirty = 1; }
+        else if(EdMenuItemIcon((Rectangle){box.x + 4, box.y + 32, 222, 28}, "Copy part  C", ED_ICON_RESTART)) { menuOpen = 0; Edit_DoCopy(); }
+        else if(EdMenuItemIcon((Rectangle){box.x + 4, box.y + 60, 222, 28}, "Paste at end  V", ED_ICON_RESTART)) { menuOpen = 0; Edit_DoPaste(); }
         else if(EdMenuItem((Rectangle){box.x + 4, box.y + 88, 222, 28}, "New part  N")) { menuOpen = 0; Edit_DoNewPart(); }
-        else if(EdMenuItem((Rectangle){box.x + 4, box.y + 116, 222, 28}, "Delete part  X")) { menuOpen = 0; Edit_DoDelPart(); }
+        else if(EdMenuItemIcon((Rectangle){box.x + 4, box.y + 116, 222, 28}, "Delete part  X", ED_ICON_TRASH)) { menuOpen = 0; Edit_DoDelPart(); }
         else if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             if(!(m.x >= box.x && m.x <= box.x + box.width && m.y >= 0 && m.y <= box.y + box.height)) menuOpen = 0;
         }
@@ -179,7 +180,7 @@ void Edit_DrawMenuBar(void) {
         DrawRectangleRec(box, (Color){15,15,15,245});
         DrawRectangleLinesEx(box, 1, GREEN);
         const char* followName = playFollow ? "Note player : ON" : "Note player : OFF";
-        if(EdMenuItem((Rectangle){box.x + 4, box.y + 4, 222, 28}, followName)) { menuOpen = 0; playFollow = !playFollow; }
+        if(EdMenuItemIcon((Rectangle){box.x + 4, box.y + 4, 222, 28}, followName, ED_ICON_PLAYHEAD)) { menuOpen = 0; playFollow = !playFollow; }
         else if(EdMenuItem((Rectangle){box.x + 4, box.y + 32, 222, 28}, "Go to part start")) { menuOpen = 0; cursorMs = SecStartMs(secIdx); }
         else if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             if(!(m.x >= box.x && m.x <= box.x + box.width && m.y >= 0 && m.y <= box.y + box.height)) menuOpen = 0;

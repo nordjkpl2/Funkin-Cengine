@@ -53,7 +53,10 @@ extern int dropScroll;
 void EdTimeFmt(char* out, size_t n, double ms);
 char EdDlgButton(Rectangle r, const char* label, Color edge);
 void NumBox_Commit(void);
+/* icones desenhados com primitivas (sem textura): so nos itens de menu que pedem */
+typedef enum { ED_ICON_NONE = 0, ED_ICON_PLAYHEAD, ED_ICON_RESTART, ED_ICON_TRASH, ED_ICON_SAVE, ED_ICON_DOOR, ED_ICON_BACK } EdIcon;
 char EdMenuItem(Rectangle r, const char* label);
+char EdMenuItemIcon(Rectangle r, const char* label, EdIcon icon);
 // texto com sombra (legivel sobre fundo da mesma cor)
 void Ed_DrawText(Font f, const char* t, Vector2 p, float size, float spacing, Color c);
 

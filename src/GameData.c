@@ -7,58 +7,24 @@
 #include <string.h>
 
 /*
- * Save em assets/save.data: cabecalho + registros (id u16, tamanho u16, bytes).
- *  - Cada campo tem um id fixo na tabela saveFields. Id novo = proximo numero livre; id usado nunca muda nem volta.
- *  - Id desconhecido (campo removido ou de versao mais nova) e pulado; campo ausente fica com o padrao.
- *  - Tamanho diferente do atual: copia o que cabe e o resto fica com o padrao (campo que cresceu nao quebra o save).
- *  - Dado invalido vira padrao (GameData_Sanitize), nunca encerra o programa.
+ * Save em assets/save.data: cabecalho "FNFS" + versao + registros (id u16, tamanho u16, bytes).
+ *  - Cada campo escalar (char/int/float) tem UMA linha na tabela saveFields: id, padrao e faixa.
+ *    Padrao e faixa sao aplicados automaticamente (GameData_Defaults e GameData_Sanitize).
+ *  - Id usado nunca muda nem volta. Id desconhecido (campo removido ou de versao mais nova) e pulado.
+ *  - Tamanho diferente do atual: copia o que cabe; o resto fica com o padrao.
+ *  - Versao do cabecalho nao e checada: so o magic importa. Arquivo sem magic vai para save.data.bak antes de ser substituido.
  *  - Escrita em save.data.tmp e troca pelo arquivo final: queda no meio do salvamento nao corrompe o save.
+ *
+ * NOVO CAMPO ESCALAR: 1) campo em GameOptions (GameData.h); 2) UMA linha no fim de saveFields. Pronto.
+ * Campo RAW (array/texto): alem da linha, tratar em GameData_SanitizeRaw e, se precisar, em GameData_Defaults.
  */
 #define SAVE_FILE "assets/save.data"
 #define SAVE_TMP  "assets/save.data.tmp"
+#define SAVE_BAK  "assets/save.data.bak"
 #define SAVE_MAGIC   "FNFS"
-#define SAVE_VERSION 1       /* so muda se o cabecalho mudar: campos novos nao precisam de versao nova */
+#define SAVE_VERSION 1       /* informativo: gravado no cabecalho, nao bloqueia a leitura */
 
 #define SAVE_ID_MODS 0xFFFEu /* lista de mods desativados (tamanho = quantidade * MOD_NAME_MAX) */
-
-typedef struct {
-    uint16_t id;
-    void* ptr;
-    uint16_t size;
-} SaveField;
-
-#define SAVE_FIELD(id_, field_) { (id_), &gameOptions.field_, (uint16_t)sizeof(gameOptions.field_) }
-
-static const SaveField saveFields[] = {
-    SAVE_FIELD(1,  menuMusic),
-    SAVE_FIELD(2,  showScore),
-    SAVE_FIELD(3,  bopIcons),
-    SAVE_FIELD(4,  vsync),
-    SAVE_FIELD(5,  fillScreen),
-    SAVE_FIELD(6,  botplay),
-    SAVE_FIELD(7,  ghost),
-    SAVE_FIELD(8,  scroll),
-    SAVE_FIELD(9,  showFps),
-    SAVE_FIELD(10, hitSound),
-    SAVE_FIELD(11, scheme),
-    SAVE_FIELD(12, fps),
-    SAVE_FIELD(13, zoomFactorUI),
-    SAVE_FIELD(14, zoomFactorGAME),
-    SAVE_FIELD(15, threadLimit),
-    SAVE_FIELD(16, scorePosition),
-    SAVE_FIELD(17, healthDrainPlay),
-    SAVE_FIELD(18, healthDrainBotplay),
-    SAVE_FIELD(19, strumBgPercent),
-    SAVE_FIELD(20, strumMobileVisible),
-    SAVE_FIELD(21, laneHSB),
-    SAVE_FIELD(22, hiddenNotesAlt),
-    SAVE_FIELD(23, horizontalMenu),
-    SAVE_FIELD(24, loseIcon),
-    SAVE_FIELD(25, streamingJsonParse),
-    SAVE_FIELD(26, hitSoundBotplay),
-    SAVE_FIELD(27, noteSplashes),
-    { 28, game_scheme_keys[SCHEME_CUSTOM], (uint16_t)sizeof(game_scheme_keys[SCHEME_CUSTOM]) },
-};
 
 GameOptions gameOptions;
 char gameDisabledMods[MOD_DISABLED_MAX][MOD_NAME_MAX];
@@ -73,18 +39,79 @@ int game_scheme_keys[SCHEME_COUNT][4] = {
     {KEY_LEFT, KEY_DOWN, KEY_UP, KEY_RIGHT}   /* Custom: comeca igual ao Arrows */
 };
 
+/* ------------------------------------------------------------------ */
+/* Tabela de save                                                      */
+/* ------------------------------------------------------------------ */
+
+typedef enum { SF_RAW = 0, SF_CHAR, SF_INT, SF_FLOAT } SaveKind;
+
+typedef struct {
+    uint16_t id;
+    void* ptr;
+    uint16_t size;
+    SaveKind kind;
+    double def, lo, hi; /* escalar: padrao e faixa (raw ignora) */
+} SaveField;
+
+/* O tipo do campo (char/int/float ou RAW) sai do proprio GameOptions. */
+#define SAVE_FIELD(id_, field_, def_, lo_, hi_) { (id_), &gameOptions.field_, (uint16_t)sizeof(gameOptions.field_), \
+    _Generic(gameOptions.field_, char: SF_CHAR, int: SF_INT, float: SF_FLOAT, default: SF_RAW), \
+    (double)(def_), (double)(lo_), (double)(hi_) }
+
+static const SaveField saveFields[] = {
+    SAVE_FIELD(1,  menuMusic,          0,                    0,                  0),
+    SAVE_FIELD(2,  showScore,          1,                    0,                  1),
+    SAVE_FIELD(3,  bopIcons,           1,                    0,                  1),
+    SAVE_FIELD(4,  vsync,              0,                    0,                  1),
+    SAVE_FIELD(5,  fillScreen,         0,                    0,                  1),
+    SAVE_FIELD(6,  botplay,            0,                    0,                  1),
+    SAVE_FIELD(7,  ghost,              0,                    0,                  2),
+    SAVE_FIELD(8,  scroll,             SCROLL_UP,            SCROLL_UP,          SCROLL_MIDDLEDOWN),
+    SAVE_FIELD(9,  showFps,            1,                    0,                  1),
+    SAVE_FIELD(10, hitSound,           0,                    0,                  1),
+    SAVE_FIELD(11, scheme,             0,                    0,                  SCHEME_COUNT - 1),
+    SAVE_FIELD(12, fps,                120,                  0,                  1000),
+    SAVE_FIELD(13, zoomFactorUI,       1.0,                  0.1,                10.0),
+    SAVE_FIELD(14, zoomFactorGAME,     1.0,                  0.1,                10.0),
+    SAVE_FIELD(15, threadLimit,        0,                    0,                  64),
+    SAVE_FIELD(16, scorePosition,      SCORE_POS_PSYCH,      SCORE_POS_CENGINE,  SCORE_POS_PSYCH),
+    SAVE_FIELD(17, healthDrainPlay,    0,                    0,                  1),
+    SAVE_FIELD(18, healthDrainBotplay, 0,                    0,                  1),
+    SAVE_FIELD(19, strumBgPercent,     0,                    0,                  100),
+    SAVE_FIELD(20, strumMobileVisible, 0,                    0,                  1),
+    SAVE_FIELD(21, laneHSB,            0,                    0,                  0),
+    SAVE_FIELD(22, hiddenNotesAlt,     0,                    0,                  3),
+    SAVE_FIELD(23, horizontalMenu,     0,                    0,                  1),
+    SAVE_FIELD(24, loseIcon,           1,                    0,                  1),
+    SAVE_FIELD(25, streamingJsonParse, 0,                    0,                  1),
+    SAVE_FIELD(26, hitSoundBotplay,    0,                    0,                  1),
+    SAVE_FIELD(27, noteSplashes,       1,                    0,                  1),
+    { 28, game_scheme_keys[SCHEME_CUSTOM], (uint16_t)sizeof(game_scheme_keys[SCHEME_CUSTOM]), SF_RAW, 0, 0, 0 },
+    SAVE_FIELD(29, shaders,            1,                    0,                  1),
+};
+#define SAVE_FIELD_COUNT (sizeof(saveFields) / sizeof(saveFields[0]))
+
+/* ------------------------------------------------------------------ */
+/* Padroes e validacao                                                 */
+/* ------------------------------------------------------------------ */
+
 static void GameData_Defaults(void) {
+    gameDisabledModCount = 0;
     game_scheme_keys[SCHEME_CUSTOM][0] = KEY_LEFT;
     game_scheme_keys[SCHEME_CUSTOM][1] = KEY_DOWN;
     game_scheme_keys[SCHEME_CUSTOM][2] = KEY_UP;
     game_scheme_keys[SCHEME_CUSTOM][3] = KEY_RIGHT;
-    gameDisabledModCount = 0;
-    gameOptions = (GameOptions) {
-        .showScore = 1, .bopIcons = 1, .showFps = 1, .loseIcon = 1,
-        .scorePosition = SCORE_POS_PSYCH, .strumBgPercent = 0, .noteSplashes = 1,
-        .fps = 120,
-        .zoomFactorUI = 1.0f, .zoomFactorGAME = 1.0f,
-    };
+
+    memset(&gameOptions, 0, sizeof(gameOptions));
+    for (size_t i = 0; i < SAVE_FIELD_COUNT; i++) {
+        const SaveField* f = &saveFields[i];
+        switch (f->kind) {
+            case SF_CHAR:  *(char*)f->ptr = (char)f->def; break;
+            case SF_INT:   *(int*)f->ptr = (int)f->def; break;
+            case SF_FLOAT: *(float*)f->ptr = (float)f->def; break;
+            default: break; /* RAW: zero (ou ajustado em GameData_SanitizeRaw) */
+        }
+    }
 }
 
 /* Hidden Notes: a lado (BF ou oponente) aparece? bfSide = 1 para BF; singerBf = quem canta na secao.
@@ -137,43 +164,25 @@ void GameData_ResetOptions(void) {
     memcpy(game_scheme_keys[SCHEME_CUSTOM], customKeys, sizeof(customKeys));
 }
 
-/* ------------------------------------------------------------------ */
-/* Validacao: qualquer valor fora da faixa volta ao padrao da faixa.   */
-/* ------------------------------------------------------------------ */
-
+/* Qualquer valor fora da faixa volta ao padrao (float) ou e limitado a faixa (char/int). */
 static int Clamp(int v, int lo, int hi) { return v < lo ? lo : (v > hi ? hi : v); }
-static char Bool(char v) { return v != 0; }
 
-static void GameData_Sanitize(void) {
+static void ClampField(const SaveField* f) {
+    switch (f->kind) {
+        case SF_CHAR: { char* p = f->ptr; *p = (char)Clamp(*p, (int)f->lo, (int)f->hi); break; }
+        case SF_INT:  { int* p = f->ptr;  *p = Clamp(*p, (int)f->lo, (int)f->hi); break; }
+        case SF_FLOAT: {
+            float* p = f->ptr;
+            if (!(*p > f->lo && *p < f->hi)) *p = (float)f->def;
+            break;
+        }
+        default: break;
+    }
+}
+
+/* Campos que nao sao escalares: arrays, texto, teclas e mods. */
+static void GameData_SanitizeRaw(void) {
     GameOptions* o = &gameOptions;
-
-    o->showScore = Bool(o->showScore);
-    o->bopIcons = Bool(o->bopIcons);
-    o->vsync = Bool(o->vsync);
-    o->fillScreen = Bool(o->fillScreen);
-    o->botplay = Bool(o->botplay);
-    o->healthDrainPlay = Bool(o->healthDrainPlay);
-    o->healthDrainBotplay = Bool(o->healthDrainBotplay);
-    o->streamingJsonParse = Bool(o->streamingJsonParse);
-    o->hitSoundBotplay = Bool(o->hitSoundBotplay);
-    o->noteSplashes = Bool(o->noteSplashes);
-    o->strumMobileVisible = Bool(o->strumMobileVisible);
-    o->horizontalMenu = Bool(o->horizontalMenu);
-    o->loseIcon = Bool(o->loseIcon);
-    o->showFps = Bool(o->showFps);
-    o->hitSound = Bool(o->hitSound);
-
-    o->scheme = Clamp(o->scheme, 0, SCHEME_COUNT - 1);
-    o->ghost = Clamp(o->ghost, 0, 2);
-    o->scroll = Clamp(o->scroll, SCROLL_UP, SCROLL_MIDDLEDOWN);
-    o->scorePosition = Clamp(o->scorePosition, SCORE_POS_CENGINE, SCORE_POS_PSYCH);
-    o->strumBgPercent = Clamp(o->strumBgPercent, 0, 100);
-    o->hiddenNotesAlt = Clamp(o->hiddenNotesAlt, 0, 3);
-    o->fps = Clamp(o->fps, 0, 1000);
-    o->threadLimit = Clamp(o->threadLimit, 0, 64);
-
-    if (!(o->zoomFactorUI > 0.1f && o->zoomFactorUI < 10.0f)) o->zoomFactorUI = 1.0f;
-    if (!(o->zoomFactorGAME > 0.1f && o->zoomFactorGAME < 10.0f)) o->zoomFactorGAME = 1.0f;
 
     for (int lane = 0; lane < 4; lane++) {
         o->laneHSB[lane][0] = (short)Clamp(o->laneHSB[lane][0], -180, 180);
@@ -193,25 +202,31 @@ static void GameData_Sanitize(void) {
             game_scheme_keys[SCHEME_CUSTOM][k] = defaultArrows[k];
 }
 
+static void GameData_Sanitize(void) {
+    for (size_t i = 0; i < SAVE_FIELD_COUNT; i++)
+        ClampField(&saveFields[i]);
+    GameData_SanitizeRaw();
+}
+
 /* ------------------------------------------------------------------ */
 /* Leitura e escrita                                                   */
 /* ------------------------------------------------------------------ */
 
 static const SaveField* FindField(uint16_t id) {
-    for (size_t i = 0; i < sizeof(saveFields) / sizeof(saveFields[0]); i++)
+    for (size_t i = 0; i < SAVE_FIELD_COUNT; i++)
         if (saveFields[i].id == id)
             return &saveFields[i];
     return NULL;
 }
 
-/* Le o arquivo inteiro. Retorna 0 se o cabecalho nao bate (save de outro formato ou corrompido no inicio). */
+/* Le o arquivo inteiro. Retorna 0 so se o magic nao bate (arquivo que nao e um save nosso). */
 static char GameData_LoadFile(FILE* f) {
     char magic[4];
-    uint16_t version = 0;
+    uint16_t version = 0; /* lida e ignorada: registros sao autodescritos */
     if (fread(magic, 1, sizeof(magic), f) != sizeof(magic) || memcmp(magic, SAVE_MAGIC, sizeof(magic)) != 0)
         return 0;
-    if (fread(&version, sizeof(version), 1, f) != 1 || version != SAVE_VERSION)
-        return 0;
+    if (fread(&version, sizeof(version), 1, f) != 1)
+        return 1; /* so o magic, sem registros: usa padroes e regrava */
 
     uint16_t head[2]; /* id, tamanho */
     while (fread(head, sizeof(uint16_t), 2, f) == 2) {
@@ -252,7 +267,7 @@ static int GameData_WriteFile(FILE* f) {
     const uint16_t version = SAVE_VERSION;
     if (fwrite(&version, sizeof(version), 1, f) != 1) return 0;
 
-    for (size_t i = 0; i < sizeof(saveFields) / sizeof(saveFields[0]); i++)
+    for (size_t i = 0; i < SAVE_FIELD_COUNT; i++)
         if (!GameData_WriteRecord(f, saveFields[i].id, saveFields[i].ptr, saveFields[i].size))
             return 0;
 
@@ -268,11 +283,16 @@ void GameData_Start(void) {
     if (f != NULL) {
         loaded = (char)GameData_LoadFile(f);
         fclose(f);
+        if (!loaded) { /* nao e um save nosso: guarda uma copia antes de sobrescrever */
+            remove(SAVE_BAK);
+            if (rename(SAVE_FILE, SAVE_BAK) != 0)
+                Log_WarnF("[ SAVE ] nao foi possivel guardar %s", SAVE_BAK);
+        }
     }
 
     GameData_Sanitize();
     if (!loaded)
-        GameData_Flush(); /* primeiro uso, save antigo ou de outro formato: grava o padrao */
+        GameData_Flush(); /* primeiro uso ou save invalido: grava o padrao */
 }
 
 void GameData_Flush(void) {

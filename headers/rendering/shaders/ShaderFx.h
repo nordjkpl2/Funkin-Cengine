@@ -17,6 +17,7 @@ typedef enum {
     SHADERFX_GRAYSCALE
 } ShaderFxKind;
 
+/* Respeita gameOptions.shaders: com a opcao off, ShaderFx_Set nao liga nada. */
 void ShaderFx_Set(ShaderFxKind kind, float intensity, float speed);
 void ShaderFx_Reset(void);
 int  ShaderFx_IsActive(void);            /* 1 = ha efeito ligado e o shader carregou */

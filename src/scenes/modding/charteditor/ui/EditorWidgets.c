@@ -8,6 +8,7 @@
 #include "raymath.h"
 #include "scenes/modding/charteditor/ui/EditorWidgets.h"
 #include "rendering/TextMeasure.h"
+#include <math.h>
 #include "scenes/modding/charteditor/data/EditorDataAndIO.h"
 #include "scenes/modding/charteditor/grid/EditorTimeline.h"
 
@@ -288,11 +289,74 @@ void NumBox_Commit(void) {
     focusNum = NULL;
 }
 
+// desenha um icone de 20px centrado em (c.x, c.y); cores fixas por tipo
+static void Ed_Rect(float x, float y, float w, float h, Color col) {
+    DrawRectangleRec((Rectangle){x, y, w, h}, col);
+}
+static void Ed_DrawIcon(EdIcon icon, Vector2 c) {
+    switch(icon) {
+    case ED_ICON_PLAYHEAD: { // triangulo + barra vermelha (marcador da grade)
+        Color red = (Color){220,40,40,255};
+        DrawTriangle((Vector2){c.x - 9, c.y - 6}, (Vector2){c.x - 9, c.y + 6}, (Vector2){c.x + 1, c.y}, red);
+        Ed_Rect(c.x + 1, c.y - 1.5f, 9, 3, red);
+        break;
+    }
+    case ED_ICON_RESTART: { // seta circular girando (arco + ponta)
+        Color col = (Color){210,210,210,255};
+        DrawRing(c, 4.0f, 6.5f, 30.0f, 300.0f, 16, col);
+        float a = 300.0f * 3.14159265f / 180.0f;
+        Vector2 rad = {cosf(a), sinf(a)}, tan = {-sinf(a), cosf(a)};
+        Vector2 p = {c.x + rad.x * 5.25f, c.y + rad.y * 5.25f};
+        Vector2 tip = {p.x + tan.x * 4.0f, p.y + tan.y * 4.0f};
+        Vector2 b1 = {p.x + rad.x * 3.5f, p.y + rad.y * 3.5f}, b2 = {p.x - rad.x * 3.5f, p.y - rad.y * 3.5f};
+        DrawTriangle(tip, b1, b2, col);
+        break;
+    }
+    case ED_ICON_TRASH: { // lixeira
+        Color col = (Color){220,80,80,255};
+        Ed_Rect(c.x - 5, c.y - 6, 10, 2, col);
+        Ed_Rect(c.x - 2, c.y - 8, 4, 2, col);
+        Ed_Rect(c.x - 4, c.y - 3, 8, 11, col);
+        Ed_Rect(c.x - 2, c.y - 1, 1, 7, (Color){16,16,16,255});
+        Ed_Rect(c.x + 1, c.y - 1, 1, 7, (Color){16,16,16,255});
+        break;
+    }
+    case ED_ICON_SAVE: { // disquete
+        Color col = (Color){70,130,230,255};
+        Ed_Rect(c.x - 8, c.y - 8, 16, 16, col);
+        Ed_Rect(c.x - 4.5f, c.y - 8, 9, 5, (Color){200,200,200,255});
+        Ed_Rect(c.x - 5, c.y + 1, 10, 7, (Color){235,235,235,255});
+        break;
+    }
+    case ED_ICON_DOOR: { // porta com maçaneta
+        Color col = (Color){210,140,60,255};
+        Ed_Rect(c.x - 6, c.y - 8, 12, 16, col);
+        Ed_Rect(c.x - 4, c.y - 6, 8, 13, (Color){90,50,20,255});
+        DrawCircle((int)(c.x + 2), (int)c.y, 1.3f, (Color){250,220,80,255});
+        break;
+    }
+    case ED_ICON_BACK: { // seta para a esquerda
+        Color col = (Color){210,210,210,255};
+        DrawTriangle((Vector2){c.x - 9, c.y}, (Vector2){c.x - 1, c.y - 7}, (Vector2){c.x - 1, c.y + 7}, col);
+        Ed_Rect(c.x - 2, c.y - 2.5f, 10, 5, col);
+        break;
+    }
+    default:
+        break;
+    }
+}
+
 // menu File/Edit/View estilo Psych (dropdown, sem alloc)
-char EdMenuItem(Rectangle r, const char* label) {
+char EdMenuItemIcon(Rectangle r, const char* label, EdIcon icon) {
     Vector2 m = EdMouseWorld();
     char hov = (m.x >= r.x && m.x <= r.x + r.width && m.y >= r.y && m.y <= r.y + r.height);
     DrawRectangleRec(r, hov ? (Color){60,60,60,255} : (Color){18,18,18,255});
-    Ed_DrawText(mainFont, label, (Vector2){r.x + 8, r.y + 5}, 20, 1, WHITE);
+    Ed_DrawText(mainFont, label, (Vector2){r.x + (icon != ED_ICON_NONE ? 32 : 8), r.y + 5}, 20, 1, WHITE);
+    if(icon != ED_ICON_NONE)
+        Ed_DrawIcon(icon, (Vector2){r.x + 16, r.y + r.height * 0.5f});
     return hov && IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
+}
+
+char EdMenuItem(Rectangle r, const char* label) {
+    return EdMenuItemIcon(r, label, ED_ICON_NONE);
 }

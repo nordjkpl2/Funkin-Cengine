@@ -6,6 +6,7 @@
  */
 
 #include "rendering/shaders/ShaderFx.h"
+#include "GameData.h"
 #include "raylib.h"
 #include <stddef.h>
 
@@ -162,7 +163,7 @@ void ShaderFx_Set(ShaderFxKind kind, float intensity, float speed) {
     curAmt = Clampf(intensity, 0.0f, 1.0f);
     curAnim = Clampf(speed, 0.0f, 2.0f);
     curKind = (kind == SHADERFX_TV || kind == SHADERFX_GLITCH || kind == SHADERFX_BLACKNESS || kind == SHADERFX_GRAYSCALE) ? kind : SHADERFX_NONE;
-    if (curAmt <= 0.0f) curKind = SHADERFX_NONE;
+    if (curAmt <= 0.0f || !gameOptions.shaders) curKind = SHADERFX_NONE; /* opcao Shaders off: nenhum efeito entra */
 }
 
 void ShaderFx_Reset(void) {
