@@ -365,3 +365,18 @@
 144	263	8173430446889549	CMakeFiles/FunkinCengine.dir/src/scenes/Transition.c.obj	20a3d078f1a28cc9
 151	283	8173430446960510	CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/PlayState.c.obj	f13f665ee6a00a36
 283	4415	8173430448275271	D:/dev/funkin c/FunkinCengine.exe	62dfccd2a32dec4b
+41	85	8173436833547903	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+102	224	8173436834146374	CMakeFiles/FunkinCengine.dir/src/scenes/modding/charteditor/audio/EditorAudio.c.obj	8fd9a1d787931776
+92	248	8173436834049030	CMakeFiles/FunkinCengine.dir/src/scenes/modding/charteditor/ChartEditor.c.obj	36b6b08430ac032
+106	279	8173436834185903	CMakeFiles/FunkinCengine.dir/src/scenes/modding/charteditor/model/EditorStagePos.c.obj	570d93141204019a
+120	280	8173436834335942	CMakeFiles/FunkinCengine.dir/src/scenes/modding/charteditor/ui/EditorPicker.c.obj	bd7c486499fdd4fb
+114	333	8173436834265885	CMakeFiles/FunkinCengine.dir/src/scenes/modding/charteditor/ui/EditorPanels.c.obj	3e5abb0e456800b0
+333	3646	8173436836462209	D:/dev/funkin c/FunkinCengine.exe	62dfccd2a32dec4b
+46	89	8173437469091546	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+96	253	8173437469584245	CMakeFiles/FunkinCengine.dir/src/scenes/modding/charteditor/grid/EditorGrid.c.obj	cd13fb6c3c99af69
+101	270	8173437469644317	CMakeFiles/FunkinCengine.dir/src/scenes/modding/charteditor/ui/EditorPicker.c.obj	bd7c486499fdd4fb
+270	3466	8173437471330401	D:/dev/funkin c/FunkinCengine.exe	62dfccd2a32dec4b
+48	92	8173444568968215	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+99	245	8173444569485050	CMakeFiles/FunkinCengine.dir/src/scenes/modding/charteditor/grid/EditorGrid.c.obj	cd13fb6c3c99af69
+51	104	8173448895455286	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+111	2929	8173448896045329	D:/dev/funkin c/FunkinCengine.exe	62dfccd2a32dec4b

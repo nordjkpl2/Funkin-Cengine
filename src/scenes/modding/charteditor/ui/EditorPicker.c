@@ -597,7 +597,7 @@ void Picker_Draw(void) {
         Texture2D bgIcon = {0};
         if(FreeplayIcon_Get(&pickerSongs[pickShown[pickerSel - 1]], &bgIcon) == 1) {
             DrawTexturePro(bgIcon, Picker_SquareCrop(bgIcon), (Rectangle) {-60, -20, 1400, 1400}, (Vector2) {0, 0}, 0.0f,
-                (Color) {255, 255, 255, 70});
+                (Color) {255, 255, 255, 255});
         }
     }
     DrawRectangleGradientV(0, 0, 1280, 720, (Color) {8, 6, 18, 90}, (Color) {8, 6, 18, 210});

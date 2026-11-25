@@ -126,13 +126,13 @@ static void Grid_DrawBackground(void) {
 
     DrawRectangle((int)GRID_X0 - 10, (int)GRID_Y0 - 34, gridW + 20, gridH + 44, (Color) {12, 12, 12, 255});
 
-    // casas brancas (da pra ver onde clica)
+    // casas pretas (tema preto; da pra ver onde clica)
     for(int l = 0; l < 8; l++) {
         int x = (int)(GRID_X0 + l * LANE_W);
-        DrawRectangle(x + 1, (int)GRID_Y0, (int)LANE_W - 2, gridH, (Color) {250, 250, 250, 255});
+        DrawRectangle(x + 1, (int)GRID_Y0, (int)LANE_W - 2, gridH, (Color) {22, 22, 22, 255});
     }
     // divisoria entre os dois lados
-    DrawRectangle((int)(GRID_X0 + 4 * LANE_W) - 1, (int)GRID_Y0 - 30, 2, gridH + 34, (Color) {60, 60, 60, 255});
+    DrawRectangle((int)(GRID_X0 + 4 * LANE_W) - 1, (int)GRID_Y0 - 30, 2, gridH + 34, (Color) {90, 90, 90, 255});
     // seu lado (direita) com verde claro
     DrawRectangle((int)(GRID_X0 + LANE_W * 4), (int)GRID_Y0, (int)(LANE_W * 4), gridH, (Color) {140, 230, 170, 70});
 
@@ -189,7 +189,7 @@ static void Grid_DrawTimeLines(float ppm, double viewBottom) {
 
 // uma nota (casa virada pra tela; cor/seta pela casa real do arquivo)
 // Note player ON: passado apaga, na agulha acende (so visual, sem tocar no chart)
-static void Grid_DrawNote(const EdSec* s, const EdNote* n, float y, float ppm) {
+static void Grid_DrawNote(const EdSec* s, const EdNote* n, float y, float ppm, char drawTrail) {
     float x = GRID_X0 + EdDispLane(s, n->lane) * LANE_W;
     char isPast = 0;
     char isHit = 0;
@@ -202,7 +202,7 @@ static void Grid_DrawNote(const EdSec* s, const EdNote* n, float y, float ppm) {
     }
 
     // nota longa (rastro)
-    if(n->len > 0) {
+    if(n->len > 0 && drawTrail) {
         float h = fmaxf(n->len * ppm, 6.0f);
         float top = fmaxf(y, GRID_Y0);
         float bot = fminf(y + h, GRID_Y1);
@@ -247,6 +247,10 @@ static void Grid_DrawNotes(float ppm, double viewBottom) {
     enum { OCC_ROWS = (int)(GRID_Y1 - GRID_Y0) + 61 };
     static unsigned char occ[8][OCC_ROWS];
     memset(occ, 0, sizeof(occ));
+    /* Sustains: uma por lane e topo (pixel); se ja ha uma igual ou mais longa desenhada ali, a nova some atras
+       (mesma cor, alfa blenda duas vezes e escurece). Mesma ideia do occ das cabecas do gameplay. */
+    static unsigned short susEnd[8][OCC_ROWS];
+    memset(susEnd, 0, sizeof(susEnd));
 
     for(int i = 0; i < chart.nsec; i++) {
         const EdSec* s = chart.secs + i;
@@ -274,7 +278,23 @@ static void Grid_DrawNotes(float ppm, double viewBottom) {
                     occ[n->lane][row] = 1;
                 }
             }
-            Grid_DrawNote(s, n, y, ppm);
+            char drawTrail = 1;
+            if(n->len > 0 && !playFollow && n->lane >= 0 && n->lane < 8) {
+                const float h = fmaxf(n->len * ppm, 6.0f);
+                const float top = fmaxf(y, GRID_Y0);
+                const float bot = fminf(y + h, GRID_Y1);
+                if(bot > top) {
+                    const int r0 = (int)(top - (GRID_Y0 - 30));
+                    const int r1 = (int)(bot - (GRID_Y0 - 30)) + 1;
+                    if(r0 >= 0 && r0 < OCC_ROWS && r1 <= OCC_ROWS) {
+                        if(susEnd[n->lane][r0] >= r1)
+                            drawTrail = 0;
+                        else
+                            susEnd[n->lane][r0] = (unsigned short)r1;
+                    }
+                }
+            }
+            Grid_DrawNote(s, n, y, ppm, drawTrail);
         }
     }
 }

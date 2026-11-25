@@ -86,7 +86,7 @@ static void Dialogs_Draw(void) {
         Ed_DrawText(mainFont, ".json path", (Vector2) {340, 250}, 40, 3, WHITE);
         Rectangle r = {340, 320, 600, 40};
         TxtBox_Update(&openBox, r, 0);
-        TxtBox_Draw(&openBox, r, "C:/.../musica.json");
+        TxtBox_Draw(&openBox, r, "C:/.../song.json");
         Ed_DrawText(mainFont, "enter import, esc cancel", (Vector2) {340, 380}, 20, 1, YELLOW);
         Ed_DrawText(mainFont, "You can copy and paste the path to the .json file.", (Vector2) {340, 410}, 20, 1, YELLOW);
     } else {

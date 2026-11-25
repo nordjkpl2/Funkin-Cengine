@@ -144,3 +144,22 @@ LOAD [imprisonment] init: 0.0 ms, chart: 249.1 ms, sounds: 1.8 ms, characters: 4
 LOAD [unstable] init: 0.0 ms, chart: 18.2 ms, sounds: 212.7 ms, characters: 414.9 ms, stage: 13.3 ms, song audio: 2.1 ms, notes: 0.2 ms, ui: 0.0 ms, warmup: 0.1 ms, (textures on main thread: 372.7 ms) total: 661.5 ms
 LOAD [unstable] init: 0.0 ms, chart: 28.2 ms, sounds: 1.8 ms, characters: 448.3 ms, stage: 6.4 ms, song audio: 1.7 ms, notes: 0.1 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 453.0 ms) total: 486.8 ms
 LOAD [unstable] init: 0.0 ms, chart: 24.7 ms, sounds: 1.7 ms, characters: 489.8 ms, stage: 9.3 ms, song audio: 1.7 ms, notes: 0.1 ms, ui: 0.0 ms, warmup: 0.1 ms, (textures on main thread: 497.1 ms) total: 527.4 ms
+[WARN] ImagePrefetch: nao e PNG valido (assets/mods/images/realisticBG.png)
+LOAD [realisticful] init: 0.6 ms, chart: 150.7 ms, sounds: 106.1 ms, characters: 344.4 ms, stage: 16.2 ms, song audio: 1.8 ms, notes: 0.9 ms, ui: 8.9 ms, warmup: 0.2 ms, (textures on main thread: 332.1 ms) total: 629.8 ms
+[WARN] ImagePrefetch: nao e PNG valido (assets/mods/images/realisticBG.png)
+LOAD [realisticful] init: 0.0 ms, chart: 188.4 ms, sounds: 0.7 ms, characters: 436.5 ms, stage: 11.5 ms, song audio: 1.7 ms, notes: 0.7 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 446.7 ms) total: 639.7 ms
+LOAD [end-of-the-world] init: 0.0 ms, chart: 36.4 ms, sounds: 126.6 ms, characters: 118.6 ms, stage: 10.2 ms, song audio: 1.7 ms, notes: 0.5 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 42.3 ms) total: 294.2 ms
+LOAD [Astray] init: 27.1 ms, chart: 24.3 ms, sounds: 134.6 ms, characters: 375.3 ms, stage: 8.1 ms, song audio: 4.7 ms, notes: 0.2 ms, ui: 10.1 ms, warmup: 0.2 ms, (textures on main thread: 382.7 ms) total: 584.5 ms
+LOAD [moribund-3] init: 0.0 ms, chart: 172.6 ms, sounds: 165.4 ms, characters: 494.4 ms, stage: 19.4 ms, song audio: 2.3 ms, notes: 0.7 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 438.9 ms) total: 855.0 ms
+[WARN] ImagePrefetch: sem orcamento de memoria, carrega na hora (assets/mods/images/absolute-zeroBG.png)
+LOAD [absolute-zero] init: 1.5 ms, chart: 7.7 ms, sounds: 59.7 ms, characters: 415.2 ms, stage: 1285.5 ms, song audio: 1.7 ms, notes: 0.2 ms, ui: 8.2 ms, warmup: 0.2 ms, (textures on main thread: 1706.0 ms) total: 1780.0 ms
+LOAD [agony] init: 0.0 ms, chart: 8.8 ms, sounds: 2.3 ms, characters: 674.6 ms, stage: 17.9 ms, song audio: 2.9 ms, notes: 0.3 ms, ui: 0.0 ms, warmup: 0.3 ms, (textures on main thread: 689.0 ms) total: 707.3 ms
+LOAD [Astray] init: 0.0 ms, chart: 8.6 ms, sounds: 2.8 ms, characters: 439.7 ms, stage: 8.5 ms, song audio: 1.7 ms, notes: 0.1 ms, ui: 0.0 ms, warmup: 0.1 ms, (textures on main thread: 445.6 ms) total: 461.5 ms
+LOAD [Fatigue] init: 0.0 ms, chart: 24.6 ms, sounds: 174.1 ms, characters: 427.8 ms, stage: 4.7 ms, song audio: 2.1 ms, notes: 0.1 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 383.3 ms) total: 633.5 ms
+[WARN] ImagePrefetch: nao e PNG valido (assets/mods/images/singularitybg.png)
+IMAGE: Failed to load image data
+LOAD [Singularity] init: 0.0 ms, chart: 14.6 ms, sounds: 175.2 ms, characters: 92.2 ms, stage: 17.0 ms, song audio: 2.4 ms, notes: 0.0 ms, ui: 0.0 ms, warmup: 0.1 ms, (textures on main thread: 48.5 ms) total: 301.6 ms
+LOAD [ampersand] init: 0.0 ms, chart: 22.2 ms, sounds: 72.3 ms, characters: 395.7 ms, stage: 3.4 ms, song audio: 27.7 ms, notes: 0.1 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 377.2 ms) total: 521.5 ms
+LOAD [ampersand] init: 0.0 ms, chart: 27.9 ms, sounds: 1.2 ms, characters: 436.4 ms, stage: 2.0 ms, song audio: 3.0 ms, notes: 0.1 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 436.7 ms) total: 470.9 ms
+LOAD [ampersand] init: 0.0 ms, chart: 22.9 ms, sounds: 0.8 ms, characters: 427.0 ms, stage: 2.0 ms, song audio: 3.2 ms, notes: 0.1 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 427.8 ms) total: 456.1 ms
+LOAD [ampersand] init: 0.0 ms, chart: 23.3 ms, sounds: 1.5 ms, characters: 434.4 ms, stage: 2.1 ms, song audio: 3.1 ms, notes: 0.1 ms, ui: 0.0 ms, warmup: 0.3 ms, (textures on main thread: 434.8 ms) total: 464.8 ms
