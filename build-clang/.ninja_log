@@ -400,3 +400,9 @@
 92	285	8172704866567013	CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/PlayState.c.obj	f13f665ee6a00a36
 285	5793	8172704868505669	D:/dev/funkin c/FunkinCengine.exe	1899e1a1d7786a2b
 36	69	8172705586692662	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+27	78	8172711123895814	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+83	176	8172711124458644	CMakeFiles/FunkinCengine.dir/src/scenes/menu/MenuState.c.obj	9120ec00a0daa78d
+177	3796	8172711125390421	D:/dev/funkin c/FunkinCengine.exe	1899e1a1d7786a2b
+47	88	8172716613604444	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+93	190	8172716614060598	CMakeFiles/FunkinCengine.dir/src/scenes/menu/MenuState.c.obj	9120ec00a0daa78d
+190	4305	8172716615034370	D:/dev/funkin c/FunkinCengine.exe	1899e1a1d7786a2b

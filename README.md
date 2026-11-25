@@ -45,7 +45,7 @@ Multi threading(cpu) manager
   <div align="left">
 
 ```text
-(50%) ██████████░░░░░░░ 05 of 1
+(60%) ███████████░░░░░
 ```
 
 - [x] v0.1 — Basis
@@ -53,7 +53,7 @@ Multi threading(cpu) manager
 - [x] v0.3 — Music Editor and Additional
 - [x] v0.4 — Additional features (WeekEditor, better grafics, pending)
 - [x] v0.5 — Tests and tuning
-- [ ] v0.6 - full visual and events working
+- [x] v0.6 - full visual and events working
 - [ ] v0.7 - completed performance and visual
 - [ ] v0.9 — Game Polish and Bug Testing
 - [ ] v1.0 — Release
