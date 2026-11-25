@@ -18,4 +18,7 @@ int MI_VSliceFileKind(const char *path);
  * Retorna 1 mesmo sem nenhum chart V-Slice (nao e erro). */
 int MI_ImportVSliceCharts(const char *srcMod, const char *dstMod, MI_ImportContext *context);
 
+/* Levels V-Slice (pasta data/levels, json) viram weeks/<nivel>.json do engine. */
+int MI_ImportVSliceLevels(const char *srcMod, const char *dstMod, MI_ImportContext *context);
+
 #endif /* MODIMPORTVSLICE_H */

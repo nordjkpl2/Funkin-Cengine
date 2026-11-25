@@ -231,13 +231,24 @@ static int Song_FindChartPathInDirectory(const char *directory, const char *diff
     (void)snprintf(candidate, sizeof(candidate), "%s/%s.json", directory, base);
     if (FileExists(candidate)) goto found_candidate;
 
+    /* V-Slice: <song>-chart.json e o chart (prefere-o); <song>-metadata.json nunca e chart. */
     files = LoadDirectoryFilesEx(directory, ".json", false);
+    candidate[0] = '\0';
     for (unsigned i = 0; i < files.count; ++i) {
-        if (!Song_IsEventsFile(files.paths[i])) {
+        const char *fileBase = Song_BaseName(files.paths[i]);
+        if (Song_IsEventsFile(files.paths[i]) || strstr(fileBase, "-metadata") != NULL) continue;
+        if (strstr(fileBase, "-chart.json") != NULL) {
             Song_NormalizePath(files.paths[i], out, SONG_PATH_MAX);
             UnloadDirectoryFiles(files);
             return 1;
         }
+        if (candidate[0] == '\0')
+            (void)snprintf(candidate, sizeof(candidate), "%s", files.paths[i]);
+    }
+    if (candidate[0] != '\0') {
+        Song_NormalizePath(candidate, out, SONG_PATH_MAX);
+        UnloadDirectoryFiles(files);
+        return 1;
     }
     UnloadDirectoryFiles(files);
     return 0;

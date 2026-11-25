@@ -6,7 +6,7 @@
  * formato de chart que o engine le (secoes de 16 passos com "sectionNotes").
  *
  * Premissas (sem chart V-Slice real para validar aqui):
- *   - lanes V-Slice: 0-3 = oponente, 4-7 = jogador (trocadas para o lado do mustHitSection).
+ *   - lanes V-Slice: 0-3 = jogador, 4-7 = oponente (mesmo lado do mustHitSection=true).
  *   - BPM: primeiro "timeChanges" do metadata (mudancas de BPM no meio da musica ainda nao sao
  *     convertidas; o tempo das secoes usa um BPM so).
  *   - Personagens e stage vem do metadata "playData"; ausente = bf / dad / gf / stage.
@@ -241,8 +241,9 @@ static int MI_VsWriteDifficulty(yyjson_val *notes, double bpm, double speed,
         yyjson_mut_val *triple;
         int psychLane;
         if (lane < 0 || lane > 7 || t < 0.0) continue;
-        /* V-Slice 0-3 = oponente, 4-7 = jogador; Psych com mustHit: 0-3 = jogador. */
-        psychLane = lane < 4 ? lane + 4 : lane - 4;
+        /* V-Slice 0-3 = jogador, 4-7 = oponente; Psych com mustHit=true: 0-3 = jogador.
+         * Todas as secoes saem com mustHitSection=true, entao a lane passa direto. */
+        psychLane = lane;
         section = (size_t)(t / sectionMs);
         if (section >= sectionCount) section = sectionCount - 1u;
 
@@ -274,6 +275,8 @@ cleanup:
     yyjson_mut_doc_free(doc);
     return ok;
 }
+
+static void MI_VsAliasVoices(const char *songDir, const MI_VsMeta *meta, MI_ImportContext *context);
 
 /* Converte todas as dificuldades de um chart V-Slice (um arquivo = varias dificuldades). */
 static void MI_VsConvertChart(const char *chartPath, const char *dstMod,
@@ -330,6 +333,7 @@ static void MI_VsConvertChart(const char *chartPath, const char *dstMod,
         if (MI_VsWriteDifficulty(notes, meta->bpm, speed, meta, song, outPath, context)) wrote = 1;
     }
     if (wrote) ++context->stats->songs;
+    if (wrote) MI_VsAliasVoices(songDir, meta, context);
 
 done:
     yyjson_doc_free(doc);
@@ -342,6 +346,112 @@ static void MI_VsCollectVisit(const char *path, void *user)
     if (MI_VSliceFileKind(path) != 1) return;
     MI_CopyString(collect->paths[collect->count], sizeof(collect->paths[0]), path);
     ++collect->count;
+}
+
+/* Vozes V-Slice: o metadata so diz os personagens (player/opponent), nao os arquivos de voz.
+ * Se o engine nao acha Voices / Voices-Player / Voices-Opponent, copia Voices-<personagem>.ogg
+ * (ou mp3/wav) para o nome que o engine le. */
+static void MI_VsAliasVoices(const char *songDir, const MI_VsMeta *meta, MI_ImportContext *context)
+{
+    static const char *const exts[] = {"ogg", "mp3", "wav"};
+    static const char *const aliases[] = {"Voices-Player", "Voices-Opponent"};
+    const char *characters[2] = {meta->player1, meta->player2};
+    char path[MI_PATH_MAX];
+    char name[MI_NAME_MAX + 32];
+    char dst[MI_PATH_MAX];
+
+    for (int a = 0; a < 2; ++a) {
+        for (size_t e = 0; e < sizeof(exts) / sizeof(exts[0]); ++e) {
+            (void)snprintf(name, sizeof(name), "Voices-%s.%s", characters[a], exts[e]);
+            if (!MI_IsSafeComponent(name) || !MI_Join(path, sizeof(path), songDir, name)) continue;
+            if (!FileExists(path)) continue;
+            (void)snprintf(name, sizeof(name), "%s.%s", aliases[a], exts[e]);
+            if (!MI_Join(dst, sizeof(dst), songDir, name) || FileExists(dst)) break;
+            (void)MI_CopyFile(path, dst, &context->stats->bytes);
+            break;
+        }
+    }
+}
+
+/* Levels V-Slice (pasta data/levels, json com "songs" = lista de nomes) viram weeks do engine
+ * (weeks/<nivel>.json com songs = [[musica, icone, [r,g,b]]]). O icone e o oponente do metadata. */
+static void MI_VsConvertLevel(const char *levelPath, const char *srcMod, const char *dstMod,
+                              MI_ImportContext *context)
+{
+    yyjson_doc *doc = MI_VsReadDoc(levelPath);
+    yyjson_val *root;
+    yyjson_val *songs;
+    yyjson_mut_doc *out = NULL;
+    yyjson_mut_val *outRoot;
+    yyjson_mut_val *outSongs;
+    char weeksDir[MI_PATH_MAX];
+    char outPath[MI_PATH_MAX];
+    char stem[MI_NAME_MAX];
+    size_t i, max;
+    yyjson_val *song;
+
+    if (doc == NULL) return;
+    root = yyjson_doc_get_root(doc);
+    songs = yyjson_is_obj(root) ? yyjson_obj_get(root, "songs") : NULL;
+    if (!yyjson_is_arr(songs) || yyjson_arr_size(songs) == 0) goto done;
+    if (!yyjson_is_str(yyjson_arr_get(songs, 0))) goto done;   /* Psych: lista de listas */
+
+    if (!MI_Join(weeksDir, sizeof(weeksDir), dstMod, "weeks") || !MI_EnsureDirectory(weeksDir)) goto done;
+    MI_GetStem(levelPath, stem, sizeof(stem));
+    if (!MI_IsSafeComponent(stem)) goto done;
+    (void)snprintf(outPath, sizeof(outPath), "%s/%s.json", weeksDir, stem);
+
+    out = yyjson_mut_doc_new(NULL);
+    if (out == NULL) goto done;
+    outRoot = yyjson_mut_obj(out);
+    yyjson_mut_doc_set_root(out, outRoot);
+    yyjson_mut_obj_add_str(out, outRoot, "name", stem);
+    outSongs = yyjson_mut_arr(out);
+    yyjson_mut_obj_add_val(out, outRoot, "songs", outSongs);
+
+    yyjson_arr_foreach(songs, i, max, song) {
+        const char *songName;
+        char songDir[MI_PATH_MAX];
+        MI_VsMeta meta;
+        yyjson_mut_val *row;
+
+        if (!yyjson_is_str(song)) continue;
+        songName = yyjson_get_str(song);
+        if (!MI_IsSafeComponent(songName)) continue;
+        (void)snprintf(songDir, sizeof(songDir), "%s/data/songs/%s", srcMod, songName);
+        if (!DirectoryExists(songDir)) continue;
+        MI_VsReadMeta(songDir, &meta);
+
+        row = yyjson_mut_arr(out);
+        yyjson_mut_arr_add_str(out, row, songName);
+        yyjson_mut_arr_add_str(out, row, meta.player2);
+        yyjson_mut_arr_add_val(outSongs, row);
+    }
+
+    if (!yyjson_mut_write_file(outPath, out, 0, NULL, NULL)) goto done;
+    ++context->stats->weeks;
+
+done:
+    yyjson_mut_doc_free(out);
+    yyjson_doc_free(doc);
+}
+
+int MI_ImportVSliceLevels(const char *srcMod, const char *dstMod, MI_ImportContext *context)
+{
+    char levelsDir[MI_PATH_MAX];
+    FilePathList entries;
+
+    if (srcMod == NULL || dstMod == NULL || context == NULL || context->stats == NULL) return 0;
+    if (!MI_Join(levelsDir, sizeof(levelsDir), srcMod, "data/levels")) return 1;
+    if (!DirectoryExists(levelsDir)) return 1;
+
+    entries = MI_ListEntries(levelsDir);
+    for (unsigned i = 0; i < entries.count; ++i) {
+        if (MI_IsDirectoryPath(entries.paths[i]) || !MI_EndsWithI(entries.paths[i], ".json")) continue;
+        MI_VsConvertLevel(entries.paths[i], srcMod, dstMod, context);
+    }
+    UnloadDirectoryFiles(entries);
+    return 1;
 }
 
 int MI_ImportVSliceCharts(const char *srcMod, const char *dstMod, MI_ImportContext *context)

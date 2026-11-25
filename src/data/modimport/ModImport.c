@@ -99,6 +99,7 @@ static char MI_ImportSingle(const char *srcMod, const char *destModPath,
     if (!MI_ImportSongs(srcMod, destModPath, &context)) ok = 0;
     /* V-Slice: charts por dificuldade viram songs/<musica>/<dificuldade>.json do engine. */
     if (!MI_ImportVSliceCharts(srcMod, destModPath, &context)) ok = 0;
+    if (!MI_ImportVSliceLevels(srcMod, destModPath, &context)) ok = 0;
     MI_TICK("songs");
 
     if (DirectoryExists(sourceWeeks) &&

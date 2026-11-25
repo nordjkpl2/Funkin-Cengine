@@ -113,16 +113,20 @@ static char Opp_FromJsonFile(const char *path, char out[SONG_NAME_MAX])
 
     yyjson_val *root = yyjson_doc_get_root(doc);
     yyjson_val *song = yyjson_is_obj(root) ? yyjson_obj_get(root, "song") : NULL;
-    yyjson_val *objects[2] = {
+    /* V-Slice (metadata): playData.characters.opponent. */
+    yyjson_val *playData = yyjson_is_obj(root) ? yyjson_obj_get(root, "playData") : NULL;
+    yyjson_val *characters = yyjson_is_obj(playData) ? yyjson_obj_get(playData, "characters") : NULL;
+    yyjson_val *objects[3] = {
         yyjson_is_obj(song) ? song : NULL,
-        yyjson_is_obj(root) ? root : NULL
+        yyjson_is_obj(root) ? root : NULL,
+        yyjson_is_obj(characters) ? characters : NULL
     };
     static const char *const keys[] = {
         "player2", "opponent", "opponentCharacter", "opponent_character"
     };
 
     char found = 0;
-    for (size_t oi = 0; oi < 2 && !found; ++oi) {
+    for (size_t oi = 0; oi < 3 && !found; ++oi) {
         if (!objects[oi]) continue;
         for (size_t ki = 0; ki < sizeof(keys) / sizeof(keys[0]); ++ki) {
             yyjson_val *value = yyjson_obj_get(objects[oi], keys[ki]);
