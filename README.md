@@ -126,6 +126,8 @@ It’s being developed by me, and I’m writing the code from scratch, so it mig
 
   > less memory ram and resources use (i think)
 
+  > you can render gigant charts not using 12 gb or more of ram
+
   </details>
 
 <div align="left">
