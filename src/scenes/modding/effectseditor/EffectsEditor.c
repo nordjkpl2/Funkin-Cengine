@@ -1,16 +1,15 @@
 /*
  * Friday Night Funkin' C Engine (c) 2026 nordjkpl
  * EffectsEditor.c - editor de efeitos da gameplay: splash das notas, popups de rating e camera base.
- * Tres abas com campos editaveis e um preview ao vivo que usa o mesmo calculo da gameplay.
- * Gravacao: assets/effects.json (ENTER grava; ESC grava se houver alteracao e volta).
+ * Tres abas com campos numericos (arrastar, roda do mouse ou clicar e digitar) e um preview ao vivo
+ * com a mesma conta da gameplay. Gravacao: assets/effects.json (Ctrl+S).
  *
- * Controles: W/S campo, A/D ajusta (Shift = x5), TAB troca aba, clique seleciona/ajusta,
- * R restaura a aba, ENTER grava, ESC volta.
+ * Controles: Tab/1-3 troca aba, Ctrl+S salva, R restaura a aba, Esc volta (pergunta se ha mudancas).
  */
 
 #include "scenes/modding/effectseditor/EffectsEditor.h"
+#include "scenes/modding/ModdingUi.h"
 #include "scenes/menu/modding/ModdingMenu.h"
-#include "scenes/api/FontLoader.h"
 #include "data/config/EffectsConfig.h"
 #include "data/config/NotesplashConfig.h"
 #include "Render.h"
@@ -20,24 +19,15 @@
 #include <stdio.h>
 #include <string.h>
 
-#define SCREEN_W 1280.0f
-#define SCREEN_H 720.0f
-
 #define UI_ANIMSET "assets/images/ui.animset"
 #define UI_TEXTURE "assets/images/ui.png"
 
-#define PREVIEW_X 620.0f
-#define PREVIEW_Y 150.0f
-#define PREVIEW_W 600.0f
-#define PREVIEW_H 470.0f
-#define LIST_X 40.0f
-#define LIST_Y 160.0f
-#define ROW_H 52.0f
-#define VALUE_X 330.0f
-#define MAX_FIELDS 6
 #define SPLASH_PERIOD 0.6f
-#define POPUP_PERIOD 0.9f
-#define TOAST_TIME 1.6f
+#define POPUP_PERIOD  0.9f
+#define MAX_FIELDS    5
+#define ROW_H         58.0f
+
+enum { CONFIRM_LEAVE = 1 };
 
 typedef enum {
     TAB_SPLASH = 0,
@@ -46,252 +36,297 @@ typedef enum {
     TAB_COUNT
 } EditorTab;
 
-typedef enum {
-    KIND_INT = 0,
-    KIND_TINT,
-    KIND_RATING
-} FieldKind;
-
 typedef struct {
-    const char* label;
-    int* value;
-    int lo, hi, step;
-    FieldKind kind;
+    const char *label;
+    const char *unit;
+    int *value;
+    int lo, hi;
 } Field;
 
-static const char* const tabNames[TAB_COUNT] = {"SPLASH", "POPUPS", "CAMERA"};
-static const char* const ratingNames[EFFECTS_RATINGS] = {"shit", "bad", "good", "sick"};
+static const char *const tabNames[TAB_COUNT] = {"Splash", "Popups", "Camera"};
+static const char *const ratingNames[EFFECTS_RATINGS] = {"shit", "bad", "good", "sick"};
+
+static const Rectangle kLeft = {16.0f, 62.0f, 560.0f, 620.0f};
+static const Rectangle kRight = {588.0f, 62.0f, 676.0f, 620.0f};
+static const Rectangle kTabs = {32.0f, 78.0f, 528.0f, 38.0f};
+static const Rectangle kBtnSave = {1134.0f, 8.0f, 130.0f, 32.0f};
+static const Rectangle kBtnReset = {954.0f, 8.0f, 170.0f, 32.0f};
 
 static EffectsConfig draft;
 static int tab;
-static int field;
-static int popupRating;      /* rating editado na aba Popups (nao vai para o json) */
-static char dirty;
-static float toastTimer;
+static int popupRating;      /* rating mostrado/editado na aba Popups (nao vai para o json) */
+static bool dirty;
 
 static RayAnimationHandler splashSet;
 static int splashAnim = -1;
 static RayAnimatedObject splashObj;
 static float splashT;
-static char splashReady;
 
 static RayAnimationHandler uiSet;
 static int ratingAnim[EFFECTS_RATINGS];
 static RayAnimatedObject popupObj;
 static float popupT;
-static char uiReady;
-static int shownRating = -1;   /* rating que o popup mostra agora */
-
-static Camera2D previewCam;
+static int shownRating = -1;
 
 /* ------------------------------------------------------------------ */
-/* Campos por aba                                                      */
+/* Campos                                                              */
 /* ------------------------------------------------------------------ */
 
-static int BuildFields(Field out[MAX_FIELDS]) {
+static int BuildFields(Field out[MAX_FIELDS])
+{
     int n = 0;
     switch (tab) {
         case TAB_SPLASH:
-            out[n++] = (Field){"Escala %", &draft.splash.scalePct, 10, 300, 5, KIND_INT};
-            out[n++] = (Field){"Opacidade %", &draft.splash.alphaPct, 0, 100, 5, KIND_INT};
-            out[n++] = (Field){"Velocidade (fps)", &draft.splash.fps, 1, 60, 1, KIND_INT};
-            out[n++] = (Field){"Deslocamento X (px)", &draft.splash.offsetX, -1000, 1000, 5, KIND_INT};
-            out[n++] = (Field){"Deslocamento Y (px)", &draft.splash.offsetY, -1000, 1000, 5, KIND_INT};
-            out[n++] = (Field){"Cor", &draft.splash.tint, 0, EFFECTS_TINTS - 1, 1, KIND_TINT};
+            out[n++] = (Field){"Escala", "%", &draft.splash.scalePct, 10, 300};
+            out[n++] = (Field){"Opacidade", "%", &draft.splash.alphaPct, 0, 100};
+            out[n++] = (Field){"Velocidade", "fps", &draft.splash.fps, 1, 60};
+            out[n++] = (Field){"Deslocamento X", "px", &draft.splash.offsetX, -1000, 1000};
+            out[n++] = (Field){"Deslocamento Y", "px", &draft.splash.offsetY, -1000, 1000};
             break;
         case TAB_POPUP:
-            out[n++] = (Field){"Rating", &popupRating, 0, EFFECTS_RATINGS - 1, 1, KIND_RATING};
-            out[n++] = (Field){"Escala %", &draft.popups[popupRating].scalePct, 10, 300, 5, KIND_INT};
-            out[n++] = (Field){"Deslocamento X (px)", &draft.popups[popupRating].offsetX, -1000, 1000, 5, KIND_INT};
-            out[n++] = (Field){"Deslocamento Y (px)", &draft.popups[popupRating].offsetY, -1000, 1000, 5, KIND_INT};
+            out[n++] = (Field){"Escala", "%", &draft.popups[popupRating].scalePct, 10, 300};
+            out[n++] = (Field){"Deslocamento X", "px", &draft.popups[popupRating].offsetX, -1000, 1000};
+            out[n++] = (Field){"Deslocamento Y", "px", &draft.popups[popupRating].offsetY, -1000, 1000};
             break;
         case TAB_CAMERA:
         default:
-            out[n++] = (Field){"Zoom % (100 = normal)", &draft.camera.zoomPct, 50, 200, 5, KIND_INT};
-            out[n++] = (Field){"Deslocamento X (px)", &draft.camera.offsetX, -1000, 1000, 10, KIND_INT};
-            out[n++] = (Field){"Deslocamento Y (px)", &draft.camera.offsetY, -1000, 1000, 10, KIND_INT};
+            out[n++] = (Field){"Zoom (100 = normal)", "%", &draft.camera.zoomPct, 50, 200};
+            out[n++] = (Field){"Deslocamento X", "px", &draft.camera.offsetX, -1000, 1000};
+            out[n++] = (Field){"Deslocamento Y", "px", &draft.camera.offsetY, -1000, 1000};
             break;
     }
     return n;
 }
 
-static void FormatValue(const Field* f, char* buf, size_t size) {
-    if (f->kind == KIND_TINT) snprintf(buf, size, "%s", EffectsConfig_TintName(*f->value));
-    else if (f->kind == KIND_RATING) snprintf(buf, size, "%s", ratingNames[*f->value]);
-    else snprintf(buf, size, "%d", *f->value);
+/* Linha 0 da aba Popups e o seletor de rating; os campos comecam abaixo dele. */
+static float FieldsTop(void)
+{
+    return kLeft.y + (tab == TAB_POPUP ? 196.0f : 120.0f);
 }
 
-static void Adjust(const Field* f, int dir) {
-    int v = *f->value + dir * f->step;
-    if (v < f->lo) v = f->lo;
-    if (v > f->hi) v = f->hi;
-    if (v == *f->value) return;
-    *f->value = v;
-    if (f->kind != KIND_RATING) dirty = 1;   /* trocar o rating nao altera o arquivo */
+static Rectangle FieldRect(int i)
+{
+    return (Rectangle){kLeft.x + 300.0f, FieldsTop() + (float)i * ROW_H, 170.0f, 36.0f};
 }
 
-static void ResetTab(void) {
+static Rectangle RatingRect(int i)
+{
+    return (Rectangle){kLeft.x + 20.0f + (float)i * 130.0f, kLeft.y + 136.0f, 120.0f, 36.0f};
+}
+
+static Rectangle TintRect(int i)
+{
+    return (Rectangle){kLeft.x + 20.0f + (float)i * 76.0f, FieldsTop() + 5.0f * ROW_H + 34.0f, 64.0f, 40.0f};
+}
+
+static void ResetTab(void)
+{
     EffectsConfig def;
     EffectsConfig_Defaults(&def);
     switch (tab) {
         case TAB_SPLASH: draft.splash = def.splash; break;
         case TAB_POPUP:  draft.popups[popupRating] = def.popups[popupRating]; break;
-        case TAB_CAMERA: draft.camera = def.camera; break;
-        default: break;
+        default:         draft.camera = def.camera; break;
     }
-    dirty = 1;
+    dirty = true;
+    MUi_SetStatus(MUI_INFO, "aba %s restaurada ao padrao (Ctrl+S grava)", tabNames[tab]);
 }
 
-static void SaveNow(void) {
+static bool SaveNow(void)
+{
     EffectsConfig_Set(&draft);
-    if (EffectsConfig_Save()) {
-        dirty = 0;
-        toastTimer = TOAST_TIME;
+    if (!EffectsConfig_Save()) {
+        MUi_SetStatus(MUI_ERR, "falha ao gravar assets/effects.json");
+        return false;
     }
+    dirty = false;
+    MUi_SetStatus(MUI_OK, "gravado em assets/effects.json");
+    return true;
 }
 
 /* ------------------------------------------------------------------ */
 /* Preview                                                             */
 /* ------------------------------------------------------------------ */
 
-/* Splash na mesma conta da gameplay: centro do receptor + scale + offset + tint/alpha. */
-static void DrawSplashPreview(void) {
-    const EffectsSplash* cfg = &draft.splash;
-    const float cx = PREVIEW_X + PREVIEW_W * 0.5f;
-    const float cy = PREVIEW_Y + 200.0f;
-
-    // Receptor fake (quadrado) no centro.
-    DrawRectangleRounded((Rectangle){cx - 60.0f, cy - 60.0f, 120.0f, 120.0f}, 0.2f, 8, (Color){40, 34, 70, 255});
-    DrawRectangleRoundedLinesEx((Rectangle){cx - 60.0f, cy - 60.0f, 120.0f, 120.0f}, 0.2f, 8, 2.0f, (Color){120, 100, 200, 180});
-
-    if (!splashReady || splashAnim < 0) return;
-
-    AnimationSet_SetAnimationData(&splashSet, splashAnim, cfg->fps, 0);
-    const float scale = (float)cfg->scalePct / 100.0f;
-    const Vector2 size = AnimatedObject_Sizes(&splashObj);
-    const Color tint = EffectsConfig_TintColor(cfg->tint);
-
-    splashObj.scaleX = splashObj.scaleY = scale;
-    splashObj.color = (Color){tint.r, tint.g, tint.b, (unsigned char)(cfg->alphaPct * 255 / 100)};
-    splashObj.position.x = cx - size.x * scale * 0.5f + (float)cfg->offsetX;
-    splashObj.position.y = cy - size.y * scale * 0.5f + (float)cfg->offsetY;
-    AnimatedObject_UpdateFrame(&splashObj);
-    Render_DrawAnimatedObject(&splashObj);
+static Rectangle PreviewRect(void)
+{
+    return (Rectangle){kRight.x + 12.0f, kRight.y + 40.0f, kRight.width - 24.0f, kRight.height - 52.0f};
 }
 
-static void DrawPopupPreview(void) {
-    if (!uiReady) return;
-    const EffectsPopup* cfg = &draft.popups[popupRating];
-    const float scale = (float)cfg->scalePct / 100.0f;
-    const float cx = PREVIEW_X + PREVIEW_W * 0.5f + (float)cfg->offsetX;
-    const float baseY = PREVIEW_Y + 150.0f + (float)cfg->offsetY;
+static void UpdatePreview(float dt)
+{
+    const Rectangle area = PreviewRect();
+    const float cx = area.x + area.width * 0.5f;
 
-    popupObj.scaleX = popupObj.scaleY = scale;
-    const Vector2 size = AnimatedObject_Sizes(&popupObj);
-    popupObj.position.x = cx - size.x * 0.5f;
-    popupObj.position.y = baseY;
-    popupObj.color.a = 255;
-    AnimatedObject_UpdateFrame(&popupObj);
-    Render_DrawAnimatedObject(&popupObj);
+    splashT += dt;
+    if (splashT >= SPLASH_PERIOD) {
+        splashT = 0.0f;
+        if (splashAnim >= 0)
+            AnimatedObject_SetAnimation(&splashObj, splashAnim);
+    }
+    popupT += dt;
+    if (popupT >= POPUP_PERIOD || shownRating != popupRating) {
+        popupT = 0.0f;
+        shownRating = popupRating;
+        if (ratingAnim[popupRating] >= 0)
+            AnimatedObject_SetAnimation(&popupObj, ratingAnim[popupRating]);
+    }
+
+    if (tab == TAB_SPLASH && splashAnim >= 0) {
+        const EffectsSplash *cfg = &draft.splash;
+        const float cy = area.y + area.height * 0.45f;
+        const float scale = (float)cfg->scalePct / 100.0f;
+        const Color tint = EffectsConfig_TintColor(cfg->tint);
+        AnimationSet_SetAnimationData(&splashSet, splashAnim, cfg->fps, 0);
+        splashObj.animationSet = splashSet;
+        splashObj.scaleX = splashObj.scaleY = scale;
+        splashObj.color = (Color){tint.r, tint.g, tint.b, (unsigned char)(cfg->alphaPct * 255 / 100)};
+        AnimatedObject_UpdateFrame(&splashObj);
+        const Vector2 size = AnimatedObject_Sizes(&splashObj);
+        splashObj.position.x = cx - size.x * scale * 0.5f + (float)cfg->offsetX;
+        splashObj.position.y = cy - size.y * scale * 0.5f + (float)cfg->offsetY;
+    } else if (tab == TAB_POPUP && ratingAnim[popupRating] >= 0) {
+        const EffectsPopup *cfg = &draft.popups[popupRating];
+        const float scale = (float)cfg->scalePct / 100.0f;
+        popupObj.scaleX = popupObj.scaleY = scale;
+        popupObj.color.a = 255;
+        AnimatedObject_UpdateFrame(&popupObj);
+        const Vector2 size = AnimatedObject_Sizes(&popupObj);
+        popupObj.position.x = cx + (float)cfg->offsetX - size.x * 0.5f;
+        popupObj.position.y = area.y + 170.0f + (float)cfg->offsetY;
+    }
+}
+
+static void DrawSplashPreview(Rectangle area)
+{
+    const float cx = area.x + area.width * 0.5f;
+    const float cy = area.y + area.height * 0.45f;
+    const Rectangle receptor = {cx - 56.0f, cy - 56.0f, 112.0f, 112.0f};
+    DrawRectangleRounded(receptor, 0.25f, 8, (Color){40, 34, 70, 255});
+    DrawRectangleRoundedLinesEx(receptor, 0.25f, 8, 2.0f, (Color){120, 100, 200, 180});
+    if (splashAnim >= 0)
+        Render_DrawAnimatedObject(&splashObj);
+    else
+        MUi_TextCenter("splash ativo sem animacao (Notesplash Editor)", (Rectangle){area.x, cy + 80.0f, area.width, 30.0f}, 18.0f, MUI_C_BAD);
+}
+
+static void DrawPopupPreview(Rectangle area)
+{
+    if (ratingAnim[popupRating] >= 0)
+        Render_DrawAnimatedObject(&popupObj);
+    else
+        MUi_TextCenter("ui.animset sem essa animacao", (Rectangle){area.x, area.y + 200.0f, area.width, 30.0f}, 18.0f, MUI_C_BAD);
 }
 
 /* Camera: mundo de referencia 1280x720 visto com o zoom e o deslocamento base da config. */
-static void DrawCameraPreview(void) {
-    const EffectsCamera* cfg = &draft.camera;
-    const float view = 0.47f;   /* 600 px de preview ~ 1280 px de jogo */
-    previewCam = (Camera2D){0};
-    previewCam.offset = (Vector2){PREVIEW_X + PREVIEW_W * 0.5f, PREVIEW_Y + PREVIEW_H * 0.5f};
-    previewCam.target = (Vector2){640.0f + (float)cfg->offsetX, 360.0f + (float)cfg->offsetY};
-    previewCam.zoom = view * (float)cfg->zoomPct / 100.0f;
+static void DrawCameraPreview(Rectangle area)
+{
+    const EffectsCamera *cfg = &draft.camera;
+    const float view = fminf(area.width / 1280.0f, area.height / 720.0f);
+    Camera2D cam = {0};
+    cam.offset = (Vector2){area.x + area.width * 0.5f, area.y + area.height * 0.5f};
+    cam.target = (Vector2){640.0f + (float)cfg->offsetX, 360.0f + (float)cfg->offsetY};
+    cam.zoom = view * (float)cfg->zoomPct / 100.0f;
 
-    BeginScissorMode((int)PREVIEW_X, (int)PREVIEW_Y, (int)PREVIEW_W, (int)PREVIEW_H);
-    BeginMode2D(previewCam);
+    BeginMode2D(cam);
+    DrawRectangle(-640, -360, 2560, 1440, (Color){18, 14, 34, 255});
     DrawRectangle(0, 0, 1280, 720, (Color){30, 24, 52, 255});
-    DrawRectangle(0, 470, 1280, 250, (Color){60, 40, 90, 255});   /* chao */
-    DrawRectangle(360, 230, 200, 240, (Color){255, 110, 150, 255}); /* oponente */
-    DrawRectangle(820, 230, 200, 240, (Color){110, 200, 255, 255}); /* BF */
-    DrawRectangleLines(0, 0, 1280, 720, (Color){255, 255, 255, 90});  /* limite do jogo */
+    DrawRectangle(0, 470, 1280, 250, (Color){60, 40, 90, 255});      /* chao */
+    DrawRectangle(360, 230, 200, 240, (Color){255, 110, 150, 255});  /* oponente */
+    DrawRectangle(820, 230, 200, 240, (Color){110, 200, 255, 255});  /* BF */
+    DrawRectangleLinesEx((Rectangle){0, 0, 1280, 720}, 3.0f, (Color){255, 255, 255, 90});
     DrawLine(640, 0, 640, 720, (Color){255, 255, 255, 40});
     EndMode2D();
-    EndScissorMode();
+
+    /* moldura da tela do jogo */
+    const float sw = 1280.0f * view, sh = 720.0f * view;
+    DrawRectangleLinesEx((Rectangle){area.x + (area.width - sw) * 0.5f, area.y + (area.height - sh) * 0.5f, sw, sh},
+                         2.0f, MUI_C_ACCENT);
 }
 
 /* ------------------------------------------------------------------ */
 /* Update                                                              */
 /* ------------------------------------------------------------------ */
 
-static void SwitchTab(int next) {
+static void SwitchTab(int next)
+{
     tab = (next + TAB_COUNT) % TAB_COUNT;
-    field = 0;
+    MUi_TextBlur();
 }
 
-static void Editor_Update([[maybe_unused]] RayScene* scene) {
+static void Editor_Update([[maybe_unused]] RayScene *scene)
+{
     const float dt = fmaxf(RayGame_DeltaTime(), 0.0f);
-    if (toastTimer > 0.0f) toastTimer -= dt;
+    MUi_FrameBegin();
+    MUi_Tick(dt);
+    UpdatePreview(dt);
 
-    splashT += dt;
-    if (splashT >= SPLASH_PERIOD) {
-        splashT = 0.0f;
-        if (splashReady) AnimatedObject_SetAnimation(&splashObj, splashAnim);
+    if (MUi_ModalActive()) {
+        int id = 0;
+        const MUiModalResult res = MUi_ModalUpdate(&id);
+        if (id == CONFIRM_LEAVE && ((res == MUI_MODAL_OK && SaveNow()) || res == MUI_MODAL_DISCARD))
+            ModdingMenu_SetScene();
+        return;
     }
-    popupT += dt;
-    if (popupT >= POPUP_PERIOD) {
-        popupT = 0.0f;
-        if (uiReady) AnimatedObject_SetAnimation(&popupObj, ratingAnim[popupRating]);
+
+    if (MUi_Button(kBtnSave))
+        SaveNow();
+    if (MUi_Button(kBtnReset))
+        ResetTab();
+
+    const int clickedTab = MUi_Tabs(kTabs, TAB_COUNT, tab);
+    if (clickedTab != tab)
+        SwitchTab(clickedTab);
+
+    if (tab == TAB_POPUP) {
+        for (int i = 0; i < EFFECTS_RATINGS; ++i) {
+            if (MUi_Button(RatingRect(i)))
+                popupRating = i;
+        }
     }
 
     Field fields[MAX_FIELDS];
     const int n = BuildFields(fields);
-    if (field >= n) field = n - 1;
-
-    // Abas: TAB, ou clique na aba.
-    if (IsKeyPressed(KEY_TAB)) SwitchTab(tab + 1);
-    const Vector2 mouse = GetMousePosition();
-    const bool clicked = IsMouseButtonPressed(MOUSE_LEFT_BUTTON);
-    for (int i = 0; i < TAB_COUNT && clicked; ++i) {
-        if (CheckCollisionPointRec(mouse, (Rectangle){LIST_X + i * 170.0f, 86.0f, 160.0f, 40.0f})) {
-            SwitchTab(i);
-            return;
+    for (int i = 0; i < n; ++i) {
+        if (MUi_NumInt(FieldRect(i), fields[i].value, 1, fields[i].lo, fields[i].hi))
+            dirty = true;
+    }
+    if (tab == TAB_SPLASH) {
+        for (int i = 0; i < EFFECTS_TINTS; ++i) {
+            if (MUi_Button(TintRect(i)) && draft.splash.tint != i) {
+                draft.splash.tint = i;
+                dirty = true;
+            }
         }
     }
 
-    if (IsKeyPressed(KEY_ESCAPE)) {
-        if (dirty) SaveNow();
-        ModdingMenu_SetScene();
+    if (!MUi_KeysFree())
+        return;
+
+    if (MUi_Ctrl() && IsKeyPressed(KEY_S)) {
+        SaveNow();
         return;
     }
-    if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER)) SaveNow();
-    if (IsKeyPressed(KEY_R)) ResetTab();
-
-    if (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S)) field = (field + 1) % n;
-    if (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W)) field = (field + n - 1) % n;
-
-    const bool shift = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
-    const int mult = shift ? 5 : 1;
-    int dir = 0;
-    if (IsKeyPressed(KEY_RIGHT) || IsKeyPressed(KEY_D) || IsKeyPressedRepeat(KEY_RIGHT) || IsKeyPressedRepeat(KEY_D)) dir = 1;
-    if (IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_A) || IsKeyPressedRepeat(KEY_LEFT) || IsKeyPressedRepeat(KEY_A)) dir = -1;
-    if (dir != 0) {
-        Field f = fields[field];
-        f.step *= mult;
-        Adjust(&f, dir);
+    if (IsKeyPressed(KEY_ESCAPE)) {
+        if (dirty)
+            MUi_ConfirmOpen(CONFIRM_LEAVE, "Sair do Effects Editor", "Ha alteracoes nao gravadas.");
+        else
+            ModdingMenu_SetScene();
+        return;
     }
-    if (tab == TAB_POPUP && uiReady && shownRating != popupRating) {
-        shownRating = popupRating;
-        AnimatedObject_SetAnimation(&popupObj, ratingAnim[popupRating]);
+    if (IsKeyPressed(KEY_TAB))
+        SwitchTab(tab + (MUi_Shift() ? -1 : 1));
+    for (int i = 0; i < TAB_COUNT; ++i) {
+        if (IsKeyPressed(KEY_ONE + i))
+            SwitchTab(i);
     }
-
-    // Clique numa linha: seleciona; metade esquerda diminui, direita aumenta.
-    if (clicked) {
-        for (int i = 0; i < n; ++i) {
-            const Rectangle row = {LIST_X, LIST_Y + i * ROW_H, PREVIEW_X - LIST_X - 20.0f, ROW_H - 6.0f};
-            if (!CheckCollisionPointRec(mouse, row)) continue;
-            field = i;
-            Field f = fields[i];
-            f.step *= mult;
-            Adjust(&f, mouse.x < VALUE_X + 150.0f ? -1 : 1);
-            break;
-        }
+    if (IsKeyPressed(KEY_R))
+        ResetTab();
+    if (tab == TAB_POPUP) {
+        if (MUi_Rep(KEY_LEFT))
+            popupRating = (popupRating + EFFECTS_RATINGS - 1) % EFFECTS_RATINGS;
+        if (MUi_Rep(KEY_RIGHT))
+            popupRating = (popupRating + 1) % EFFECTS_RATINGS;
     }
 }
 
@@ -299,104 +334,105 @@ static void Editor_Update([[maybe_unused]] RayScene* scene) {
 /* Draw                                                                */
 /* ------------------------------------------------------------------ */
 
-static void DrawFields(const Field* fields, int n) {
-    for (int i = 0; i < n; ++i) {
-        const float y = LIST_Y + i * ROW_H;
-        const bool sel = i == field;
-        if (sel) DrawRectangleRounded((Rectangle){LIST_X - 12.0f, y - 4.0f, VALUE_X + 220.0f - LIST_X, ROW_H - 8.0f}, 0.3f, 8, (Color){60, 40, 100, 220});
-
-        DrawTextEx(mainFont, fields[i].label, (Vector2){LIST_X, y + 8.0f}, 22.0f, 1.0f, sel ? WHITE : (Color){190, 185, 215, 255});
-
-        char value[32];
-        FormatValue(&fields[i], value, sizeof(value));
-        char shown[48];
-        snprintf(shown, sizeof(shown), "<  %s  >", value);
-        DrawTextEx(mainFont, shown, (Vector2){VALUE_X, y + 8.0f}, 22.0f, 1.0f, sel ? (Color){255, 220, 100, 255} : (Color){230, 230, 240, 255});
-    }
-}
-
-static void Editor_Draw([[maybe_unused]] RayScene* scene) {
-    ClearBackground((Color){14, 10, 28, 255});
-    DrawRectangleGradientV(0, 0, (int)SCREEN_W, (int)SCREEN_H, (Color){24, 16, 44, 255}, (Color){8, 6, 18, 255});
-
-    DrawTextEx(mainFont, "EFFECTS EDITOR", (Vector2){LIST_X, 26.0f}, 36.0f, 2.0f, WHITE);
-
-    for (int i = 0; i < TAB_COUNT; ++i) {
-        const Rectangle r = {LIST_X + i * 170.0f, 86.0f, 160.0f, 40.0f};
-        const bool on = i == tab;
-        DrawRectangleRounded(r, 0.3f, 8, on ? (Color){255, 92, 176, 255} : (Color){40, 32, 64, 255});
-        const Vector2 tsz = MeasureTextEx(mainFont, tabNames[i], 20.0f, 1.0f);
-        DrawTextEx(mainFont, tabNames[i], (Vector2){r.x + (r.width - tsz.x) * 0.5f, r.y + 9.0f}, 20.0f, 1.0f, WHITE);
-    }
-
+static void DrawFields(void)
+{
     Field fields[MAX_FIELDS];
     const int n = BuildFields(fields);
-    DrawFields(fields, n);
 
-    // Painel de preview.
-    DrawRectangleRounded((Rectangle){PREVIEW_X, PREVIEW_Y, PREVIEW_W, PREVIEW_H}, 0.03f, 8, (Color){8, 6, 18, 230});
-    DrawRectangleRoundedLinesEx((Rectangle){PREVIEW_X, PREVIEW_Y, PREVIEW_W, PREVIEW_H}, 0.03f, 8, 1.5f, (Color){120, 100, 200, 170});
-    DrawTextEx(mainFont, "PREVIEW", (Vector2){PREVIEW_X + 16.0f, PREVIEW_Y + 12.0f}, 20.0f, 2.0f, (Color){190, 185, 220, 255});
+    if (tab == TAB_POPUP) {
+        MUi_Text("Rating", kLeft.x + 20.0f, kLeft.y + 112.0f, 17.0f, MUI_C_DIM);
+        for (int i = 0; i < EFFECTS_RATINGS; ++i)
+            MUi_DrawButton(RatingRect(i), ratingNames[i], i == popupRating ? MUI_BTN_ACTIVE : MUI_BTN_NORMAL);
+    }
 
-    if (tab == TAB_SPLASH) DrawSplashPreview();
-    else if (tab == TAB_POPUP) DrawPopupPreview();
-    else DrawCameraPreview();
+    for (int i = 0; i < n; ++i) {
+        const Rectangle r = FieldRect(i);
+        MUi_Text(fields[i].label, kLeft.x + 24.0f, r.y + 8.0f, 20.0f, MUI_C_TEXT);
+        MUi_DrawNum(r, (float)*fields[i].value, 1.0f);
+        MUi_Text(fields[i].unit, r.x + r.width + 10.0f, r.y + 9.0f, 17.0f, MUI_C_FAINT);
+    }
 
-    // Estado e ajuda.
-    if (toastTimer > 0.0f)
-        DrawTextEx(mainFont, "gravado em assets/effects.json", (Vector2){LIST_X, 640.0f}, 20.0f, 1.0f, (Color){120, 255, 160, 255});
-    else if (dirty)
-        DrawTextEx(mainFont, "alteracoes nao gravadas", (Vector2){LIST_X, 640.0f}, 20.0f, 1.0f, (Color){255, 200, 90, 255});
+    if (tab == TAB_SPLASH) {
+        MUi_Text("Cor", kLeft.x + 24.0f, FieldsTop() + 5.0f * ROW_H + 6.0f, 20.0f, MUI_C_TEXT);
+        for (int i = 0; i < EFFECTS_TINTS; ++i)
+            MUi_DrawSwatch(TintRect(i), EffectsConfig_TintColor(i), draft.splash.tint == i);
+        MUi_Text(EffectsConfig_TintName(draft.splash.tint), kLeft.x + 24.0f, FieldsTop() + 5.0f * ROW_H + 86.0f, 17.0f, MUI_C_DIM);
+        MUi_Text("A animacao/atlas do splash vem do Notesplash Editor.", kLeft.x + 24.0f, kLeft.y + kLeft.height - 34.0f, 16.0f, MUI_C_FAINT);
+    } else if (tab == TAB_CAMERA) {
+        MUi_Text("Zoom e deslocamento base da camera de jogo.", kLeft.x + 24.0f, kLeft.y + kLeft.height - 34.0f, 16.0f, MUI_C_FAINT);
+    }
+    MUi_Text("arraste o numero, use a roda ou clique e digite (Shift x10)", kLeft.x + 24.0f, kLeft.y + kLeft.height - 58.0f, 16.0f, MUI_C_FAINT);
+}
 
-    DrawTextEx(mainFont, "W/S campo   A/D ajusta (shift x5)   TAB aba   R restaura   ENTER grava   ESC volta",
-               (Vector2){LIST_X, 680.0f}, 17.0f, 1.0f, (Color){220, 215, 235, 230});
+static void Editor_Draw([[maybe_unused]] RayScene *scene)
+{
+    MUi_DrawBackdrop();
+    MUi_DrawTopBar("Effects Editor", "assets/effects.json", dirty);
+    MUi_DrawButton(kBtnReset, "Restaurar aba (R)", MUI_BTN_NORMAL);
+    MUi_DrawButton(kBtnSave, "Salvar", dirty ? MUI_BTN_ACCENT : MUI_BTN_NORMAL);
+
+    MUi_DrawPanel(kLeft);
+    MUi_DrawTabs(kTabs, tabNames, TAB_COUNT, tab);
+    DrawFields();
+
+    MUi_DrawPanel(kRight);
+    MUi_DrawSection(kRight.x + 14.0f, kRight.y + 12.0f, "Preview");
+    const Rectangle area = PreviewRect();
+    DrawRectangleRounded(area, 0.02f, 6, (Color){6, 4, 14, 255});
+    MUi_ClipBegin(area);
+    if (tab == TAB_SPLASH)
+        DrawSplashPreview(area);
+    else if (tab == TAB_POPUP)
+        DrawPopupPreview(area);
+    else
+        DrawCameraPreview(area);
+    MUi_ClipEnd();
+
+    MUi_DrawBottomBar("Tab/1-3 aba   Ctrl+S salva   R restaura a aba   setas: rating (Popups)   Esc volta");
+    MUi_DrawModal();
 }
 
 /* ------------------------------------------------------------------ */
 /* Cena                                                                */
 /* ------------------------------------------------------------------ */
 
-static void Editor_Create([[maybe_unused]] RayScene* scene) {
+static void Editor_Create([[maybe_unused]] RayScene *scene)
+{
+    MUi_Reset();
     draft = *EffectsConfig_Get();
     tab = TAB_SPLASH;
-    field = 0;
-    popupRating = EFFECTS_RATINGS - 1;        /* sick: o mais comum na tela */
-    dirty = 0;
-    toastTimer = 0.0f;
-    splashT = 0.0f;
-    popupT = 0.0f;
+    popupRating = EFFECTS_RATINGS - 1;   /* sick: o mais comum na tela */
+    dirty = false;
+    splashT = popupT = 0.0f;
+    shownRating = -1;
 
-    // Splash = entrada ativa do Notesplash Editor (assets/notesplashes.json).
-    const NotesplashEntry* entry = NotesplashConfig_Active();
+    /* Splash = entrada ativa do Notesplash Editor (assets/notesplashes.json). */
+    splashSet = (RayAnimationHandler){0};
+    splashAnim = -1;
+    const NotesplashEntry *entry = NotesplashConfig_Active();
     char texture[NOTESPLASH_PATH_MAX];
-    if (NotesplashConfig_TexturePath(entry->animset, texture, sizeof(texture))) {
+    if (NotesplashConfig_TexturePath(entry->animset, texture, sizeof(texture)) && FileExists(texture)) {
         splashSet = AnimationSet_LoadAnimations(entry->animset, Render_LoadTexture(texture));
         AnimationSet_SetData(splashAnim, splashSet, entry->prefix, draft.splash.fps, 0, 0, 0);
     }
-    splashReady = splashAnim >= 0;
-    if (splashReady) {
-        Render_DefaultAnimated(&splashObj);
-        splashObj.animationSet = splashSet;
+    Render_DefaultAnimated(&splashObj);
+    splashObj.animationSet = splashSet;
+    if (splashAnim >= 0)
         AnimatedObject_SetAnimation(&splashObj, splashAnim);
-    }
 
     uiSet = AnimationSet_LoadAnimations(UI_ANIMSET, Render_LoadTexture(UI_TEXTURE));
-    ratingAnim[0] = AnimationSet_FindAnimation(&uiSet, "shit");
-    ratingAnim[1] = AnimationSet_FindAnimation(&uiSet, "bad");
-    ratingAnim[2] = AnimationSet_FindAnimation(&uiSet, "good");
-    ratingAnim[3] = AnimationSet_FindAnimation(&uiSet, "sick");
-    uiReady = 1;
+    for (int i = 0; i < EFFECTS_RATINGS; ++i)
+        ratingAnim[i] = AnimationSet_FindAnimation(&uiSet, ratingNames[i]);
     Render_DefaultAnimated(&popupObj);
     popupObj.animationSet = uiSet;
-    AnimatedObject_SetAnimation(&popupObj, ratingAnim[popupRating]);
-    shownRating = popupRating;
 }
 
-static void Editor_Destroy([[maybe_unused]] RayScene* scene) {
+static void Editor_Destroy([[maybe_unused]] RayScene *scene)
+{
     AnimationSet_FreeAll(&splashSet);
     AnimationSet_FreeAll(&uiSet);
-    splashReady = 0;
-    uiReady = 0;
+    splashAnim = -1;
+    MUi_Reset();
 }
 
 static RayScene scene;

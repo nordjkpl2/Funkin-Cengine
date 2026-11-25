@@ -1,16 +1,17 @@
 /*
  * Friday Night Funkin' C Engine (c) 2026 nordjkpl
- * NotesplashEditor.c - lista de notesplashes: abre qualquer atlas Sparrow de assets/images,
- * escolhe a animacao, cria/remove entradas e define a ativa usada na gameplay.
- * Gravacao: assets/notesplashes.json (ENTER grava; ESC grava se houver alteracao e volta).
+ * NotesplashEditor.c - lista de notesplashes: escolhe o atlas Sparrow (images/ dos mods e de assets,
+ * ou qualquer caminho digitado em "Abrir"), a animacao e a cor; cria/remove entradas e define a
+ * ativa usada na gameplay. Gravacao: assets/notesplashes.json (Ctrl+S).
  *
- * Controles: W/S campo, A/D troca (Shift = x5 na entrada), clique seleciona/troca,
- * ENTER executa a acao do campo ou grava, ESC volta.
+ * Controles: clique nas listas (setas navegam a ultima lista clicada), Ctrl+O abre atlas por
+ * caminho, Ctrl+S salva, Del remove entrada, Esc volta (pergunta se ha mudancas).
  */
 
 #include "scenes/modding/notesplashseditor/NotesplashEditor.h"
+#include "scenes/modding/ModdingCommon.h"
+#include "scenes/modding/ModdingUi.h"
 #include "scenes/menu/modding/ModdingMenu.h"
-#include "scenes/api/FontLoader.h"
 #include "data/config/NotesplashConfig.h"
 #include "data/config/EffectsConfig.h"
 #include "Render.h"
@@ -21,372 +22,402 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define SCREEN_W 1280.0f
-#define SCREEN_H 720.0f
-
-#define SHEET_DIR "assets/images"
-#define SHEETS_MAX 64
-#define PREFIXES_MAX 48
-
-#define PREVIEW_X 620.0f
-#define PREVIEW_Y 150.0f
-#define PREVIEW_W 600.0f
-#define PREVIEW_H 470.0f
-#define LIST_X 40.0f
-#define LIST_Y 130.0f
-#define ROW_H 52.0f
-#define VALUE_X 330.0f
-#define MAX_FIELDS 8
+#define SHEETS_MAX    128
+#define PREFIXES_MAX  128
 #define SPLASH_PERIOD 0.6f
-#define TOAST_TIME 1.6f
 
-typedef enum {
-    FLD_ENTRY = 0,
-    FLD_SHEET,
-    FLD_ANIM,
-    FLD_TINT,
-    FLD_OPEN,
-    FLD_SET_ACTIVE,
-    FLD_NEW,
-    FLD_REMOVE
-} FieldId;
+#define ENTRY_ROW_H 46.0f
+#define LIST_ROW_H  26.0f
 
-typedef struct {
-    FieldId id;
-    const char* label;
-    int* value;     /* NULL nas acoes */
-    int hi;         /* maior indice valido (cursor) */
-} Field;
+enum { PROMPT_OPEN = 1, CONFIRM_LEAVE };
+enum { LIST_ENTRIES = 0, LIST_SHEETS, LIST_ANIMS };
+
+static const Rectangle kLeft = {16.0f, 62.0f, 300.0f, 620.0f};
+static const Rectangle kMid = {328.0f, 62.0f, 380.0f, 620.0f};
+static const Rectangle kRight = {720.0f, 62.0f, 544.0f, 620.0f};
+static const Rectangle kBtnSave = {1134.0f, 8.0f, 130.0f, 32.0f};
+static const Rectangle kBtnOpen = {964.0f, 8.0f, 160.0f, 32.0f};
 
 typedef struct {
-    char animset[NOTESPLASH_PATH_MAX];
-    char prefixes[PREFIXES_MAX][NOTESPLASH_PREFIX_MAX];
-    int prefixCount;
-} SheetInfo;
+    char path[NOTESPLASH_PATH_MAX];  /* xml do atlas */
+    char label[64];                  /* nome do arquivo sem extensao */
+    char root[40];                   /* rotulo da raiz (mod ou assets) */
+} Sheet;
 
 static NotesplashList draft;
-static SheetInfo sheets[SHEETS_MAX];
+static Sheet sheets[SHEETS_MAX];
 static int sheetCount;
+static int visible[SHEETS_MAX];
+static int visibleCount;
+static char search[48];
 
-static int entry;        /* entrada em edicao */
-static int field;        /* campo selecionado */
-static int sheetIdx;     /* atlas da entrada atual (indice em sheets) */
-static int animIdx;      /* prefixo da entrada atual (indice em sheets[sheetIdx]) */
-static char dirty;
-static float toastTimer;
-static char toastText[96];
+static char prefixes[PREFIXES_MAX][NOTESPLASH_PREFIX_MAX];
+static int prefixCount;
+static char prefixesOf[NOTESPLASH_PATH_MAX];
+
+static MUiList entryList, sheetList, animList;
+static int activeList;
+static bool dirty;
 
 static RayAnimationHandler previewSet;
-static char previewLoaded[NOTESPLASH_PATH_MAX];  /* atlas carregado no preview */
+static char previewLoaded[NOTESPLASH_PATH_MAX];
 static int previewAnim = -1;
 static RayAnimatedObject previewObj;
 static float previewT;
-static char previewStale = 1;
+static bool previewStale;
 
 /* ------------------------------------------------------------------ */
-/* Varredura dos atlas                                                 */
+/* Layout                                                              */
 /* ------------------------------------------------------------------ */
 
-static void AddPrefix(SheetInfo* s, const char* pre) {
-    for (int i = 0; i < s->prefixCount; i++)
-        if (strcmp(s->prefixes[i], pre) == 0) return;
-    if (s->prefixCount >= PREFIXES_MAX) return;
-    snprintf(s->prefixes[s->prefixCount], NOTESPLASH_PREFIX_MAX, "%s", pre);
-    s->prefixCount++;
+static Rectangle EntryListRect(void) { return (Rectangle){kLeft.x + 12.0f, kLeft.y + 42.0f, kLeft.width - 24.0f, 460.0f}; }
+static Rectangle BtnCopy(void) { return (Rectangle){kLeft.x + 12.0f, kLeft.y + 514.0f, 134.0f, 34.0f}; }
+static Rectangle BtnRemove(void) { return (Rectangle){kLeft.x + 154.0f, kLeft.y + 514.0f, 134.0f, 34.0f}; }
+static Rectangle BtnActive(void) { return (Rectangle){kLeft.x + 12.0f, kLeft.y + 560.0f, kLeft.width - 24.0f, 44.0f}; }
+static Rectangle SearchRect(void) { return (Rectangle){kMid.x + 12.0f, kMid.y + 40.0f, kMid.width - 24.0f, 32.0f}; }
+static Rectangle SheetListRect(void) { return (Rectangle){kMid.x + 12.0f, kMid.y + 80.0f, kMid.width - 24.0f, 250.0f}; }
+static Rectangle AnimListRect(void) { return (Rectangle){kMid.x + 12.0f, kMid.y + 374.0f, kMid.width - 24.0f, 232.0f}; }
+static Rectangle PreviewRect(void) { return (Rectangle){kRight.x + 12.0f, kRight.y + 40.0f, kRight.width - 24.0f, 400.0f}; }
+
+static Rectangle SwatchRect(int slot)
+{
+    return (Rectangle){kRight.x + 16.0f + (float)slot * 70.0f, kRight.y + 490.0f, 58.0f, 40.0f};
 }
 
-/* Le o XML e junta os prefixos das animacoes (nome do SubTexture sem os digitos finais). */
-static char ScanSheet(const char* xmlPath, SheetInfo* out) {
-    FILE* f = fopen(xmlPath, "rb");
-    if (f == NULL) return 0;
+/* ------------------------------------------------------------------ */
+/* Atlas                                                               */
+/* ------------------------------------------------------------------ */
+
+/* So o comeco do arquivo: e um atlas Sparrow? */
+static bool IsSparrow(const char *path)
+{
+    char head[2048];
+    FILE *f = fopen(path, "rb");
+    if (!f)
+        return false;
+    const size_t n = fread(head, 1, sizeof(head) - 1, f);
+    fclose(f);
+    head[n] = '\0';
+    return strstr(head, "<TextureAtlas") != NULL;
+}
+
+static int FindSheet(const char *path)
+{
+    for (int i = 0; i < sheetCount; ++i) {
+        if (strcmp(sheets[i].path, path) == 0)
+            return i;
+    }
+    return -1;
+}
+
+static int AddSheet(const char *path, const char *rootLabel)
+{
+    const int known = FindSheet(path);
+    if (known >= 0 || sheetCount >= SHEETS_MAX || !IsSparrow(path))
+        return known;
+
+    Sheet *s = &sheets[sheetCount];
+    snprintf(s->path, sizeof(s->path), "%s", path);
+    const char *base = strrchr(path, '/');
+    snprintf(s->label, sizeof(s->label), "%s", base ? base + 1 : path);
+    char *dot = strrchr(s->label, '.');
+    if (dot)
+        *dot = '\0';
+    snprintf(s->root, sizeof(s->root), "%s", rootLabel);
+    return sheetCount++;
+}
+
+static void ScanSheets(void)
+{
+    static char roots[MODED_ROOTS_MAX][MODED_ROOT_MAX];
+    const int rootCount = ModEd_Roots(roots, MODED_ROOTS_MAX);
+
+    sheetCount = 0;
+    for (int r = 0; r < rootCount; ++r) {
+        char dir[MODED_ROOT_MAX + 16];
+        snprintf(dir, sizeof(dir), "%s/images", roots[r]);
+        if (!DirectoryExists(dir))
+            continue;
+        FilePathList files = LoadDirectoryFilesEx(dir, ".xml", false);
+        for (unsigned int i = 0; i < files.count && sheetCount < SHEETS_MAX; ++i) {
+            char path[NOTESPLASH_PATH_MAX];
+            snprintf(path, sizeof(path), "%s/%s", dir, GetFileName(files.paths[i]));
+            AddSheet(path, ModEd_RootLabel(roots[r]));
+        }
+        UnloadDirectoryFiles(files);
+    }
+    /* atlas das entradas que estao fora dessas pastas */
+    for (int i = 0; i < draft.count; ++i)
+        AddSheet(draft.entries[i].animset, "json");
+}
+
+static void FilterSheets(void)
+{
+    visibleCount = 0;
+    for (int i = 0; i < sheetCount; ++i) {
+        if (ModEd_ContainsCI(sheets[i].label, search) || ModEd_ContainsCI(sheets[i].root, search))
+            visible[visibleCount++] = i;
+    }
+}
+
+static void AddPrefix(const char *pre)
+{
+    for (int i = 0; i < prefixCount; ++i) {
+        if (strcmp(prefixes[i], pre) == 0)
+            return;
+    }
+    if (prefixCount < PREFIXES_MAX)
+        snprintf(prefixes[prefixCount++], NOTESPLASH_PREFIX_MAX, "%s", pre);
+}
+
+/* Prefixos das animacoes (nome do SubTexture sem os digitos finais). So relê quando o atlas muda. */
+static void LoadPrefixes(const char *path)
+{
+    if (strcmp(prefixesOf, path) == 0)
+        return;
+    snprintf(prefixesOf, sizeof(prefixesOf), "%s", path);
+    prefixCount = 0;
+
+    FILE *f = fopen(path, "rb");
+    if (!f)
+        return;
     fseek(f, 0, SEEK_END);
     const long size = ftell(f);
     rewind(f);
-    if (size <= 0) {
+    char *buf = size > 0 ? malloc((size_t)size + 1) : NULL;
+    if (!buf) {
         fclose(f);
-        return 0;
-    }
-    char* buf = malloc((size_t)size + 1);
-    if (buf == NULL) {
-        fclose(f);
-        return 0;
+        return;
     }
     const size_t got = fread(buf, 1, (size_t)size, f);
     fclose(f);
     buf[got] = '\0';
 
-    char ok = strstr(buf, "<TextureAtlas") != NULL;
-    if (ok) {
-        memset(out, 0, sizeof(*out));
-        snprintf(out->animset, sizeof(out->animset), "%s", xmlPath);
-        const char* p = buf;
-        while ((p = strstr(p, "<SubTexture")) != NULL) {
-            const char* tagEnd = strchr(p, '>');
-            const char* nm = strstr(p, "name=\"");
-            if (nm == NULL || (tagEnd != NULL && nm > tagEnd)) {
-                p += 11;
-                continue;
-            }
-            nm += 6;
-            const char* q = strchr(nm, '"');
-            if (q == NULL) break;
-            size_t len = (size_t)(q - nm);
-            while (len > 0 && nm[len - 1] >= '0' && nm[len - 1] <= '9') len--;
-            if (len > 0 && len < NOTESPLASH_PREFIX_MAX) {
-                char pre[NOTESPLASH_PREFIX_MAX];
-                memcpy(pre, nm, len);
-                pre[len] = '\0';
-                AddPrefix(out, pre);
-            }
-            p = q;
+    for (const char *p = buf; (p = strstr(p, "<SubTexture")) != NULL;) {
+        const char *tagEnd = strchr(p, '>');
+        const char *nm = strstr(p, "name=\"");
+        if (!nm || (tagEnd && nm > tagEnd)) {
+            p += 11;
+            continue;
         }
+        nm += 6;
+        const char *q = strchr(nm, '"');
+        if (!q)
+            break;
+        size_t len = (size_t)(q - nm);
+        while (len > 0 && nm[len - 1] >= '0' && nm[len - 1] <= '9')
+            --len;
+        if (len > 0 && len < NOTESPLASH_PREFIX_MAX) {
+            char pre[NOTESPLASH_PREFIX_MAX];
+            memcpy(pre, nm, len);
+            pre[len] = '\0';
+            AddPrefix(pre);
+        }
+        p = q;
     }
     free(buf);
-    return ok && out->prefixCount > 0;
 }
 
-static int FindSheet(const char* animset) {
-    for (int i = 0; i < sheetCount; i++)
-        if (strcmp(sheets[i].animset, animset) == 0) return i;
-    return -1;
+/* ------------------------------------------------------------------ */
+/* Entrada atual                                                       */
+/* ------------------------------------------------------------------ */
+
+static NotesplashEntry *Current(void)
+{
+    return &draft.entries[entryList.sel];
 }
 
-/* Atlas que nao esta na pasta (ex.: vindo do json) entra na lista mesmo assim. */
-static int EnsureSheet(const char* animset) {
-    int i = FindSheet(animset);
-    if (i >= 0 || sheetCount >= SHEETS_MAX) return i;
-    SheetInfo tmp;
-    if (!ScanSheet(animset, &tmp)) return -1;
-    sheets[sheetCount] = tmp;
-    return sheetCount++;
-}
+/* Listas do meio seguem a entrada: atlas e animacao dela selecionados. */
+static void SyncLists(void)
+{
+    const NotesplashEntry *e = Current();
+    LoadPrefixes(e->animset);
 
-static void ScanAllSheets(void) {
-    sheetCount = 0;
-    FilePathList files = LoadDirectoryFiles(SHEET_DIR);
-    for (unsigned int i = 0; i < files.count && sheetCount < SHEETS_MAX; i++) {
-        const char* name = GetFileName(files.paths[i]);
-        const size_t len = strlen(name);
-        if (len < 5 || strcmp(name + len - 4, ".xml") != 0) continue;
-
-        char path[NOTESPLASH_PATH_MAX];
-        snprintf(path, sizeof(path), "%s/%s", SHEET_DIR, name);
-        SheetInfo tmp;
-        if (ScanSheet(path, &tmp)) sheets[sheetCount++] = tmp;
+    const int sheet = FindSheet(e->animset);
+    sheetList.sel = 0;
+    for (int i = 0; i < visibleCount; ++i) {
+        if (visible[i] == sheet)
+            sheetList.sel = i;
     }
-    UnloadDirectoryFiles(files);
+    MUi_ListShow(&sheetList, SheetListRect(), LIST_ROW_H, visibleCount);
+
+    animList.sel = 0;
+    for (int i = 0; i < prefixCount; ++i) {
+        if (strcmp(prefixes[i], e->prefix) == 0)
+            animList.sel = i;
+    }
+    MUi_ListShow(&animList, AnimListRect(), LIST_ROW_H, prefixCount);
+    previewStale = true;
 }
 
-/* ------------------------------------------------------------------ */
-/* Estado da entrada atual                                             */
-/* ------------------------------------------------------------------ */
-
-static const char* BaseName(const char* path) {
-    const char* s = strrchr(path, '/');
-    return s ? s + 1 : path;
+static void SelectEntry(int i)
+{
+    if (i < 0 || i >= draft.count)
+        return;
+    entryList.sel = i;
+    MUi_ListShow(&entryList, EntryListRect(), ENTRY_ROW_H, draft.count);
+    SyncLists();
 }
 
-/* Copia do indice da entrada para os cursores sheetIdx/animIdx. */
-static void SyncCursors(void) {
-    const NotesplashEntry* e = &draft.entries[entry];
-    sheetIdx = FindSheet(e->animset);
-    if (sheetIdx < 0) sheetIdx = EnsureSheet(e->animset);
-    if (sheetIdx < 0) {
-        sheetIdx = 0;
-        animIdx = 0;
+/* Troca o atlas da entrada; mantem a animacao se o novo atlas tiver o mesmo prefixo. */
+static void SetSheet(int sheet)
+{
+    if (sheet < 0 || sheet >= sheetCount)
+        return;
+    NotesplashEntry *e = Current();
+    if (strcmp(e->animset, sheets[sheet].path) == 0)
+        return;
+    snprintf(e->animset, sizeof(e->animset), "%s", sheets[sheet].path);
+    LoadPrefixes(e->animset);
+
+    bool keep = false;
+    for (int i = 0; i < prefixCount && !keep; ++i)
+        keep = strcmp(prefixes[i], e->prefix) == 0;
+    if (!keep && prefixCount > 0)
+        snprintf(e->prefix, sizeof(e->prefix), "%s", prefixes[0]);
+    dirty = true;
+    SyncLists();
+}
+
+static void SetPrefix(int i)
+{
+    if (i < 0 || i >= prefixCount)
+        return;
+    NotesplashEntry *e = Current();
+    if (strcmp(e->prefix, prefixes[i]) == 0)
+        return;
+    snprintf(e->prefix, sizeof(e->prefix), "%s", prefixes[i]);
+    dirty = true;
+    previewStale = true;
+}
+
+static void CopyEntry(void)
+{
+    if (draft.count >= NOTESPLASH_MAX) {
+        MUi_SetStatus(MUI_WARN, "limite de %d entradas", NOTESPLASH_MAX);
         return;
     }
-    animIdx = 0;
-    for (int i = 0; i < sheets[sheetIdx].prefixCount; i++) {
-        if (strcmp(sheets[sheetIdx].prefixes[i], e->prefix) == 0) {
-            animIdx = i;
-            break;
-        }
-    }
+    draft.entries[draft.count] = *Current();
+    draft.count++;
+    dirty = true;
+    SelectEntry(draft.count - 1);
 }
 
-/* Grava os cursores de volta na entrada (ao trocar atlas ou animacao). */
-static void ApplyCursors(void) {
-    if (sheetCount == 0) return;
-    NotesplashEntry* e = &draft.entries[entry];
-    const SheetInfo* s = &sheets[sheetIdx];
-    snprintf(e->animset, sizeof(e->animset), "%s", s->animset);
-    if (s->prefixCount > 0) snprintf(e->prefix, sizeof(e->prefix), "%s", s->prefixes[animIdx]);
-    dirty = 1;
-    previewStale = 1;
-}
-
-static void Toast(const char* msg) {
-    snprintf(toastText, sizeof(toastText), "%s", msg);
-    toastTimer = TOAST_TIME;
-}
-
-/* ------------------------------------------------------------------ */
-/* Campos                                                              */
-/* ------------------------------------------------------------------ */
-
-static int BuildFields(Field out[MAX_FIELDS]) {
-    int n = 0;
-    out[n++] = (Field){FLD_ENTRY, "Entrada", &entry, draft.count - 1};
-    out[n++] = (Field){FLD_SHEET, "Arquivo (atlas)", &sheetIdx, sheetCount > 0 ? sheetCount - 1 : 0};
-    out[n++] = (Field){FLD_ANIM, "Animacao", &animIdx,
-                       sheetCount > 0 && sheets[sheetIdx].prefixCount > 0 ? sheets[sheetIdx].prefixCount - 1 : 0};
-    out[n++] = (Field){FLD_TINT, "Cor da animacao", NULL, 0};
-    out[n++] = (Field){FLD_OPEN, "Abrir atlas (PNG)", NULL, 0};
-    out[n++] = (Field){FLD_SET_ACTIVE, "Usar na gameplay", NULL, 0};
-    out[n++] = (Field){FLD_NEW, "Nova entrada (copia)", NULL, 0};
-    out[n++] = (Field){FLD_REMOVE, "Remover entrada", NULL, 0};
-    return n;
-}
-
-static void FormatValue(const Field* f, char* buf, size_t size) {
-    switch (f->id) {
-        case FLD_ENTRY:
-            snprintf(buf, size, "%d / %d", entry + 1, draft.count);
-            break;
-        case FLD_SHEET:
-            if (sheetCount == 0) snprintf(buf, size, "nenhum atlas");
-            else snprintf(buf, size, "%s", BaseName(sheets[sheetIdx].animset));
-            break;
-        case FLD_ANIM:
-            if (sheetCount == 0 || sheets[sheetIdx].prefixCount == 0) snprintf(buf, size, "-");
-            else snprintf(buf, size, "%s", sheets[sheetIdx].prefixes[animIdx]);
-            break;
-        case FLD_TINT: {
-            const int t = draft.entries[entry].tint;
-            snprintf(buf, size, "%s", t < 0 ? "padrao (Effects)" : EffectsConfig_TintName(t));
-            break;
-        }
-        case FLD_SET_ACTIVE:
-            snprintf(buf, size, "%s", draft.active == entry ? "ativa" : "definir");
-            break;
-        case FLD_NEW:
-        case FLD_REMOVE:
-        case FLD_OPEN:
-        default:
-            snprintf(buf, size, "ENTER");
-            break;
-    }
-}
-
-/* Cor da entrada: ciclo circular sobre -1 (padrao do Effects) e os tints 0..EFFECTS_TINTS-1. */
-static void CycleTint(int dir) {
-    NotesplashEntry* e = &draft.entries[entry];
-    const int slots = EFFECTS_TINTS + 1;
-    const int cur = e->tint + 1;
-    e->tint = (cur + dir % slots + slots) % slots - 1;
-    dirty = 1;
-}
-
-/* Abre o PNG do atlas com o programa padrao do sistema. */
-static void OpenAtlas(void) {
-    char tex[NOTESPLASH_PATH_MAX];
-    if (sheetCount == 0 || !NotesplashConfig_TexturePath(draft.entries[entry].animset, tex, sizeof(tex))) {
-        Toast("atlas sem PNG");
+static void RemoveEntry(void)
+{
+    if (draft.count <= 1) {
+        MUi_SetStatus(MUI_WARN, "precisa ter ao menos 1 entrada");
         return;
     }
-    char full[NOTESPLASH_PATH_MAX + 256];
-    snprintf(full, sizeof(full), "%s/%s", GetWorkingDirectory(), tex);
-    OpenURL(full);
+    const int e = entryList.sel;
+    for (int i = e; i < draft.count - 1; ++i)
+        draft.entries[i] = draft.entries[i + 1];
+    draft.count--;
+    if (draft.active == e)
+        draft.active = 0;
+    else if (draft.active > e)
+        draft.active--;
+    dirty = true;
+    SelectEntry(e >= draft.count ? draft.count - 1 : e);
 }
 
-static void RunAction(FieldId id) {
-    switch (id) {
-        case FLD_TINT:
-            CycleTint(1);
-            break;
-        case FLD_OPEN:
-            OpenAtlas();
-            break;
-        case FLD_SET_ACTIVE:
-            if (draft.active == entry) return;
-            draft.active = entry;
-            dirty = 1;
-            break;
-        case FLD_NEW:
-            if (draft.count >= NOTESPLASH_MAX) {
-                Toast("limite de entradas atingido");
-                return;
-            }
-            draft.entries[draft.count] = draft.entries[entry];
-            entry = draft.count;
-            draft.count++;
-            dirty = 1;
-            SyncCursors();
-            previewStale = 1;
-            break;
-        case FLD_REMOVE:
-            if (draft.count <= 1) {
-                Toast("precisa ter ao menos 1 entrada");
-                return;
-            }
-            for (int i = entry; i < draft.count - 1; i++) draft.entries[i] = draft.entries[i + 1];
-            draft.count--;
-            if (draft.active == entry) draft.active = 0;
-            else if (draft.active > entry) draft.active--;
-            if (entry >= draft.count) entry = draft.count - 1;
-            dirty = 1;
-            SyncCursors();
-            previewStale = 1;
-            break;
-        default:
-            break;
-    }
+static void SetActive(void)
+{
+    if (draft.active == entryList.sel)
+        return;
+    draft.active = entryList.sel;
+    dirty = true;
+    MUi_SetStatus(MUI_INFO, "entrada %d vai ser usada na gameplay (salve com Ctrl+S)", draft.active + 1);
 }
 
-/* Troca o valor do campo cursor (entrada, atlas ou animacao). */
-static void Cycle(const Field* f, int dir) {
-    int v = *f->value + dir;
-    if (v < 0) v = 0;
-    if (v > f->hi) v = f->hi;
-    if (v == *f->value) return;
-    *f->value = v;
-
-    if (f->id == FLD_ENTRY) {
-        SyncCursors();
-        previewStale = 1;
-    } else if (f->id == FLD_SHEET) {
-        animIdx = 0;
-        ApplyCursors();
-    } else if (f->id == FLD_ANIM) {
-        ApplyCursors();
-    }
+/* tint: -1 = padrao do Effects Editor; 0..EFFECTS_TINTS-1 */
+static void SetTint(int tint)
+{
+    if (Current()->tint == tint)
+        return;
+    Current()->tint = tint;
+    dirty = true;
 }
 
-static void Activate(const Field* f, int dir) {
-    if (f->value != NULL) Cycle(f, dir);
-    else if (f->id == FLD_TINT) CycleTint(dir);
-    else RunAction(f->id);
-}
-
-static void SaveNow(void) {
+static bool SaveNow(void)
+{
     NotesplashConfig_Set(&draft);
-    if (NotesplashConfig_Save()) {
-        dirty = 0;
-        Toast("gravado em assets/notesplashes.json");
-    } else {
-        Toast("falha ao gravar");
+    if (!NotesplashConfig_Save()) {
+        MUi_SetStatus(MUI_ERR, "falha ao gravar assets/notesplashes.json");
+        return false;
     }
+    dirty = false;
+    MUi_SetStatus(MUI_OK, "gravado em assets/notesplashes.json");
+    return true;
+}
+
+/* Caminho digitado: .xml ou .png (troca para .xml) de qualquer pasta. */
+static void OpenTypedPath(const char *typed)
+{
+    char path[NOTESPLASH_PATH_MAX];
+    snprintf(path, sizeof(path), "%s", typed);
+    ModEd_CleanPath(path);
+    if (!path[0]) {
+        MUi_PromptReopen("digite um caminho");
+        return;
+    }
+
+    const char *ext = ModEd_Ext(path);
+    if (ext[0] == '\0') {
+        strncat(path, ".xml", sizeof(path) - strlen(path) - 1);
+    } else if (strcmp(ext, ".png") == 0 || strcmp(ext, ".PNG") == 0) {
+        char *dot = strrchr(path, '.');
+        snprintf(dot, sizeof(path) - (size_t)(dot - path), ".xml");
+    }
+
+    char msg[NOTESPLASH_PATH_MAX + 64];
+    if (!FileExists(path)) {
+        snprintf(msg, sizeof(msg), "nao achei: %s", path);
+        MUi_PromptReopen(msg);
+        return;
+    }
+    char png[NOTESPLASH_PATH_MAX];
+    if (!NotesplashConfig_TexturePath(path, png, sizeof(png)) || !FileExists(png)) {
+        snprintf(msg, sizeof(msg), "falta o .png do atlas ao lado do .xml");
+        MUi_PromptReopen(msg);
+        return;
+    }
+    const int sheet = AddSheet(path, "aberto");
+    if (sheet < 0) {
+        MUi_PromptReopen(sheetCount >= SHEETS_MAX ? "lista de atlas cheia" : "nao e um atlas Sparrow (TextureAtlas)");
+        return;
+    }
+    search[0] = '\0';
+    FilterSheets();
+    SetSheet(sheet);
+    SyncLists();
+    MUi_SetStatus(MUI_OK, "atlas aberto: %s", path);
+}
+
+static void Leave(void)
+{
+    ModdingMenu_SetScene();
 }
 
 /* ------------------------------------------------------------------ */
 /* Preview                                                             */
 /* ------------------------------------------------------------------ */
 
-static void FreePreview(void) {
+static void FreePreview(void)
+{
     AnimationSet_FreeAll(&previewSet);
     previewLoaded[0] = '\0';
     previewAnim = -1;
 }
 
-/* Recarrega o atlas do preview so quando muda; senao so troca a animacao. */
-static void RefreshPreview(void) {
-    previewStale = 0;
-    const NotesplashEntry* e = &draft.entries[entry];
+static void RefreshPreview(void)
+{
+    previewStale = false;
+    const NotesplashEntry *e = Current();
     if (strcmp(previewLoaded, e->animset) != 0) {
         FreePreview();
         char texture[NOTESPLASH_PATH_MAX];
-        if (NotesplashConfig_TexturePath(e->animset, texture, sizeof(texture))) {
+        if (NotesplashConfig_TexturePath(e->animset, texture, sizeof(texture)) && FileExists(texture)) {
             previewSet = AnimationSet_LoadAnimations(e->animset, Render_LoadTexture(texture));
             snprintf(previewLoaded, sizeof(previewLoaded), "%s", e->animset);
         }
@@ -395,98 +426,144 @@ static void RefreshPreview(void) {
     }
     previewAnim = previewLoaded[0] ? AnimationSet_FindAnimation(&previewSet, e->prefix) : -1;
     if (previewAnim >= 0) {
-        const int fps = EffectsConfig_Get()->splash.fps;
-        AnimationSet_SetAnimationData(&previewSet, previewAnim, fps, 0);
+        AnimationSet_SetAnimationData(&previewSet, previewAnim, EffectsConfig_Get()->splash.fps, 0);
         previewObj.animationSet = previewSet;
         AnimatedObject_SetAnimation(&previewObj, previewAnim);
     }
     previewT = 0.0f;
 }
 
-/* Mesmo calculo do splash da gameplay: centro do receptor + scale + offset + tint/alpha do Effects Editor. */
-static void DrawPreview(void) {
-    const EffectsSplash* cfg = &EffectsConfig_Get()->splash;
-    const float cx = PREVIEW_X + PREVIEW_W * 0.5f;
-    const float cy = PREVIEW_Y + 200.0f;
-
-    DrawRectangleRounded((Rectangle){cx - 60.0f, cy - 60.0f, 120.0f, 120.0f}, 0.2f, 8, (Color){40, 34, 70, 255});
-    DrawRectangleRoundedLinesEx((Rectangle){cx - 60.0f, cy - 60.0f, 120.0f, 120.0f}, 0.2f, 8, 2.0f, (Color){120, 100, 200, 180});
-
-    if (previewAnim < 0) {
-        DrawTextEx(mainFont, "animacao nao encontrada", (Vector2){PREVIEW_X + 20.0f, PREVIEW_Y + 340.0f}, 20.0f, 1.0f, (Color){255, 140, 140, 255});
-        return;
+static void UpdatePreview(float dt)
+{
+    if (previewStale)
+        RefreshPreview();
+    previewT += dt;
+    if (previewT >= SPLASH_PERIOD) {
+        previewT = 0.0f;
+        if (previewAnim >= 0)
+            AnimatedObject_SetAnimation(&previewObj, previewAnim);
     }
+    if (previewAnim < 0)
+        return;
 
+    /* Mesma conta da gameplay: centro do receptor + escala/offset/opacidade do Effects Editor. */
+    const EffectsSplash *cfg = &EffectsConfig_Get()->splash;
+    const Rectangle area = PreviewRect();
+    const float cx = area.x + area.width * 0.5f;
+    const float cy = area.y + area.height * 0.5f;
     const float scale = (float)cfg->scalePct / 100.0f;
-    const Vector2 size = AnimatedObject_Sizes(&previewObj);
-    const int entryTint = draft.entries[entry].tint;
+    const int entryTint = Current()->tint;
     const Color tint = EffectsConfig_TintColor(entryTint >= 0 ? entryTint : cfg->tint);
+
     previewObj.scaleX = previewObj.scaleY = scale;
     previewObj.color = (Color){tint.r, tint.g, tint.b, (unsigned char)(cfg->alphaPct * 255 / 100)};
+    AnimatedObject_UpdateFrame(&previewObj);
+    const Vector2 size = AnimatedObject_Sizes(&previewObj);
     previewObj.position.x = cx - size.x * scale * 0.5f + (float)cfg->offsetX;
     previewObj.position.y = cy - size.y * scale * 0.5f + (float)cfg->offsetY;
-    AnimatedObject_UpdateFrame(&previewObj);
-    Render_DrawAnimatedObject(&previewObj);
 }
 
 /* ------------------------------------------------------------------ */
 /* Update                                                              */
 /* ------------------------------------------------------------------ */
 
-static void Editor_Update([[maybe_unused]] RayScene* scene) {
-    const float dt = fmaxf(RayGame_DeltaTime(), 0.0f);
-    if (toastTimer > 0.0f) toastTimer -= dt;
-
-    previewT += dt;
-    if (previewT >= SPLASH_PERIOD) {
-        previewT = 0.0f;
-        if (previewAnim >= 0) AnimatedObject_SetAnimation(&previewObj, previewAnim);
+static void HandleModal(void)
+{
+    int id = 0;
+    const MUiModalResult res = MUi_ModalUpdate(&id);
+    if (id == PROMPT_OPEN && res == MUI_MODAL_OK) {
+        OpenTypedPath(MUi_PromptText());
+    } else if (id == CONFIRM_LEAVE) {
+        if (res == MUI_MODAL_OK && SaveNow())
+            Leave();
+        else if (res == MUI_MODAL_DISCARD)
+            Leave();
     }
-    if (previewStale) RefreshPreview();
+}
 
-    Field fields[MAX_FIELDS];
-    const int n = BuildFields(fields);
-    if (field >= n) field = n - 1;
+static void Editor_Update([[maybe_unused]] RayScene *scene)
+{
+    const float dt = fmaxf(RayGame_DeltaTime(), 0.0f);
+    MUi_FrameBegin();
+    MUi_Tick(dt);
+    UpdatePreview(dt);
 
-    const Vector2 mouse = GetMousePosition();
-    const bool clicked = IsMouseButtonPressed(MOUSE_LEFT_BUTTON);
-
-    if (IsKeyPressed(KEY_ESCAPE)) {
-        if (dirty) SaveNow();
-        FreePreview();
-        ModdingMenu_SetScene();
+    if (MUi_ModalActive()) {
+        HandleModal();
         return;
     }
-    if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER)) {
-        if (fields[field].value == NULL) RunAction(fields[field].id);
-        else SaveNow();
+
+    /* barra de cima */
+    if (MUi_Button(kBtnSave))
+        SaveNow();
+    if (MUi_Button(kBtnOpen))
+        MUi_PromptOpen(PROMPT_OPEN, "Abrir atlas", "Caminho do .xml (ou .png) Sparrow. Ex.: assets/mods/MeuMod/images/splash.xml", "");
+
+    /* entradas */
+    const int clickedEntry = MUi_List(&entryList, EntryListRect(), ENTRY_ROW_H, draft.count, NULL);
+    if (clickedEntry >= 0) {
+        activeList = LIST_ENTRIES;
+        SelectEntry(clickedEntry);
+    }
+    if (MUi_Button(BtnCopy()))
+        CopyEntry();
+    if (MUi_Button(BtnRemove()))
+        RemoveEntry();
+    if (MUi_Button(BtnActive()))
+        SetActive();
+
+    /* atlas e animacoes */
+    const MUiTextEvent ev = MUi_TextField(SearchRect(), search, sizeof(search));
+    if (ev == MUI_TXT_EDIT || ev == MUI_TXT_CANCEL) {
+        FilterSheets();
+        SyncLists();
+    }
+    const int clickedSheet = MUi_List(&sheetList, SheetListRect(), LIST_ROW_H, visibleCount, NULL);
+    if (clickedSheet >= 0) {
+        activeList = LIST_SHEETS;
+        SetSheet(visible[clickedSheet]);
+    }
+    const int clickedAnim = MUi_List(&animList, AnimListRect(), LIST_ROW_H, prefixCount, NULL);
+    if (clickedAnim >= 0) {
+        activeList = LIST_ANIMS;
+        SetPrefix(clickedAnim);
     }
 
-    if (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S)) field = (field + 1) % n;
-    if (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W)) field = (field + n - 1) % n;
-
-    const bool shift = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
-    int dir = 0;
-    if (IsKeyPressed(KEY_RIGHT) || IsKeyPressed(KEY_D)) dir = 1;
-    if (IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_A)) dir = -1;
-    if (dir != 0 && fields[field].value != NULL) {
-        // Shift pula 5 entradas na lista; nos atlas/animacoes anda 1 por vez.
-        const int step = (shift && fields[field].id == FLD_ENTRY) ? 5 : 1;
-        Field f = fields[field];
-        for (int i = 0; i < step; i++) Cycle(&f, dir);
-    } else if (dir != 0 && fields[field].id == FLD_TINT) {
-        CycleTint(dir);
+    /* cor */
+    for (int slot = 0; slot <= EFFECTS_TINTS; ++slot) {
+        if (MUi_Button(SwatchRect(slot)))
+            SetTint(slot - 1);
     }
 
-    // Clique numa linha: acao executa; campo troca (metade esquerda volta, direita avanca).
-    if (clicked) {
-        for (int i = 0; i < n; ++i) {
-            const Rectangle row = {LIST_X, LIST_Y + i * ROW_H, PREVIEW_X - LIST_X - 20.0f, ROW_H - 6.0f};
-            if (!CheckCollisionPointRec(mouse, row)) continue;
-            field = i;
-            Activate(&fields[i], mouse.x < VALUE_X + 150.0f ? -1 : 1);
-            break;
-        }
+    if (!MUi_KeysFree())
+        return;
+
+    if (MUi_Ctrl() && IsKeyPressed(KEY_S)) {
+        SaveNow();
+        return;
+    }
+    if (MUi_Ctrl() && IsKeyPressed(KEY_O)) {
+        MUi_PromptOpen(PROMPT_OPEN, "Abrir atlas", "Caminho do .xml (ou .png) Sparrow. Ex.: assets/mods/MeuMod/images/splash.xml", "");
+        return;
+    }
+    if (IsKeyPressed(KEY_ESCAPE)) {
+        if (dirty)
+            MUi_ConfirmOpen(CONFIRM_LEAVE, "Sair do Notesplash Editor", "Ha alteracoes nao gravadas.");
+        else
+            Leave();
+        return;
+    }
+    if (IsKeyPressed(KEY_DELETE))
+        RemoveEntry();
+
+    if (activeList == LIST_ENTRIES) {
+        if (MUi_ListKeys(&entryList, EntryListRect(), ENTRY_ROW_H, draft.count))
+            SelectEntry(entryList.sel);
+    } else if (activeList == LIST_SHEETS) {
+        if (MUi_ListKeys(&sheetList, SheetListRect(), LIST_ROW_H, visibleCount) && visibleCount > 0)
+            SetSheet(visible[sheetList.sel]);
+    } else if (MUi_ListKeys(&animList, AnimListRect(), LIST_ROW_H, prefixCount)) {
+        SetPrefix(animList.sel);
     }
 }
 
@@ -494,70 +571,170 @@ static void Editor_Update([[maybe_unused]] RayScene* scene) {
 /* Draw                                                                */
 /* ------------------------------------------------------------------ */
 
-static void DrawFields(const Field* fields, int n) {
-    for (int i = 0; i < n; ++i) {
-        const float y = LIST_Y + i * ROW_H;
-        const bool sel = i == field;
-        if (sel) DrawRectangleRounded((Rectangle){LIST_X - 12.0f, y - 4.0f, VALUE_X + 300.0f - LIST_X, ROW_H - 8.0f}, 0.3f, 8, (Color){60, 40, 100, 220});
-
-        DrawTextEx(mainFont, fields[i].label, (Vector2){LIST_X, y + 8.0f}, 22.0f, 1.0f, sel ? WHITE : (Color){190, 185, 215, 255});
-
-        char value[80];
-        FormatValue(&fields[i], value, sizeof(value));
-        char shown[96];
-        const bool cyclable = fields[i].value != NULL || fields[i].id == FLD_TINT;
-        if (cyclable) snprintf(shown, sizeof(shown), "<  %s  >", value);
-        else snprintf(shown, sizeof(shown), "[ %s ]", value);
-        DrawTextEx(mainFont, shown, (Vector2){VALUE_X, y + 8.0f}, 20.0f, 1.0f, sel ? (Color){255, 220, 100, 255} : (Color){230, 230, 240, 255});
-    }
+static void SectionTitle(Rectangle panel, float dy, const char *title, int list)
+{
+    MUi_DrawSection(panel.x + 14.0f, panel.y + dy, title);
+    if (list >= 0 && activeList == list)
+        MUi_Text("setas", panel.x + panel.width - 62.0f, panel.y + dy + 2.0f, 15.0f, MUI_C_FAINT);
 }
 
-static void Editor_Draw([[maybe_unused]] RayScene* scene) {
-    ClearBackground((Color){14, 10, 28, 255});
-    DrawRectangleGradientV(0, 0, (int)SCREEN_W, (int)SCREEN_H, (Color){24, 16, 44, 255}, (Color){8, 6, 18, 255});
+static void DrawEntries(void)
+{
+    MUi_DrawPanel(kLeft);
+    SectionTitle(kLeft, 12.0f, "Entradas", LIST_ENTRIES);
 
-    DrawTextEx(mainFont, "NOTESPLASH EDITOR", (Vector2){LIST_X, 26.0f}, 36.0f, 2.0f, WHITE);
-    DrawTextEx(mainFont, sheetCount == 0 ? "nenhum atlas Sparrow encontrado em assets/images" : "atlas Sparrow encontrados em assets/images",
-               (Vector2){LIST_X, 84.0f}, 18.0f, 1.0f, (Color){190, 185, 220, 255});
+    const Rectangle r = EntryListRect();
+    const int rows = MUi_ListRows(r, ENTRY_ROW_H);
+    MUi_DrawListBegin(r);
+    for (int i = entryList.top; i < draft.count && i <= entryList.top + rows; ++i) {
+        const NotesplashEntry *e = &draft.entries[i];
+        const Rectangle row = MUi_ListRow(&entryList, r, ENTRY_ROW_H, i);
+        MUi_DrawListRow(row, i == entryList.sel);
 
-    Field fields[MAX_FIELDS];
-    const int n = BuildFields(fields);
-    DrawFields(fields, n);
+        const char *base = strrchr(e->animset, '/');
+        char line[96];
+        snprintf(line, sizeof(line), "%d. %s", i + 1, base ? base + 1 : e->animset);
+        MUi_Text(line, row.x + 10.0f, row.y + 4.0f, 18.0f, MUI_C_TEXT);
+        MUi_Text(e->prefix, row.x + 26.0f, row.y + 24.0f, 15.0f, MUI_C_DIM);
 
-    DrawRectangleRounded((Rectangle){PREVIEW_X, PREVIEW_Y, PREVIEW_W, PREVIEW_H}, 0.03f, 8, (Color){8, 6, 18, 230});
-    DrawRectangleRoundedLinesEx((Rectangle){PREVIEW_X, PREVIEW_Y, PREVIEW_W, PREVIEW_H}, 0.03f, 8, 1.5f, (Color){120, 100, 200, 170});
-    DrawTextEx(mainFont, "PREVIEW", (Vector2){PREVIEW_X + 16.0f, PREVIEW_Y + 12.0f}, 20.0f, 2.0f, (Color){190, 185, 220, 255});
-    DrawPreview();
+        const Color tint = e->tint >= 0 ? EffectsConfig_TintColor(e->tint) : MUI_C_FAINT;
+        DrawRectangleRounded((Rectangle){row.x + row.width - 18.0f, row.y + 8.0f, 10.0f, 10.0f}, 1.0f, 6, tint);
+        if (i == draft.active) {
+            const Rectangle badge = {row.x + row.width - 72.0f, row.y + 24.0f, 62.0f, 17.0f};
+            DrawRectangleRounded(badge, 0.5f, 6, MUI_C_ACCENT);
+            MUi_TextCenter("ATIVA", badge, 13.0f, WHITE);
+        }
+    }
+    MUi_DrawListEnd(&entryList, r, ENTRY_ROW_H, draft.count);
 
-    if (toastTimer > 0.0f)
-        DrawTextEx(mainFont, toastText, (Vector2){LIST_X, 640.0f}, 20.0f, 1.0f, (Color){120, 255, 160, 255});
-    else if (dirty)
-        DrawTextEx(mainFont, "alteracoes nao gravadas", (Vector2){LIST_X, 640.0f}, 20.0f, 1.0f, (Color){255, 200, 90, 255});
+    MUi_DrawButton(BtnCopy(), "+ Copia", MUI_BTN_NORMAL);
+    MUi_DrawButton(BtnRemove(), "Remover", draft.count > 1 ? MUI_BTN_DANGER : MUI_BTN_OFF);
+    const bool isActive = draft.active == entryList.sel;
+    MUi_DrawButton(BtnActive(), isActive ? "Em uso na gameplay" : "Usar na gameplay",
+                   isActive ? MUI_BTN_ACTIVE : MUI_BTN_ACCENT);
+}
 
-    DrawTextEx(mainFont, "W/S campo   A/D troca (shift x5 na entrada)   ENTER acao/grava   ESC volta",
-               (Vector2){LIST_X, 680.0f}, 17.0f, 1.0f, (Color){220, 215, 235, 230});
+static void DrawAtlas(void)
+{
+    MUi_DrawPanel(kMid);
+    SectionTitle(kMid, 12.0f, "Atlas", LIST_SHEETS);
+    MUi_DrawTextField(SearchRect(), search, "buscar atlas...");
+
+    const NotesplashEntry *e = Current();
+    const Rectangle r = SheetListRect();
+    const int rows = MUi_ListRows(r, LIST_ROW_H);
+    MUi_DrawListBegin(r);
+    for (int i = sheetList.top; i < visibleCount && i <= sheetList.top + rows; ++i) {
+        const Sheet *s = &sheets[visible[i]];
+        const Rectangle row = MUi_ListRow(&sheetList, r, LIST_ROW_H, i);
+        const bool used = strcmp(s->path, e->animset) == 0;
+        MUi_DrawListRow(row, used);
+        MUi_Text(s->label, row.x + 10.0f, row.y + 4.0f, 17.0f, used ? WHITE : MUI_C_TEXT);
+        MUi_TextRight(s->root, row.x + row.width - 8.0f, row.y + 5.0f, 14.0f, MUI_C_FAINT);
+    }
+    MUi_DrawListEnd(&sheetList, r, LIST_ROW_H, visibleCount);
+    if (visibleCount == 0)
+        MUi_Text(sheetCount ? "nada com esse nome" : "nenhum atlas: use Abrir (Ctrl+O)", r.x + 10.0f, r.y + 8.0f, 16.0f, MUI_C_FAINT);
+
+    SectionTitle(kMid, 344.0f, "Animacao", LIST_ANIMS);
+    const Rectangle a = AnimListRect();
+    const int arows = MUi_ListRows(a, LIST_ROW_H);
+    MUi_DrawListBegin(a);
+    for (int i = animList.top; i < prefixCount && i <= animList.top + arows; ++i) {
+        const Rectangle row = MUi_ListRow(&animList, a, LIST_ROW_H, i);
+        const bool used = strcmp(prefixes[i], e->prefix) == 0;
+        MUi_DrawListRow(row, used);
+        MUi_Text(prefixes[i], row.x + 10.0f, row.y + 4.0f, 17.0f, used ? WHITE : MUI_C_TEXT);
+    }
+    MUi_DrawListEnd(&animList, a, LIST_ROW_H, prefixCount);
+    if (prefixCount == 0)
+        MUi_Text("atlas sem animacoes", a.x + 10.0f, a.y + 8.0f, 16.0f, MUI_C_FAINT);
+}
+
+static void DrawPreviewPanel(void)
+{
+    MUi_DrawPanel(kRight);
+    SectionTitle(kRight, 12.0f, "Preview", -1);
+
+    const Rectangle area = PreviewRect();
+    DrawRectangleRounded(area, 0.03f, 6, (Color){6, 4, 14, 255});
+    const float cx = area.x + area.width * 0.5f;
+    const float cy = area.y + area.height * 0.5f;
+    const Rectangle receptor = {cx - 56.0f, cy - 56.0f, 112.0f, 112.0f};
+    DrawRectangleRounded(receptor, 0.25f, 8, (Color){40, 34, 70, 255});
+    DrawRectangleRoundedLinesEx(receptor, 0.25f, 8, 2.0f, (Color){120, 100, 200, 180});
+
+    MUi_ClipBegin(area);
+    if (previewAnim >= 0)
+        Render_DrawAnimatedObject(&previewObj);
+    MUi_ClipEnd();
+    if (previewAnim < 0)
+        MUi_TextCenter("animacao nao encontrada no atlas", (Rectangle){area.x, area.y + area.height - 40.0f, area.width, 30.0f},
+                       18.0f, MUI_C_BAD);
+
+    const EffectsSplash *cfg = &EffectsConfig_Get()->splash;
+    char info[128];
+    snprintf(info, sizeof(info), "escala %d%%  opacidade %d%%  %d fps  (Effects Editor)", cfg->scalePct, cfg->alphaPct, cfg->fps);
+    MUi_Text(info, area.x + 10.0f, area.y + 8.0f, 15.0f, MUI_C_FAINT);
+
+    SectionTitle(kRight, 456.0f, "Cor", -1);
+    const int tint = Current()->tint;
+    for (int slot = 0; slot <= EFFECTS_TINTS; ++slot) {
+        const Rectangle s = SwatchRect(slot);
+        const Color c = EffectsConfig_TintColor(slot == 0 ? cfg->tint : slot - 1);
+        MUi_DrawSwatch(s, c, tint == slot - 1);
+        if (slot == 0)
+            MUi_TextCenter("padrao", s, 14.0f, (Color){20, 16, 40, 255});
+    }
+    char line[96];
+    snprintf(line, sizeof(line), "cor: %s", tint < 0 ? "padrao do Effects Editor" : EffectsConfig_TintName(tint));
+    MUi_Text(line, kRight.x + 16.0f, kRight.y + 548.0f, 17.0f, MUI_C_DIM);
+    MUi_Text(Current()->animset, kRight.x + 16.0f, kRight.y + 580.0f, 15.0f, MUI_C_FAINT);
+}
+
+static void Editor_Draw([[maybe_unused]] RayScene *scene)
+{
+    MUi_DrawBackdrop();
+    MUi_DrawTopBar("Notesplash Editor", "assets/notesplashes.json", dirty);
+    MUi_DrawButton(kBtnOpen, "Abrir (Ctrl+O)", MUI_BTN_NORMAL);
+    MUi_DrawButton(kBtnSave, "Salvar", dirty ? MUI_BTN_ACCENT : MUI_BTN_NORMAL);
+
+    DrawEntries();
+    DrawAtlas();
+    DrawPreviewPanel();
+
+    MUi_DrawBottomBar("Ctrl+O abre atlas por caminho   Ctrl+S salva   setas: lista ativa   Del remove entrada   Esc volta");
+    MUi_DrawModal();
 }
 
 /* ------------------------------------------------------------------ */
 /* Cena                                                                */
 /* ------------------------------------------------------------------ */
 
-static void Editor_Create([[maybe_unused]] RayScene* scene) {
+static void Editor_Create([[maybe_unused]] RayScene *scene)
+{
+    MUi_Reset();
     draft = *NotesplashConfig_Get();
-    entry = draft.active;
-    field = 0;
-    dirty = 0;
-    toastTimer = 0.0f;
-    previewT = 0.0f;
-    previewStale = 1;
+    dirty = false;
+    search[0] = '\0';
+    prefixesOf[0] = '\0';
+    prefixCount = 0;
     previewLoaded[0] = '\0';
+    previewSet = (RayAnimationHandler){0};
+    previewAnim = -1;
+    previewT = 0.0f;
+    entryList = sheetList = animList = (MUiList){0};
+    activeList = LIST_ANIMS;
 
-    ScanAllSheets();
-    SyncCursors();
+    ScanSheets();
+    FilterSheets();
+    SelectEntry(draft.active >= 0 && draft.active < draft.count ? draft.active : 0);
 }
 
-static void Editor_Destroy([[maybe_unused]] RayScene* scene) {
+static void Editor_Destroy([[maybe_unused]] RayScene *scene)
+{
     FreePreview();
+    MUi_Reset();
 }
 
 static RayScene scene;

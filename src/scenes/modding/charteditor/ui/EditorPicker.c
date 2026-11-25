@@ -433,18 +433,19 @@ void CharDrop_Draw(void) {
     if(by + h > 700) by = 700 - h;
     Rectangle r = {bx - bw + 30, by, bw, h};
     if(r.x + r.width > 1270) r.x = 1270 - r.width;
-    DrawRectangleRec(r, (Color) {15, 15, 15, 245});
-    DrawRectangleLinesEx(r, 1, GREEN);
+    DrawRectangleRounded((Rectangle) {r.x + 4, r.y + 5, r.width, r.height}, 0.03f, 6, (Color) {0, 0, 0, 110});
+    DrawRectangleRounded(r, 0.03f, 6, ED_C_POPUP);
+    DrawRectangleRoundedLinesEx(r, 0.03f, 6, 1.0f, ED_C_EDGE);
     Vector2 m = EdMouseWorld();
     const char inside = (m.x >= r.x && m.x <= r.x + r.width && m.y >= r.y && m.y <= r.y + r.height);
 
     // linha da pesquisa (topo)
     if(dropQueryLen > 0) {
-        DrawTextEx(mainFont, dropQuery, (Vector2) {r.x + 10, r.y + 6}, 20, 1, YELLOW);
+        DrawTextEx(mainFont, dropQuery, (Vector2) {r.x + 10, r.y + 6}, 20, 1, ED_C_HINT);
     } else {
-        DrawTextEx(mainFont, "search...", (Vector2) {r.x + 10, r.y + 6}, 20, 1, GRAY);
+        DrawTextEx(mainFont, "search...", (Vector2) {r.x + 10, r.y + 6}, 20, 1, ED_C_DIM);
     }
-    DrawLine((int)(r.x + 4), (int)(r.y + ih + 2), (int)(r.x + r.width - 4), (int)(r.y + ih + 2), (Color) {70, 70, 70, 255});
+    DrawRectangleRec((Rectangle) {r.x + 4, r.y + ih + 2, r.width - 8, 1}, ED_C_EDGE);
     const float listY = r.y + ih;
 
     // roda: rola a lista (so com o mouse em cima dela)
@@ -455,7 +456,7 @@ void CharDrop_Draw(void) {
     }
 
     if(n == 0) {
-        DrawTextEx(mainFont, dropQueryLen > 0 ? "(no results)" : "(empty)", (Vector2) {r.x + 8, listY + 8}, 20, 1, YELLOW);
+        DrawTextEx(mainFont, dropQueryLen > 0 ? "(no results)" : "(empty)", (Vector2) {r.x + 8, listY + 8}, 20, 1, ED_C_HINT);
     }
     // o clique que abriu a lista nao pode escolher o item que ficou embaixo do mouse
     const char canPick = !dropJustOpened;
@@ -464,9 +465,11 @@ void CharDrop_Draw(void) {
         const int i = dropQueryLen > 0 ? dropFilt[vi] : vi;
         Rectangle ir = {r.x + 4, listY + 4 + row * ih, r.width - 14, ih - 2};
         char hov = (m.x >= ir.x && m.x <= ir.x + ir.width && m.y >= ir.y && m.y <= ir.y + ir.height);
-        if(hov)
-            DrawRectangleRec(ir, (Color) {50, 90, 50, 255});
-        DrawTextEx(mainFont, dropNames[i], (Vector2) {ir.x + 6, ir.y + 4}, 20, 1, WHITE);
+        if(hov) {
+            DrawRectangleRounded(ir, 0.25f, 6, ED_C_BTN_HOV);
+            DrawRectangleRec((Rectangle) {ir.x, ir.y + 5, 3, ir.height - 10}, ED_C_ACCENT);
+        }
+        DrawTextEx(mainFont, dropNames[i], (Vector2) {ir.x + 8, ir.y + 4}, 20, 1, hov ? ED_C_ACCENT : WHITE);
         if(canPick && hov && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             strncpy(box->buf, dropNames[i], sizeof(box->buf) - 1);
             box->buf[sizeof(box->buf) - 1] = 0;
@@ -487,7 +490,7 @@ void CharDrop_Draw(void) {
         const float trackH = h - 8 - ih;
         const float thumbH = trackH * rows / n;
         const float thumbY = listY + 4 + (trackH - thumbH) * dropScroll / (float)(n - rows);
-        DrawRectangle((int)(r.x + r.width - 8), (int)thumbY, 4, (int)thumbH, GREEN);
+        DrawRectangleRounded((Rectangle) {r.x + r.width - 8, thumbY, 4, thumbH}, 1.0f, 4, ED_C_ACCENT);
     }
     // clicou fora: fecha (pula o frame que abriu)
     if(dropJustOpened) {

@@ -142,6 +142,36 @@ static bool ContainsCI(const char *hay, const char *needle)
     return false;
 }
 
+/* Digita no buffer (imprimiveis, Backspace, Ctrl+V cola). true = mudou. */
+static bool TypeText(char *buf, size_t capacity)
+{
+    bool changed = false;
+    size_t len = strlen(buf);
+    int c;
+
+    while ((c = GetCharPressed()) > 0) {
+        if (c >= 32 && c <= 126 && len + 1 < capacity) {
+            buf[len++] = (char)c;
+            buf[len] = '\0';
+            changed = true;
+        }
+    }
+    if ((IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL)) && IsKeyPressed(KEY_V)) {
+        const char *clip = GetClipboardText();
+        for (; clip && *clip && *clip != '\n' && *clip != '\r' && len + 1 < capacity; ++clip) {
+            if (*clip >= 32 && *clip <= 126)
+                buf[len++] = *clip;
+        }
+        buf[len] = '\0';
+        changed = true;
+    }
+    if ((IsKeyPressed(KEY_BACKSPACE) || IsKeyPressedRepeat(KEY_BACKSPACE)) && len > 0) {
+        buf[--len] = '\0';
+        changed = true;
+    }
+    return changed;
+}
+
 static bool KeyHeld(int a, int b)
 {
     return IsKeyDown(a) || IsKeyDown(b);
@@ -405,7 +435,7 @@ static void CreateNewFromFilter(void)
 
 static void Pick_Update(void)
 {
-    if (ModEd_TypeText(filter, sizeof(filter)))
+    if (TypeText(filter, sizeof(filter)))
         Rebuild_Pick();
 
     if (IsKeyPressed(KEY_ESCAPE)) {
@@ -443,7 +473,7 @@ static void Pick_Update(void)
 
 static void Add_Update(void)
 {
-    if (ModEd_TypeText(addFilter, sizeof(addFilter)))
+    if (TypeText(addFilter, sizeof(addFilter)))
         Rebuild_Add();
 
     if (IsKeyPressed(KEY_ESCAPE)) {

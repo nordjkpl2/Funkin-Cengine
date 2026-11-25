@@ -14,6 +14,43 @@
 
 TxtBox* focusBox = NULL;
 
+char EdHover(Rectangle r) {
+    return CheckCollisionPointRec(EdMouseWorld(), r);
+}
+
+static char helpOpen = 0;
+
+char EdHelpOpen(void) {
+    return helpOpen;
+}
+
+void EdHelpToggle(void) {
+    helpOpen = !helpOpen;
+}
+
+char EdUiBlocked(void) {
+    return ceDlg != DLG_NONE || activeDrop || menuOpen || helpOpen;
+}
+
+/* Cantos com raio fixo (~5 px) em qualquer tamanho: o roundness do raylib e relativo ao lado menor. */
+void Ed_DrawBox(Rectangle r, Color fill, Color edge) {
+    const float side = fminf(r.width, r.height);
+    const float round = (side > 10.0f) ? 10.0f / side : 1.0f;
+    DrawRectangleRounded(r, round, 6, fill);
+    DrawRectangleRoundedLinesEx(r, round, 6, 1.2f, edge);
+}
+
+/* Texto de caixa (ou a dica apagada) + cursor piscando quando tem foco. So a caixa com foco mede texto. */
+static void Field_DrawText(Rectangle r, const char* buf, const char* hint, char focused) {
+    const char empty = (buf[0] == 0);
+    const Vector2 p = {r.x + 8, r.y + (r.height - 20) * 0.5f};
+    Ed_DrawText(mainFont, empty ? hint : buf, p, 20, 1, empty ? (Color){110, 104, 140, 255} : WHITE);
+    if(focused && fmod(GetTime(), 1.0) < 0.55) {
+        const float w = empty ? 0.0f : MeasureTextEx(mainFont, buf, 20, 1).x;
+        DrawRectangleRec((Rectangle){p.x + w + 1, r.y + 7, 2, r.height - 14}, ED_C_ACCENT);
+    }
+}
+
 void Ed_DrawText(Font f, const char* t, Vector2 p, float size, float spacing, Color c)
 {
     const float off = size >= 30 ? 3.0f : 2.0f;
@@ -52,9 +89,8 @@ void NumBox_Refresh(NumBox* nb, float v, char isInt) {
 void TxtBox_Update(TxtBox* box, Rectangle r, char blocked) {
     if(blocked)
         return;
-    Vector2 m = EdMouseWorld();
     if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-        if(m.x >= r.x && m.x <= r.x + r.width && m.y >= r.y && m.y <= r.y + r.height) {
+        if(EdHover(r)) {
             focusBox = box;
             focusNum = NULL;
         } else if(focusBox == box) {
@@ -102,19 +138,15 @@ void TxtBox_Update(TxtBox* box, Rectangle r, char blocked) {
 
 void TxtBox_Draw(TxtBox* box, Rectangle r, const char* hint) {
     const char focused = (focusBox == box);
-    DrawRectangleRounded(r, 0.25f, 6, (Color) {16, 18, 26, 255});
-    DrawRectangleRoundedLinesEx(r, 0.25f, 6, 1.2f, focused ? GREEN : (Color) {90, 96, 120, 255});
-    const char* txt = (box->buf[0] != 0) ? box->buf : hint;
-    Color c = (box->buf[0] != 0) ? WHITE : (Color) {120, 120, 120, 255};
-    Ed_DrawText(mainFont, txt, (Vector2) {r.x + 6, r.y + 6}, 20, 1, c);
+    Ed_DrawBox(r, ED_C_FIELD, focused ? ED_C_ACCENT : ED_C_EDGE);
+    Field_DrawText(r, box->buf, hint, focused);
 }
 
 void NumBox_Update(NumBox* nb, Rectangle r, char blocked) {
     if(blocked)
         return;
-    Vector2 m = EdMouseWorld();
     if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-        if(m.x >= r.x && m.x <= r.x + r.width && m.y >= r.y && m.y <= r.y + r.height) {
+        if(EdHover(r)) {
             focusNum = nb;
             focusBox = NULL;
         } else if(focusNum == nb) {
@@ -164,10 +196,9 @@ void NumBox_Update(NumBox* nb, Rectangle r, char blocked) {
 }
 
 void NumBox_Draw(NumBox* nb, Rectangle r) {
-    DrawRectangleRec(r, (Color) {20, 20, 20, 255});
-    DrawRectangleLinesEx(r, 1, (focusNum == nb) ? GREEN : GRAY);
-    const char* txt = (nb->buf[0] != 0) ? nb->buf : "0";
-    Ed_DrawText(mainFont, txt, (Vector2) {r.x + 6, r.y + 6}, 20, 1, YELLOW);
+    const char focused = (focusNum == nb);
+    Ed_DrawBox(r, ED_C_FIELD, focused ? ED_C_ACCENT : ED_C_EDGE);
+    Field_DrawText(r, nb->buf, "0", focused);
 }
 
 char activeDrop = DROP_NONE;
@@ -208,12 +239,10 @@ static TextMeasure* BtnMeasureSlot(const char* label) {
 }
 
 char EdButton(Rectangle r, const char* label, int fs) {
-    if(ceDlg != DLG_NONE || activeDrop || menuOpen)
+    if(EdUiBlocked())
         return 0;
-    Vector2 m = EdMouseWorld();
-    char hov = (m.x >= r.x && m.x <= r.x + r.width && m.y >= r.y && m.y <= r.y + r.height);
-    DrawRectangleRounded(r, 0.25f, 6, hov ? (Color) {52, 58, 80, 255} : (Color) {26, 30, 42, 255});
-    DrawRectangleRoundedLinesEx(r, 0.25f, 6, 1.2f, hov ? GREEN : (Color) {90, 96, 120, 255});
+    const char hov = EdHover(r);
+    Ed_DrawBox(r, hov ? ED_C_BTN_HOV : ED_C_BTN, hov ? ED_C_ACCENT : ED_C_EDGE);
     Vector2 s = TextMeasure_Get(BtnMeasureSlot(label), mainFont, label, fs, 1);
     Ed_DrawText(mainFont, label, (Vector2) {r.x + (r.width - s.x) / 2, r.y + (r.height - s.y) / 2}, fs, 1, WHITE);
     return hov && IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
@@ -230,11 +259,10 @@ int dropCount = 0;
 char EdDropBtn(Rectangle r, char open) {
     if(ceDlg != DLG_NONE || menuOpen)
         return 0;
-    Vector2 m = EdMouseWorld();
-    char hov = (m.x >= r.x && m.x <= r.x + r.width && m.y >= r.y && m.y <= r.y + r.height);
+    const char hov = EdHover(r);
     // so o realce no hover; a seta e linhas (DrawTriangle some quando o sentido dos vertices esta errado)
     if(hov) DrawRectangleRounded(r, 0.3f, 4, (Color) {255, 255, 255, 30});
-    const Color col = hov || open ? GREEN : (Color) {200, 200, 200, 255};
+    const Color col = hov || open ? ED_C_ACCENT : ED_C_DIM;
     const float cx = r.x + r.width * 0.5f, cy = r.y + r.height * 0.5f;
     if(open) {
         DrawLineEx((Vector2) {cx - 6, cy + 3}, (Vector2) {cx, cy - 3}, 2.5f, col);
@@ -258,10 +286,9 @@ void EdTimeFmt(char* out, size_t n, double ms) {
 
 // botao do dialogo (o EdButton() normal fica bloqueado com dialogo aberto)
 char EdDlgButton(Rectangle r, const char* label, Color edge) {
-    Vector2 m = EdMouseWorld();
-    char hov = (m.x >= r.x && m.x <= r.x + r.width && m.y >= r.y && m.y <= r.y + r.height);
-    DrawRectangleRec(r, hov ? (Color) {60, 60, 60, 255} : (Color) {30, 30, 30, 255});
-    DrawRectangleLinesEx(r, 2, hov ? WHITE : edge);
+    const char hov = EdHover(r);
+    DrawRectangleRounded(r, 0.25f, 6, hov ? ED_C_BTN_HOV : ED_C_BTN);
+    DrawRectangleRoundedLinesEx(r, 0.25f, 6, 2.0f, hov ? WHITE : edge);
     Vector2 sz = TextMeasure_Get(BtnMeasureSlot(label), mainFont, label, 24, 1);
     Ed_DrawText(mainFont, label, (Vector2) {r.x + (r.width - sz.x) / 2, r.y + (r.height - sz.y) / 2}, 24, 1, WHITE);
     return hov && IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
@@ -360,10 +387,12 @@ static void Ed_DrawIcon(EdIcon icon, Vector2 c) {
 
 // menu File/Edit/View estilo Psych (dropdown, sem alloc)
 char EdMenuItemIcon(Rectangle r, const char* label, EdIcon icon) {
-    Vector2 m = EdMouseWorld();
-    char hov = (m.x >= r.x && m.x <= r.x + r.width && m.y >= r.y && m.y <= r.y + r.height);
-    DrawRectangleRec(r, hov ? (Color){60,60,60,255} : (Color){18,18,18,255});
-    Ed_DrawText(mainFont, label, (Vector2){r.x + (icon != ED_ICON_NONE ? 32 : 8), r.y + 5}, 20, 1, WHITE);
+    const char hov = EdHover(r);
+    if(hov) {
+        DrawRectangleRounded(r, 0.25f, 6, ED_C_BTN_HOV);
+        DrawRectangleRec((Rectangle){r.x, r.y + 5, 3, r.height - 10}, ED_C_ACCENT);
+    }
+    Ed_DrawText(mainFont, label, (Vector2){r.x + (icon != ED_ICON_NONE ? 32 : 10), r.y + 5}, 20, 1, hov ? ED_C_ACCENT : WHITE);
     if(icon != ED_ICON_NONE)
         Ed_DrawIcon(icon, (Vector2){r.x + 16, r.y + r.height * 0.5f});
     return hov && IsMouseButtonPressed(MOUSE_BUTTON_LEFT);

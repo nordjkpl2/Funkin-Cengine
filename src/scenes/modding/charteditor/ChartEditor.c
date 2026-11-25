@@ -17,6 +17,7 @@
 #include "scenes/modding/charteditor/ui/EditorIcons.h"
 #include "scenes/modding/charteditor/ui/EditorPicker.h"
 #include "scenes/modding/charteditor/ui/EditorPanels.h"
+#include "scenes/modding/charteditor/EditorActions.h"
 
 // ---------- dialogs (por cima de tudo) ----------
 static void Dialogs_Update(void) {
@@ -70,16 +71,22 @@ static void Dialogs_Draw(void) {
         return;
     Render_SetCamera(&camEd);
     DrawRectangle(0, 0, 1280, 720, (Color) {0, 0, 0, 180});
+    const Rectangle card = (ceDlg == DLG_SAVEAS) ? (Rectangle){110, 165, 1040, 300}
+                         : (ceDlg == DLG_OPEN)   ? (Rectangle){310, 220, 680, 230}
+                                                 : (Rectangle){310, 220, 610, 220};
+    DrawRectangleRounded(card, 0.06f, 8, ED_C_POPUP);
+    DrawRectangleRoundedLinesEx(card, 0.06f, 8, 1.5f, ED_C_EDGE);
+    DrawRectangleRounded((Rectangle){card.x + 12, card.y + 26, 5, 40}, 0.5f, 4, ED_C_ACCENT);
     if(ceDlg == DLG_LEAVE) {
         Ed_DrawText(mainFont, "Save changes?", (Vector2) {340, 250}, 40, 3, WHITE);
-        Ed_DrawText(mainFont, "enter saves, esc cancels", (Vector2) {340, 310}, 20, 1, YELLOW);
-        if(EdDlgButton((Rectangle) {340, 360, 170, 48}, "SAVE", GREEN)) {
+        Ed_DrawText(mainFont, "enter saves, esc cancels", (Vector2) {340, 310}, 20, 1, ED_C_HINT);
+        if(EdDlgButton((Rectangle) {340, 360, 170, 48}, "SAVE", ED_C_OK)) {
             Editor_Save();
             Editor_LeaveToPicker();
-        } else if(EdDlgButton((Rectangle) {530, 360, 170, 48}, "DISCARD", RED)) {
+        } else if(EdDlgButton((Rectangle) {530, 360, 170, 48}, "DISCARD", ED_C_BAD)) {
             chart.dirty = 0;
             Editor_LeaveToPicker();
-        } else if(EdDlgButton((Rectangle) {720, 360, 170, 48}, "CANCEL", GRAY)) {
+        } else if(EdDlgButton((Rectangle) {720, 360, 170, 48}, "CANCEL", ED_C_EDGE)) {
             ceDlg = DLG_NONE;
         }
     } else if(ceDlg == DLG_OPEN) {
@@ -87,15 +94,15 @@ static void Dialogs_Draw(void) {
         Rectangle r = {340, 320, 600, 40};
         TxtBox_Update(&openBox, r, 0);
         TxtBox_Draw(&openBox, r, "C:/.../song.json");
-        Ed_DrawText(mainFont, "enter import, esc cancel", (Vector2) {340, 380}, 20, 1, YELLOW);
-        Ed_DrawText(mainFont, "You can copy and paste the path to the .json file.", (Vector2) {340, 410}, 20, 1, YELLOW);
+        Ed_DrawText(mainFont, "enter import, esc cancel", (Vector2) {340, 380}, 20, 1, ED_C_HINT);
+        Ed_DrawText(mainFont, "You can copy and paste the path to the .json file.", (Vector2) {340, 410}, 20, 1, ED_C_DIM);
     } else {
         Ed_DrawText(mainFont, "Save (path name):", (Vector2) {140, 190}, 36, 3, WHITE);
         Rectangle r = {140, 260, 600, 40};
         TxtBox_Update(&saveAsBox, r, 0);
         TxtBox_Draw(&saveAsBox, r, "my-music-renameonexplorer");
-        Ed_DrawText(mainFont, "enter save, esc cancel", (Vector2) {140, 320}, 20, 1, YELLOW);
-        Ed_DrawText(mainFont, "renames the folder if it already exists", (Vector2) {140, 350}, 20, 1, YELLOW);
+        Ed_DrawText(mainFont, "enter save, esc cancel", (Vector2) {140, 320}, 20, 1, ED_C_HINT);
+        Ed_DrawText(mainFont, "renames the folder if it already exists", (Vector2) {140, 350}, 20, 1, ED_C_DIM);
         {
             char clean[64];
             EdSanitizeName(clean, sizeof(clean), saveAsBox.buf);
@@ -108,13 +115,13 @@ static void Dialogs_Draw(void) {
                 snprintf(dstDir, sizeof(dstDir), "assets/mods/<your-song>");
                 snprintf(where, sizeof(where), "saves to: mods/<your-song>");
             }
-            Ed_DrawText(mainFont, where, (Vector2) {140, 380}, 20, 1, YELLOW);
+            Ed_DrawText(mainFont, where, (Vector2) {140, 380}, 20, 1, ED_C_DIM);
             if(importPath[0] != 0) {
                 char from[96];
                 size_t L = strlen(importPath);
                 const char* tail = (L > 52) ? importPath + L - 52 : importPath;
                 snprintf(from, sizeof(from), "from: ...%s", (L > 52) ? tail : importPath);
-                Ed_DrawText(mainFont, from, (Vector2) {140, 410}, 18, 1, GRAY);
+                Ed_DrawText(mainFont, from, (Vector2) {140, 410}, 18, 1, ED_C_DIM);
             }
             // mini arvore do destino (leve: so re-checa quando o nome muda)
             static char lastTree[64] = {0};
@@ -138,25 +145,25 @@ static void Dialogs_Draw(void) {
             }
             float tx = 780;
             float ty = 260;
-            Ed_DrawText(mainFont, "tree:", (Vector2) {tx, ty}, 20, 1, GREEN);
+            Ed_DrawText(mainFont, "tree:", (Vector2) {tx, ty}, 20, 1, ED_C_ACCENT);
             ty += 30;
-            Ed_DrawText(mainFont, "assets/", (Vector2) {tx, ty}, 18, 1, GRAY);
+            Ed_DrawText(mainFont, "assets/", (Vector2) {tx, ty}, 18, 1, ED_C_DIM);
             ty += 24;
-            Ed_DrawText(mainFont, "  mods/", (Vector2) {tx, ty}, 18, 1, GRAY);
+            Ed_DrawText(mainFont, "  mods/", (Vector2) {tx, ty}, 18, 1, ED_C_DIM);
             ty += 24;
             {
                 char mod[80];
                 if(clean[0] != 0) snprintf(mod, sizeof(mod), "    %.28s/", clean);
                 else snprintf(mod, sizeof(mod), "    <your-song>/");
                 Ed_DrawText(mainFont, mod, (Vector2) {tx, ty}, 18, 1, WHITE);
-                Ed_DrawText(mainFont, tChart ? "[exists]" : "[new]", (Vector2) {tx + 240, ty}, 18, 1, tChart ? YELLOW : GREEN);
+                Ed_DrawText(mainFont, tChart ? "[exists]" : "[new]", (Vector2) {tx + 240, ty}, 18, 1, tChart ? ED_C_HINT : ED_C_OK);
             }
             ty += 24;
             Ed_DrawText(mainFont, "      data.json", (Vector2) {tx, ty}, 18, 1, WHITE);
             ty += 24;
-            Ed_DrawText(mainFont, tInst ? "      Inst.ogg [ok]" : "      Inst.ogg [--]", (Vector2) {tx, ty}, 18, 1, tInst ? GREEN : GRAY);
+            Ed_DrawText(mainFont, tInst ? "      Inst.ogg [ok]" : "      Inst.ogg [--]", (Vector2) {tx, ty}, 18, 1, tInst ? ED_C_OK : ED_C_DIM);
             ty += 24;
-            Ed_DrawText(mainFont, tVox ? "      Voices.ogg [ok]" : "      Voices.ogg [--]", (Vector2) {tx, ty}, 18, 1, tVox ? GREEN : GRAY);
+            Ed_DrawText(mainFont, tVox ? "      Voices.ogg [ok]" : "      Voices.ogg [--]", (Vector2) {tx, ty}, 18, 1, tVox ? ED_C_OK : ED_C_DIM);
         }
     }
     Render_StopCamera();
@@ -171,12 +178,13 @@ static void Edit_UpdateKeys(void) {
         return;
     }
     if(ctrl && IsKeyPressed(KEY_Z) && focusBox == NULL && focusNum == NULL) {
-        Undo_Pop();
-        if(secIdx >= chart.nsec) secIdx = chart.nsec - 1;
-        if(secIdx < 0) secIdx = 0;
-        SecTimes_Invalidate();
-        chart.dirty = 1;
-        EdStatusMsg("actions reverted");
+        EdAct_Undo();
+        return;
+    }
+    // ajuda aberta: so TAB/ESC (fecham); o resto fica travado ate fechar
+    if(EdHelpOpen()) {
+        if(IsKeyPressed(KEY_TAB) || IsKeyPressed(KEY_ESCAPE))
+            EdHelpToggle();
         return;
     }
     // digitando numa caixinha: nao dispara atalho
@@ -215,132 +223,24 @@ static void Edit_UpdateKeys(void) {
         return;
     }
     if(IsKeyPressed(KEY_TAB)) {
-        Edit_ToggleHelp();
-        return;
-    }
-    if(IsKeyPressed(KEY_Q)) {  // TAB virou atalhos; a troca de quem canta fica no Q
-        EdTouchSec(secIdx);
-        chart.secs[secIdx].mustHit = !chart.secs[secIdx].mustHit;
-        EdStatusMsg(chart.secs[secIdx].mustHit ? "Turn: You" : "Turn: Opponent");
-        return;
-    }
-    if(IsKeyPressed(KEY_T)) {
-        snapDiv = (snapDiv == 4) ? 1 : (snapDiv == 1) ? 2 : 4;
-        return;
-    }    if(IsKeyPressed(KEY_N)) {
-        EdTouchAddSec();
-        EdSec* last = chart.secs + chart.nsec - 1;
-        EdSec* g = realloc(chart.secs, sizeof(EdSec) * (size_t)(chart.nsec + 1));
-        if(g != NULL) {
-            chart.secs = g;
-            EdSec* n = chart.secs + chart.nsec;
-            memset(n, 0, sizeof(*n));
-            n->mustHit = last->mustHit;
-            n->bpm = last->bpm;
-            n->lenSteps = 16;
-            chart.nsec++;
-            secIdx = chart.nsec - 1;
-            cursorMs = SecStartMs(secIdx);
-            viewTopMs = cursorMs - VIEW_MS * 0.3;
-            if(viewTopMs < 0) viewTopMs = 0;
-            EdStatusMsg("NEW PART AT END");
-        }
-        return;
-    }
-    if(IsKeyPressed(KEY_X)) {
-        /* // * part deleter */
-        if(chart.nsec > 1) {
-            EdTouchDelSec(secIdx);
-            free(chart.secs[secIdx].notes);
-            memmove(chart.secs + secIdx, chart.secs + secIdx + 1,
-                sizeof(EdSec) * (size_t)(chart.nsec - secIdx - 1));
-            chart.nsec--;
-            if(secIdx >= chart.nsec) secIdx = chart.nsec - 1;
-            EdStatusMsg("part deleted");
-        } else {
-            EdStatusMsg("CANNOT DELETE: ONLY 1 PART");
-        }
-        return;
-    }
-    if(IsKeyPressed(KEY_C)) {
-        /* // * part copier */
-        if(copyValid) free(copyBuf.notes);
-        memset(&copyBuf, 0, sizeof(copyBuf));
-        EdSec* s = chart.secs + secIdx;
-        copyBuf.mustHit = s->mustHit;
-        copyBuf.bpm = s->bpm;
-        copyBuf.lenSteps = s->lenSteps;
-        if(s->count > 0) {
-            copyBuf.notes = malloc(sizeof(EdNote) * (size_t)s->count);
-            copyBuf.count = s->count;
-            copyBuf.cap = s->count;
-            memcpy(copyBuf.notes, s->notes, sizeof(EdNote) * (size_t)s->count);
-        }
-        copyValid = 1;
-        EdStatusMsg("part copied");
-        return;
-    }
-    if(IsKeyPressed(KEY_V)) {
-        /* // * if pressing control v without control c */
-        if(!copyValid) {
-            EdStatusMsg("V pressed: copy first (C)");
-            return;
-        }
-        EdTouchAddSec();
-        double base = SongEndMs();
-        double srcStart = SecStartMs(secIdx);
-        EdSec* g = realloc(chart.secs, sizeof(EdSec) * (size_t)(chart.nsec + 1));
-        if(g != NULL) {
-            chart.secs = g;
-            EdSec* n = chart.secs + chart.nsec;
-            memset(n, 0, sizeof(*n));
-            n->mustHit = copyBuf.mustHit;
-            n->bpm = chart.secs[chart.nsec - 1].bpm;
-            n->lenSteps = copyBuf.lenSteps;
-            for(int i = 0; i < copyBuf.count; i++)
-                EdSec_Add(n, (float)(base + (copyBuf.notes[i].time - srcStart)), copyBuf.notes[i].lane, copyBuf.notes[i].len);
-            chart.nsec++;
-            secIdx = chart.nsec - 1;
-            EdStatusMsg("copied at end");
-        }
-        return;
-    }
-    if(IsKeyPressed(KEY_G)) {
-        secIdx--;
-        if(secIdx < 0) secIdx = 0;
-        cursorMs = SecStartMs(secIdx);
-        viewTopMs = cursorMs - VIEW_MS * 0.3;
-        if(viewTopMs < 0) viewTopMs = 0;
-        return;
-    }
-    if(IsKeyPressed(KEY_H)) {
-        secIdx++;
-        if(secIdx >= chart.nsec) secIdx = chart.nsec - 1;
-        cursorMs = SecStartMs(secIdx);
-        viewTopMs = cursorMs - VIEW_MS * 0.3;
-        if(viewTopMs < 0) viewTopMs = 0;
-        return;
-    }
-    if(IsKeyPressed(KEY_HOME)) {
-        cursorMs = SecStartMs(secIdx);
-        return;
-    }
-    if(IsKeyPressed(KEY_COMMA) || IsKeyPressed(KEY_PERIOD)) {
-        EdTouchSec(secIdx);
-        float d = (IsKeyPressed(KEY_PERIOD) ? 1 : -1) * (shift ? 10 : 1);
-        chart.secs[secIdx].bpm += d;
-        if(chart.secs[secIdx].bpm < 10) chart.secs[secIdx].bpm = 10;
-        if(chart.secs[secIdx].bpm > 300) chart.secs[secIdx].bpm = 300;
+        EdHelpToggle();
         return;
     }
     if(IsKeyPressed(KEY_ESCAPE)) {
-        if(focusBox != NULL) {
-            focusBox = NULL;
-            return;
-        }
         Editor_RequestLeave();
         return;
     }
+    if(IsKeyPressed(KEY_Q)) EdAct_ToggleTurn();   // TAB virou atalhos; a troca de quem canta fica no Q
+    else if(IsKeyPressed(KEY_T)) EdAct_CycleSnap();
+    else if(IsKeyPressed(KEY_N)) EdAct_NewPart();
+    else if(IsKeyPressed(KEY_X)) EdAct_DeletePart();
+    else if(IsKeyPressed(KEY_C)) EdAct_CopyPart();
+    else if(IsKeyPressed(KEY_V)) EdAct_PastePart();
+    else if(IsKeyPressed(KEY_G)) EdAct_GoToPart(secIdx - 1);
+    else if(IsKeyPressed(KEY_H)) EdAct_GoToPart(secIdx + 1);
+    else if(IsKeyPressed(KEY_HOME)) cursorMs = SecStartMs(secIdx);
+    else if(IsKeyPressed(KEY_COMMA)) EdAct_NudgeBpm(shift ? -10.0f : -1.0f);
+    else if(IsKeyPressed(KEY_PERIOD)) EdAct_NudgeBpm(shift ? 10.0f : 1.0f);
 }
 
 static void Edit_Update(void) {
@@ -387,11 +287,15 @@ static void Edit_Update(void) {
             viewTopMs = cursorMs - VIEW_MS * 0.25; // trava no receptor, igual ao jogo
     }
 
-    // setas e W/S sobem e descem a grade
-    if(IsKeyDown(KEY_UP) || IsKeyDown(KEY_W))
-        viewTopMs -= 2600 * RayGame_DeltaTime();
-    if(IsKeyDown(KEY_DOWN) || IsKeyDown(KEY_S))
-        viewTopMs += 2600 * RayGame_DeltaTime();
+    // setas e W/S sobem e descem a grade (nao enquanto digita numa caixa nem no CTRL+S)
+    const char typing = focusBox != NULL || focusNum != NULL || activeDrop;
+    const char ctrlDown = IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL);
+    if(!typing && !ctrlDown) {
+        if(IsKeyDown(KEY_UP) || IsKeyDown(KEY_W))
+            viewTopMs -= 2600 * RayGame_DeltaTime();
+        if(IsKeyDown(KEY_DOWN) || IsKeyDown(KEY_S))
+            viewTopMs += 2600 * RayGame_DeltaTime();
+    }
     if(viewTopMs < -500) viewTopMs = -500;
     {
         double maxTop = SongEndMs() + 1000;
@@ -404,22 +308,17 @@ static void Edit_Update(void) {
         Vector2 m = EdMouseWorld();
         int shift = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
         int ctrl = IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL);
-        if((shift || ctrl) && m.x >= GRID_X0 && m.x <= GRID_X0 + LANE_W * 8 && m.y >= GRID_Y0 && m.y <= GRID_Y1) {
-            //na nota embaixo do mouse: muda a nota longa
-            int lane = (int)((m.x - GRID_X0) / LANE_W);
-            double t = viewTopMs + (m.y - GRID_Y0) / EdPxPerMs();
-            int si = SecAtTime(t);
+        const int lane = EdGrid_LaneAt(m);
+        if((shift || ctrl) && lane >= 0) {
+            // na nota embaixo do mouse: muda a nota longa (passo de 1/4 de tempo)
+            const double t = fmax(EdGrid_TimeAt(m.y), 0.0);
+            const int si = SecAtTime(t);
             EdSec* s = chart.secs + si;
-            lane = EdDispLane(s, lane); // casa da tela -> casa do arquivo
-            float beatMs = 60000.0f / s->bpm;
-            for(int i = 0; i < s->count; i++) {
-                if(s->notes[i].lane == lane && fabsf(s->notes[i].time - (float)t) < beatMs / 2) {
-                    EdTouchSec(si);
-                    s->notes[i].len += wheel * beatMs / 4;
-                    if(s->notes[i].len < 0) s->notes[i].len = 0;
-                    if(s->notes[i].len > 10000) s->notes[i].len = 10000;
-                    break;
-                }
+            const float beatMs = 60000.0f / s->bpm;
+            const int idx = EdSec_FindNear(s, (float)t, EdDispLane(s, lane), beatMs / 2);
+            if(idx >= 0) {
+                EdTouchSec(si);
+                EdSec_SetLen(s, idx, s->notes[idx].len + wheel * beatMs / 4);
             }
         } else {
             viewTopMs -= wheel * 150;
@@ -428,26 +327,40 @@ static void Edit_Update(void) {
     }
 }
 
-// (removido: migrado p/ abas Song/Section)
+/* Barra de status (rodape): trecho, grade, bpm e turno a esquerda; mensagem no meio; tempo a direita. */
+static void Edit_DrawStatusBar(void) {
+    const float y = 694;
+    DrawRectangleRec((Rectangle){0, y, 1280, 720 - y}, ED_C_BAR);
+    DrawRectangleRec((Rectangle){0, y, 1280, 1}, ED_C_EDGE);
+
+    const EdSec* s = chart.secs + secIdx;
+    char buf[128];
+    snprintf(buf, sizeof(buf), "part %d/%d   snap 1/%d   %.0f bpm   %s",
+        secIdx + 1, chart.nsec, snapDiv * 4, (double)s->bpm, s->mustHit ? "turn: you" : "turn: opponent");
+    DrawTextEx(mainFont, buf, (Vector2){14, y + 5}, 18, 1, ED_C_DIM);
+
+    if(statusTimer > 0)
+        DrawTextEx(mainFont, statusText, (Vector2){PANEL_X, y + 4}, 20, 1, ED_C_HINT);
+    else
+        DrawTextEx(mainFont, "TAB = shortcuts", (Vector2){PANEL_X, y + 5}, 18, 1, ED_C_DIM);
+
+    char now[16], end[16];
+    EdTimeFmt(now, sizeof(now), cursorMs);
+    EdTimeFmt(end, sizeof(end), SongEndMs());
+    snprintf(buf, sizeof(buf), "%s / %s", now, end);
+    DrawTextEx(mainFont, buf, (Vector2){1124, y + 4}, 20, 1, WHITE);
+}
+
 
 static void Edit_Draw(void) {
     EdArrows_Init();   // so faz algo na 1a vez (e depois de trocar a skin)
     Render_SetCamera(&camEd);
     Render_DrawGraphicObject(&bgEd);
 
-    // tempo no canto + status
-    char tbuf[32];
-    EdTimeFmt(tbuf, sizeof(tbuf), cursorMs);
-    Ed_DrawText(mainFont, tbuf, (Vector2) {1110, 2}, 24, 2, WHITE);
-    // status embaixo da grade (antes caia em cima do painel, lado direito)
-    if(statusTimer > 0) {
-        DrawTextEx(mainFont, statusText, (Vector2) {GRID_X0 + 2, 692}, 20, 1, (Color){0, 0, 0, 200});
-        Ed_DrawText(mainFont, statusText, (Vector2) {GRID_X0, 690}, 20, 1, YELLOW);
-    }
-
     Edit_DrawGrid();
     Edit_DrawTabs();
     Edit_DrawPanel();
+    Edit_DrawStatusBar();
     Edit_DrawMenuBar();
     CharDrop_Draw();
     Edit_DrawHelpOverlay();
@@ -511,7 +424,7 @@ static void ChartEditor_Draw([[maybe_unused]] RayScene* scene) {
         Edit_Draw();
     Dialogs_Draw();
     if(statusTimer > 0 && ceMode == CE_PICKER)
-        Ed_DrawText(mainFont, statusText, (Vector2) {150, 640}, 24, 2, YELLOW);
+        Ed_DrawText(mainFont, statusText, (Vector2) {150, 640}, 24, 2, ED_C_HINT);
 }
 
 static void ChartEditor_Destroy([[maybe_unused]] RayScene* scene) {
@@ -546,6 +459,8 @@ static void ChartEditor_Destroy([[maybe_unused]] RayScene* scene) {
         copyValid = 0;
     }
     focusBox = NULL;
+    if(EdHelpOpen())
+        EdHelpToggle();
 }
 
 void ChartEditor_SetSongDir(const char* dir) {

@@ -18,16 +18,18 @@ typedef struct {
     char title[WEEKED_TEXT_MAX];
 } WeekEdEntry;
 
-/* Musica da semana em texto (a cor fica "r,g,b" para editar como texto). */
+/* Musica da semana: pasta em songs/, icone e cor do freeplay (0..255). */
 typedef struct {
     char name[64];
     char icon[64];
-    char color[24];
+    int color[3];
 } WeekEdSong;
 
 typedef struct {
     char storyName[WEEKED_TEXT_MAX];
     char weekName[WEEKED_TEXT_MAX];
+    char flavor[192];
+    char difficulties[96];
     char background[64];
     char before[64];
     char chars[3][64];
@@ -46,6 +48,7 @@ int WeekEd_ScanSongs(char out[][MODED_NAME_MAX], int capacity);
 
 /* Valores padrao para uma semana nova. */
 void WeekEd_Defaults(WeekEdDraft *draft, const char *title);
+void WeekEd_DefaultSong(WeekEdSong *song, const char *name);
 
 bool WeekEd_Load(const WeekEdEntry *entry, WeekEdDraft *draft, char *msg, size_t msgCap);
 

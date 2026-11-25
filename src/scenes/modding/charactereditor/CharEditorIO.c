@@ -74,7 +74,9 @@ bool CharEd_LoadCharacter(const CharEdEntry *entry, Character *character)
     if (!entry || !character || !Char_IsSafeName(entry->name))
         return false;
 
-    Character_Load(character, entry->name, CHAR_BF);
+    /* Como oponente: o papel CHAR_BF inverte o flip_x do JSON e o save gravaria invertido.
+       Exceto "bf", que so existe como embutido do jogador. */
+    Character_Load(character, entry->name, strcmp(entry->name, "bf") == 0 ? CHAR_BF : CHAR_DAD);
     return true;
 }
 
@@ -183,7 +185,9 @@ bool CharEd_Save(const CharEdEntry *entry, const Character *character, char *msg
 
     PutReal(doc, root, "scale", scale);
     PutBool(doc, root, "flip_x", flip);
-    PutVec2(doc, root, "position", object->position.x, object->position.y);
+    /* object.position ja tem o psychShift somado no load: o JSON guarda a posicao sem ele. */
+    PutVec2(doc, root, "position", object->position.x - character->psychShift.x,
+            object->position.y - character->psychShift.y);
     PutReal(doc, root, "sing_duration", character->singDuration);
 
     if (!yyjson_mut_obj_get(root, "healthicon"))

@@ -8,6 +8,19 @@
 #include "Render.h"
 #include "data/song/Song.h"
 
+// ---------- paleta (mesma familia do seletor de musicas: violeta escuro + rosa) ----------
+#define ED_C_FIELD   CLITERAL(Color){16, 14, 32, 235}    /* fundo de caixa de texto/numero */
+#define ED_C_BTN     CLITERAL(Color){30, 26, 54, 240}
+#define ED_C_BTN_HOV CLITERAL(Color){56, 46, 96, 255}
+#define ED_C_POPUP   CLITERAL(Color){12, 10, 26, 245}    /* menus, listas e janelas por cima */
+#define ED_C_BAR     CLITERAL(Color){10, 8, 20, 240}     /* barras de menu e de status */
+#define ED_C_EDGE    CLITERAL(Color){120, 100, 200, 150}
+#define ED_C_ACCENT  CLITERAL(Color){255, 92, 176, 255}  /* foco, ativo, selecionado */
+#define ED_C_DIM     CLITERAL(Color){170, 164, 205, 255} /* texto secundario */
+#define ED_C_HINT    CLITERAL(Color){255, 214, 120, 255} /* dicas e avisos leves */
+#define ED_C_OK      CLITERAL(Color){120, 230, 150, 255}
+#define ED_C_BAD     CLITERAL(Color){255, 100, 110, 255}
+
 // ---------- caixinha de texto (clica e digita) ----------
 typedef struct {
     char buf[128];
@@ -44,6 +57,11 @@ extern CeDlg ceDlg;
 extern int menuOpen;
 extern Camera2D camEd;
 Vector2 EdMouseWorld(void);
+char EdHover(Rectangle r);       /* mouse (mundo) dentro de r */
+char EdUiBlocked(void);          /* janela, lista ou menu aberto: os paineis nao recebem clique */
+char EdHelpOpen(void);           /* overlay de atalhos (TAB) aberto: grade e paineis nao recebem clique */
+void EdHelpToggle(void);
+void Ed_DrawBox(Rectangle r, Color fill, Color edge); /* caixa arredondada com contorno */
 char EdButton(Rectangle r, const char* label, int fs);
 extern TxtBox* dropBox;
 extern char (*dropNames)[SONG_NAME_MAX];

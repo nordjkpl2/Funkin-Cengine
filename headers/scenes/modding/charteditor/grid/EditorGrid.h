@@ -13,6 +13,8 @@
 
 #define LANE_W 64.0f
 
+#define GRID_W (LANE_W * 8)
+
 #define GRID_Y0 112.0f
 
 #define GRID_Y1 680.0f
@@ -31,6 +33,8 @@ void EdArrows_Init(void);
 void EdArrows_Reset(void);   // refaz os sprites das notas a partir da skin atual (Note_GetCurrentSkin)
 void EdArrows_DrawIcon(int lane, float cx, float cy, float size, Color tint);   // icone de seta (menus)
 float EdPxPerMs(void);
+int EdGrid_LaneAt(Vector2 m);   /* casa da tela (0..7) sob o ponto, ou -1 fora da grade */
+double EdGrid_TimeAt(float y);  /* tempo (ms) na altura y da grade */
 void Edit_DrawGrid(void);
 
 #endif

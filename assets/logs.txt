@@ -163,3 +163,6 @@ LOAD [ampersand] init: 0.0 ms, chart: 22.2 ms, sounds: 72.3 ms, characters: 395.
 LOAD [ampersand] init: 0.0 ms, chart: 27.9 ms, sounds: 1.2 ms, characters: 436.4 ms, stage: 2.0 ms, song audio: 3.0 ms, notes: 0.1 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 436.7 ms) total: 470.9 ms
 LOAD [ampersand] init: 0.0 ms, chart: 22.9 ms, sounds: 0.8 ms, characters: 427.0 ms, stage: 2.0 ms, song audio: 3.2 ms, notes: 0.1 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 427.8 ms) total: 456.1 ms
 LOAD [ampersand] init: 0.0 ms, chart: 23.3 ms, sounds: 1.5 ms, characters: 434.4 ms, stage: 2.1 ms, song audio: 3.1 ms, notes: 0.1 ms, ui: 0.0 ms, warmup: 0.3 ms, (textures on main thread: 434.8 ms) total: 464.8 ms
+LOAD [ampersand] init: 1.7 ms, chart: 6.0 ms, sounds: 60.1 ms, characters: 412.8 ms, stage: 2.1 ms, song audio: 3.4 ms, notes: 0.1 ms, ui: 9.1 ms, warmup: 0.2 ms, (textures on main thread: 422.1 ms) total: 495.5 ms
+LOAD [ampersand] init: 0.0 ms, chart: 4.7 ms, sounds: 0.8 ms, characters: 463.3 ms, stage: 1.8 ms, song audio: 3.3 ms, notes: 0.1 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 463.9 ms) total: 474.2 ms
+LOAD [moribund-3] init: 0.0 ms, chart: 134.1 ms, sounds: 1.0 ms, characters: 475.9 ms, stage: 4.6 ms, song audio: 1.8 ms, notes: 0.7 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 478.2 ms) total: 618.2 ms

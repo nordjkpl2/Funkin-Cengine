@@ -23,6 +23,7 @@ typedef struct {
     int count;
     int cap;
     float tmin, tmax; // limites de tempo das notas (so cresce; so vale com count > 0)
+    float lenMax;     // maior nota longa do trecho (so cresce): quanto olhar pra tras ao desenhar rastros
 } EdSec;
 
 typedef struct {

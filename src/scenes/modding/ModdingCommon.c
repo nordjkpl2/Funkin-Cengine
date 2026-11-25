@@ -1,6 +1,7 @@
 /* // * Friday Night Funkin´ c engine (c) 2026 nordjkpl */
 #include "scenes/modding/ModdingCommon.h"
 
+#include <ctype.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -73,24 +74,105 @@ bool ModEd_IsSafeName(const char *name)
     return strstr(name, "..") == NULL;
 }
 
-bool ModEd_TypeText(char *buf, size_t capacity)
+const char *ModEd_RootLabel(const char *root)
 {
-    bool changed = false;
-    size_t len = strlen(buf);
-    int c;
+    const char *slash = strrchr(root, '/');
+    const char *back = strrchr(root, '\\');
+    if (back && (!slash || back > slash))
+        slash = back;
+    return slash ? slash + 1 : root;
+}
 
-    while ((c = GetCharPressed()) > 0) {
-        if (c >= 32 && c <= 126 && len + 1 < capacity) {
-            buf[len++] = (char)c;
-            buf[len] = '\0';
-            changed = true;
-        }
+bool ModEd_ContainsCI(const char *hay, const char *needle)
+{
+    const size_t n = strlen(needle);
+    if (n == 0)
+        return true;
+    for (const char *h = hay; *h; ++h) {
+        size_t i = 0;
+        while (i < n && h[i] && tolower((unsigned char)h[i]) == tolower((unsigned char)needle[i]))
+            ++i;
+        if (i == n)
+            return true;
     }
-    if ((IsKeyPressed(KEY_BACKSPACE) || IsKeyPressedRepeat(KEY_BACKSPACE)) && len > 0) {
-        buf[--len] = '\0';
-        changed = true;
+    return false;
+}
+
+static bool Path_Trim(char c)
+{
+    return c == ' ' || c == '\t' || c == '"' || c == '\'';
+}
+
+void ModEd_CleanPath(char *path)
+{
+    size_t len = strlen(path);
+    size_t start = 0;
+
+    while (start < len && Path_Trim(path[start]))
+        ++start;
+    while (len > start && (Path_Trim(path[len - 1]) || path[len - 1] == '/' || path[len - 1] == '\\'))
+        --len;
+    memmove(path, path + start, len - start);
+    path[len - start] = '\0';
+
+    for (char *p = path; *p; ++p) {
+        if (*p == '\\')
+            *p = '/';
     }
-    return changed;
+
+    /* Dentro da pasta do jogo: relativo (os caminhos gravados nos JSON ficam portaveis). */
+    char cwd[MODED_ROOT_MAX * 2];
+    snprintf(cwd, sizeof(cwd), "%s", GetWorkingDirectory());
+    for (char *p = cwd; *p; ++p) {
+        if (*p == '\\')
+            *p = '/';
+    }
+    const size_t cwdLen = strlen(cwd);
+    if (cwdLen == 0 || strlen(path) <= cwdLen || path[cwdLen] != '/')
+        return;
+    for (size_t i = 0; i < cwdLen; ++i) {
+        if (tolower((unsigned char)path[i]) != tolower((unsigned char)cwd[i]))
+            return;
+    }
+    memmove(path, path + cwdLen + 1, strlen(path + cwdLen + 1) + 1);
+}
+
+const char *ModEd_Ext(const char *path)
+{
+    const char *dot = strrchr(path, '.');
+    const char *slash = strrchr(path, '/');
+    return (dot && (!slash || dot > slash)) ? dot : "";
+}
+
+bool ModEd_SplitPath(const char *path, const char *marker, char *root, size_t rootCap,
+                     char *stem, size_t stemCap)
+{
+    char key[64];
+    snprintf(key, sizeof(key), "/%s/", marker);
+    const size_t keyLen = strlen(key);
+
+    const char *found = NULL;
+    for (const char *p = strstr(path, key); p; p = strstr(p + 1, key))
+        found = p;
+
+    const char *file;
+    if (found) {
+        snprintf(root, rootCap, "%.*s", (int)(found - path), path);
+        file = found + keyLen;
+    } else if (strncmp(path, key + 1, keyLen - 1) == 0) {
+        snprintf(root, rootCap, ".");
+        file = path + keyLen - 1;
+    } else {
+        return false;
+    }
+    if (strchr(file, '/'))
+        return false;
+
+    snprintf(stem, stemCap, "%s", file);
+    char *dot = strrchr(stem, '.');
+    if (dot)
+        *dot = '\0';
+    return stem[0] != '\0' && root[0] != '\0';
 }
 
 bool ModEd_BackupOnce(const char *path)

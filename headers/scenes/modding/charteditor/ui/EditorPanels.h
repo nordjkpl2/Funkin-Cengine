@@ -20,8 +20,7 @@
 void Edit_DrawMenuBar(void);
 void Edit_DrawTabs(void);
 void Edit_DrawPanel(void);
-/* TAB: abre/fecha o overlay de atalhos (fundo preto). */
-void Edit_ToggleHelp(void);
+/* Overlay de atalhos (abre/fecha com EdHelpToggle, no TAB). */
 void Edit_DrawHelpOverlay(void);
 /* Preview do shader do evento selecionado (chamar no update do editor). */
 void Edit_ShaderPreview(void);

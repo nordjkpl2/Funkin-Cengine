@@ -1,24 +1,23 @@
 /* // * Friday Night Funkin´ c engine (c) 2026 nordjkpl */
 /*
- * Week Editor: escolhe uma semana (ou digita um nome novo) e edita titulo, fundo, personagens,
- * flags e a lista de musicas (nome da pasta, icone e cor). Salva <raiz>/weeks/<arquivo>.json.
+ * Week Editor: escolhe uma semana (lista com busca, caminho digitado ou nova) e edita titulo,
+ * descricao, fundo, personagens, flags e a lista de musicas (pasta, icone e cor), com preview da
+ * capa e do icone. Salva <raiz>/weeks/<arquivo>.json preservando campos desconhecidos.
  *
- * Controles:
- *   Up/Down move | Enter edita campo texto (Enter confirma, ESC cancela) ou marca booleano
- *   A = adiciona musica (picker de songs/) | Del = remove a musica da linha | PgUp/PgDn = ordem
- *   Ctrl+S salva | ESC volta (2x se houver mudancas)
+ * Controles (edicao): clique nos campos e digite (Ctrl+C/V/X/A), Up/Down escolhe musica,
+ * Ctrl+Up/Down muda a ordem, A adiciona, Del remove, Ctrl+S salva, Ctrl+O abre por caminho,
+ * Esc volta a lista (pergunta se ha mudancas).
  */
 
 #include "scenes/modding/weekeditor/WeekEditor.h"
 #include "scenes/modding/weekeditor/WeekEditorIO.h"
 #include "scenes/modding/ModdingCommon.h"
-#include "scenes/api/FontLoader.h"
-#include "scenes/menu/MenuBackground.h"
+#include "scenes/modding/ModdingUi.h"
 #include "scenes/menu/modding/ModdingMenu.h"
+#include "characters/Character.h"
 #include "Render.h"
 #include "Game.h"
 
-#include <ctype.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -26,27 +25,10 @@
 /* Layout                                                                    */
 /* ------------------------------------------------------------------------- */
 
-#define WK_FILTER_MAX 64
-#define WK_ROWS       22
-#define WK_ROW_H      25.0f
-#define WK_LABEL_X    60.0f
-#define WK_VALUE_X    440.0f
-#define WK_TOP_Y      120.0f
-#define WK_PICK_X     60.0f
-#define WK_PICK_Y     140.0f
-#define WK_PICK_ROW_H 26.0f
-#define WK_PICK_ROWS  20
+#define FORM_ROW_H 46.0f
+#define SONG_ROW_H 36.0f
 
-/* Linhas fixas do formulario; depois, 3 linhas por musica. */
-#define WK_ROW_STORY   0
-#define WK_ROW_NAME    1
-#define WK_ROW_BG      2
-#define WK_ROW_BEFORE  3
-#define WK_ROW_CHAR0   4
-#define WK_ROW_UNLOCK  7
-#define WK_ROW_HIDE_ST 8
-#define WK_ROW_HIDE_FP 9
-#define WK_ROW_SONGS   10
+enum { PROMPT_OPEN = 1, PROMPT_NEW, CONFIRM_LEAVE, CONFIRM_OPEN, CONFIRM_NEW };
 
 typedef enum {
     WK_PICK = 0,
@@ -54,695 +36,759 @@ typedef enum {
     WK_SONG
 } WkMode;
 
-static RayGraphicObject bg;
-static Camera2D uiCam;
-static WkMode mode;
+static const Rectangle kPicker = {200.0f, 66.0f, 880.0f, 612.0f};
+static const Rectangle kForm = {16.0f, 62.0f, 612.0f, 620.0f};
+static const Rectangle kSongs = {640.0f, 62.0f, 624.0f, 620.0f};
+static const Rectangle kBtnRight = {1104.0f, 8.0f, 160.0f, 32.0f};
+static const Rectangle kBtnLeft = {934.0f, 8.0f, 160.0f, 32.0f};
 
+/* campos de texto do formulario */
+typedef enum {
+    F_STORY = 0,
+    F_NAME,
+    F_FLAVOR,
+    F_DIFFS,
+    F_BG,
+    F_BEFORE,
+    F_TEXT_COUNT
+} FormId;
+
+static const char *const kFormLabel[F_TEXT_COUNT] = {
+    "Titulo", "Nome curto", "Descricao", "Dificuldades", "Fundo (capa)", "Semana anterior"
+};
+static const char *const kFormHint[F_TEXT_COUNT] = {
+    "storyName (aparece no Story Mode)", "weekName", "flavor (texto da semana)",
+    "vazio = Easy, Normal, Hard", "menu_<nome>.png em images/menubackgrounds", "vazio = nenhuma"
+};
+static const char *const kCharHint[3] = {"oponente", "jogador", "gf"};
+
+/* ------------------------------------------------------------------------- */
+/* Estado                                                                    */
+/* ------------------------------------------------------------------------- */
+
+static WkMode mode;
 static char roots[MODED_ROOTS_MAX][MODED_ROOT_MAX];
 
-/* escolha de semana */
 static WeekEdEntry entries[WEEKED_LIST_MAX];
 static int entryCount;
-static char filter[WK_FILTER_MAX];
-static int pickVisible[WEEKED_LIST_MAX];
-static int pickVisibleCount;
-static int pickSel;
-static int pickTop;
+static MUiPicker weekPicker;
 
-/* semana aberta */
-static WeekEdEntry current;
-static bool isNew;
-static WeekEdDraft draft;
-static int row;
-static int rowTop;
-static bool editing;
-static char editBackup[WEEKED_TEXT_MAX];
-static bool dirty;
-static bool escArmed;
-
-/* picker de musicas */
 static char songNames[WEEKED_LIST_MAX][MODED_NAME_MAX];
-static int songCount;
-static char songFilter[WK_FILTER_MAX];
-static int songVisible[WEEKED_LIST_MAX];
-static int songVisibleCount;
-static int songSel;
-static int songTop;
+static int songNameCount;
+static MUiPicker songPicker;
 
-static char status[192];
-static float statusTimer;
+static WeekEdEntry current;
+static WeekEdDraft draft;
+static bool isNew;
+static bool dirty;
+static MUiList songList;
+
+static Texture2D cover;
+static char coverFor[64];
+static bool coverFound;
+static Texture2D icon;
+static char iconFor[64];
 
 /* ------------------------------------------------------------------------- */
-/* Texto, status, listas                                                     */
+/* Rotulos das listas                                                        */
 /* ------------------------------------------------------------------------- */
 
-static void WK_Text(const char *text, float x, float y, float size, Color color)
+static const char *WeekLabel(int i, int col)
 {
-    DrawTextEx(mainFont, text, (Vector2){x, y}, size, 1.0f, color);
+    if (col == 0)
+        return entries[i].title;
+    if (col == 1)
+        return entries[i].file;
+    return ModEd_RootLabel(entries[i].root);
 }
 
-static void SetStatus(const char *text)
+static const char *SongLabel(int i, int col)
 {
-    snprintf(status, sizeof(status), "%s", text);
-    statusTimer = 4.0f;
+    return col == 0 ? songNames[i] : NULL;
 }
 
-static const char *RootLabel(const char *root)
+/* ------------------------------------------------------------------------- */
+/* Preview (capa e icone)                                                    */
+/* ------------------------------------------------------------------------- */
+
+static void UnloadTex(Texture2D *t)
 {
-    const char *slash = strrchr(root, '/');
-    const char *back = strrchr(root, '\\');
-    if (back && (!slash || back > slash))
-        slash = back;
-    return slash ? slash + 1 : root;
+    if (t->id)
+        UnloadTexture(*t);
+    *t = (Texture2D){0};
 }
 
-static bool ContainsCI(const char *hay, const char *needle)
+/* Mesmos lugares do Story Mode: mod da semana, assets/mods e assets. */
+static bool FindCover(const char *key, char *out, size_t cap)
 {
-    const size_t n = strlen(needle);
-    if (n == 0)
-        return true;
-
-    for (const char *h = hay; *h; ++h) {
-        size_t i = 0;
-        while (i < n && h[i] && tolower((unsigned char)h[i]) == tolower((unsigned char)needle[i]))
-            ++i;
-        if (i == n)
+    const char *bases[3] = {current.root, "assets/mods", "assets"};
+    for (int i = 0; i < 3; ++i) {
+        snprintf(out, cap, "%s/images/menubackgrounds/menu_%s.png", bases[i], key);
+        if (FileExists(out))
             return true;
     }
     return false;
 }
 
-static bool Pressed(int key)
+/* Mesma ordem do jogo: <nome>.png, depois icon-<nome>.png; mod e depois assets. */
+static bool FindIcon(const char *name, char *out, size_t cap)
 {
-    return IsKeyPressed(key) || IsKeyPressedRepeat(key);
-}
-
-static void MoveIndex(int *index, int count, int delta)
-{
-    if (count <= 0)
-        return;
-    *index = (*index + delta + count) % count;
-}
-
-static void ScrollTo(int *top, int selIndex, int rows)
-{
-    if (selIndex < *top)
-        *top = selIndex;
-    if (selIndex >= *top + rows)
-        *top = selIndex - rows + 1;
-    if (*top < 0)
-        *top = 0;
-}
-
-static void Rebuild_Pick(void)
-{
-    pickVisibleCount = 0;
-    for (int i = 0; i < entryCount; ++i) {
-        if (ContainsCI(entries[i].file, filter) || ContainsCI(entries[i].title, filter))
-            pickVisible[pickVisibleCount++] = i;
-    }
-    if (pickSel >= pickVisibleCount)
-        pickSel = pickVisibleCount > 0 ? pickVisibleCount - 1 : 0;
-    pickTop = 0;
-}
-
-static void Rebuild_Songs(void)
-{
-    songVisibleCount = 0;
-    for (int i = 0; i < songCount; ++i) {
-        if (ContainsCI(songNames[i], songFilter))
-            songVisible[songVisibleCount++] = i;
-    }
-    if (songSel >= songVisibleCount)
-        songSel = songVisibleCount > 0 ? songVisibleCount - 1 : 0;
-    songTop = 0;
-}
-
-/* ------------------------------------------------------------------------- */
-/* Linhas do formulario                                                      */
-/* ------------------------------------------------------------------------- */
-
-static int RowCount(void)
-{
-    return WK_ROW_SONGS + 3 * draft.songCount;
-}
-
-static bool IsSongRow(int r)
-{
-    return r >= WK_ROW_SONGS;
-}
-
-static int SongOfRow(int r)
-{
-    return (r - WK_ROW_SONGS) / 3;
-}
-
-/* Campo de texto da linha (NULL para booleanos). cap recebe o tamanho do buffer. */
-static char *RowText(int r, size_t *cap)
-{
-    if (IsSongRow(r)) {
-        WeekEdSong *song = &draft.songs[SongOfRow(r)];
-        switch ((r - WK_ROW_SONGS) % 3) {
-            case 0: *cap = sizeof(song->name);  return song->name;
-            case 1: *cap = sizeof(song->icon);  return song->icon;
-            default: *cap = sizeof(song->color); return song->color;
+    const char *bases[2] = {current.root, "assets"};
+    const char *fmts[2] = {"%s/images/icons/%s.png", "%s/images/icons/icon-%s.png"};
+    for (int b = 0; b < 2; ++b) {
+        for (int f = 0; f < 2; ++f) {
+            snprintf(out, cap, fmts[f], bases[b], name);
+            if (FileExists(out))
+                return true;
         }
     }
-    switch (r) {
-        case WK_ROW_STORY:  *cap = sizeof(draft.storyName);  return draft.storyName;
-        case WK_ROW_NAME:   *cap = sizeof(draft.weekName);   return draft.weekName;
-        case WK_ROW_BG:     *cap = sizeof(draft.background); return draft.background;
-        case WK_ROW_BEFORE: *cap = sizeof(draft.before);     return draft.before;
-        case WK_ROW_CHAR0:
-        case WK_ROW_CHAR0 + 1:
-        case WK_ROW_CHAR0 + 2:
-            *cap = sizeof(draft.chars[0]);
-            return draft.chars[r - WK_ROW_CHAR0];
-        default: *cap = 0; return NULL;
+    return false;
+}
+
+static void RefreshPreviews(void)
+{
+    if (strcmp(coverFor, draft.background) != 0) {
+        snprintf(coverFor, sizeof(coverFor), "%s", draft.background);
+        UnloadTex(&cover);
+        char path[MODED_ROOT_MAX + 128];
+        coverFound = draft.background[0] && ModEd_IsSafeName(draft.background) && FindCover(draft.background, path, sizeof(path));
+        if (coverFound)
+            cover = Render_LoadTexture(path);
     }
-}
 
-static bool *RowBool(int r)
-{
-    switch (r) {
-        case WK_ROW_UNLOCK:  return &draft.startUnlocked;
-        case WK_ROW_HIDE_ST: return &draft.hideStoryMode;
-        case WK_ROW_HIDE_FP: return &draft.hideFreeplay;
-        default: return NULL;
+    const char *want = (draft.songCount > 0 && songList.sel < draft.songCount) ? draft.songs[songList.sel].icon : "";
+    if (strcmp(iconFor, want) != 0) {
+        snprintf(iconFor, sizeof(iconFor), "%s", want);
+        UnloadTex(&icon);
+        char path[MODED_ROOT_MAX + 128];
+        if (want[0] && ModEd_IsSafeName(want) && FindIcon(want, path, sizeof(path)))
+            icon = Render_LoadTexture(path);
     }
-}
-
-static void RowLabel(int r, char *out, size_t cap)
-{
-    if (IsSongRow(r)) {
-        const int s = SongOfRow(r) + 1;
-        switch ((r - WK_ROW_SONGS) % 3) {
-            case 0: snprintf(out, cap, "musica %d: pasta em songs/", s); break;
-            case 1: snprintf(out, cap, "musica %d: icone", s); break;
-            default: snprintf(out, cap, "musica %d: cor r,g,b", s); break;
-        }
-        return;
-    }
-    switch (r) {
-        case WK_ROW_STORY:   snprintf(out, cap, "titulo da historia (storyName)"); break;
-        case WK_ROW_NAME:    snprintf(out, cap, "nome da semana (weekName)"); break;
-        case WK_ROW_BG:      snprintf(out, cap, "fundo (weekBackground)"); break;
-        case WK_ROW_BEFORE:  snprintf(out, cap, "semana anterior (weekBefore)"); break;
-        case WK_ROW_CHAR0:   snprintf(out, cap, "personagem 1 (boyfriend/dad/gf)"); break;
-        case WK_ROW_CHAR0+1: snprintf(out, cap, "personagem 2"); break;
-        case WK_ROW_CHAR0+2: snprintf(out, cap, "personagem 3"); break;
-        case WK_ROW_UNLOCK:  snprintf(out, cap, "desbloqueada (startUnlocked)"); break;
-        case WK_ROW_HIDE_ST: snprintf(out, cap, "esconder no story mode"); break;
-        case WK_ROW_HIDE_FP: snprintf(out, cap, "esconder no freeplay"); break;
-        default:             out[0] = '\0'; break;
-    }
-}
-
-static void MarkDirty(void)
-{
-    dirty = true;
-    escArmed = false;
-}
-
-/* Remove a musica s e fecha o buco. */
-static void RemoveSong(int s)
-{
-    if (s < 0 || s >= draft.songCount)
-        return;
-    for (int i = s; i < draft.songCount - 1; ++i)
-        draft.songs[i] = draft.songs[i + 1];
-    memset(&draft.songs[draft.songCount - 1], 0, sizeof(WeekEdSong));
-    --draft.songCount;
-    if (row >= RowCount())
-        row = RowCount() - 1;
-    MarkDirty();
-}
-
-static void MoveSong(int s, int delta)
-{
-    const int t = s + delta;
-    if (s < 0 || t < 0 || s >= draft.songCount || t >= draft.songCount)
-        return;
-    WeekEdSong tmp = draft.songs[s];
-    draft.songs[s] = draft.songs[t];
-    draft.songs[t] = tmp;
-    row = WK_ROW_SONGS + t * 3 + (row - WK_ROW_SONGS) % 3;
-    MarkDirty();
-}
-
-static void AddSong(const char *name)
-{
-    if (draft.songCount >= WEEK_MAX_SONGS) {
-        SetStatus("limite de musicas da semana atingido");
-        return;
-    }
-    WeekEdSong *song = &draft.songs[draft.songCount++];
-    memset(song, 0, sizeof(*song));
-    snprintf(song->name, sizeof(song->name), "%s", name);
-    snprintf(song->color, sizeof(song->color), "%s", "146,113,253");
-    row = WK_ROW_SONGS + (draft.songCount - 1) * 3;
-    MarkDirty();
 }
 
 /* ------------------------------------------------------------------------- */
 /* Abrir / salvar                                                            */
 /* ------------------------------------------------------------------------- */
 
-static void OpenEntry(const WeekEdEntry *entry, bool create)
+static void RescanWeeks(void)
 {
-    current = *entry;
-    isNew = create;
-
-    if (create) {
-        WeekEd_Defaults(&draft, entry->file);
-        SetStatus("semana nova: salve com Ctrl+S");
-    } else {
-        char msg[200] = {0};
-        if (!WeekEd_Load(&current, &draft, msg, sizeof(msg))) {
-            SetStatus(msg);
-            return;
-        }
-        SetStatus("aberto");
-    }
-
-    row = 0;
-    rowTop = 0;
-    editing = false;
-    dirty = create;
-    escArmed = false;
-    mode = WK_EDIT;
+    entryCount = WeekEd_ScanList(entries, WEEKED_LIST_MAX);
+    MUi_PickerFilter(&weekPicker, entryCount, WeekLabel);
 }
 
-static void SaveCurrent(void)
+static void EnterEdit(void)
+{
+    mode = WK_EDIT;
+    songList = (MUiList){0};
+    coverFor[0] = '\1';   /* forca recarregar */
+    iconFor[0] = '\1';
+    MUi_TextBlur();
+}
+
+static bool OpenEntry(const WeekEdEntry *entry)
 {
     char msg[256] = {0};
-    const bool ok = WeekEd_Save(&current, &draft, msg, sizeof(msg));
-    if (ok) {
-        isNew = false;
-        dirty = false;
-        escArmed = false;
+    WeekEdDraft loaded;
+    if (!WeekEd_Load(entry, &loaded, msg, sizeof(msg))) {
+        MUi_SetStatus(MUI_ERR, "%s", msg);
+        return false;
     }
-    SetStatus(msg);
-}
-
-static void LeaveToPick(void)
-{
+    current = *entry;
+    draft = loaded;
+    isNew = false;
     dirty = false;
-    escArmed = false;
-    editing = false;
+    EnterEdit();
+    MUi_SetStatus(MUI_OK, "aberto: %s/weeks/%s.json", current.root, current.file);
+    return true;
+}
+
+static void CreateNew(const char *file)
+{
+    memset(&current, 0, sizeof(current));
+    snprintf(current.file, sizeof(current.file), "%s", file);
+    snprintf(current.root, sizeof(current.root), "%s", roots[0]);
+    snprintf(current.title, sizeof(current.title), "%s", file);
+    WeekEd_Defaults(&draft, file);
+    isNew = true;
+    dirty = true;
+    EnterEdit();
+    MUi_SetStatus(MUI_INFO, "semana nova em %s/weeks: Ctrl+S salva", current.root);
+}
+
+static bool SaveCurrent(void)
+{
+    char msg[300] = {0};
+    if (!WeekEd_Save(&current, &draft, msg, sizeof(msg))) {
+        MUi_SetStatus(MUI_ERR, "%s", msg);
+        return false;
+    }
+    isNew = false;
+    dirty = false;
+    MUi_SetStatus(MUI_OK, "%s", msg);
+    return true;
+}
+
+static void ToPick(void)
+{
     mode = WK_PICK;
-    entryCount = WeekEd_ScanList(entries, WEEKED_LIST_MAX);
-    Rebuild_Pick();
+    dirty = false;
+    RescanWeeks();
+    MUi_TextBlur();
+}
+
+static void AskOpenPath(void)
+{
+    MUi_PromptOpen(PROMPT_OPEN, "Abrir semana", "Caminho do .json da semana. Ex.: assets/mods/MeuMod/weeks/week1.json", "");
+}
+
+static void AskNew(const char *initial)
+{
+    char hint[MODED_ROOT_MAX + 96];
+    snprintf(hint, sizeof(hint), "Nome do arquivo (letras, numeros, - _ .). Vai para %s/weeks/", roots[0]);
+    MUi_PromptOpen(PROMPT_NEW, "Nova semana", hint, initial);
+}
+
+static void OpenTypedPath(const char *typed)
+{
+    char path[MODED_ROOT_MAX * 2];
+    snprintf(path, sizeof(path), "%s", typed);
+    ModEd_CleanPath(path);
+
+    /* so o nome: procura na lista */
+    if (!strchr(path, '/')) {
+        char *dot = strrchr(path, '.');
+        if (dot && strcmp(dot, ".json") == 0)
+            *dot = '\0';
+        for (int i = 0; i < entryCount; ++i) {
+            if (strcmp(entries[i].file, path) == 0) {
+                OpenEntry(&entries[i]);
+                return;
+            }
+        }
+        MUi_PromptReopen("nenhuma semana com esse nome: cole o caminho do .json");
+        return;
+    }
+
+    WeekEdEntry entry = {0};
+    char msg[MODED_ROOT_MAX * 2 + 32];
+    if (!ModEd_SplitPath(path, "weeks", entry.root, sizeof(entry.root), entry.file, sizeof(entry.file))) {
+        MUi_PromptReopen("o arquivo precisa estar numa pasta weeks/ (ex.: .../weeks/week1.json)");
+        return;
+    }
+    char full[MODED_ROOT_MAX + MODED_NAME_MAX + 16];
+    snprintf(full, sizeof(full), "%s/weeks/%s.json", entry.root, entry.file);
+    if (!FileExists(full)) {
+        snprintf(msg, sizeof(msg), "nao achei: %s", full);
+        MUi_PromptReopen(msg);
+        return;
+    }
+    snprintf(entry.title, sizeof(entry.title), "%s", entry.file);
+    if (!OpenEntry(&entry))
+        MUi_PromptReopen("JSON invalido (veja a barra de status)");
+}
+
+static void TryNew(const char *name)
+{
+    if (!ModEd_IsSafeName(name)) {
+        MUi_PromptReopen("nome invalido: use letras, digitos, - _ . (sem espacos)");
+        return;
+    }
+    char path[MODED_ROOT_MAX + MODED_NAME_MAX + 16];
+    snprintf(path, sizeof(path), "%s/weeks/%s.json", roots[0], name);
+    if (FileExists(path)) {
+        MUi_PromptReopen("ja existe uma semana com esse nome");
+        return;
+    }
+    CreateNew(name);
 }
 
 /* ------------------------------------------------------------------------- */
-/* Update: escolha de semana                                                 */
+/* Musicas                                                                   */
 /* ------------------------------------------------------------------------- */
+
+static void MarkDirty(void)
+{
+    dirty = true;
+}
+
+static void SelectSong(int i)
+{
+    if (draft.songCount <= 0)
+        return;
+    songList.sel = i < 0 ? 0 : (i >= draft.songCount ? draft.songCount - 1 : i);
+    MUi_TextBlur();
+}
+
+static void AddSong(const char *name)
+{
+    if (draft.songCount >= WEEK_MAX_SONGS) {
+        MUi_SetStatus(MUI_WARN, "limite de %d musicas", WEEK_MAX_SONGS);
+        return;
+    }
+    WeekEdSong *song = &draft.songs[draft.songCount++];
+    WeekEd_DefaultSong(song, name);
+    if (draft.chars[0][0])
+        snprintf(song->icon, sizeof(song->icon), "%s", draft.chars[0]);
+    SelectSong(draft.songCount - 1);
+    MarkDirty();
+}
+
+static void RemoveSong(void)
+{
+    const int s = songList.sel;
+    if (s < 0 || s >= draft.songCount)
+        return;
+    for (int i = s; i < draft.songCount - 1; ++i)
+        draft.songs[i] = draft.songs[i + 1];
+    --draft.songCount;
+    SelectSong(s);
+    MarkDirty();
+}
+
+static void MoveSong(int delta)
+{
+    const int s = songList.sel, t = s + delta;
+    if (s < 0 || t < 0 || s >= draft.songCount || t >= draft.songCount)
+        return;
+    const WeekEdSong tmp = draft.songs[s];
+    draft.songs[s] = draft.songs[t];
+    draft.songs[t] = tmp;
+    SelectSong(t);
+    MarkDirty();
+}
+
+static void OpenSongPicker(void)
+{
+    songNameCount = WeekEd_ScanSongs(songNames, WEEKED_LIST_MAX);
+    songPicker.search[0] = '\0';
+    songPicker.list = (MUiList){0};
+    MUi_PickerFilter(&songPicker, songNameCount, SongLabel);
+    MUi_TextBlur();
+    mode = WK_SONG;
+}
+
+/* ------------------------------------------------------------------------- */
+/* Retangulos da edicao                                                      */
+/* ------------------------------------------------------------------------- */
+
+static float FormRowY(int row) { return kForm.y + 44.0f + (float)row * FORM_ROW_H; }
+static Rectangle FormField(int row) { return (Rectangle){kForm.x + 170.0f, FormRowY(row), kForm.width - 188.0f, 34.0f}; }
+static Rectangle CharField(int i) { return (Rectangle){kForm.x + 170.0f + (float)i * 144.0f, FormRowY(F_TEXT_COUNT), 136.0f, 34.0f}; }
+static Rectangle CheckRect(int i)
+{
+    const float y = FormRowY(F_TEXT_COUNT + 1);
+    if (i == 0) return (Rectangle){kForm.x + 20.0f, y, 170.0f, 30.0f};
+    if (i == 1) return (Rectangle){kForm.x + 196.0f, y, 200.0f, 30.0f};
+    return (Rectangle){kForm.x + 400.0f, y, 200.0f, 30.0f};
+}
+static Rectangle CoverRect(void) { return (Rectangle){kForm.x + 20.0f, kForm.y + 476.0f, 236.0f, 132.0f}; }
+
+static Rectangle SongListRect(void) { return (Rectangle){kSongs.x + 12.0f, kSongs.y + 42.0f, kSongs.width - 24.0f, 300.0f}; }
+static Rectangle SongBtn(int i) { return (Rectangle){kSongs.x + 12.0f + (float)i * 152.0f, kSongs.y + 352.0f, 144.0f, 34.0f}; }
+static Rectangle SongName(void) { return (Rectangle){kSongs.x + 100.0f, kSongs.y + 432.0f, 320.0f, 34.0f}; }
+static Rectangle SongIcon(void) { return (Rectangle){kSongs.x + 100.0f, kSongs.y + 478.0f, 320.0f, 34.0f}; }
+static Rectangle SongColor(int c) { return (Rectangle){kSongs.x + 100.0f + (float)c * 92.0f, kSongs.y + 524.0f, 84.0f, 34.0f}; }
+static Rectangle IconBox(void) { return (Rectangle){kSongs.x + 450.0f, kSongs.y + 420.0f, 150.0f, 150.0f}; }
+
+static char *FormText(int f)
+{
+    switch (f) {
+        case F_STORY:  return draft.storyName;
+        case F_NAME:   return draft.weekName;
+        case F_FLAVOR: return draft.flavor;
+        case F_DIFFS:  return draft.difficulties;
+        case F_BG:     return draft.background;
+        default:       return draft.before;
+    }
+}
+
+static size_t FormCap(int f)
+{
+    switch (f) {
+        case F_STORY:  return sizeof(draft.storyName);
+        case F_NAME:   return sizeof(draft.weekName);
+        case F_FLAVOR: return sizeof(draft.flavor);
+        case F_DIFFS:  return sizeof(draft.difficulties);
+        case F_BG:     return sizeof(draft.background);
+        default:       return sizeof(draft.before);
+    }
+}
+
+/* ------------------------------------------------------------------------- */
+/* Update                                                                    */
+/* ------------------------------------------------------------------------- */
+
+static void HandleModal(void)
+{
+    int id = 0;
+    const MUiModalResult res = MUi_ModalUpdate(&id);
+    if (res == MUI_MODAL_NONE)
+        return;
+
+    switch (id) {
+        case PROMPT_OPEN:
+            if (res == MUI_MODAL_OK)
+                OpenTypedPath(MUi_PromptText());
+            break;
+        case PROMPT_NEW:
+            if (res == MUI_MODAL_OK)
+                TryNew(MUi_PromptText());
+            break;
+        case CONFIRM_LEAVE:
+        case CONFIRM_OPEN:
+        case CONFIRM_NEW:
+            if (res == MUI_MODAL_CANCEL || (res == MUI_MODAL_OK && !SaveCurrent()))
+                break;
+            dirty = false;
+            if (id == CONFIRM_LEAVE)
+                ToPick();
+            else if (id == CONFIRM_OPEN)
+                AskOpenPath();
+            else
+                AskNew("");
+            break;
+        default:
+            break;
+    }
+}
 
 static void Pick_Update(void)
 {
-    if (ModEd_TypeText(filter, sizeof(filter)))
-        Rebuild_Pick();
-
-    if (IsKeyPressed(KEY_ESCAPE)) {
-        ModdingMenu_SetScene();
+    if (MUi_Button(kBtnLeft) || (MUi_Ctrl() && IsKeyPressed(KEY_O))) {
+        AskOpenPath();
         return;
     }
-    if (Pressed(KEY_DOWN))
-        MoveIndex(&pickSel, pickVisibleCount, 1);
-    if (Pressed(KEY_UP))
-        MoveIndex(&pickSel, pickVisibleCount, -1);
-    ScrollTo(&pickTop, pickSel, WK_PICK_ROWS);
-
-    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-        const Vector2 m = RayGame_MouseWorld();
-        if (m.x >= WK_PICK_X && m.x < WK_PICK_X + 760.0f && m.y >= WK_PICK_Y) {
-            const int idx = (int)((m.y - WK_PICK_Y) / WK_PICK_ROW_H) + pickTop;
-            if (idx >= 0 && idx < pickVisibleCount)
-                OpenEntry(&entries[pickVisible[idx]], false);
-        }
+    if (MUi_Button(kBtnRight) || (MUi_Ctrl() && IsKeyPressed(KEY_N))) {
+        AskNew("");
+        return;
     }
 
-    if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER)) {
-        if (pickVisibleCount > 0) {
-            OpenEntry(&entries[pickVisible[pickSel]], false);
-        } else if (!ModEd_IsSafeName(filter)) {
-            SetStatus("nome invalido: use letras, digitos, - _ . (sem espacos)");
-        } else {
-            WeekEdEntry fresh = {0};
-            snprintf(fresh.file, sizeof(fresh.file), "%s", filter);
-            snprintf(fresh.root, sizeof(fresh.root), "%s", roots[0]);
-            snprintf(fresh.title, sizeof(fresh.title), "%s", filter);
-            OpenEntry(&fresh, true);
-        }
-    }
+    const int pick = MUi_PickerUpdate(&weekPicker, kPicker, entryCount, WeekLabel);
+    if (pick >= 0)
+        OpenEntry(&entries[pick]);
+    else if (pick == MUI_PICK_NEW)
+        AskNew(weekPicker.search);
+    else if (pick == MUI_PICK_BACK)
+        ModdingMenu_SetScene();
 }
-
-/* ------------------------------------------------------------------------- */
-/* Update: picker de musicas                                                 */
-/* ------------------------------------------------------------------------- */
 
 static void Song_Update(void)
 {
-    if (ModEd_TypeText(songFilter, sizeof(songFilter)))
-        Rebuild_Songs();
-
-    if (IsKeyPressed(KEY_ESCAPE)) {
+    if (MUi_Button(kBtnRight)) {
         mode = WK_EDIT;
         return;
     }
-    if (Pressed(KEY_DOWN))
-        MoveIndex(&songSel, songVisibleCount, 1);
-    if (Pressed(KEY_UP))
-        MoveIndex(&songSel, songVisibleCount, -1);
-    ScrollTo(&songTop, songSel, WK_PICK_ROWS);
-
-    if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER)) {
-        if (songVisibleCount > 0) {
-            AddSong(songNames[songVisible[songSel]]);
-            mode = WK_EDIT;
-        } else if (ModEd_IsSafeName(songFilter)) {
-            AddSong(songFilter);
+    const int pick = MUi_PickerUpdate(&songPicker, kPicker, songNameCount, SongLabel);
+    if (pick >= 0) {
+        AddSong(songNames[pick]);
+        mode = WK_EDIT;
+    } else if (pick == MUI_PICK_NEW) {
+        if (ModEd_IsSafeName(songPicker.search)) {
+            AddSong(songPicker.search);
             mode = WK_EDIT;
         } else {
-            SetStatus("nome de musica invalido");
+            MUi_SetStatus(MUI_WARN, "nome de pasta invalido");
         }
+    } else if (pick == MUI_PICK_BACK) {
+        mode = WK_EDIT;
     }
-}
-
-/* ------------------------------------------------------------------------- */
-/* Update: formulario                                                        */
-/* ------------------------------------------------------------------------- */
-
-static void StartEditing(int r)
-{
-    size_t cap = 0;
-    char *text = RowText(r, &cap);
-    if (!text)
-        return;
-    snprintf(editBackup, sizeof(editBackup), "%s", text);
-    editing = true;
 }
 
 static void Edit_Update(void)
 {
-    const bool ctrl = IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL);
+    if (MUi_Button(kBtnRight))
+        SaveCurrent();
+    if (MUi_Button(kBtnLeft)) {
+        if (dirty)
+            MUi_ConfirmOpen(CONFIRM_OPEN, "Abrir outra semana", "Ha alteracoes nao salvas nesta semana.");
+        else
+            AskOpenPath();
+        return;
+    }
 
+    /* formulario */
+    for (int f = 0; f < F_TEXT_COUNT; ++f) {
+        const MUiTextEvent ev = MUi_TextField(FormField(f), FormText(f), FormCap(f));
+        if (ev == MUI_TXT_EDIT || ev == MUI_TXT_CANCEL)
+            MarkDirty();
+    }
+    for (int i = 0; i < 3; ++i) {
+        const MUiTextEvent ev = MUi_TextField(CharField(i), draft.chars[i], sizeof(draft.chars[i]));
+        if (ev == MUI_TXT_EDIT || ev == MUI_TXT_CANCEL)
+            MarkDirty();
+    }
+    bool *flags[3] = {&draft.startUnlocked, &draft.hideStoryMode, &draft.hideFreeplay};
+    for (int i = 0; i < 3; ++i) {
+        if (MUi_Check(CheckRect(i), flags[i]))
+            MarkDirty();
+    }
+
+    /* musicas */
+    const int clicked = MUi_List(&songList, SongListRect(), SONG_ROW_H, draft.songCount, NULL);
+    if (clicked >= 0)
+        SelectSong(clicked);
+    if (MUi_Button(SongBtn(0))) {
+        OpenSongPicker();
+        return;
+    }
+    if (MUi_Button(SongBtn(1)))
+        RemoveSong();
+    if (MUi_Button(SongBtn(2)))
+        MoveSong(-1);
+    if (MUi_Button(SongBtn(3)))
+        MoveSong(1);
+
+    if (songList.sel >= 0 && songList.sel < draft.songCount) {
+        WeekEdSong *song = &draft.songs[songList.sel];
+        MUiTextEvent ev = MUi_TextField(SongName(), song->name, sizeof(song->name));
+        if (ev == MUI_TXT_EDIT || ev == MUI_TXT_CANCEL)
+            MarkDirty();
+        ev = MUi_TextField(SongIcon(), song->icon, sizeof(song->icon));
+        if (ev == MUI_TXT_EDIT || ev == MUI_TXT_CANCEL)
+            MarkDirty();
+        for (int c = 0; c < 3; ++c) {
+            if (MUi_NumInt(SongColor(c), &song->color[c], 1, 0, 255))
+                MarkDirty();
+        }
+    }
+
+    RefreshPreviews();
+
+    if (!MUi_KeysFree())
+        return;
+
+    const bool ctrl = MUi_Ctrl();
     if (ctrl && IsKeyPressed(KEY_S)) {
-        editing = false;
         SaveCurrent();
         return;
     }
-
-    /* Edicao de texto: digita no campo; Enter confirma; ESC cancela. */
-    if (editing) {
-        size_t cap = 0;
-        char *text = RowText(row, &cap);
-        if (text && ModEd_TypeText(text, cap))
-            MarkDirty();
-
-        if (IsKeyPressed(KEY_ESCAPE)) {
-            if (text)
-                snprintf(text, cap, "%s", editBackup);
-            editing = false;
-            return;
-        }
-        if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER) || IsKeyPressed(KEY_TAB)) {
-            editing = false;
-        }
+    if (ctrl && IsKeyPressed(KEY_O)) {
+        if (dirty)
+            MUi_ConfirmOpen(CONFIRM_OPEN, "Abrir outra semana", "Ha alteracoes nao salvas nesta semana.");
+        else
+            AskOpenPath();
         return;
     }
-
+    if (ctrl && IsKeyPressed(KEY_N)) {
+        if (dirty)
+            MUi_ConfirmOpen(CONFIRM_NEW, "Nova semana", "Ha alteracoes nao salvas nesta semana.");
+        else
+            AskNew("");
+        return;
+    }
     if (IsKeyPressed(KEY_ESCAPE)) {
-        if (dirty && !escArmed) {
-            escArmed = true;
-            SetStatus("ha mudancas nao salvas: ESC de novo sai sem salvar (Ctrl+S salva)");
-            return;
-        }
-        LeaveToPick();
+        if (dirty)
+            MUi_ConfirmOpen(CONFIRM_LEAVE, "Voltar a lista", "Ha alteracoes nao salvas nesta semana.");
+        else
+            ToPick();
         return;
     }
-
-    const int count = RowCount();
-    if (Pressed(KEY_DOWN))
-        MoveIndex(&row, count, 1);
-    if (Pressed(KEY_UP))
-        MoveIndex(&row, count, -1);
-    ScrollTo(&rowTop, row, WK_ROWS);
-
-    /* Mouse: clique seleciona a linha; clicar na linha ja selecionada age como Enter. */
-    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-        const Vector2 m = RayGame_MouseWorld();
-        if (m.x >= WK_LABEL_X - 6.0f && m.x < 1220.0f && m.y >= WK_TOP_Y - 2.0f) {
-            const int idx = (int)((m.y - WK_TOP_Y + 2.0f) / WK_ROW_H);
-            const int target = rowTop + idx;
-            if (idx >= 0 && idx < WK_ROWS && target < count) {
-                if (target != row) {
-                    row = target;
-                } else {
-                    bool *flag = RowBool(row);
-                    if (flag) {
-                        *flag = !*flag;
-                        MarkDirty();
-                    } else {
-                        StartEditing(row);
-                    }
-                }
-                return;
-            }
-        }
-    }
-
-    if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER)) {
-        bool *flag = RowBool(row);
-        if (flag) {
-            *flag = !*flag;
-            MarkDirty();
-        } else {
-            StartEditing(row);
-        }
-        return;
-    }
-
-    if (IsKeyPressed(KEY_A)) {
-        songFilter[0] = '\0';
-        songSel = 0;
-        songCount = WeekEd_ScanSongs(songNames, WEEKED_LIST_MAX);
-        Rebuild_Songs();
-        mode = WK_SONG;
-        return;
-    }
-
-    if (IsKeyPressed(KEY_DELETE) && IsSongRow(row))
-        RemoveSong(SongOfRow(row));
-
-    if (IsKeyPressed(KEY_PAGE_UP) && IsSongRow(row))
-        MoveSong(SongOfRow(row), -1);
-    if (IsKeyPressed(KEY_PAGE_DOWN) && IsSongRow(row))
-        MoveSong(SongOfRow(row), 1);
+    if (IsKeyPressed(KEY_A))
+        OpenSongPicker();
+    if (IsKeyPressed(KEY_DELETE))
+        RemoveSong();
+    if (ctrl && MUi_Rep(KEY_UP))
+        MoveSong(-1);
+    else if (ctrl && MUi_Rep(KEY_DOWN))
+        MoveSong(1);
+    else if (MUi_ListKeys(&songList, SongListRect(), SONG_ROW_H, draft.songCount))
+        SelectSong(songList.sel);
 }
 
-static void WeekEditor_Update([[maybe_unused]] RayScene *scene)
+static void WeekEditor_Update(RayScene *scene)
 {
-    if (statusTimer > 0.0f)
-        statusTimer -= RayGame_DeltaTime();
+    MUi_FrameBegin();
+    MUi_Tick(RayGame_DeltaTime());
 
-    if (mode == WK_PICK)
+    if (MUi_ModalActive())
+        HandleModal();
+    else if (mode == WK_PICK)
         Pick_Update();
     else if (mode == WK_SONG)
         Song_Update();
     else
         Edit_Update();
+
+    if (MUi_Busy())
+        RayScene_RequestRedraw(scene);
 }
 
 /* ------------------------------------------------------------------------- */
 /* Draw                                                                      */
 /* ------------------------------------------------------------------------- */
 
-static void BeginUi(void)
-{
-    Render_SetCamera(&uiCam);
-}
-
-static void EndUi(void)
-{
-    Render_StopCamera();
-}
-
-/* Chamado dentro de BeginUi(): coordenadas virtuais 1280x720. */
-static void DrawBackdrop(void)
-{
-    ClearBackground(BLACK);
-    Render_DrawGraphicObject(&bg);
-    DrawRectangle(0, 0, 1280, 720, (Color){0, 0, 0, 150});
-}
-
-static void DrawStatus(void)
-{
-    if (statusTimer > 0.0f && status[0])
-        WK_Text(status, 20.0f, 52.0f, 20.0f, YELLOW);
-}
-
-static void DrawFilterLine(const char *label, const char *text, float y)
-{
-    WK_Text(label, WK_PICK_X, y, 22.0f, GRAY);
-    WK_Text(text, WK_PICK_X + 80.0f, y, 22.0f, WHITE);
-    const float w = MeasureTextEx(mainFont, text, 22.0f, 1.0f).x;
-    DrawRectangle((int)(WK_PICK_X + 80.0f + w + 2.0f), (int)y, 2, 22, WHITE);
-}
-
 static void Pick_Draw(void)
 {
-    WK_Text("WEEK EDITOR - escolha uma semana", 20.0f, 20.0f, 28.0f, WHITE);
-    DrawFilterLine("filtro:", filter, 100.0f);
-
-    for (int i = 0; i < WK_PICK_ROWS; ++i) {
-        const int idx = pickTop + i;
-        if (idx >= pickVisibleCount)
-            break;
-        const float y = WK_PICK_Y + i * WK_PICK_ROW_H;
-        const bool on = idx == pickSel;
-        if (on)
-            DrawRectangle((int)WK_PICK_X - 6, (int)y - 2, 760, (int)WK_PICK_ROW_H, (Color){42, 209, 86, 60});
-        const WeekEdEntry *e = &entries[pickVisible[idx]];
-        char line[220];
-        snprintf(line, sizeof(line), "%s   (%s)   [%s]", e->title, e->file, RootLabel(e->root));
-        WK_Text(line, WK_PICK_X, y, 22.0f, on ? GREEN : WHITE);
-    }
-
-    if (entryCount == 0)
-        WK_Text("nenhuma semana encontrada: digite um nome e Enter para criar", WK_PICK_X, WK_PICK_Y, 22.0f, GRAY);
-    else if (pickVisibleCount == 0 && filter[0])
-        WK_Text("Enter cria a semana nova com este nome", WK_PICK_X, WK_PICK_Y, 22.0f, GRAY);
-
-    WK_Text("Up/Down escolhe   Enter abre   ESC volta ao menu", 20.0f, 690.0f, 18.0f, GRAY);
-    DrawStatus();
-}
-
-static void Edit_Draw(void)
-{
-    char head[256];
-    snprintf(head, sizeof(head), "WEEK EDITOR - %s [%s]%s%s", current.file, RootLabel(current.root),
-             isNew ? " (nova)" : "", dirty ? " *nao salvo*" : "");
-    WK_Text(head, 20.0f, 16.0f, 24.0f, WHITE);
-
-    const int count = RowCount();
-    for (int i = 0; i < WK_ROWS; ++i) {
-        const int r = rowTop + i;
-        if (r >= count)
-            break;
-        const float y = WK_TOP_Y + i * WK_ROW_H;
-        const bool on = r == row;
-        if (on)
-            DrawRectangle((int)WK_LABEL_X - 6, (int)y - 2, 1160, (int)WK_ROW_H, (Color){42, 209, 86, 50});
-
-        char label[96];
-        RowLabel(r, label, sizeof(label));
-        WK_Text(label, WK_LABEL_X, y, 19.0f, on ? GREEN : GRAY);
-
-        bool *flag = RowBool(r);
-        if (flag) {
-            WK_Text(*flag ? "[x] sim" : "[ ] nao", WK_VALUE_X, y, 19.0f, WHITE);
-            continue;
-        }
-        size_t cap = 0;
-        const char *text = RowText(r, &cap);
-        if (!text)
-            continue;
-        if (on && editing) {
-            char shown[WEEKED_TEXT_MAX + 2];
-            snprintf(shown, sizeof(shown), "%s_", text);
-            WK_Text(shown, WK_VALUE_X, y, 19.0f, YELLOW);
-        } else {
-            WK_Text(text[0] ? text : "(vazio)", WK_VALUE_X, y, 19.0f, text[0] ? WHITE : DARKGRAY);
-        }
-    }
-
-    char foot[160];
-    snprintf(foot, sizeof(foot), "musicas: %d / %d", draft.songCount, WEEK_MAX_SONGS);
-    WK_Text(foot, 20.0f, 650.0f, 18.0f, GRAY);
-    DrawStatus();
-    WK_Text(editing
-                ? "digitando: Enter confirma   ESC cancela"
-                : "Up/Down move   Enter edita/marca   A +musica   Del remove musica   PgUp/PgDn ordem   Ctrl+S salvar   ESC volta",
-            20.0f, 690.0f, 16.0f, GRAY);
+    MUi_DrawTopBar("Week Editor", "escolha uma semana", false);
+    MUi_DrawButton(kBtnLeft, "Abrir (Ctrl+O)", MUI_BTN_NORMAL);
+    MUi_DrawButton(kBtnRight, "Nova (Ctrl+N)", MUI_BTN_ACCENT);
+    MUi_DrawPicker(&weekPicker, kPicker, WeekLabel, "buscar semana...",
+                   entryCount ? "nenhuma semana com esse nome: Enter cria uma nova" : "nenhuma semana: Enter cria uma nova");
+    MUi_DrawBottomBar("digite para buscar   Enter/clique abre   Ctrl+O abre por caminho   Ctrl+N nova   Esc volta");
 }
 
 static void Song_Draw(void)
 {
-    WK_Text("adicionar musica (pasta em songs/)", WK_PICK_X, 100.0f - 30.0f, 22.0f, YELLOW);
-    DrawFilterLine("filtro:", songFilter, 100.0f);
+    MUi_DrawTopBar("Week Editor", "adicionar musica (pasta em songs/)", dirty);
+    MUi_DrawButton(kBtnRight, "Cancelar", MUI_BTN_NORMAL);
+    MUi_DrawPicker(&songPicker, kPicker, SongLabel, "buscar pasta de musica...",
+                   "nenhuma pasta com esse nome: Enter usa o nome digitado");
+    MUi_DrawBottomBar("digite para buscar   Enter/clique adiciona   Esc cancela");
+}
 
-    for (int i = 0; i < WK_PICK_ROWS; ++i) {
-        const int idx = songTop + i;
-        if (idx >= songVisibleCount)
-            break;
-        const float y = WK_PICK_Y + i * WK_PICK_ROW_H;
-        const bool on = idx == songSel;
-        if (on)
-            DrawRectangle((int)WK_PICK_X - 6, (int)y - 2, 500, (int)WK_PICK_ROW_H, (Color){42, 209, 86, 60});
-        WK_Text(songNames[songVisible[idx]], WK_PICK_X, y, 22.0f, on ? GREEN : WHITE);
+static void DrawCover(void)
+{
+    const Rectangle box = CoverRect();
+    DrawRectangleRounded(box, 0.04f, 6, (Color){6, 4, 14, 255});
+    if (cover.id) {
+        const float s = fminf(box.width / (float)cover.width, box.height / (float)cover.height);
+        const float w = (float)cover.width * s, h = (float)cover.height * s;
+        DrawTexturePro(cover, (Rectangle){0, 0, (float)cover.width, (float)cover.height},
+                       (Rectangle){box.x + (box.width - w) * 0.5f, box.y + (box.height - h) * 0.5f, w, h},
+                       (Vector2){0, 0}, 0.0f, WHITE);
+    } else {
+        MUi_TextCenter("sem capa", box, 17.0f, MUI_C_FAINT);
     }
-    if (songVisibleCount == 0)
-        WK_Text("nenhuma pasta em songs/: Enter usa o nome digitado", WK_PICK_X, WK_PICK_Y, 22.0f, GRAY);
+    char line[160];
+    const float tx = box.x + box.width + 14.0f;
+    snprintf(line, sizeof(line), "menu_%s.png", draft.background[0] ? draft.background : "?");
+    MUi_Text(line, tx, box.y + 4.0f, 16.0f, MUI_C_DIM);
+    MUi_Text(coverFound ? "encontrada" : "nao encontrada (usa o fundo padrao)", tx, box.y + 26.0f, 15.0f,
+             coverFound ? MUI_C_OK : MUI_C_HINT);
+    snprintf(line, sizeof(line), "arquivo: %s/weeks/%s.json", current.root, current.file);
+    MUi_ClipBegin((Rectangle){tx, box.y + 60.0f, kForm.x + kForm.width - tx - 10.0f, 60.0f});
+    MUi_Text(line, tx, box.y + 60.0f, 15.0f, MUI_C_FAINT);
+    MUi_Text(isNew ? "(ainda nao salvo)" : "", tx, box.y + 80.0f, 15.0f, MUI_C_HINT);
+    MUi_ClipEnd();
+}
 
-    WK_Text("Up/Down escolhe   Enter adiciona   ESC cancela", 20.0f, 690.0f, 18.0f, GRAY);
+static void DrawForm(void)
+{
+    MUi_DrawPanel(kForm);
+    MUi_DrawSection(kForm.x + 14.0f, kForm.y + 12.0f, "Semana");
+
+    for (int f = 0; f < F_TEXT_COUNT; ++f) {
+        MUi_Text(kFormLabel[f], kForm.x + 20.0f, FormRowY(f) + 8.0f, 18.0f, MUI_C_DIM);
+        MUi_DrawTextField(FormField(f), FormText(f), kFormHint[f]);
+    }
+    MUi_Text("Personagens", kForm.x + 20.0f, FormRowY(F_TEXT_COUNT) + 8.0f, 18.0f, MUI_C_DIM);
+    for (int i = 0; i < 3; ++i)
+        MUi_DrawTextField(CharField(i), draft.chars[i], kCharHint[i]);
+
+    MUi_DrawCheck(CheckRect(0), "Desbloqueada", draft.startUnlocked);
+    MUi_DrawCheck(CheckRect(1), "Esconder no Story", draft.hideStoryMode);
+    MUi_DrawCheck(CheckRect(2), "Esconder no Freeplay", draft.hideFreeplay);
+
+    MUi_DrawSection(kForm.x + 14.0f, kForm.y + 448.0f, "Capa");
+    DrawCover();
+}
+
+static void DrawSongs(void)
+{
+    MUi_DrawPanel(kSongs);
+    char title[48];
+    snprintf(title, sizeof(title), "Musicas (%d/%d)", draft.songCount, WEEK_MAX_SONGS);
+    MUi_DrawSection(kSongs.x + 14.0f, kSongs.y + 12.0f, title);
+
+    const Rectangle r = SongListRect();
+    const int rows = MUi_ListRows(r, SONG_ROW_H);
+    MUi_DrawListBegin(r);
+    for (int i = songList.top; i < draft.songCount && i <= songList.top + rows; ++i) {
+        const WeekEdSong *song = &draft.songs[i];
+        const Rectangle row = MUi_ListRow(&songList, r, SONG_ROW_H, i);
+        MUi_DrawListRow(row, i == songList.sel);
+        char num[8];
+        snprintf(num, sizeof(num), "%d", i + 1);
+        MUi_Text(num, row.x + 10.0f, row.y + 8.0f, 17.0f, MUI_C_FAINT);
+        const Color c = {(unsigned char)song->color[0], (unsigned char)song->color[1], (unsigned char)song->color[2], 255};
+        DrawRectangleRounded((Rectangle){row.x + 38.0f, row.y + 9.0f, 16.0f, 16.0f}, 0.4f, 4, c);
+        MUi_Text(song->name[0] ? song->name : "(sem nome)", row.x + 64.0f, row.y + 6.0f, 19.0f,
+                 song->name[0] ? MUI_C_TEXT : MUI_C_BAD);
+        MUi_TextRight(song->icon, row.x + row.width - 10.0f, row.y + 9.0f, 15.0f, MUI_C_DIM);
+    }
+    MUi_DrawListEnd(&songList, r, SONG_ROW_H, draft.songCount);
+    if (draft.songCount == 0)
+        MUi_Text("sem musicas: + Musica (A)", r.x + 12.0f, r.y + 10.0f, 18.0f, MUI_C_HINT);
+
+    MUi_DrawButton(SongBtn(0), "+ Musica (A)", MUI_BTN_NORMAL);
+    MUi_DrawButton(SongBtn(1), "Remover", draft.songCount ? MUI_BTN_DANGER : MUI_BTN_OFF);
+    MUi_DrawButton(SongBtn(2), "Subir", songList.sel > 0 ? MUI_BTN_NORMAL : MUI_BTN_OFF);
+    MUi_DrawButton(SongBtn(3), "Descer", songList.sel + 1 < draft.songCount ? MUI_BTN_NORMAL : MUI_BTN_OFF);
+
+    if (songList.sel < 0 || songList.sel >= draft.songCount)
+        return;
+    const WeekEdSong *song = &draft.songs[songList.sel];
+    MUi_DrawSection(kSongs.x + 14.0f, kSongs.y + 400.0f, "Musica selecionada");
+    MUi_Text("Pasta", kSongs.x + 20.0f, SongName().y + 8.0f, 18.0f, MUI_C_DIM);
+    MUi_DrawTextField(SongName(), song->name, "nome da pasta em songs/");
+    MUi_Text("Icone", kSongs.x + 20.0f, SongIcon().y + 8.0f, 18.0f, MUI_C_DIM);
+    MUi_DrawTextField(SongIcon(), song->icon, "images/icons/<nome>.png");
+    MUi_Text("Cor", kSongs.x + 20.0f, SongColor(0).y + 8.0f, 18.0f, MUI_C_DIM);
+    for (int c = 0; c < 3; ++c)
+        MUi_DrawNum(SongColor(c), (float)song->color[c], 1.0f);
+    MUi_Text("R              G              B", kSongs.x + 132.0f, SongColor(0).y + 38.0f, 13.0f, MUI_C_FAINT);
+
+    const Rectangle box = IconBox();
+    const Color c = {(unsigned char)song->color[0], (unsigned char)song->color[1], (unsigned char)song->color[2], 255};
+    DrawRectangleRounded(box, 0.1f, 6, c);
+    if (icon.id) {
+        const Rectangle src = Character_IconFrame(icon);
+        DrawTexturePro(icon, src, box, (Vector2){0, 0}, 0.0f, WHITE);
+    } else {
+        MUi_TextCenter("sem icone", box, 16.0f, (Color){20, 16, 40, 255});
+    }
+}
+
+static void Edit_Draw(void)
+{
+    char detail[MODED_NAME_MAX + 48];
+    snprintf(detail, sizeof(detail), "%s  [%s]", current.file, ModEd_RootLabel(current.root));
+    MUi_DrawTopBar("Week Editor", detail, dirty);
+    MUi_DrawButton(kBtnLeft, "Abrir (Ctrl+O)", MUI_BTN_NORMAL);
+    MUi_DrawButton(kBtnRight, "Salvar (Ctrl+S)", dirty ? MUI_BTN_ACCENT : MUI_BTN_NORMAL);
+    DrawForm();
+    DrawSongs();
+    MUi_DrawBottomBar("clique e digite (Ctrl+C/V)   Up/Down musica   Ctrl+Up/Down ordem   A +musica   Del remove   Ctrl+S salva   Esc lista");
 }
 
 static void WeekEditor_Draw([[maybe_unused]] RayScene *scene)
 {
-    BeginUi();
-    DrawBackdrop();
+    MUi_DrawBackdrop();
     if (mode == WK_PICK)
         Pick_Draw();
     else if (mode == WK_SONG)
         Song_Draw();
     else
         Edit_Draw();
-    EndUi();
+    MUi_DrawModal();
 }
 
 /* ------------------------------------------------------------------------- */
 /* Scene lifecycle                                                           */
 /* ------------------------------------------------------------------------- */
 
-static void WeekEditor_Create([[maybe_unused]] RayScene *scene)
+static void WeekEditor_Create(RayScene *scene)
 {
-    Render_DefaultRGT(&bg);
-    bg.objType = RGT_IMAGE;
-    bg.image = MenuBackground_Get();
-
-    uiCam = (Camera2D){
-        .target = {640.0f, 360.0f},
-        .offset = {0.0f, 0.0f},
-        .rotation = 0.0f,
-        .zoom = 1.0f
-    };
-
+    scene->staticWhenIdle = true;   /* sem animacao: o loop pula o draw quando nada muda */
+    MUi_Reset();
     ModEd_Roots(roots, MODED_ROOTS_MAX);
     memset(&draft, 0, sizeof(draft));
     memset(&current, 0, sizeof(current));
+    memset(&weekPicker, 0, sizeof(weekPicker));
+    memset(&songPicker, 0, sizeof(songPicker));
     isNew = false;
-    row = 0;
-    rowTop = 0;
-    editing = false;
     dirty = false;
-    escArmed = false;
-
+    cover = icon = (Texture2D){0};
+    coverFor[0] = iconFor[0] = '\0';
     mode = WK_PICK;
-    filter[0] = '\0';
-    pickSel = 0;
-    pickTop = 0;
-    entryCount = WeekEd_ScanList(entries, WEEKED_LIST_MAX);
-    Rebuild_Pick();
-
-    status[0] = '\0';
-    statusTimer = 0.0f;
+    RescanWeeks();
 }
 
 static void WeekEditor_Destroy([[maybe_unused]] RayScene *scene)
 {
-    bg.image = (Texture2D){0}; /* compartilhada: nao descarrega aqui */
+    UnloadTex(&cover);
+    UnloadTex(&icon);
+    MUi_Reset();
 }
 
 static RayScene weekEditorScene;

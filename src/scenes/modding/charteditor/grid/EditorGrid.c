@@ -1,8 +1,12 @@
 /* // * Friday Night Funkin´ c engine (c) 2026 nordjkpl */
-/* Chart Editor: a grade (notas, linhas de tempo, cursor, mouse) e seu layout. */
+/* Chart Editor: a grade (notas, linhas de tempo, cursor, mouse) e seu layout.
+ *
+ * Ordem de desenho pensada no lote do raylib: tudo que usa a textura branca (casas, linhas como
+ * retangulos de 1 px, rastros) sai junto, e as setas (textura da skin) vem num passe so delas.
+ * DrawLine usa outro modo (RL_LINES) e quebraria o lote, por isso as linhas sao retangulos. */
 
 #include "characters/Character.h"
-#include"logic/notes/Note.h"
+#include "logic/notes/Note.h"
 #include "raymath.h"
 #include "scenes/modding/charteditor/grid/EditorGrid.h"
 #include "scenes/modding/charteditor/io/EditorDataAndIO.h"
@@ -10,49 +14,70 @@
 #include "scenes/modding/charteditor/audio/EditorAudio.h"
 #include "scenes/modding/charteditor/ui/EditorWidgets.h"
 
-/* // * Código do Chart Editor */
-// Chart Editor v1: palavras simples, sem jargao.
-// PICKER (escolher musica / abrir json) -> EDIT (grade) -> F5 testa no jogo.
-// ^ 1. Chart
-
-static Color EdLaneColor(int lane);
-
 Texture2D edIconO;
-
 Texture2D edIconP;
-
 char edIconOOk = 0;
-
 char edIconPOk = 0;
 
-// setas do proprio jogo (NOTE_assets) pras cabecas das notas
-static RayAnimatedObject edArrows[4];
+#define GRID_X1 (GRID_X0 + GRID_W)
 
-static Vector2 edArrowAdj[4];
+// barra da musica no topo (arrasta pra andar)
+#define SBAR_X GRID_X0
+#define SBAR_Y 42.0f
+#define SBAR_W GRID_W
+#define SBAR_H 8.0f
 
+/* Notas a ate 30 px fora da grade ainda aparecem (cabeca cortada pela borda). Linhas de ocupacao
+   cobrem essa faixa toda: 1 por pixel. */
+#define NOTE_MARGIN 30.0f
+#define OCC_TOP (GRID_Y0 - NOTE_MARGIN)
+enum { OCC_ROWS = (int)(GRID_Y1 - GRID_Y0 + 2 * NOTE_MARGIN) + 1 };
+
+static const Color LINE_STEP = {255, 255, 255, 26};
+static const Color LINE_BEAT = {255, 255, 255, 70};
+static const Color LINE_PART = {255, 170, 60, 230};
+static const Color CURSOR_C = {255, 70, 110, 255};
+
+static char barDrag = 0;
+
+// ---------- setas (sprites da skin, pre-calculados) ----------
+
+/* Frame 0 da animacao de cada cor ja medido: desenhar e so um DrawTexturePro,
+   sem copiar/restaurar objeto animado por nota. */
+typedef struct {
+    Texture2D tex;
+    Rectangle src;
+    float w, h;   // tamanho na tela com escala 1 (lado maior = ARROW_PX)
+    char ok;
+} EdArrowSprite;
+
+#define ARROW_PX 56.0f
+
+static EdArrowSprite edArrows[4];
 static char edArrowsReady = 0;
 
 void EdArrows_Init(void) {
     if(edArrowsReady)
         return;
     const RayAnimationHandler* nah = Note_GetCurrentSkin();
-    // sprites claros das notas (iguais aos que descem no jogo), sem tinta
-    const char* names[4] = {"purple", "blue", "green", "red"};
+    const char* names[4] = {"purple", "blue", "green", "red"};   // sprites claros, iguais aos do jogo
     for(int i = 0; i < 4; i++) {
-        Render_DefaultAnimated(edArrows + i);
-        edArrows[i].animationSet = *nah;
-        int ai = AnimationSet_FindAnimation(nah, names[i]);
-        if(ai >= 0) {
-            AnimatedObject_SetAnimation(edArrows + i, ai);
-            Frame* fr = nah->animations[ai].frames;
-            float big = (float)((fr->w > fr->h) ? fr->w : fr->h);
-            float s = (big > 1) ? 56.0f / big : 1.0f;
-            edArrows[i].scaleX = edArrows[i].scaleY = s;
-            edArrows[i].color = WHITE;
-            RayAnimation* an = nah->animations + ai;
-            edArrowAdj[i].x = (an->animationOffset.x + fr->fx) * s - fr->w * s / 2;
-            edArrowAdj[i].y = (an->animationOffset.y + fr->fy) * s - fr->h * s / 2;
-        }
+        EdArrowSprite* a = edArrows + i;
+        a->ok = 0;
+        const int ai = (nah != NULL) ? AnimationSet_FindAnimation(nah, names[i]) : -1;
+        if(ai < 0)
+            continue;
+        const RayAnimation* an = nah->animations + ai;
+        if(an->frames == NULL || an->frameCount <= 0)
+            continue;
+        const Frame* fr = an->frames;
+        const float big = (float)((fr->w > fr->h) ? fr->w : fr->h);
+        const float s = (big > 1) ? ARROW_PX / big : 1.0f;
+        a->tex = nah->texture;
+        a->src = (Rectangle){(float)fr->x, (float)fr->y, (float)fr->w, (float)fr->h};
+        a->w = fr->w * s;
+        a->h = fr->h * s;
+        a->ok = 1;
     }
     edArrowsReady = 1;
 }
@@ -62,279 +87,255 @@ void EdArrows_Reset(void) {
     EdArrows_Init();
 }
 
-// seta da lane (0..3) centralizada em (cx, cy) com ~size pixels; usada como icone nos menus
-void EdArrows_DrawIcon(int lane, float cx, float cy, float size, Color tint) {
-    if(!edArrowsReady)
+// seta da lane (0..3) centrada em (cx, cy); k = escala sobre ARROW_PX
+static void EdArrow_Draw(int lane, float cx, float cy, float k, Color tint) {
+    const EdArrowSprite* a = edArrows + (lane & 3);
+    if(!a->ok || tint.a == 0)
         return;
-    int d = lane & 3;
-    Color keepC = edArrows[d].color;
-    float keepSx = edArrows[d].scaleX;
-    float keepSy = edArrows[d].scaleY;
-    float k = size / 56.0f;
-    edArrows[d].color = tint;
-    edArrows[d].scaleX = keepSx * k;
-    edArrows[d].scaleY = keepSy * k;
-    edArrows[d].position.x = cx + edArrowAdj[d].x * k;
-    edArrows[d].position.y = cy + edArrowAdj[d].y * k;
-    Render_DrawAnimatedObject(edArrows + d);
-    edArrows[d].color = keepC;
-    edArrows[d].scaleX = keepSx;
-    edArrows[d].scaleY = keepSy;
+    const float w = a->w * k, h = a->h * k;
+    DrawTexturePro(a->tex, a->src, (Rectangle){cx - w * 0.5f, cy - h * 0.5f, w, h}, (Vector2){0, 0}, 0, tint);
 }
+
+// icone de seta nos menus (~size pixels)
+void EdArrows_DrawIcon(int lane, float cx, float cy, float size, Color tint) {
+    if(edArrowsReady)
+        EdArrow_Draw(lane, cx, cy, size / ARROW_PX, tint);
+}
+
+// ---------- geometria ----------
 
 float EdPxPerMs(void) {
     return (GRID_Y1 - GRID_Y0) / (float)VIEW_MS;
 }
 
+static float Grid_Y(double t, float ppm) {
+    return GRID_Y0 + (float)((t - viewTopMs) * ppm);
+}
+
+static float Grid_LaneCX(int dispLane) {
+    return GRID_X0 + dispLane * LANE_W + LANE_W * 0.5f;
+}
+
+int EdGrid_LaneAt(Vector2 m) {
+    if(m.x < GRID_X0 || m.x >= GRID_X1 || m.y < GRID_Y0 || m.y > GRID_Y1)
+        return -1;
+    return (int)((m.x - GRID_X0) / LANE_W);
+}
+
+double EdGrid_TimeAt(float y) {
+    return viewTopMs + (y - GRID_Y0) / EdPxPerMs();
+}
+
 static Color EdLaneColor(int lane) {
-    switch(lane % 4) {
-        case 0: return (Color) {200, 80, 255, 255};
-        case 1: return (Color) {80, 180, 255, 255};
-        case 2: return (Color) {80, 255, 150, 255};
-        default: return (Color) {255, 90, 90, 255};
+    switch(lane & 3) {
+        case 0: return (Color){200, 80, 255, 255};
+        case 1: return (Color){80, 180, 255, 255};
+        case 2: return (Color){80, 255, 150, 255};
+        default: return (Color){255, 90, 90, 255};
     }
 }
 
-// barra da musica no topo (arrasta pra andar; substitui os botoes de trecho)
-#define SBAR_X GRID_X0
-
-#define SBAR_Y 36.0f
-
-#define SBAR_W (LANE_W * 8)
-
-#define SBAR_H 16.0f
-
-static char barDrag = 0;
-
-// ---------- desenho da grade (cada parte numa funcao) ----------
-
-// barra da musica (preta e branca, arrasta pra andar)
-static void Grid_DrawSongBar(void) {
-    double end = SongEndMs();
-    if(end < 1000) end = 1000;
-    float frac = Clamp((float)(cursorMs / end), 0.0f, 1.0f);
-    float kx = SBAR_X + frac * SBAR_W;
-    DrawRectangle((int)SBAR_X, (int)SBAR_Y, (int)SBAR_W, (int)SBAR_H, BLACK);
-    DrawRectangle((int)SBAR_X, (int)SBAR_Y, (int)(kx - SBAR_X), (int)SBAR_H, WHITE);
-    DrawRectangle((int)(kx - 6), (int)SBAR_Y - 2, 12, (int)SBAR_H + 4, RED);
+static float Grid_SongFrac(void) {
+    const double end = fmax(SongEndMs(), 1000.0);
+    return Clamp((float)(cursorMs / end), 0.0f, 1.0f);
 }
 
-// fundo, casas, lado do jogador e icones dos cantores
-static void Grid_DrawBackground(void) {
-    const int gridW = (int)(LANE_W * 8);
-    const int gridH = (int)(GRID_Y1 - GRID_Y0);
+// ---------- desenho ----------
 
-    DrawRectangle((int)GRID_X0 - 10, (int)GRID_Y0 - 34, gridW + 20, gridH + 44, (Color) {12, 12, 12, 255});
+// moldura, casas, lado do jogador, casa sob o mouse e icones dos cantores
+static void Grid_DrawBackground(int hoverLane) {
+    const float gridH = GRID_Y1 - GRID_Y0;
+    const Rectangle frame = {GRID_X0 - 12, MENU_H + 6, GRID_W + 24, GRID_Y1 + 10 - (MENU_H + 6)};
+    DrawRectangleRounded(frame, 0.03f, 6, ED_C_POPUP);
+    DrawRectangleRoundedLinesEx(frame, 0.03f, 6, 1.0f, ED_C_EDGE);
 
-    // casas pretas (tema preto; da pra ver onde clica)
     for(int l = 0; l < 8; l++) {
-        int x = (int)(GRID_X0 + l * LANE_W);
-        DrawRectangle(x + 1, (int)GRID_Y0, (int)LANE_W - 2, gridH, (Color) {22, 22, 22, 255});
+        const float x = GRID_X0 + l * LANE_W;
+        DrawRectangleRec((Rectangle){x, GRID_Y0, LANE_W, gridH}, (l & 1) ? (Color){26, 23, 46, 255} : (Color){21, 19, 38, 255});
+        DrawRectangleRec((Rectangle){x + 8, GRID_Y0 - 6, LANE_W - 16, 3}, EdLaneColor(l));   // cor da seta da casa
     }
+    // seu lado (direita) levemente verde
+    DrawRectangleRec((Rectangle){GRID_X0 + LANE_W * 4, GRID_Y0, LANE_W * 4, gridH}, (Color){120, 230, 150, 24});
+    if(hoverLane >= 0)
+        DrawRectangleRec((Rectangle){GRID_X0 + hoverLane * LANE_W, GRID_Y0, LANE_W, gridH}, (Color){255, 255, 255, 14});
     // divisoria entre os dois lados
-    DrawRectangle((int)(GRID_X0 + 4 * LANE_W) - 1, (int)GRID_Y0 - 30, 2, gridH + 34, (Color) {90, 90, 90, 255});
-    // seu lado (direita) com verde claro
-    DrawRectangle((int)(GRID_X0 + LANE_W * 4), (int)GRID_Y0, (int)(LANE_W * 4), gridH, (Color) {140, 230, 170, 70});
+    DrawRectangleRec((Rectangle){GRID_X0 + LANE_W * 4 - 1, GRID_Y0 - 30, 2, gridH + 30}, ED_C_EDGE);
 
     // icones dos cantores em cima (igual a barra de vida do jogo)
     if(edIconOOk)
         DrawTexturePro(edIconO, Character_IconFrame(edIconO),
-            (Rectangle) {GRID_X0 + LANE_W * 2 - 22, GRID_Y0 - 52, 44, 44}, (Vector2) {0, 0}, 0, WHITE);
+            (Rectangle){GRID_X0 + LANE_W * 2 - 22, GRID_Y0 - 52, 44, 44}, (Vector2){0, 0}, 0, WHITE);
     if(edIconPOk)
         DrawTexturePro(edIconP, Character_IconFrame(edIconP),
-            (Rectangle) {GRID_X0 + LANE_W * 6 - 22, GRID_Y0 - 52, 44, 44}, (Vector2) {0, 0}, 0, WHITE);
+            (Rectangle){GRID_X0 + LANE_W * 6 - 22, GRID_Y0 - 52, 44, 44}, (Vector2){0, 0}, 0, WHITE);
+}
+
+// barra da musica: trilho, parte tocada e botao
+static void Grid_DrawSongBar(void) {
+    const float frac = Grid_SongFrac();
+    DrawRectangleRounded((Rectangle){SBAR_X, SBAR_Y, SBAR_W, SBAR_H}, 1.0f, 6, (Color){255, 255, 255, 28});
+    DrawRectangleRounded((Rectangle){SBAR_X, SBAR_Y, fmaxf(frac * SBAR_W, SBAR_H), SBAR_H}, 1.0f, 6, ED_C_ACCENT);
+    const Vector2 knob = {SBAR_X + frac * SBAR_W, SBAR_Y + SBAR_H * 0.5f};
+    DrawCircleV(knob, barDrag ? 9.0f : 7.0f, WHITE);
+    DrawCircleV(knob, 3.5f, ED_C_ACCENT);
 }
 
 // linhas de tempo por trecho (so os trechos e passos que aparecem na tela)
 static void Grid_DrawTimeLines(float ppm, double viewBottom) {
-    const int x0 = (int)GRID_X0;
-    const int x1 = (int)(GRID_X0 + LANE_W * 8);
     int first, last;
     SecRangeInView(viewTopMs, viewBottom, &first, &last);
 
     for(int i = first; i <= last; i++) {
-        double start = SecStartMs(i);
-        double end = (i + 1 < chart.nsec) ? SecStartMs(i + 1) : SongEndMs() + 4000;
+        const double start = SecStartMs(i);
+        const double end = (i + 1 < chart.nsec) ? SecStartMs(i + 1) : SongEndMs() + 4000;
         if(end < viewTopMs || start > viewBottom)
             continue;
-        if(i == secIdx) {
-            double a = fmax(start, viewTopMs);
-            double b = fmin(end, viewBottom);
-            DrawRectangle(x0, (int)(GRID_Y0 + (a - viewTopMs) * ppm),
-                (int)(LANE_W * 8), (int)((b - a) * ppm), (Color) {255, 255, 255, 12});
+        if(i == secIdx) {   // trecho atual: fundo claro + marca rosa na lateral
+            const float ya = Grid_Y(fmax(start, viewTopMs), ppm);
+            const float yb = Grid_Y(fmin(end, viewBottom), ppm);
+            DrawRectangleRec((Rectangle){GRID_X0, ya, GRID_W, yb - ya}, (Color){255, 255, 255, 10});
+            DrawRectangleRec((Rectangle){GRID_X0 - 7, ya, 3, yb - ya}, ED_C_ACCENT);
         }
-        double beatMs = 60000.0 / chart.secs[i].bpm;
-        double stepMs = beatMs / snapDiv;
+        const double stepMs = 60000.0 / chart.secs[i].bpm / snapDiv;
         if(stepMs > 0) {
-            // comeca no primeiro passo visivel (nao no comeco do trecho)
-            long n = (viewTopMs > start) ? (long)floor((viewTopMs - start) / stepMs) : 0;
+            // do 1o passo visivel ate o fim do trecho; o passo 0 e a linha do trecho (desenhada abaixo)
+            long n = (viewTopMs > start) ? (long)ceil((viewTopMs - start) / stepMs) : 1;
+            if(n < 1) n = 1;
             for(;; n++) {
-                double t = start + n * stepMs;
-                if(t > end + 0.5 || t > viewBottom)
+                const double t = start + n * stepMs;
+                if(t >= end - 0.5 || t > viewBottom)
                     break;
-                if(t < viewTopMs)
-                    continue;
-                int y = (int)(GRID_Y0 + (t - viewTopMs) * ppm);
-                char isBeat = (fabs(fmod(t - start, beatMs)) < stepMs / 2);
-                DrawLine(x0, y, x1, y, isBeat ? (Color) {90, 90, 90, 160} : (Color) {160, 160, 160, 130});
+                const char isBeat = (n % snapDiv) == 0;
+                DrawRectangleRec((Rectangle){GRID_X0, floorf(Grid_Y(t, ppm)), GRID_W, 1}, isBeat ? LINE_BEAT : LINE_STEP);
             }
         }
-        // comeco do trecho (so a linha, sem texto em cima do chart)
-        if(start >= viewTopMs && start <= viewBottom) {
-            int y = (int)(GRID_Y0 + (start - viewTopMs) * ppm);
-            DrawLine(x0 - 8, y, x1 + 8, y, (Color) {210, 130, 0, 255});
-        }
+        if(start >= viewTopMs && start <= viewBottom)
+            DrawRectangleRec((Rectangle){GRID_X0 - 8, floorf(Grid_Y(start, ppm)) - 1, GRID_W + 16, 2}, LINE_PART);
     }
 }
 
-// uma nota (casa virada pra tela; cor/seta pela casa real do arquivo)
 // Note player ON: passado apaga, na agulha acende (so visual, sem tocar no chart)
-static void Grid_DrawNote(const EdSec* s, const EdNote* n, float y, float ppm, char drawTrail) {
-    float x = GRID_X0 + EdDispLane(s, n->lane) * LANE_W;
-    char isPast = 0;
-    char isHit = 0;
-    if(playFollow) {
-        float dt = n->time - (float)cursorMs;
-        if(playing && fabsf(dt) <= 200.0f)
-            isHit = 1;
-        else if(dt < 0)
-            isPast = 1;
-    }
+typedef enum { LOOK_NORMAL, LOOK_PAST, LOOK_HIT } NoteLook;
 
-    // nota longa (rastro)
-    if(n->len > 0 && drawTrail) {
-        float h = fmaxf(n->len * ppm, 6.0f);
-        float top = fmaxf(y, GRID_Y0);
-        float bot = fminf(y + h, GRID_Y1);
-        if(bot > top) {
-            Color bc = EdLaneColor(n->lane);
-            bc.a = isPast ? 50 : (isHit ? 255 : 160);
-            DrawRectangle((int)(x + LANE_W / 2 - 7), (int)top, 14, (int)(bot - top), bc);
-        }
-    }
-
-    // seta do jogo (bem mais visivel que quadrado)
-    int d = n->lane % 4;
-    float cx = x + LANE_W / 2;
-    if(isHit) {
-        DrawCircle((int)cx, (int)(y + 1), 34.0f, (Color) {255, 255, 255, 60});
-        DrawCircle((int)cx, (int)(y + 1), 26.0f, (Color) {255, 255, 200, 90});
-    }
-    Color keepC = edArrows[d].color;
-    float keepSx = edArrows[d].scaleX;
-    float keepSy = edArrows[d].scaleY;
-    if(isPast)
-        edArrows[d].color = (Color) {255, 255, 255, 90};
-    else if(isHit) {
-        edArrows[d].color = WHITE;
-        edArrows[d].scaleX = keepSx * 1.25f;
-        edArrows[d].scaleY = keepSy * 1.25f;
-    }
-    edArrows[d].position.x = cx + edArrowAdj[d].x;
-    edArrows[d].position.y = y + 1 + edArrowAdj[d].y;
-    Render_DrawAnimatedObject(edArrows + d);
-    edArrows[d].color = keepC;
-    edArrows[d].scaleX = keepSx;
-    edArrows[d].scaleY = keepSy;
+static NoteLook Note_Look(const EdNote* n) {
+    if(!playFollow)
+        return LOOK_NORMAL;
+    const float dt = n->time - (float)cursorMs;
+    if(playing && fabsf(dt) <= 200.0f)
+        return LOOK_HIT;
+    return (dt < 0) ? LOOK_PAST : LOOK_NORMAL;
 }
 
-// notas: pula trechos cujas notas estao todas fora da tela (limites tmin/tmax do trecho;
-// nao depende de a nota estar "dentro" do tempo nominal do trecho, entao charts bagunçados carregam)
-static void Grid_DrawNotes(float ppm, double viewBottom) {
-    double top = viewTopMs - 30.0 / ppm, bot = viewBottom + 30.0 / ppm;
-    /* Notas empilhadas no mesmo pixel e casa sao desenhadas uma vez (so as curtas): limita o custo
-       do desenho a ~8 casas x altura da grade, por maior que seja a densidade do chart. */
-    enum { OCC_ROWS = (int)(GRID_Y1 - GRID_Y0) + 61 };
-    static unsigned char occ[8][OCC_ROWS];
-    memset(occ, 0, sizeof(occ));
-    /* Sustains: uma por lane e topo (pixel); se ja ha uma igual ou mais longa desenhada ali, a nova some atras
-       (mesma cor, alfa blenda duas vezes e escurece). Mesma ideia do occ das cabecas do gameplay. */
+/* Trecho pode ter nota entre top e bot? (limites tmin/tmax: nao depende de a nota estar
+   dentro do tempo nominal do trecho, entao charts baguncados carregam) */
+static char Sec_MayShow(const EdSec* s, double top, double bot) {
+    return s->count > 0 && s->tmax >= top && s->tmin <= bot;
+}
+
+/* Passe 1: rastros (textura branca). Um rastro por casa e pixel de topo: se ja ha um igual ou mais
+   longo ali, o novo ficaria escondido atras (mesma cor; o alfa somado so escureceria).
+   Comeca lenMax antes do topo, senao a cauda some quando a cabeca sai da tela. */
+static void Grid_DrawSustains(float ppm, double top, double bot) {
     static unsigned short susEnd[8][OCC_ROWS];
     memset(susEnd, 0, sizeof(susEnd));
 
     for(int i = 0; i < chart.nsec; i++) {
         const EdSec* s = chart.secs + i;
-        if(s->count <= 0 || s->tmax < top || s->tmin > bot)
+        if(s->lenMax <= 0 || !Sec_MayShow(s, top, bot))
             continue;
-        // notas ordenadas por tempo: vai direto a primeira visivel e para na ultima
-        int lo = 0, hi = s->count;
-        while(lo < hi) {
-            const int mid = lo + (hi - lo) / 2;
-            if(s->notes[mid].time < top) lo = mid + 1;
-            else hi = mid;
-        }
-        for(int k = lo; k < s->count; k++) {
+        for(int k = EdSec_LowerBound(s, (float)(top - s->lenMax)); k < s->count; k++) {
             const EdNote* n = s->notes + k;
             if(n->time > bot)
                 break;
-            float y = GRID_Y0 + (float)(n->time - viewTopMs) * ppm;
-            if(y < GRID_Y0 - 30 || y > GRID_Y1 + 30)
+            if(n->len <= 0 || n->lane < 0 || n->lane >= 8)
                 continue;
-            if(n->len <= 0 && n->lane >= 0 && n->lane < 8) {
-                const int row = (int)(y - (GRID_Y0 - 30));
-                if(row >= 0 && row < OCC_ROWS) {
-                    if(occ[n->lane][row])
+            const float y = Grid_Y(n->time, ppm);
+            const float y0 = fmaxf(y, GRID_Y0);
+            const float y1 = fminf(y + fmaxf(n->len * ppm, 6.0f), GRID_Y1);
+            if(y1 <= y0)
+                continue;
+            const int dl = EdDispLane(s, n->lane);
+            const NoteLook look = Note_Look(n);
+            if(!playFollow) {   // com Note player o alfa muda por nota: nada se esconde
+                const int r0 = (int)(y0 - OCC_TOP);
+                const int r1 = (int)(y1 - OCC_TOP) + 1;
+                if(r0 >= 0 && r0 < OCC_ROWS && r1 <= OCC_ROWS) {
+                    if(susEnd[dl][r0] >= r1)
                         continue;
-                    occ[n->lane][row] = 1;
+                    susEnd[dl][r0] = (unsigned short)r1;
                 }
             }
-            char drawTrail = 1;
-            if(n->len > 0 && !playFollow && n->lane >= 0 && n->lane < 8) {
-                const float h = fmaxf(n->len * ppm, 6.0f);
-                const float top = fmaxf(y, GRID_Y0);
-                const float bot = fminf(y + h, GRID_Y1);
-                if(bot > top) {
-                    const int r0 = (int)(top - (GRID_Y0 - 30));
-                    const int r1 = (int)(bot - (GRID_Y0 - 30)) + 1;
-                    if(r0 >= 0 && r0 < OCC_ROWS && r1 <= OCC_ROWS) {
-                        if(susEnd[n->lane][r0] >= r1)
-                            drawTrail = 0;
-                        else
-                            susEnd[n->lane][r0] = (unsigned short)r1;
-                    }
-                }
-            }
-            Grid_DrawNote(s, n, y, ppm, drawTrail);
+            Color c = EdLaneColor(n->lane);
+            c.a = (look == LOOK_PAST) ? 50 : (look == LOOK_HIT) ? 255 : 160;
+            DrawRectangleRec((Rectangle){Grid_LaneCX(dl) - 7, y0, 14, y1 - y0}, c);
         }
     }
 }
 
-// cursor (play grosso + agulha de vinil; as notas sobem ate ele, igual ao jogo)
-static void Grid_DrawCursor(float ppm) {
-    float y = GRID_Y0 + (float)(cursorMs - viewTopMs) * ppm;
-    if(y < GRID_Y0 - 30 || y > GRID_Y1 + 30)
-        return;
-    int x0 = (int)GRID_X0 - 8;
-    int x1 = (int)(GRID_X0 + LANE_W * 8) + 8;
-    int yi = (int)y;
-    // linha grossa: sombra preta + vermelho + fio branco no meio
-    DrawRectangle(x0 - 2, yi - 4, (x1 - x0) + 4, 8, BLACK);
-    DrawRectangle(x0, yi - 3, x1 - x0, 6, RED);
-    DrawRectangle(x0, yi - 1, x1 - x0, 2, WHITE);
-    // agulha: triangulo apontando pro play (lado esquerdo, estilo vinil)
-    DrawTriangle((Vector2) {(float)x0 - 22, (float)yi - 13},
-                 (Vector2) {(float)x0 - 22, (float)yi + 13},
-                 (Vector2) {(float)x0 + 2, (float)yi}, WHITE);
-    DrawTriangle((Vector2) {(float)x0 - 19, (float)yi - 10},
-                 (Vector2) {(float)x0 - 19, (float)yi + 10},
-                 (Vector2) {(float)x0 - 1, (float)yi}, RED);
+/* Passe 2: setas (textura da skin). Notas curtas empilhadas no mesmo pixel e casa saem uma vez so:
+   o custo fica em ~8 casas x altura da grade, por maior que seja a densidade do chart. */
+static void Grid_DrawHeads(float ppm, double top, double bot) {
+    static unsigned char occ[8][OCC_ROWS];
+    memset(occ, 0, sizeof(occ));
+
+    for(int i = 0; i < chart.nsec; i++) {
+        const EdSec* s = chart.secs + i;
+        if(!Sec_MayShow(s, top, bot))
+            continue;
+        for(int k = EdSec_LowerBound(s, (float)top); k < s->count; k++) {
+            const EdNote* n = s->notes + k;
+            if(n->time > bot)
+                break;
+            if(n->lane < 0 || n->lane >= 8)
+                continue;
+            const int dl = EdDispLane(s, n->lane);
+            const float y = Grid_Y(n->time, ppm);
+            if(n->len <= 0) {
+                const int row = (int)(y - OCC_TOP);
+                if(row >= 0 && row < OCC_ROWS) {
+                    if(occ[dl][row])
+                        continue;
+                    occ[dl][row] = 1;
+                }
+            }
+            const NoteLook look = Note_Look(n);
+            const float cx = Grid_LaneCX(dl);
+            if(look == LOOK_HIT) {
+                DrawCircleV((Vector2){cx, y + 1}, 34.0f, (Color){255, 255, 255, 60});
+                DrawCircleV((Vector2){cx, y + 1}, 26.0f, (Color){255, 255, 200, 90});
+            }
+            EdArrow_Draw(n->lane, cx, y + 1, (look == LOOK_HIT) ? 1.25f : 1.0f,
+                (look == LOOK_PAST) ? (Color){255, 255, 255, 90} : WHITE);
+        }
+    }
 }
+
+// cursor: faixa com brilho + agulha a esquerda (as notas sobem ate ele, igual ao jogo)
+static void Grid_DrawCursor(float ppm) {
+    const float y = floorf(Grid_Y(cursorMs, ppm));
+    if(y < GRID_Y0 - NOTE_MARGIN || y > GRID_Y1 + NOTE_MARGIN)
+        return;
+    const float x0 = GRID_X0 - 8;
+    const float w = GRID_W + 16;
+    DrawRectangleRec((Rectangle){x0, y - 5, w, 10}, (Color){255, 70, 110, 50});
+    DrawRectangleRec((Rectangle){x0, y - 1, w, 3}, CURSOR_C);
+    DrawRectangleRec((Rectangle){x0, y, w, 1}, WHITE);
+    DrawTriangle((Vector2){x0 - 18, y - 10}, (Vector2){x0 - 18, y + 11}, (Vector2){x0 + 1, y + 0.5f}, CURSOR_C);
+}
+
+// ---------- mouse ----------
 
 // barra da musica: clica e arrasta pra andar na musica
 static void Grid_BarMouse(Vector2 m) {
-    double end = SongEndMs();
-    if(end < 1000) end = 1000;
-    Rectangle bar = {SBAR_X, SBAR_Y, SBAR_W, SBAR_H};
-    char inside = (m.x >= bar.x && m.x <= bar.x + bar.width && m.y >= bar.y - 8 && m.y <= bar.y + bar.height + 8);
-    if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && inside)
+    const Rectangle hit = {SBAR_X, SBAR_Y - 8, SBAR_W, SBAR_H + 16};
+    if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && CheckCollisionPointRec(m, hit))
         barDrag = 1;
     if(!barDrag)
         return;
     if(IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
-        double frac = Clamp((float)((m.x - bar.x) / bar.width), 0.0f, 1.0f);
-        cursorMs = frac * end;
-        viewTopMs = cursorMs - VIEW_MS * 0.5;
-        if(viewTopMs < -500) viewTopMs = -500;
+        const double end = fmax(SongEndMs(), 1000.0);
+        cursorMs = Clamp((m.x - SBAR_X) / SBAR_W, 0.0f, 1.0f) * end;
+        viewTopMs = fmax(cursorMs - VIEW_MS * 0.5, -500.0);
     } else {
         if(playing)
             Audio_SeekAll(cursorMs);
@@ -343,37 +344,28 @@ static void Grid_BarMouse(Vector2 m) {
 }
 
 // mouse na grade: fantasma onde a nota vai cair (X vermelho = ja tem).
-// Esquerdo SO poe, direito SO apaga.
-static void Grid_NoteMouse(Vector2 m, float ppm) {
-    if(m.x < GRID_X0 || m.x > GRID_X0 + LANE_W * 8 || m.y < GRID_Y0 || m.y > GRID_Y1)
+// Esquerdo SO poe, direito SO apaga. O encaixe conta do comeco do trecho (bate com as linhas).
+static void Grid_NoteMouse(Vector2 m, float ppm, int lane) {
+    if(lane < 0 || barDrag)
         return;
-    int lane = (int)((m.x - GRID_X0) / LANE_W);
-    if(lane < 0 || lane >= 8)
-        return;
-
-    double t = viewTopMs + (m.y - GRID_Y0) / ppm;
-    int si = SecAtTime(fmax(t, 0));
+    const double t = fmax(EdGrid_TimeAt(m.y), 0.0);
+    const int si = SecAtTime(t);
     EdSec* s = chart.secs + si;
-    int raw = EdDispLane(s, lane); // casa da tela -> casa do arquivo
-    float beatMs = 60000.0f / s->bpm;
-    float stepMs = beatMs / snapDiv;
-    float snapped = fmaxf(roundf((float)(t / stepMs)) * stepMs, 0.0f);
-    float gy = GRID_Y0 + (float)(snapped - viewTopMs) * ppm;
-    float cx = GRID_X0 + lane * LANE_W + LANE_W / 2;
-    int exist = EdSec_FindNear(s, snapped, raw, fmaxf(stepMs / 2, 15.0f));
+    const int raw = EdDispLane(s, lane);   // casa da tela -> casa do arquivo
+    const double beatMs = 60000.0 / s->bpm;
+    const double stepMs = beatMs / snapDiv;
+    const double start = SecStartMs(si);
+    const float snapped = (float)fmax(start + round((t - start) / stepMs) * stepMs, 0.0);
+    const float gy = Grid_Y(snapped, ppm) + 1;
+    const float cx = Grid_LaneCX(lane);
+    const int exist = EdSec_FindNear(s, snapped, raw, fmaxf((float)stepMs / 2, 15.0f));
 
     if(gy >= GRID_Y0 - 26 && gy <= GRID_Y1 + 26) {
         if(exist >= 0) {
-            DrawLine((int)(cx - 14), (int)(gy - 14), (int)(cx + 14), (int)(gy + 14), RED);
-            DrawLine((int)(cx - 14), (int)(gy + 14), (int)(cx + 14), (int)(gy - 14), RED);
+            DrawLineEx((Vector2){cx - 13, gy - 13}, (Vector2){cx + 13, gy + 13}, 3.0f, ED_C_BAD);
+            DrawLineEx((Vector2){cx - 13, gy + 13}, (Vector2){cx + 13, gy - 13}, 3.0f, ED_C_BAD);
         } else {
-            int d = raw % 4;
-            Color keep = edArrows[d].color;
-            edArrows[d].color = (Color) {255, 255, 255, 150};
-            edArrows[d].position.x = cx + edArrowAdj[d].x;
-            edArrows[d].position.y = gy + 1 + edArrowAdj[d].y;
-            Render_DrawAnimatedObject(edArrows + d);
-            edArrows[d].color = keep;
+            EdArrow_Draw(raw, cx, gy, 1.0f, (Color){255, 255, 255, 150});
         }
     }
 
@@ -384,7 +376,7 @@ static void Grid_NoteMouse(Vector2 m, float ppm) {
         cursorMs = snapped;
     }
     if(IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) {
-        int idx = EdSec_FindNear(s, (float)t, raw, beatMs);
+        const int idx = EdSec_FindNear(s, (float)t, raw, (float)beatMs);
         if(idx >= 0) {
             EdTouchSec(si);   /* antes de remover: o undo precisa do estado com a nota */
             EdSec_RemoveAt(s, idx);
@@ -394,19 +386,24 @@ static void Grid_NoteMouse(Vector2 m, float ppm) {
 }
 
 void Edit_DrawGrid(void) {
-    float ppm = EdPxPerMs();
-    double viewBottom = viewTopMs + VIEW_MS;
+    const float ppm = EdPxPerMs();
+    const double viewBottom = viewTopMs + VIEW_MS;
+    const double top = viewTopMs - NOTE_MARGIN / ppm;
+    const double bot = viewBottom + NOTE_MARGIN / ppm;
+    // mouse travado com janela, lista, menu ou ajuda abertos (o clique que fecha nao poe nota)
+    const char mouseOn = !EdUiBlocked() && !EdHelpOpen();
+    const Vector2 m = EdMouseWorld();
+    const int lane = mouseOn ? EdGrid_LaneAt(m) : -1;
 
+    Grid_DrawBackground(lane);
     Grid_DrawSongBar();
-    Grid_DrawBackground();
     Grid_DrawTimeLines(ppm, viewBottom);
-    Grid_DrawNotes(ppm, viewBottom);
+    Grid_DrawSustains(ppm, top, bot);
+    Grid_DrawHeads(ppm, top, bot);
     Grid_DrawCursor(ppm);
 
-    // mouse (travado com janela/drop abertos)
-    if(ceDlg == DLG_NONE && !activeDrop) {
-        Vector2 m = EdMouseWorld();
+    if(mouseOn) {
         Grid_BarMouse(m);
-        Grid_NoteMouse(m, ppm);
+        Grid_NoteMouse(m, ppm, lane);
     }
 }

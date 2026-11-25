@@ -23,14 +23,16 @@ static void EdSec_Sort(EdSec* s) {
 
 // atualiza os limites de tempo das notas do trecho (usado pra nao desenhar o que esta fora da tela)
 static void EdSec_Grow(EdSec* s, float time, float len) {
-    float end = time + (len > 0 ? len : 0);
+    if(len < 0) len = 0;
+    const float end = time + len;
     if(s->count == 0 || time < s->tmin) s->tmin = time;
     if(s->count == 0 || end > s->tmax) s->tmax = end;
+    if(s->count == 0 || len > s->lenMax) s->lenMax = len;
 }
 
 /* As notas de um trecho ficam sempre ordenadas por tempo: a busca e binaria, entao charts com
    milhoes de notas num trecho nao varrem tudo a cada clique. */
-static int EdSec_LowerBound(const EdSec* s, float time) { /* 1o indice com time >= time */
+int EdSec_LowerBound(const EdSec* s, float time) { /* 1o indice com time >= time */
     int lo = 0, hi = s->count;
     while(lo < hi) {
         const int mid = lo + (hi - lo) / 2;
@@ -176,6 +178,18 @@ int EdSec_FindNear(EdSec* s, float time, int lane, float windowMs) {
         }
     }
     return best;
+}
+
+void EdSec_SetLen(EdSec* s, int idx, float len) {
+    if(idx < 0 || idx >= s->count)
+        return;
+    EdNote* n = s->notes + idx;
+    n->len = fminf(fmaxf(len, 0.0f), 10000.0f);
+    /* rastro maior: o limite do trecho cresce junto, senao a cauda some quando a cabeca sai da tela */
+    if(n->time + n->len > s->tmax)
+        s->tmax = n->time + n->len;
+    if(n->len > s->lenMax)
+        s->lenMax = n->len;
 }
 
 char EdSec_RemoveAt(EdSec* s, int idx) {

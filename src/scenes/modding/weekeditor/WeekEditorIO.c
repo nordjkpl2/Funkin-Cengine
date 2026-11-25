@@ -8,7 +8,6 @@
 #include "raylib.h"
 #include "yyjson.h"
 
-#define WEEKED_SONG_DEFAULT_COLOR "146,113,253"
 
 static bool Entry_Known(const WeekEdEntry *out, int count, const char *file)
 {
@@ -95,7 +94,20 @@ void WeekEd_Defaults(WeekEdDraft *draft, const char *title)
     snprintf(draft->storyName, sizeof(draft->storyName), "%s", title ? title : "");
     snprintf(draft->weekName, sizeof(draft->weekName), "%s", title ? title : "");
     snprintf(draft->background, sizeof(draft->background), "%s", "stage");
+    snprintf(draft->chars[0], sizeof(draft->chars[0]), "%s", "dad");
+    snprintf(draft->chars[1], sizeof(draft->chars[1]), "%s", "bf");
+    snprintf(draft->chars[2], sizeof(draft->chars[2]), "%s", "gf");
     draft->startUnlocked = true;
+}
+
+void WeekEd_DefaultSong(WeekEdSong *song, const char *name)
+{
+    memset(song, 0, sizeof(*song));
+    snprintf(song->name, sizeof(song->name), "%s", name ? name : "");
+    snprintf(song->icon, sizeof(song->icon), "%s", "dad");
+    song->color[0] = 146;
+    song->color[1] = 113;
+    song->color[2] = 253;
 }
 
 /* ------------------------------------------------------------------------- */
@@ -116,15 +128,17 @@ static void CopyStr(char *dst, size_t cap, yyjson_val *v)
     snprintf(dst, cap, "%s", s);
 }
 
-static void CopyColor(char *dst, size_t cap, yyjson_val *v)
+static int Clamp255(double v)
 {
-    if (yyjson_is_arr(v) && yyjson_arr_size(v) >= 3) {
-        snprintf(dst, cap, "%d,%d,%d",
-                 (int)Num(yyjson_arr_get(v, 0)), (int)Num(yyjson_arr_get(v, 1)),
-                 (int)Num(yyjson_arr_get(v, 2)));
-    } else {
-        snprintf(dst, cap, "%s", WEEKED_SONG_DEFAULT_COLOR);
-    }
+    return v < 0.0 ? 0 : (v > 255.0 ? 255 : (int)v);
+}
+
+static void CopyColor(int dst[3], yyjson_val *v)
+{
+    if (!yyjson_is_arr(v) || yyjson_arr_size(v) < 3)
+        return;
+    for (size_t i = 0; i < 3; ++i)
+        dst[i] = Clamp255(Num(yyjson_arr_get(v, i)));
 }
 
 static bool ReadBool(yyjson_val *obj, const char *key, bool fallback)
@@ -155,6 +169,9 @@ bool WeekEd_Load(const WeekEdEntry *entry, WeekEdDraft *draft, char *msg, size_t
     WeekEd_Defaults(draft, entry->file);
     CopyStr(draft->storyName, sizeof(draft->storyName), yyjson_obj_get(root, "storyName"));
     CopyStr(draft->weekName, sizeof(draft->weekName), yyjson_obj_get(root, "weekName"));
+    yyjson_val *flavor = yyjson_obj_get(root, "flavor");
+    CopyStr(draft->flavor, sizeof(draft->flavor), yyjson_is_str(flavor) ? flavor : yyjson_obj_get(root, "description"));
+    CopyStr(draft->difficulties, sizeof(draft->difficulties), yyjson_obj_get(root, "difficulties"));
     CopyStr(draft->background, sizeof(draft->background), yyjson_obj_get(root, "weekBackground"));
     CopyStr(draft->before, sizeof(draft->before), yyjson_obj_get(root, "weekBefore"));
     draft->startUnlocked = ReadBool(root, "startUnlocked", true);
@@ -176,9 +193,10 @@ bool WeekEd_Load(const WeekEdEntry *entry, WeekEdDraft *draft, char *msg, size_t
             if (draft->songCount >= WEEK_MAX_SONGS || !yyjson_is_arr(item) || yyjson_arr_size(item) < 1)
                 continue;
             WeekEdSong *song = &draft->songs[draft->songCount++];
+            WeekEd_DefaultSong(song, NULL);
             CopyStr(song->name, sizeof(song->name), yyjson_arr_get(item, 0));
             CopyStr(song->icon, sizeof(song->icon), yyjson_arr_get(item, 1));
-            CopyColor(song->color, sizeof(song->color), yyjson_arr_get(item, 2));
+            CopyColor(song->color, yyjson_arr_get(item, 2));
         }
     }
 
@@ -189,20 +207,6 @@ bool WeekEd_Load(const WeekEdEntry *entry, WeekEdDraft *draft, char *msg, size_t
 /* ------------------------------------------------------------------------- */
 /* Escrita                                                                   */
 /* ------------------------------------------------------------------------- */
-
-/* "r,g,b" -> 0..255 cada um; texto invalido vira o padrao. */
-static void ParseColor(const char *text, int rgb[3])
-{
-    int r = 146, g = 113, b = 253;
-    if (sscanf(text, "%d , %d , %d", &r, &g, &b) != 3 && sscanf(text, "%d,%d,%d", &r, &g, &b) != 3) {
-        r = 146;
-        g = 113;
-        b = 253;
-    }
-    rgb[0] = r < 0 ? 0 : (r > 255 ? 255 : r);
-    rgb[1] = g < 0 ? 0 : (g > 255 ? 255 : g);
-    rgb[2] = b < 0 ? 0 : (b > 255 ? 255 : b);
-}
 
 bool WeekEd_Save(const WeekEdEntry *entry, const WeekEdDraft *draft, char *msg, size_t msgCap)
 {
@@ -238,6 +242,10 @@ bool WeekEd_Save(const WeekEdEntry *entry, const WeekEdDraft *draft, char *msg, 
 
     ModEd_PutStr(doc, root, "storyName", draft->storyName);
     ModEd_PutStr(doc, root, "weekName", draft->weekName);
+    /* descricao: fica na chave que o arquivo ja usa (Psych "flavor"; alguns mods "description") */
+    const bool usesDescription = yyjson_mut_obj_get(root, "description") && !yyjson_mut_obj_get(root, "flavor");
+    ModEd_PutStr(doc, root, usesDescription ? "description" : "flavor", draft->flavor);
+    ModEd_PutStr(doc, root, "difficulties", draft->difficulties);
     ModEd_PutStr(doc, root, "weekBackground", draft->background);
     ModEd_PutStr(doc, root, "weekBefore", draft->before);
     ModEd_PutBool(doc, root, "startUnlocked", draft->startUnlocked);
@@ -256,16 +264,12 @@ bool WeekEd_Save(const WeekEdEntry *entry, const WeekEdDraft *draft, char *msg, 
         if (!song->name[0])
             continue;
 
-        int rgb[3];
-        ParseColor(song->color, rgb);
-
         yyjson_mut_val *item = yyjson_mut_arr_add_arr(doc, songs);
         yyjson_mut_arr_add_strcpy(doc, item, song->name);
         yyjson_mut_arr_add_strcpy(doc, item, song->icon);
         yyjson_mut_val *color = yyjson_mut_arr_add_arr(doc, item);
-        yyjson_mut_arr_add_int(doc, color, rgb[0]);
-        yyjson_mut_arr_add_int(doc, color, rgb[1]);
-        yyjson_mut_arr_add_int(doc, color, rgb[2]);
+        for (int c = 0; c < 3; ++c)
+            yyjson_mut_arr_add_int(doc, color, Clamp255(song->color[c]));
     }
 
     const bool ok = yyjson_mut_write_file(path, doc, YYJSON_WRITE_PRETTY, NULL, NULL);

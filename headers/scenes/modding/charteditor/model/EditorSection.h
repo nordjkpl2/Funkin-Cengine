@@ -14,7 +14,9 @@ size_t EdSec_Bytes(const EdSec* s);
 void EdSec_Add(EdSec* s, float time, int lane, float len);      /* com dedup e ordem */
 void EdSec_AddBulk(EdSec* s, float time, int lane, float len);  /* anexa; fechar com FinishBulk */
 void EdSec_FinishBulk(EdSec* s);                                 /* ordena + dedup */
+int EdSec_LowerBound(const EdSec* s, float time);     /* 1o indice com time >= time (busca binaria) */
 int EdSec_FindNear(EdSec* s, float time, int lane, float windowMs); /* indice da nota perto, ou -1 */
+void EdSec_SetLen(EdSec* s, int idx, float len); /* nota longa: limita 0..10000 ms e atualiza tmax */
 char EdSec_RemoveAt(EdSec* s, int idx);
 int EdDispLane(const EdSec* s, int lane); /* casa da tela <-> casa do arquivo (a funcao e a propria inversa) */
 
