@@ -214,6 +214,7 @@ extern int currentOption;
 extern int autoTrack;
 extern int limitedThreads;
 extern bool layoutDirty;
+extern bool bakeDirty;     /* texturas cacheadas (lista, abas, dica) precisam ser refeitas */
 extern SearchBox search;
 extern bool capturing;
 extern bool threadsScreen;

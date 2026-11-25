@@ -42,7 +42,7 @@
 #define CARD_X 852.0f
 #define CARD_Y 96.0f
 #define CARD_W 392.0f
-#define CARD_H 520.0f
+#define CARD_H 480.0f
 #define COVER_SIZE 300.0f
 #define COVER_X (CARD_X + (CARD_W - COVER_SIZE) * 0.5f)
 #define COVER_Y (CARD_Y + 26.0f)
@@ -152,7 +152,7 @@ static void PlaySelected(void) {
 /* Cena                                                                */
 /* ------------------------------------------------------------------ */
 
-static void Freeplay_Create([[maybe_unused]] RayScene* scene) {
+static void Freeplay_Create(RayScene* scene) {
     FreeplayIcon_Unload();
     SongList_Free(songs);
     songs = NULL;
@@ -160,6 +160,7 @@ static void Freeplay_Create([[maybe_unused]] RayScene* scene) {
     shown = NULL;
     shownCount = 0;
     SearchBox_Init(&search, (Rectangle) {105.0f, 14.0f, 420.0f, 44.0f});
+    scene->staticWhenIdle = true;   /* parada e assentada: o loop pode pular o draw */
 
     Render_DefaultRGT(&bg);
     bg.objType = RGT_IMAGE;
@@ -191,7 +192,7 @@ static void Freeplay_Create([[maybe_unused]] RayScene* scene) {
     }
 }
 
-static void Freeplay_Update([[maybe_unused]] RayScene* scene) {
+static void Freeplay_Update(RayScene* scene) {
     const float dt = fmaxf(RayGame_DeltaTime(), 0.0f);
 
     if (songCount <= 0) {
@@ -244,6 +245,13 @@ static void Freeplay_Update([[maybe_unused]] RayScene* scene) {
     const float ease = 1.0f - expf(-SELECT_EASE * dt);
     selectPulse += (1.0f - selectPulse) * ease;
     backFade += (1.0f - backFade) * ease;
+
+    // Encaixa nos alvos quando chega perto; so pede redesenho enquanto ainda anima (ou cursor da busca piscando).
+    if (fabsf(listOffset - (float)selectedSong) < 0.001f) listOffset = (float)selectedSong;
+    if (selectPulse > 0.999f) selectPulse = 1.0f;
+    if (backFade > 0.999f) backFade = 1.0f;
+    if (listOffset != (float)selectedSong || selectPulse < 1.0f || backFade < 1.0f || SearchBox_Focused(&search))
+        RayScene_RequestRedraw(scene);
 }
 
 /* ------------------------------------------------------------------ */
@@ -281,71 +289,107 @@ static void DrawBackdrop(void) {
     DrawRectangleGradientV(0, 0, (int)SCREEN_W, (int)SCREEN_H, (Color){0, 0, 0, 90}, (Color){0, 0, 0, 200});
 }
 
-static void DrawSongRow(int i) {
+/* Geometria de uma linha; false se ela esta fora da tela. Usada nas duas passadas (formas, textos). */
+typedef struct {
+    float x, y, sel, size;
+    Color main;
+} FreeplayRow;
+
+static bool FreeplayRow_Get(int i, FreeplayRow* row) {
     const float dist = (float)i - listOffset;
     const float ad = fabsf(dist);
-    const float y = ROW_CENTER_Y + dist * ROW_STEP;
-    if (y < -60.0f || y > SCREEN_H + 40.0f)
-        return; // fora da tela
+    row->y = ROW_CENTER_Y + dist * ROW_STEP;
+    if (row->y < -60.0f || row->y > SCREEN_H + 40.0f)
+        return false; // fora da tela
 
-    const float sel = fmaxf(0.0f, 1.0f - ad);          /* 1 = selecionada, 0 = longe */
-    const float x = ROW_X + fminf(ad, 3.0f) * ROW_INDENT;
-    const float size = 36.0f + 10.0f * sel;
-    const char* name = songs[shown[i]].name;
-
-    if (sel > 0.01f) {
-        const Rectangle pill = {x - 26.0f, y - 22.0f, ROW_MAX_W * (0.85f + 0.15f * sel), 60.0f};
-        DrawRectangleRounded(pill, 0.5f, 12, Fade(ROW_BG, sel));
-        DrawRectangle((int)pill.x, (int)(pill.y + 10.0f), 5, 40, Fade(ACCENT, sel));
-    }
-
+    row->sel = fmaxf(0.0f, 1.0f - ad);          /* 1 = selecionada, 0 = longe */
+    row->x = ROW_X + fminf(ad, 3.0f) * ROW_INDENT;
+    row->size = 36.0f + 10.0f * row->sel;
     const unsigned char alpha = (unsigned char)(255.0f * fmaxf(0.25f, 1.0f - ad * 0.16f));
-    const Color main = {
-        (unsigned char)(TEXT_IDLE.r + (255 - TEXT_IDLE.r) * sel),
-        (unsigned char)(TEXT_IDLE.g + (255 - TEXT_IDLE.g) * sel),
-        (unsigned char)(TEXT_IDLE.b + (255 - TEXT_IDLE.b) * sel),
+    row->main = (Color){
+        (unsigned char)(TEXT_IDLE.r + (255 - TEXT_IDLE.r) * row->sel),
+        (unsigned char)(TEXT_IDLE.g + (255 - TEXT_IDLE.g) * row->sel),
+        (unsigned char)(TEXT_IDLE.b + (255 - TEXT_IDLE.b) * row->sel),
         alpha
     };
-
-    const Vector2 textPos = {x, y - size * 0.25f};
-    DrawTextEx(mainFont, name, (Vector2){textPos.x + 2.0f, textPos.y + 3.0f}, size, 2.0f,
-               (Color){0, 0, 0, (unsigned char)(160.0f * sel + 40.0f)});
-    DrawTextEx(mainFont, name, textPos, size, 2.0f, main);
+    return true;
 }
 
-static void DrawIconCover(void) {
+/* Passada de formas: so a pilula da selecao (textura de formas, lote unico). */
+static void DrawRowShapes(const FreeplayRow* row) {
+    if (row->sel <= 0.01f)
+        return;
+    const Rectangle pill = {row->x - 26.0f, row->y - 22.0f, ROW_MAX_W * (0.85f + 0.15f * row->sel), 60.0f};
+    DrawRectangleRounded(pill, 0.5f, 12, Fade(ROW_BG, row->sel));
+    DrawRectangle((int)pill.x, (int)(pill.y + 10.0f), 5, 40, Fade(ACCENT, row->sel));
+}
+
+/* Passada de textos: sombra e texto (textura da fonte). */
+static void DrawRowText(int i, const FreeplayRow* row) {
+    const char* name = songs[shown[i]].name;
+    const Vector2 textPos = {row->x, row->y - row->size * 0.25f};
+    DrawTextEx(mainFont, name, (Vector2){textPos.x + 2.0f, textPos.y + 3.0f}, row->size, 2.0f,
+               (Color){0, 0, 0, (unsigned char)(160.0f * row->sel + 40.0f)});
+    DrawTextEx(mainFont, name, textPos, row->size, 2.0f, row->main);
+}
+
+static Rectangle CoverFrame(void) {
     const float pulse = 1.0f + 0.04f * (1.0f - selectPulse);   /* entra com leve zoom */
     const float side = COVER_SIZE * pulse;
-    const Rectangle frame = {COVER_X + (COVER_SIZE - side) * 0.5f, COVER_Y + (COVER_SIZE - side) * 0.5f, side, side};
+    return (Rectangle){COVER_X + (COVER_SIZE - side) * 0.5f, COVER_Y + (COVER_SIZE - side) * 0.5f, side, side};
+}
 
+/* Capa em tres passadas: fundo/sombra (formas), imagem (textura), borda (formas). */
+static void DrawCoverBack(Rectangle frame) {
     DrawRectangleRounded((Rectangle){frame.x + 6.0f, frame.y + 8.0f, frame.width, frame.height}, 0.08f, 10, SHADOW);
     DrawRectangleRounded(frame, 0.08f, 10, ICON_EMPTY_BG);
+}
 
+static void DrawCoverImage(Rectangle frame) {
     if (FreeplayIcon_IsLoaded()) {
         const Texture2D texture = FreeplayIcon_Texture();
         DrawTexturePro(texture, SquareCrop(texture), frame, (Vector2){0.0f, 0.0f}, 0.0f, WHITE);
-    } else {
-        static const char* const missing = "NO ICON";
-        static TextMeasure missingMeasure;
-        const Vector2 size = TextMeasure_Get(&missingMeasure, mainFont, missing, 25.0f, 2.0f);
-        DrawTextEx(mainFont, missing,
-                   (Vector2){frame.x + (frame.width - size.x) * 0.5f, frame.y + (frame.height - size.y) * 0.5f},
-                   25.0f, 2.0f, ICON_EMPTY_TEXT);
     }
+}
+
+static void DrawCoverEdge(Rectangle frame) {
     DrawRectangleRoundedLinesEx(frame, 0.08f, 10, 2.0f, Fade(ACCENT, 0.6f + 0.4f * selectPulse));
 }
 
-static void DrawSelectedCard(void) {
-    DrawRectangleRounded((Rectangle){CARD_X + 6.0f, CARD_Y + 10.0f, CARD_W, CARD_H}, 0.05f, 10, SHADOW);
-    DrawRectangleRounded((Rectangle){CARD_X, CARD_Y, CARD_W, CARD_H}, 0.05f, 10, CARD_BG);
-    DrawRectangleRoundedLinesEx((Rectangle){CARD_X, CARD_Y, CARD_W, CARD_H}, 0.05f, 10, 1.5f, CARD_EDGE);
+/* Passada de textos da capa: so aparece quando a imagem nao carregou. */
+static void DrawCoverText(Rectangle frame) {
+    if (FreeplayIcon_IsLoaded())
+        return;
+    static const char* const missing = "NO ICON";
+    static TextMeasure missingMeasure;
+    const Vector2 size = TextMeasure_Get(&missingMeasure, mainFont, missing, 25.0f, 2.0f);
+    DrawTextEx(mainFont, missing,
+               (Vector2){frame.x + (frame.width - size.x) * 0.5f, frame.y + (frame.height - size.y) * 0.5f},
+               25.0f, 2.0f, ICON_EMPTY_TEXT);
+}
 
-    DrawIconCover();
+/* Card selecionado: formas, capa (textura), mais formas (borda e barras), depois todos os textos. */
+static void DrawSelectedCard(void) {
+    const Rectangle frame = CoverFrame();
+
+    DrawRectangleRounded((Rectangle){CARD_X, CARD_Y, CARD_W, CARD_H}, 0.05f, 10, CARD_BG);
+    DrawRectangleRoundedLinesEx((Rectangle){CARD_X, CARD_Y, CARD_W, CARD_H}, 0.05f, 10, 1.0f, CARD_EDGE);
+    DrawCoverBack(frame);
+    DrawCoverImage(frame);
+    DrawCoverEdge(frame);
+
+    // Barra de progresso fica fora do card, abaixo dele.
+    const float barY = CARD_Y + CARD_H + 16.0f;
+    const float frac = shownCount > 0 ? (float)(selectedSong + 1) / (float)shownCount : 0.0f;
+    DrawRectangleRounded((Rectangle){CARD_X, barY, CARD_W, 6.0f}, 0.5f, 6, (Color){50, 44, 80, 255});
+    DrawRectangleRounded((Rectangle){CARD_X, barY, CARD_W * frac, 6.0f}, 0.5f, 6, CYAN);
+
+    // Textos.
+    DrawCoverText(frame);
 
     // Titulo, centralizado; a fonte ja foi ajustada em SelectSong.
     const char* title = CurrentSong()->name;
     const float ty = COVER_Y + COVER_SIZE + 22.0f;
-    DrawTextEx(mainFont, title, (Vector2){titleX + 2.0f, ty + 2.0f}, titleSize, 2.0f, (Color){0, 0, 0, 200});
     DrawTextEx(mainFont, title, (Vector2){titleX, ty}, titleSize, 2.0f, WHITE);
 
     // Oponente.
@@ -353,22 +397,31 @@ static void DrawSelectedCard(void) {
     DrawTextEx(mainFont, "OPPONENT", (Vector2){CARD_X + CARD_PAD, oy}, 17.0f, 2.0f, TEXT_DIM);
     DrawTextEx(mainFont, FreeplayIcon_Opponent(), (Vector2){CARD_X + CARD_PAD, oy + 22.0f}, 24.0f, 2.0f, ACCENT);
 
-    // Contador e barra de progresso da lista.
-    const float by = CARD_Y + CARD_H - 62.0f;
-    DrawTextEx(mainFont, counterText, (Vector2){CARD_X + CARD_PAD, by}, 26.0f, 2.0f, CYAN);
-    const float barW = CARD_W - 2.0f * CARD_PAD;
-    const float frac = shownCount > 0 ? (float)(selectedSong + 1) / (float)shownCount : 0.0f;
-    DrawRectangleRounded((Rectangle){CARD_X + CARD_PAD, by + 40.0f, barW, 6.0f}, 0.5f, 6, (Color){50, 44, 80, 255});
-    DrawRectangleRounded((Rectangle){CARD_X + CARD_PAD, by + 40.0f, barW * frac, 6.0f}, 0.5f, 6, CYAN);
+    const Vector2 cs = MeasureTextEx(mainFont, counterText, 22.0f, 2.0f);
+    DrawTextEx(mainFont, counterText, (Vector2){CARD_X + CARD_W - cs.x, barY + 12.0f}, 22.0f, 2.0f, CYAN);
 }
 
-/* Tecla em "caixa" para a legenda de ajuda. */
-static void DrawKeyHint(float x, float y, const char* key, const char* action) {
-    static TextMeasure keyMeasure;
-    const Vector2 k = TextMeasure_Get(&keyMeasure, mainFont, key, 16.0f, 1.0f);
-    DrawRectangleRounded((Rectangle){x, y, k.x + 16.0f, 26.0f}, 0.3f, 6, (Color){255, 255, 255, 30});
-    DrawTextEx(mainFont, key, (Vector2){x + 8.0f, y + 4.0f}, 16.0f, 1.0f, WHITE);
-    DrawTextEx(mainFont, action, (Vector2){x + k.x + 24.0f, y + 5.0f}, 16.0f, 1.0f, TEXT_DIM);
+/* Legenda de ajuda em "caixas de tecla": todas as caixas, depois todos os textos. */
+#define HINT_COUNT 4
+static void DrawKeyHints(void) {
+    static const struct { float x; const char* key; const char* action; } hints[HINT_COUNT] = {
+        {105.0f, "UP / DOWN", "escolher"},
+        {275.0f, "ENTER", "jogar"},
+        {370.0f, "ESC", "voltar"},
+        {470.0f, "CLICK SEARCH", "filtrar"},
+    };
+    static TextMeasure keyMeasure[HINT_COUNT];
+    Vector2 k[HINT_COUNT];
+    const float y = 662.0f;
+
+    for (int h = 0; h < HINT_COUNT; ++h) {
+        k[h] = TextMeasure_Get(&keyMeasure[h], mainFont, hints[h].key, 16.0f, 1.0f);
+        DrawRectangleRounded((Rectangle){hints[h].x, y, k[h].x + 16.0f, 26.0f}, 0.3f, 6, (Color){255, 255, 255, 30});
+    }
+    for (int h = 0; h < HINT_COUNT; ++h) {
+        DrawTextEx(mainFont, hints[h].key, (Vector2){hints[h].x + 8.0f, y + 4.0f}, 16.0f, 1.0f, WHITE);
+        DrawTextEx(mainFont, hints[h].action, (Vector2){hints[h].x + k[h].x + 24.0f, y + 5.0f}, 16.0f, 1.0f, TEXT_DIM);
+    }
 }
 
 static void Freeplay_Draw([[maybe_unused]] RayScene* scene) {
@@ -395,18 +448,21 @@ static void Freeplay_Draw([[maybe_unused]] RayScene* scene) {
     // So as linhas perto da selecao; as demais nem sao percorridas.
     const int first = (int)fmaxf(0.0f, floorf(listOffset - ROW_VISIBLE));
     const int last = (int)fminf((float)(shownCount - 1), ceilf(listOffset + ROW_VISIBLE));
+    // Passadas por tipo (formas, depois textos): cada troca de textura quebra o lote de draw calls.
+    FreeplayRow row;
     for (int i = first; i <= last; ++i)
-        DrawSongRow(i);
+        if (FreeplayRow_Get(i, &row))
+            DrawRowShapes(&row);
+    for (int i = first; i <= last; ++i)
+        if (FreeplayRow_Get(i, &row))
+            DrawRowText(i, &row);
 
     DrawSelectedCard();
 
     SearchBox_Draw(&search, mainFont);
 
     // Ajuda no rodape, em caixas de tecla.
-    DrawKeyHint(105.0f, 662.0f, "UP / DOWN", "escolher");
-    DrawKeyHint(275.0f, 662.0f, "ENTER", "jogar");
-    DrawKeyHint(370.0f, 662.0f, "ESC", "voltar");
-    DrawKeyHint(470.0f, 662.0f, "CLICK SEARCH", "filtrar");
+    DrawKeyHints();
 
     Render_StopCamera();
 }

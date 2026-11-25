@@ -1,0 +1,9 @@
+{
+    "active": 0,
+    "splashes": [
+        {
+            "animset": "assets/images/noteSplashes-sparkles.xml",
+            "prefix": "splash sparkles red "
+        }
+    ]
+}

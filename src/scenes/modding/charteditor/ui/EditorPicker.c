@@ -51,6 +51,20 @@ RayGraphicObject bgEd;
 // ---- busca + icones da lista (so linhas perto da selecao ficam na GPU)
 #define PICK_ICON_SIZE 56.0f
 #define PICK_ICON_KEEP 10
+#define PICK_WINDOW 8      /* linhas para cada lado da selecao; alem disso ja saiu da tela */
+#define PICK_MAX_VISIBLE 32
+
+/* Geometria de uma linha da lista, calculada uma vez por frame e usada nas passadas de desenho. */
+typedef struct {
+    char name[128];
+    Vector2 pos;
+    Rectangle fr, box;     /* quadradinho e icone (so i > 0) */
+    Texture2D icon;
+    float size;
+    Color fill, out;
+    unsigned char a;
+    bool hasBox;
+} PickRow;
 
 static SearchBox pickSearch;
 static bool pickSearchInit;
@@ -546,63 +560,87 @@ static void Picker_NewSong(void) {
     EdStatusMsg("NEW SONG - SALVAR COMO");
 }
 
+/* Calcula a linha i; false se ela esta fora da tela. */
+static bool Picker_RowGeom(int i, PickRow* r) {
+    const int fontSize = (i == 0) ? 40 : 56;
+    const float y = 720 / 2 + ((float)i - pickerOffset) * (10 + fontSize);
+    if(y < -60 || y > 780)
+        return false;
+    if(i == 0) {
+        strncpy(r->name, "open file directory...", sizeof(r->name) - 1);
+        r->name[sizeof(r->name) - 1] = 0;
+    } else {
+        const SongEntry* se = &pickerSongs[pickShown[i - 1]];
+        strncpy(r->name, se->name, sizeof(r->name) - 1);
+        r->name[sizeof(r->name) - 1] = 0;
+        if(strstr(se->dir, "mods") != NULL)
+            strncat(r->name, "  [mod]", sizeof(r->name) - strlen(r->name) - 1);
+    }
+    const float d = fabsf((float)i - pickerOffset);
+    const float iconX = 150.0f + d * -30.0f;
+    r->size = (float)fontSize;
+    r->pos = (Vector2) {(float)(5 + 150 + d * -30) + (i == 0 ? 0.0f : PICK_ICON_SIZE + 20.0f), y + 5};
+    r->fill = WHITE;
+    r->out = BLACK;
+    r->fill.a = (pickerSel == i) ? 255 : 150;
+    r->out.a = (pickerSel == i) ? 255 : 100;
+    if(i == 0) r->fill = (pickerSel == 0) ? GREEN : (Color) {150, 255, 150, 150};
+    r->hasBox = i > 0;
+    if(r->hasBox) {
+        r->a = (pickerSel == i) ? 255 : 150;
+        r->fr = (Rectangle) {iconX - 6.0f, y - 4.0f, PICK_ICON_SIZE + 12.0f, PICK_ICON_SIZE + 12.0f};
+        r->box = (Rectangle) {iconX, y + 2.0f, PICK_ICON_SIZE, PICK_ICON_SIZE};
+        r->icon = pickIcons ? pickIcons[pickShown[i - 1]] : (Texture2D) {0};
+    }
+    return true;
+}
+
+/* Passadas: formas (uma textura), icones (uma textura cada), textos (textura da fonte).
+   Cada troca de textura ou de modo abre um draw call novo, entao agrupar por tipo reduz muito. */
 void Picker_Draw(void) {
     Render_SetCamera(&camEd);
     Render_DrawGraphicObject(&bgEd);
 
-    DrawTextEx(mainFont, "song selector", (Vector2) {150, 60}, 48, 4, WHITE);
+    const int total = 1 + pickShownCount;
+    const int first = (int)fmaxf(0.0f, floorf(pickerOffset - PICK_WINDOW));
+    const int last = (int)fminf((float)(total - 1), ceilf(pickerOffset + PICK_WINDOW));
+    PickRow rows[PICK_MAX_VISIBLE];
+    int n = 0;
+    for(int i = first; i <= last && n < PICK_MAX_VISIBLE; ++i)
+        if(Picker_RowGeom(i, &rows[n])) ++n;
 
-    int rows = 1 + pickShownCount;
-    for(int i = 0; i < rows; i++) {
-        const int fontSize = (i == 0) ? 40 : 56;
-        float y = 720 / 2 + ((float)i - pickerOffset) * (10 + fontSize);
-        if(y < -60 || y > 780)
-            continue;
-        char name[128];
-        if(i == 0) {
-            strncpy(name, "open file directory...", sizeof(name) - 1);
-            name[sizeof(name) - 1] = 0;
-        } else {
-            const SongEntry* se = &pickerSongs[pickShown[i - 1]];
-            strncpy(name, se->name, sizeof(name) - 1);
-            name[sizeof(name) - 1] = 0;
-            if(strstr(se->dir, "mods") != NULL)
-                strncat(name, "  [mod]", sizeof(name) - strlen(name) - 1);
-        }
-        float d = fabsf((float)i - pickerOffset);
-        const float iconX = 150.0f + d * -30.0f;
-        Vector2 pos = {(float)(5 + 150 + d * -30) + (i == 0 ? 0.0f : PICK_ICON_SIZE + 20.0f), y + 5};
-        Color fill = WHITE, out = BLACK;
-        fill.a = (pickerSel == i) ? 255 : 150;
-        out.a = (pickerSel == i) ? 255 : 100;
-        if(i == 0) fill = (pickerSel == 0) ? GREEN : (Color) {150, 255, 150, 150};
-        if(i > 0) {
-            // quadradinho com o icone do oponente no centro
-            const unsigned char a = (pickerSel == i) ? 255 : 150;
-            const Rectangle fr = {iconX - 6.0f, y - 4.0f, PICK_ICON_SIZE + 12.0f, PICK_ICON_SIZE + 12.0f};
-            const Rectangle box = {iconX, y + 2.0f, PICK_ICON_SIZE, PICK_ICON_SIZE};
-            DrawRectangleRec(fr, (Color) {20, 20, 30, (unsigned char)(a * 200 / 255)});
-            DrawRectangleLinesEx(fr, 2.0f, (Color) {255, 255, 255, a});
-            const Texture2D t = pickIcons ? pickIcons[pickShown[i - 1]] : (Texture2D) {0};
-            if(t.id != 0) {
-                DrawTexturePro(t, Picker_SquareCrop(t), box, (Vector2) {0, 0}, 0.0f, (Color) {255, 255, 255, a});
-            } else {
-                const Vector2 q = MeasureTextEx(mainFont, "?", 32, 2);
-                DrawTextEx(mainFont, "?", (Vector2) {box.x + (box.width - q.x) * 0.5f, box.y + (box.height - q.y) * 0.5f},
-                    32, 2, (Color) {200, 200, 200, a});
-            }
-        }
-        DrawTextEx(mainFont, name, pos, fontSize, 4, out);
-        pos.x -= 5;
-        pos.y -= 5;
-        DrawTextEx(mainFont, name, pos, fontSize, 4, fill);
+    // Passada 1: quadradinhos de fundo e borda.
+    for(int k = 0; k < n; ++k) {
+        if(!rows[k].hasBox) continue;
+        DrawRectangleRec(rows[k].fr, (Color) {20, 20, 30, (unsigned char)(rows[k].a * 200 / 255)});
+        DrawRectangleLinesEx(rows[k].fr, 2.0f, (Color) {255, 255, 255, rows[k].a});
     }
-
+    // Passada 2: icones do oponente (uma textura por musica).
+    for(int k = 0; k < n; ++k) {
+        if(!rows[k].hasBox || rows[k].icon.id == 0) continue;
+        DrawTexturePro(rows[k].icon, Picker_SquareCrop(rows[k].icon), rows[k].box, (Vector2) {0, 0}, 0.0f,
+            (Color) {255, 255, 255, rows[k].a});
+    }
+    // Passada 3: textos (titulo, "?", nomes, mensagens e dica), todos com a textura da fonte.
+    DrawTextEx(mainFont, "song selector", (Vector2) {150, 60}, 48, 4, WHITE);
+    for(int k = 0; k < n; ++k) {
+        const PickRow* r = &rows[k];
+        if(r->hasBox && r->icon.id == 0) {
+            const Vector2 q = MeasureTextEx(mainFont, "?", 32, 2);
+            DrawTextEx(mainFont, "?", (Vector2) {r->box.x + (r->box.width - q.x) * 0.5f, r->box.y + (r->box.height - q.y) * 0.5f},
+                32, 2, (Color) {200, 200, 200, r->a});
+        }
+        DrawTextEx(mainFont, r->name, r->pos, r->size, 4, r->out);
+        const Vector2 fillPos = {r->pos.x - 5, r->pos.y - 5};
+        DrawTextEx(mainFont, r->name, fillPos, r->size, 4, r->fill);
+    }
     if(pickShownCount == 0 && pickerCount > 0)
         DrawTextEx(mainFont, "nenhuma musica encontrada", (Vector2) {260, 400}, 32, 2, (Color) {255, 200, 120, 255});
-    SearchBox_Draw(&pickSearch, mainFont);
     DrawTextEx(mainFont, "ENTER open   R update   N new   arraste um .json pra ca   ESC return",
         (Vector2) {150, 690}, 20, 1, (Color) {200, 200, 200, 255});
+
+    // Caixas de busca e botoes por ultimo (formas e textos proprios).
+    SearchBox_Draw(&pickSearch, mainFont);
     if(EdButton((Rectangle) {150, 630, 200, 40}, "OPEN", 22)) Picker_OpenSelected();
     if(EdButton((Rectangle) {360, 630, 200, 40}, "NEW", 22)) Picker_NewSong();
     Render_StopCamera();

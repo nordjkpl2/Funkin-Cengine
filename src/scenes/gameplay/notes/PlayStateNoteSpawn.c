@@ -19,6 +19,7 @@
 static RayAnimatedObject trail;
 static RayAnimatedObject end;
 static RayAnimatedObject renderNote;
+static RayAnimationState laneAnimState[4];   /* animacao atual de cada lane (renderNote e compartilhado) */
 
 /* `notes` guarda todas as notas (modo completo) ou so a janela carregada (modo streaming).
    noteCount, firstNote e os acessos publicos sao sempre relativos a esse array. */
@@ -69,6 +70,7 @@ void PlayStateNoteSpawn_Init(void) {
     end.scaleY = 0.7f;
 
     Render_DefaultAnimated(&renderNote);
+    memset(laneAnimState, 0, sizeof(laneAnimState));
     renderNote.animationSet = Cache_GetNoteAnimations();
     renderNote.scaleX = 0.7f;
     renderNote.scaleY = 0.7f;
@@ -588,6 +590,9 @@ void PlayStateNoteSpawn_Draw(const PlayStateNoteView* view) {
             *cell = occupiedGen;
         }
 
+        /* Estado de animacao por lane: notas de lanes alternadas no mesmo trecho
+           nao reiniciam a animacao umas das outras (antes voltava ao frame 0 a cada troca). */
+        renderNote.currentAnim = laneAnimState[note->id];
         SetAnimIfChanged(&renderNote, Note_Animation(note->id));
 
         if (note->length > 0)
@@ -598,6 +603,7 @@ void PlayStateNoteSpawn_Draw(const PlayStateNoteView* view) {
             renderNote.color = WHITE;
             DrawLaneObjs(note->id, &renderNote, NULL);
         }
+        laneAnimState[note->id] = renderNote.currentAnim;
     }
 
     EndBlendMode();

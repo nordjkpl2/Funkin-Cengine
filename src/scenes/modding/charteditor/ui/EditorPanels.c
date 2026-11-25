@@ -514,8 +514,8 @@ static void Edit_DrawEventPicker(float x, float y) {
     if(evPickTop < 0) evPickTop = 0;
 
     evPickBox = (Rectangle){x, y, EV_PICK_W, EV_PICK_LIST_H};
-    DrawRectangleRec(evPickBox, (Color){16, 16, 16, 220});
-    DrawRectangleLinesEx(evPickBox, 1, GRAY);
+    DrawRectangleRounded(evPickBox, 0.05f, 6, (Color){12, 14, 24, 235});
+    DrawRectangleRoundedLinesEx(evPickBox, 0.05f, 6, 2.0f, (Color){0, 200, 120, 255});
 
     // barra de rolagem: mesmo estilo do menu de faixas (trilho cinza, polegar verde)
     const float barX = x + EV_PICK_W - 8;
@@ -556,7 +556,14 @@ static void Edit_DrawEventPicker(float x, float y) {
             EvClosePicker();
             return;
         }
-        Ed_DrawText(mainFont, t->description, (Vector2){x + 8, ry + 36}, 16, 1, YELLOW);
+        // descricao: encolhe a fonte se nao cabe na largura (nao vaza pra fora da caixa)
+        const float maxW = EV_PICK_W - 24.0f;
+        float fs = 16.0f;
+        const float tw = MeasureTextEx(mainFont, t->description, fs, 1).x;
+        if(tw > maxW) fs = fmaxf(10.0f, fs * maxW / tw);
+        DrawTextEx(mainFont, t->description, (Vector2){x + 8, ry + 36}, fs, 1, (Color){255, 214, 80, 255});
+        // separador entre as linhas
+        DrawRectangle((int)(x + 8), (int)(ry + EV_PICK_ROW_H - 4), EV_PICK_W - 24, 1, (Color){60, 70, 90, 255});
     }
 }
 

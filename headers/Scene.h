@@ -21,10 +21,19 @@ typedef struct {
 
 struct RayScene {
     RaySceneFunctions functions;
+    bool staticWhenIdle;    /* cena opt-in: sem animacao, o loop pode pular o draw quando ocioso */
+    bool redrawRequested;   /* algo mudou neste frame; o loop desenha e zera */
 };
+
+/* Pede redesenho no proximo frame (use no update quando algo visual mudou). */
+static inline void RayScene_RequestRedraw(RayScene *restrict scene) {
+    scene->redrawRequested = true;
+}
 
 static inline void RayScene_Create(RayScene *restrict scene, const RaySceneFunctions *restrict funcs) {
     scene->functions = *funcs;
+    scene->staticWhenIdle = false;
+    scene->redrawRequested = true;
     if (funcs->instantiateFunc) funcs->instantiateFunc(scene);
 }
 

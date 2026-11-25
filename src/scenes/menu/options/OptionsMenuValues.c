@@ -104,6 +104,7 @@ void Option_RebuildText(Option* o) {
     }
 
     o->dirty = false;
+    bakeDirty = true;
 }
 
 /* ------------------------------------------------------------------ */
@@ -283,6 +284,7 @@ static void Layout_Refresh(void) {
         if (visibleCache[i]) row++;
     }
     layoutDirty = false;
+    bakeDirty = true;
 }
 
 bool Option_IsVisible(int i) {

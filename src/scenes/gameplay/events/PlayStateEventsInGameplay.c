@@ -42,6 +42,9 @@ const PlayStateEventType playStateEventTypes[] = {
     {"Shader Glitch", "glitch: fatias, separacao RGB, blocos", 50, 0, 0, "intensidade %:", "animacao %:", NULL, 0, 1},
     {"Shader Blackness", "buraco negro: puxa pro centro, escurece", 50, 0, 0, "intensidade %:", "animacao %:", NULL, 0, 1},
     {"Shader Grayscale", "tudo em preto e branco (intensidade % = quanto da cor some; animacao sem efeito)", 100, 0, 0, "intensidade %:", "animacao %:", NULL, 0, 1},
+    {"Shader Bloom",  "brilho: pixels claros ganham halo (intensidade % = forca e raio)", 50, 0, 0, "intensidade %:", "animacao %:", NULL, 0, 1},
+    {"Shader Space",  "espaco: nebulosa colorida + estrelas descendo e piscando (intensidade % = forca, animacao % = velocidade)", 50, 0, 0, "intensidade %:", "animacao %:", NULL, 0, 1},
+    {"Shader Pulse",  "pulso: batida tum-tum no ritmo (zoom + clarao + borda; animacao % = BPM: 100 = 120)", 50, 0, 0, "intensidade %:", "animacao %:", NULL, 0, 1},
     {"Shader Off",    "desliga o shader de tela", 0, 0, 0, NULL, NULL, NULL, 0, 1},
     {"Camera Parallax", "camera 3D: afasta (zoom out) e balanca em profundidade (0 desliga)", 100, 0, 0, "intensidade %:", "velocidade %:", NULL, 0, 0},
     {CAMERA_MOVE_NAME, "camera: zoom % (100 = normal), x e y em px do mundo (transicao suave)", 100, 0, 0, "zoom %:", "x (px):", "y (px):", 0, 0},
@@ -157,6 +160,9 @@ void PlayStateEvents_ApplyShader(const char* name, double intensityPct, double a
     else if (strcmp(name, "Shader Glitch") == 0) ShaderFx_Set(SHADERFX_GLITCH, amt, spd);
     else if (strcmp(name, "Shader Blackness") == 0) ShaderFx_Set(SHADERFX_BLACKNESS, amt, spd);
     else if (strcmp(name, "Shader Grayscale") == 0) ShaderFx_Set(SHADERFX_GRAYSCALE, amt, spd);
+    else if (strcmp(name, "Shader Bloom") == 0) ShaderFx_Set(SHADERFX_BLOOM, amt, spd);
+    else if (strcmp(name, "Shader Space") == 0) ShaderFx_Set(SHADERFX_SPACE, amt, spd);
+    else if (strcmp(name, "Shader Pulse") == 0) ShaderFx_Set(SHADERFX_PULSE, amt, spd);
     else if (strcmp(name, "Shader Off") == 0) ShaderFx_Reset();
 }
 

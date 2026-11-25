@@ -2,6 +2,10 @@
 /*
  * OptionsMenu.c - menu de opcoes (cena): ciclo de vida, entrada e desenho da lista.
  * Os valores ficam em GameData; a logica esta em OptionsMenuValues.c, OptionsMenuScreens.c e OptionsMenuIcons.c.
+ *
+ * Desenho com cache: a lista, a barra de abas e a dica sao desenhadas em RenderTexture e so
+ * refeitas quando algo muda (bakeDirty, opcao selecionada ou aba). Durante o scroll e a
+ * animacao sobra um DrawTextureRec por bloco; a barra de selecao e o sublinhado pulsam ao vivo.
  */
 #include "scenes/api/FontLoader.h"
 #include "scenes/menu/MenuBackground.h"
@@ -11,6 +15,7 @@
 #include "Game.h"
 #include "GameData.h"
 #include "raymath.h"
+#include "rlgl.h"
 #include "ui/SearchBox.h"
 #include "scenes/menu/MenuMusic.h"
 #include "rendering/TextMeasure.h"
@@ -25,8 +30,21 @@ float gameplayLogoX;
 float visualLogoX;
 float musicLogoX;
 float renderLogoX;
+bool bakeDirty = true;
 static Camera2D cam;
 static RayGraphicObject bg;
+
+/* Texturas de cache: largura fixa da tela; a altura da lista acompanha o conteudo. */
+#define LIST_TEX_W 1280
+#define HINT_TEX_H 100
+#define HINT_TOP (SCREEN_H - HINT_TEX_H)
+
+static RenderTexture2D listTex;
+static RenderTexture2D tabTex;
+static RenderTexture2D hintTex;
+static int bakedOption = -1;      // opcao selecionada na ultima montagem
+static int bakedTab = -2;         // aba aberta na ultima montagem (-1 fora do modo horizontal)
+static const char* bakedHint = NULL;
 
 /* X do logo ao lado de um cabecalho: logo depois do fim do texto (medido uma vez no Create). */
 static float LogoXAfterHeader(int header) {
@@ -51,6 +69,11 @@ static void OptionsMenu_Create([[maybe_unused]] RayScene* scene) {
     SearchBox_SetCompact(&search, true);
 
     Options_LoadValues();
+
+    bakeDirty = true;
+    bakedOption = -1;
+    bakedTab = -2;
+    bakedHint = NULL;
 
     if (!Option_IsSelectable(currentOption))
         MoveSelection(1);
@@ -132,8 +155,11 @@ static float TabIconWidth(int header) {
     }
 }
 
-/* Barra de titulos do menu horizontal. Com draw desenha; senao so devolve o titulo sob o ponto m (ou -1). */
-static int TabBarRun(bool draw, Vector2 m) {
+enum { TAB_HIT, TAB_TEXT, TAB_UNDERLINE };   // modos de TabBarRun
+
+/* Barra de titulos do menu horizontal. TAB_HIT devolve a aba sob o ponto m (ou -1);
+ * TAB_TEXT desenha textos e icones (vai para a textura); TAB_UNDERLINE desenha so o sublinhado pulsante. */
+static int TabBarRun(int mode, Vector2 m) {
     static TextMeasure tabMeasure[OPTION_COUNT]; // a barra e desenhada todo frame; o titulo de cada aba e fixo
     int hit = -1;
     float x = TAB_X;
@@ -143,7 +169,7 @@ static int TabBarRun(bool draw, Vector2 m) {
         if (options[i].type != OPTION_VALUE_HEADER) continue;
 
         if (!first) {   // separador "|" entre os titulos
-            if (draw) DrawTextEx(mainFont, "|", (Vector2) {x + TAB_GAP * 0.5f - 6.0f, TAB_BAR_Y}, TAB_FONT_SIZE, TEXT_SPACING, GRAY);
+            if (mode == TAB_TEXT) DrawTextEx(mainFont, "|", (Vector2) {x + TAB_GAP * 0.5f - 6.0f, TAB_BAR_Y}, TAB_FONT_SIZE, TEXT_SPACING, GRAY);
             x += TAB_GAP;
         }
         first = false;
@@ -157,7 +183,7 @@ static int TabBarRun(bool draw, Vector2 m) {
         (void)snprintf(label, sizeof(label), "%.*s", (int)len, src);
 
         const Vector2 size = TextMeasure_Get(&tabMeasure[i], mainFont, label, TAB_FONT_SIZE, TEXT_SPACING);
-        if (!draw) {
+        if (mode == TAB_HIT) {
             // Uma hitbox so: o retangulo que o icone + titulo ocupam (largura do maior dos dois).
             const float boxW = size.x > TabIconWidth(i) ? size.x : TabIconWidth(i);
             const float boxX = x - TEXT_SHADOW;
@@ -170,9 +196,11 @@ static int TabBarRun(bool draw, Vector2 m) {
             Color fill = YELLOW, shadow = BLACK;
             fill.a = open ? 255 : HEADER_DIM_ALPHA;
             shadow.a = open ? 255 : 100;
-            DrawOptionText(label, x, TAB_BAR_Y, TAB_FONT_SIZE, fill, shadow);
-            DrawTabLogo(i, x, TAB_BAR_Y - TAB_LOGO_LIFT, fill, shadow);
-            if (open) {   // sublinhado da aba aberta, com brilho que pulsa
+            if (mode == TAB_TEXT) {
+                DrawOptionText(label, x, TAB_BAR_Y, TAB_FONT_SIZE, fill, shadow);
+                DrawTabLogo(i, x, TAB_BAR_Y - TAB_LOGO_LIFT, fill, shadow);
+            }
+            if (open && mode == TAB_UNDERLINE) {   // sublinhado da aba aberta, com brilho que pulsa
                 const float pulse = 0.5f + 0.5f * sinf((float)GetTime() * 4.0f);
                 const Rectangle line = {x - TEXT_SHADOW, TAB_BAR_Y + TAB_FONT_SIZE + 10.0f, size.x + TEXT_SHADOW * 2.0f, 4.0f};
                 const Rectangle glow = {line.x - 4.0f, line.y - 4.0f, line.width + 8.0f, line.height + 8.0f};
@@ -199,7 +227,19 @@ static int RowAtPoint(Vector2 m) {
     return -1;
 }
 
-static void OptionsMenu_Update([[maybe_unused]] RayScene* scene) {
+/* Algo que pode mudar o desenho: tecla ou clique. Mudancas de valor passam por Option_RebuildText/Layout_Refresh. */
+static bool InputThisFrame(void) {
+    return IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_RIGHT)
+        || IsKeyPressed(KEY_W) || IsKeyPressed(KEY_A) || IsKeyPressed(KEY_S) || IsKeyPressed(KEY_D)
+        || IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_BACKSPACE) || IsKeyPressed(KEY_ESCAPE)
+        || IsMouseButtonPressed(MOUSE_BUTTON_LEFT) || GetMouseWheelMove() != 0.0f;
+}
+
+static void Caches_Refresh(void);
+
+static void OptionsMenu_UpdateInput(void) {
+    if (InputThisFrame()) bakeDirty = true;
+
     if (capturing) {
         Capture_Update();
         return;
@@ -265,7 +305,7 @@ static void OptionsMenu_Update([[maybe_unused]] RayScene* scene) {
     if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
         const Vector2 mouse = RayGame_MouseWorld();
         if (Option_HorizontalMode()) {
-            const int tab = TabBarRun(false, mouse);
+            const int tab = TabBarRun(TAB_HIT, mouse);
             if (tab >= 0) { currentOption = tab; return; }
         }
         const int row = RowAtPoint(mouse);
@@ -312,16 +352,171 @@ static void DrawSelectionBar(float rowY, float height) {
     DrawRectangleRounded((Rectangle) {SEL_X, rowY - SEL_PAD + 8.0f, SEL_ACCENT_W, height - 18.0f}, 1.0f, 4, OPT_ACCENT);
 }
 
-/* Dica do rodape: painel escuro com borda amarela (legivel em qualquer fundo). */
-static void DrawHint(const char* text) {
-    const Vector2 pos = {ROW_X, SCREEN_H - 50.0f};
+/* Altura de uma linha da lista (cabecalho ou opcao). */
+static float RowHeight(int i) {
+    return options[i].type == OPTION_VALUE_HEADER ? HEADER_HEIGHT : ROW_HEIGHT;
+}
+
+/* Ao gravar nas texturas o canal alfa vira "cobertura" e a cor fica premultiplicada; o blit usa
+ * BLEND_ALPHA_PREMULTIPLY. Sem isso o alfa era aplicado duas vezes e as linhas apagadas sumiam. */
+static void BakeBlendBegin(void) {
+    rlSetBlendFactorsSeparate(0x0302, 0x0303, 1, 0x0303, 0x8006, 0x8006);
+    BeginBlendMode(BLEND_CUSTOM_SEPARATE);
+}
+
+/* Desenha uma linha (sem a faixa de selecao) em drawY. Usada para montar a textura da lista. */
+static void DrawRow(int i, float drawY, bool selected) {
+    Option* o = options + i;
+
+    if (o->type == OPTION_VALUE_HEADER) {
+        Color fill = OPT_ACCENT, shadow = BLACK;
+        fill.a = selected ? 255 : HEADER_DIM_ALPHA;
+        shadow.a = selected ? 255 : 100;
+
+        if (!Option_HorizontalMode()) {
+            // Painel do titulo: faixa escura que some para a direita + divisor com brilho.
+            DrawRectangleGradientH((int)HEADER_X - 20, (int)drawY - 4, 1200, (int)HEADER_HEIGHT,
+                                   (Color) {0, 0, 0, selected ? 150 : 90}, (Color) {0, 0, 0, 0});
+            DrawRectangleGradientH((int)HEADER_X, (int)(drawY + HEADER_HEIGHT - 4.0f), 1180, 2,
+                                   (Color) {OPT_ACCENT.r, OPT_ACCENT.g, OPT_ACCENT.b, 150}, (Color) {OPT_ACCENT.r, OPT_ACCENT.g, OPT_ACCENT.b, 0});
+        }
+        DrawOptionText(o->text, HEADER_X, drawY, HEADER_FONT_SIZE, fill, shadow);
+        DrawChevron(drawY, o->collapsed, fill, shadow);
+
+        DrawHeaderLogo(i, drawY, fill, shadow);
+        return;
+    }
+
+    if (o->type == OPTION_VALUE_LABEL) {
+        // Texto estatico: cinza, sem icones, nunca selecionado.
+        // Fonte menor, centralizada na altura da linha (o layout continua o mesmo).
+        const float labelY = drawY + (ROW_FONT_SIZE - LABEL_FONT_SIZE) * 0.5f;
+        DrawOptionText(o->text, HEADER_X, labelY, LABEL_FONT_SIZE, (Color) {190, 190, 190, 255}, (Color) {0, 0, 0, 100});
+        // Divisor curto, da largura do proprio titulo (nao da linha inteira, como o [Header]).
+        static TextMeasure labelMeasure[OPTION_COUNT];   // um cache por linha: o rotulo e fixo
+        const float labelW = TextMeasure_Get(&labelMeasure[i], mainFont, o->text, LABEL_FONT_SIZE, TEXT_SPACING).x;
+        if (i == OPTION_NOTES_LABEL) DrawNotesLabelIcon(HEADER_X + labelW + 24.0f, labelY + LABEL_FONT_SIZE * 0.5f);
+        DrawRectangleGradientH((int)HEADER_X, (int)(labelY + LABEL_FONT_SIZE + 3.0f), (int)labelW, 2,
+                               (Color) {OPT_ACCENT.r, OPT_ACCENT.g, OPT_ACCENT.b, 170}, (Color) {OPT_ACCENT.r, OPT_ACCENT.g, OPT_ACCENT.b, 0});
+        return;
+    }
+
+    Color fill = o->active ? WHITE : RED;
+    Color shadow = BLACK;
+    fill.a = selected ? 255 : 150;
+    shadow.a = selected ? 255 : 100;
+
+    // Framerate ate V-SYNC (secao Window): icone de TV e texto recuado.
+    const bool inWindow = i >= OPTION_FPS && i <= OPTION_VSYNC;
+    const float textX = inWindow ? ROW_X - WINDOW_ROW_SHIFT : ROW_X;
+    DrawOptionText(o->cachedText, textX, drawY, ROW_FONT_SIZE, fill, shadow);
+    // Icone de TV so em Framerate; V-SYNC tem o seu (monitor); Uncapped FPS e Show FPS ficam sem icone.
+    if (i == OPTION_FPS) DrawTvIcon(drawY, fill, shadow);
+
+    const bool isHealthDrain = i == OPTION_HEALTH_DRAIN_PLAY || i == OPTION_HEALTH_DRAIN_BOTPLAY;
+    if (isHealthDrain) DrawHealthIcons(drawY, fill, shadow);
+
+    const bool hasKeyArrows = i == OPTION_GHOST;
+    if (hasKeyArrows) DrawKeyArrow(drawY, fill, shadow);
+
+    DrawExtraIcon(i, drawY, fill, shadow);
+}
+
+/* Monta a textura da lista: so as linhas visiveis, empilhadas a partir do y = 0. */
+static void BakeList(void) {
+    float total = 0.0f;
+    for (int i = 0; i < OPTION_COUNT; i++)
+        if (Option_IsVisible(i)) total += RowHeight(i);
+
+    const int h = total >= 1.0f ? (int)ceilf(total) : 1;
+    if (listTex.id == 0 || listTex.texture.height != h) {
+        if (listTex.id != 0) UnloadRenderTexture(listTex);
+        listTex = LoadRenderTexture(LIST_TEX_W, h);
+    }
+
+    BeginTextureMode(listTex);
+    ClearBackground(BLANK);
+    BakeBlendBegin();
+    float y = 0.0f;
+    for (int i = 0; i < OPTION_COUNT; i++) {
+        if (!Option_IsVisible(i)) continue;
+        DrawRow(i, y, currentOption == i);
+        y += RowHeight(i);
+    }
+    EndBlendMode();
+    EndTextureMode();
+}
+
+/* Monta a barra de abas (textos e icones) na textura; o sublinhado e desenhado ao vivo. */
+static void BakeTab(void) {
+    if (tabTex.id == 0) tabTex = LoadRenderTexture(LIST_TEX_W, (int)TAB_BAND_H);
+
+    BeginTextureMode(tabTex);
+    ClearBackground(BLANK);
+    BakeBlendBegin();
+    TabBarRun(TAB_TEXT, (Vector2) {0.0f, 0.0f});
+    EndBlendMode();
+    EndTextureMode();
+}
+
+/* Dica do rodape: texto atual, ou NULL quando a opcao nao tem dica. Muda so com a selecao/valor. */
+static const char* CurrentHint(void) {
+    if (currentOption == OPTION_KEYBOARD_SCHEME && (int)options[OPTION_KEYBOARD_SCHEME].value == SCHEME_CUSTOM)
+        return "ENTER: edit custom keys";
+    if (currentOption == OPTION_NOTE_COLORS) return "ENTER: edit note colors";
+    if (currentOption == OPTION_THREADS && (int)options[OPTION_THREADS].value == 1) return "ENTER: set thread count";
+    if (currentOption == OPTION_VSYNC) return "same fps as your monitor hz";
+    if (currentOption == OPTION_UNCAPPED_FPS) return "no limiter use limiter less use of video card";
+    if (currentOption == OPTION_SHADERS) return "TV, glitch and other screen effects from charts";
+    if (currentOption == OPTION_STREAM_JSON) return "less RAM, more CPU: only useful for very large note charts";
+    if (currentOption == OPTION_HITSOUND) return "a sound when hit a note";
+    if (currentOption == OPTION_STRUM_BG) return "background in notereceptor";
+    if (currentOption == OPTION_GAMEPLAY_EXTRA) return "ENTER: co-op and play as";
+    if (currentOption == OPTION_RESET_CONFIG)
+        return resetArmed ? "ENTER again to confirm: resets every option" : "ENTER: reset all options to default";
+    return NULL;
+}
+
+/* Monta a dica na textura (painel escuro com borda amarela, legivel em qualquer fundo). */
+static void BakeHint(const char* text) {
     static TextMeasure hintMeasure;   // so muda quando a selecao muda o texto
     const Vector2 ts = TextMeasure_Get(&hintMeasure, mainFont, text, 24, 2);
+    const Vector2 pos = {ROW_X, SCREEN_H - 50.0f - HINT_TOP};   // posicao local na textura
     const Rectangle box = {pos.x - 18.0f, pos.y - 8.0f, ts.x + 36.0f, ts.y + 16.0f};
+
+    if (hintTex.id == 0) hintTex = LoadRenderTexture(LIST_TEX_W, HINT_TEX_H);
+
+    BeginTextureMode(hintTex);
+    ClearBackground(BLANK);
+    BakeBlendBegin();
     DrawRectangleRounded(box, 0.5f, 8, OPT_PANEL);
     DrawRectangleRoundedLinesEx(box, 0.5f, 8, 2.0f, OPT_ACCENT_DIM);
     DrawTextEx(mainFont, text, (Vector2) {pos.x + 2.0f, pos.y + 2.0f}, 24, 2, (Color) {0, 0, 0, 200});   // sombra
     DrawTextEx(mainFont, text, pos, 24, 2, OPT_ACCENT_TEXT);
+    EndBlendMode();
+    EndTextureMode();
+}
+
+/* Antes de desenhar: refaz textos sujos e, se algo mudou, refaz as texturas da lista, abas e dica. */
+static void Caches_Refresh(void) {
+    for (int i = 0; i < OPTION_COUNT; i++) {
+        if (!Option_IsVisible(i)) continue;
+        if (options[i].type == OPTION_VALUE_HEADER || options[i].type == OPTION_VALUE_LABEL) continue;
+        if (options[i].dirty) Option_RebuildText(options + i);
+    }
+
+    const int tab = Option_HorizontalMode() ? options[currentOption].header : -1;
+    if (bakeDirty || currentOption != bakedOption || tab != bakedTab) {
+        BakeList();
+        if (tab >= 0) BakeTab();
+        bakeDirty = false;
+        bakedOption = currentOption;
+        bakedTab = tab;
+    }
+
+    const char* hint = CurrentHint();
+    if (hint && hint != bakedHint) BakeHint(hint);
+    bakedHint = hint;
 }
 
 static void OptionsMenu_Draw([[maybe_unused]] RayScene* scene) {
@@ -330,110 +525,42 @@ static void OptionsMenu_Draw([[maybe_unused]] RayScene* scene) {
     // Escurece o fundo de cima para baixo: o texto fica legivel sobre qualquer imagem de menu.
     DrawRectangleGradientV(0, 0, 1280, 720, (Color) {0, 0, 0, 70}, (Color) {0, 0, 0, 190});
 
-    float y = SCREEN_H / 2.0f - scrollOffset * ROW_HEIGHT;
+    // Arredondado: barra e lista usam o mesmo pixel, sem tremer durante o scroll.
+    const float top = roundf(SCREEN_H / 2.0f - scrollOffset * ROW_HEIGHT);
 
-    for (int i = 0; i < OPTION_COUNT; i++) {
-        if (!Option_IsVisible(i))
-            continue; // secao recolhida: nao ocupa espaco
-
-        Option* o = options + i;
-        const bool isHeader = o->type == OPTION_VALUE_HEADER;
-        const float height = isHeader ? HEADER_HEIGHT : ROW_HEIGHT;
-        const float drawY = y;
-        y += height;
-
-        if (drawY > CULL_BOTTOM)
-            break; // as linhas descem em ordem: o resto tambem esta fora da tela
-        if (drawY < CULL_TOP)
-            continue;
-
-        const bool selected = currentOption == i;
-        if (selected) DrawSelectionBar(drawY, height);
-
-        if (isHeader) {
-            Color fill = OPT_ACCENT, shadow = BLACK;
-            fill.a = selected ? 255 : HEADER_DIM_ALPHA;
-            shadow.a = selected ? 255 : 100;
-
-            if (!Option_HorizontalMode()) {
-                // Painel do titulo: faixa escura que some para a direita + divisor com brilho.
-                DrawRectangleGradientH((int)HEADER_X - 20, (int)drawY - 4, 1200, (int)HEADER_HEIGHT,
-                                       (Color) {0, 0, 0, selected ? 150 : 90}, (Color) {0, 0, 0, 0});
-                DrawRectangleGradientH((int)HEADER_X, (int)(drawY + HEADER_HEIGHT - 4.0f), 1180, 2,
-                                       (Color) {OPT_ACCENT.r, OPT_ACCENT.g, OPT_ACCENT.b, 150}, (Color) {OPT_ACCENT.r, OPT_ACCENT.g, OPT_ACCENT.b, 0});
-            }
-            DrawOptionText(o->text, HEADER_X, drawY, HEADER_FONT_SIZE, fill, shadow);
-            DrawChevron(drawY, o->collapsed, fill, shadow);
-
-            DrawHeaderLogo(i, drawY, fill, shadow);
-            continue;
+    // Faixa da selecao (viva: pulsa), antes da lista como antes.
+    {
+        float y = top;
+        for (int i = 0; i < OPTION_COUNT; i++) {
+            if (!Option_IsVisible(i)) continue;
+            if (i == currentOption) { DrawSelectionBar(y, RowHeight(i)); break; }
+            y += RowHeight(i);
         }
-
-        if (o->type == OPTION_VALUE_LABEL) {
-            // Texto estatico: cinza, sem icones, nunca selecionado.
-            // Fonte menor, centralizada na altura da linha (o layout continua o mesmo).
-            const float labelY = drawY + (ROW_FONT_SIZE - LABEL_FONT_SIZE) * 0.5f;
-            DrawOptionText(o->text, HEADER_X, labelY, LABEL_FONT_SIZE, (Color) {190, 190, 190, 255}, (Color) {0, 0, 0, 100});
-            // Divisor curto, da largura do proprio titulo (nao da linha inteira, como o [Header]).
-            static TextMeasure labelMeasure[OPTION_COUNT];   // um cache por linha: o rotulo e fixo
-            const float labelW = TextMeasure_Get(&labelMeasure[i], mainFont, o->text, LABEL_FONT_SIZE, TEXT_SPACING).x;
-            if (i == OPTION_NOTES_LABEL) DrawNotesLabelIcon(HEADER_X + labelW + 24.0f, labelY + LABEL_FONT_SIZE * 0.5f);
-            DrawRectangleGradientH((int)HEADER_X, (int)(labelY + LABEL_FONT_SIZE + 3.0f), (int)labelW, 2,
-                                   (Color) {OPT_ACCENT.r, OPT_ACCENT.g, OPT_ACCENT.b, 170}, (Color) {OPT_ACCENT.r, OPT_ACCENT.g, OPT_ACCENT.b, 0});
-            continue;
-        }
-
-        if (o->dirty) Option_RebuildText(o);
-
-        Color fill = o->active ? WHITE : RED;
-        Color shadow = BLACK;
-        fill.a = selected ? 255 : 150;
-        shadow.a = selected ? 255 : 100;
-
-        // Framerate ate V-SYNC (secao Window): icone de TV e texto recuado.
-        const bool inWindow = i >= OPTION_FPS && i <= OPTION_VSYNC;
-        const float textX = inWindow ? ROW_X - WINDOW_ROW_SHIFT : ROW_X;
-        DrawOptionText(o->cachedText, textX, drawY, ROW_FONT_SIZE, fill, shadow);
-        // Icone de TV so em Framerate; V-SYNC tem o seu (monitor); Uncapped FPS e Show FPS ficam sem icone.
-        if (i == OPTION_FPS) DrawTvIcon(drawY, fill, shadow);
-
-        const bool isHealthDrain = i == OPTION_HEALTH_DRAIN_PLAY || i == OPTION_HEALTH_DRAIN_BOTPLAY;
-        if (isHealthDrain) DrawHealthIcons(drawY, fill, shadow);
-
-        const bool hasKeyArrows = i == OPTION_GHOST;
-        if (hasKeyArrows) DrawKeyArrow(drawY, fill, shadow);
-
-        DrawExtraIcon(i, drawY, fill, shadow);
     }
+
+    // Lista inteira em uma textura: o scroll so muda o offset.
+    BeginBlendMode(BLEND_ALPHA_PREMULTIPLY);
+    DrawTextureRec(listTex.texture, (Rectangle) {0.0f, 0.0f, LIST_TEX_W, -(float)listTex.texture.height},
+                   (Vector2) {0.0f, top}, WHITE);
+    EndBlendMode();
 
     if (Option_HorizontalMode()) {
         DrawRectangleGradientV(0, 0, 1280, (int)TAB_BAND_H, (Color) {0, 0, 0, 215}, (Color) {0, 0, 0, 90});   // faixa da barra (a lista passa por baixo)
-        TabBarRun(true, (Vector2) {0.0f, 0.0f});
+        BeginBlendMode(BLEND_ALPHA_PREMULTIPLY);
+        DrawTextureRec(tabTex.texture, (Rectangle) {0.0f, 0.0f, LIST_TEX_W, -(float)tabTex.texture.height},
+                       (Vector2) {0.0f, 0.0f}, WHITE);
+        EndBlendMode();
+        TabBarRun(TAB_UNDERLINE, (Vector2) {0.0f, 0.0f});
     }
 
     // Dica da opcao atual, no rodape.
-    if (currentOption == OPTION_KEYBOARD_SCHEME && (int)options[OPTION_KEYBOARD_SCHEME].value == SCHEME_CUSTOM)
-        DrawHint("ENTER: edit custom keys");
-    else if (currentOption == OPTION_NOTE_COLORS)
-        DrawHint("ENTER: edit note colors");
-    else if (currentOption == OPTION_THREADS && (int)options[OPTION_THREADS].value == 1)
-        DrawHint("ENTER: set thread count");
-    else if (currentOption == OPTION_VSYNC)
-        DrawHint("same fps as your monitor hz");
-    else if (currentOption == OPTION_UNCAPPED_FPS)
-        DrawHint("no limiter use limiter less use of video card");
-    else if (currentOption == OPTION_SHADERS)
-        DrawHint("TV, glitch and other screen effects from charts");
-    else if (currentOption == OPTION_STREAM_JSON)
-        DrawHint("less RAM, more CPU: only useful for very large note charts");
-    else if (currentOption == OPTION_HITSOUND)
-        DrawHint("a sound when hit a note");
-    else if (currentOption == OPTION_STRUM_BG)
-        DrawHint("background in notereceptor");
-    else if (currentOption == OPTION_GAMEPLAY_EXTRA)
-        DrawHint("ENTER: co-op and play as");
-    else if (currentOption == OPTION_RESET_CONFIG)
-        DrawHint(resetArmed ? "ENTER again to confirm: resets every option" : "ENTER: reset all options to default");
+    if (CurrentHint())
+    {
+        BeginBlendMode(BLEND_ALPHA_PREMULTIPLY);
+        DrawTextureRec(hintTex.texture, (Rectangle) {0.0f, 0.0f, LIST_TEX_W, -(float)HINT_TEX_H},
+                       (Vector2) {0.0f, HINT_TOP}, WHITE);
+        EndBlendMode();
+    }
 
     SearchBox_Draw(&search, mainFont);
 
@@ -451,7 +578,18 @@ static void OptionsMenu_Draw([[maybe_unused]] RayScene* scene) {
 
 static void OptionsMenu_Destroy([[maybe_unused]] RayScene* scene) {
     NoteColorScreen_Destroy();
+    if (listTex.id != 0) UnloadRenderTexture(listTex);
+    if (tabTex.id != 0) UnloadRenderTexture(tabTex);
+    if (hintTex.id != 0) UnloadRenderTexture(hintTex);
+    listTex = tabTex = hintTex = (RenderTexture2D) {0};
     bg.image = (Texture2D) {0}; // compartilhada: nao descarrega aqui
+}
+
+/* Texturas so sao montadas aqui, fora do Draw: o frame e renderizado dentro do stretchTarget do jogo,
+ * e um BeginTextureMode no meio dele desliga o framebuffer (a tela pisca). Mesma regra de PlayStateText.c. */
+static void OptionsMenu_Update([[maybe_unused]] RayScene* scene) {
+    OptionsMenu_UpdateInput();
+    Caches_Refresh();
 }
 
 static RayScene scene;

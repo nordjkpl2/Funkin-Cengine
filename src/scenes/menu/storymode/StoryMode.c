@@ -498,14 +498,7 @@ static void DrawDisc(void) {
 
 /* Titulo grande da week selecionada, com sombra, e contagem logo abaixo. */
 static void DrawHero(void) {
-    DrawTextEx(mainFont, heroTitle, (Vector2) {HERO_TITLE_X + 3.0f, HERO_TITLE_Y + 3.0f},
-               HERO_TITLE_SIZE, 1.5f, (Color) {0, 0, 0, 190});
-    DrawTextEx(mainFont, heroTitle, (Vector2) {HERO_TITLE_X, HERO_TITLE_Y},
-               HERO_TITLE_SIZE, 1.5f, COLOR_TEXT);
-    DrawTextEx(mainFont, heroCount, (Vector2) {HERO_TITLE_X + 2.0f, HERO_COUNT_Y},
-               16.0f, 1.5f, COLOR_ACCENT);
-
-    // Seletor de dificuldade ao lado da contagem: "< NORMAL >".
+    // Seletor de dificuldade ao lado da contagem: "< NORMAL >". Formas primeiro, depois os textos.
     static TextMeasure countMeasure, diffMeasure;   // textos mudam so ao trocar de week/dificuldade
     const float countW = TextMeasure_Get(&countMeasure, mainFont, heroCount, 16.0f, 1.5f).x;
     const float diffX = HERO_TITLE_X + 2.0f + countW + 26.0f;
@@ -513,18 +506,33 @@ static void DrawHero(void) {
                             TextMeasure_Get(&diffMeasure, mainFont, DIFF_NAMES[diffIndex], 16.0f, 1.5f).x + 58.0f, 26.0f};
     DrawRectangleRounded(pill, 0.5f, 8, (Color) {255, 205, 92, 34});
     DrawRectangleRoundedLinesEx(pill, 0.5f, 8, 1.0f, (Color) {255, 205, 92, 150});
+
+    DrawTextEx(mainFont, heroTitle, (Vector2) {HERO_TITLE_X + 3.0f, HERO_TITLE_Y + 3.0f},
+               HERO_TITLE_SIZE, 1.5f, (Color) {0, 0, 0, 190});
+    DrawTextEx(mainFont, heroTitle, (Vector2) {HERO_TITLE_X, HERO_TITLE_Y},
+               HERO_TITLE_SIZE, 1.5f, COLOR_TEXT);
+    DrawTextEx(mainFont, heroCount, (Vector2) {HERO_TITLE_X + 2.0f, HERO_COUNT_Y},
+               16.0f, 1.5f, COLOR_ACCENT);
     DrawTextEx(mainFont, "<", (Vector2) {diffX, HERO_COUNT_Y}, 16.0f, 1.5f, COLOR_ACCENT);
     DrawTextEx(mainFont, DIFF_NAMES[diffIndex], (Vector2) {diffX + 20.0f, HERO_COUNT_Y}, 16.0f, 1.5f, COLOR_TEXT);
     DrawTextEx(mainFont, ">", (Vector2) {pill.x + pill.width - 18.0f, HERO_COUNT_Y}, 16.0f, 1.5f, COLOR_ACCENT);
 }
 
-static void DrawWeekRow(int i) {
+/* Retangulo da linha i; false se ela nao cabe inteira na area da lista. */
+static bool WeekRowRect(int i, Rectangle* row) {
     const float y = LIST_Y + ((float)i - listOffset) * ROW_H;
     // So desenha linhas inteiras dentro da area da lista.
     if (y < LIST_Y || y + ROW_BOX_H > LIST_BOTTOM)
-        return;
+        return false;
+    *row = (Rectangle) {LIST_X, y, LIST_W, ROW_BOX_H};
+    return true;
+}
 
-    const Rectangle row = {LIST_X, y, LIST_W, ROW_BOX_H};
+/* Passada de formas: sombra, fundo, borda, barra de acento e pilula da contagem. */
+static void DrawWeekRowShapes(int i) {
+    Rectangle row;
+    if (!WeekRowRect(i, &row))
+        return;
     const bool isSelected = i == selected;
     const WeekRowText* text = rowTexts + i;
 
@@ -540,8 +548,6 @@ static void DrawWeekRow(int i) {
         DrawRectangleRounded((Rectangle) {row.x + 1.0f, row.y + 1.0f, row.width - 2.0f, row.height * 0.5f},
                              0.3f, 8, (Color) {255, 255, 255, 16});
         DrawRectangleRoundedLinesEx(row, 0.16f, 8, 1.5f, (Color) {255, 205, 92, 220});
-        // Seta ">" atras da barra de acento, como o seletor do freeplay.
-        DrawTextEx(mainFont, ">", (Vector2) {row.x + 2.0f, row.y + 14.0f}, 34.0f, 1.0f, COLOR_ACCENT);
         // Barra de acento arredondada a esquerda.
         DrawRectangleRounded((Rectangle) {row.x + 8.0f, row.y + 14.0f, 4.0f, ROW_BOX_H - 28.0f},
                              1.0f, 4, COLOR_ACCENT);
@@ -549,6 +555,24 @@ static void DrawWeekRow(int i) {
         DrawRectangleRounded(row, 0.16f, 8, (Color) {14, 18, 33, 200});
         DrawRectangleRoundedLinesEx(row, 0.16f, 8, 1.0f, (Color) {70, 84, 120, 110});
     }
+
+    // Contagem dentro de uma pilula.
+    const float countX = row.x + LIST_W - 112.0f;
+    const Rectangle pill = {countX - 10.0f, row.y + (ROW_BOX_H - 24.0f) * 0.5f, text->countWidth + 20.0f, 24.0f};
+    DrawRectangleRounded(pill, 0.5f, 8, isSelected ? (Color) {255, 205, 92, 44} : (Color) {255, 255, 255, 12});
+}
+
+/* Passada de textos: seta, titulo (com sombra quando selecionado) e contagem. */
+static void DrawWeekRowText(int i) {
+    Rectangle row;
+    if (!WeekRowRect(i, &row))
+        return;
+    const bool isSelected = i == selected;
+    const WeekRowText* text = rowTexts + i;
+
+    // Seta ">" no lugar do seletor, como no freeplay.
+    if (isSelected)
+        DrawTextEx(mainFont, ">", (Vector2) {row.x + 2.0f, row.y + 14.0f}, 34.0f, 1.0f, COLOR_ACCENT);
 
     // Titulo, com sombra leve quando selecionado.
     const Vector2 titlePos = {row.x + 25.0f, row.y + 13.0f};
@@ -559,14 +583,12 @@ static void DrawWeekRow(int i) {
                isSelected ? ROW_FONT_SELECTED : ROW_FONT_IDLE, 1.5f,
                isSelected ? COLOR_TEXT : COLOR_MUTED);
 
-    // Contagem dentro de uma pilula.
     const float countX = row.x + LIST_W - 112.0f;
-    const Rectangle pill = {countX - 10.0f, row.y + (ROW_BOX_H - 24.0f) * 0.5f, text->countWidth + 20.0f, 24.0f};
-    DrawRectangleRounded(pill, 0.5f, 8, isSelected ? (Color) {255, 205, 92, 44} : (Color) {255, 255, 255, 12});
-    DrawTextEx(mainFont, text->count, (Vector2) {countX, pill.y + 6.0f},
+    DrawTextEx(mainFont, text->count, (Vector2) {countX, row.y + (ROW_BOX_H - 24.0f) * 0.5f + 6.0f},
                13.0f, 1.0f, isSelected ? COLOR_ACCENT : COLOR_MUTED);
 }
 
+/* Lista de semanas em duas passadas (formas, depois textos) para cortar trocas de textura. */
 static void DrawWeekList(void) {
     int first = (int)floorf(listOffset - VISIBLE_MARGIN / ROW_H) - 1;
     int last = (int)ceilf(listOffset + (LIST_BOTTOM - LIST_Y + VISIBLE_MARGIN) / ROW_H) + 1;
@@ -574,7 +596,9 @@ static void DrawWeekList(void) {
     if (last >= weekCount) last = weekCount - 1;
 
     for (int i = first; i <= last; ++i)
-        DrawWeekRow(i);
+        DrawWeekRowShapes(i);
+    for (int i = first; i <= last; ++i)
+        DrawWeekRowText(i);
 }
 
 static int TrackRowsTotal(void) {
@@ -638,21 +662,11 @@ static void UpdateTrackScrollInput(void) {
 }
 
 /* Lista de faixas em colunas, com barra de rolagem quando nao cabe tudo. */
-static void DrawTrackList(void) {
-    const float listX = DETAILS_X + 18.0f;
+/* Barra de rolagem da lista de faixas (formas). */
+static void DrawTrackScrollbar(void) {
     const float listY = DETAILS_Y + DETAIL_LIST_TOP;
     const int visible = TrackRowsVisible();
     const int total = TrackRowsTotal();
-
-    for (int i = 0; i < detailsLineCount; ++i) {
-        const int row = i / DETAIL_COLUMNS - detailsScroll;
-        const int column = i % DETAIL_COLUMNS;
-        if (row < 0 || row >= visible) continue;
-
-        DrawTextEx(mainFont, detailsLines[i],
-                   (Vector2) {listX + (float)column * DETAIL_COLUMN_W, listY + (float)row * DETAIL_ROW_H},
-                   DETAIL_FONT, 1.0f, COLOR_TEXT);
-    }
 
     if (total > visible) {
         const float barX = DETAILS_X + DETAILS_W - 14.0f;
@@ -664,13 +678,32 @@ static void DrawTrackList(void) {
     }
 }
 
+/* Nomes das faixas (textos). */
+static void DrawTrackTexts(void) {
+    const float listX = DETAILS_X + 18.0f;
+    const float listY = DETAILS_Y + DETAIL_LIST_TOP;
+    const int visible = TrackRowsVisible();
+
+    for (int i = 0; i < detailsLineCount; ++i) {
+        const int row = i / DETAIL_COLUMNS - detailsScroll;
+        const int column = i % DETAIL_COLUMNS;
+        if (row < 0 || row >= visible) continue;
+
+        DrawTextEx(mainFont, detailsLines[i],
+                   (Vector2) {listX + (float)column * DETAIL_COLUMN_W, listY + (float)row * DETAIL_ROW_H},
+                   DETAIL_FONT, 1.0f, COLOR_TEXT);
+    }
+}
+
+/* Painel de detalhes: painel e barra (formas) antes de todos os textos. */
 static void DrawWeekDetails(void) {
     const float firstX = DETAILS_X + 18.0f;
 
     DrawPanel((Rectangle) {DETAILS_X, DETAILS_Y, DETAILS_W, DETAILS_H}, COLOR_PANEL, COLOR_BORDER);
-    DrawTextEx(mainFont, detailsCount, (Vector2) {firstX, DETAILS_Y + 10.0f}, 14.0f, 1.0f, COLOR_ACCENT);
+    DrawTrackScrollbar();
 
-    DrawTrackList();
+    DrawTextEx(mainFont, detailsCount, (Vector2) {firstX, DETAILS_Y + 10.0f}, 14.0f, 1.0f, COLOR_ACCENT);
+    DrawTrackTexts();
 
     if (detailsHidden)
         DrawTextEx(mainFont, "Additional tracks hidden (limit: 200)",

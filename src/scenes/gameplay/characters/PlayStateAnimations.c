@@ -204,9 +204,33 @@ void PlayStateAnimations_ChangeCharacter(int target, const char* name) {
 /* Eventos                                                             */
 /* ------------------------------------------------------------------ */
 
+/* Intervalo minimo para reiniciar a mesma animacao de canto: varias camadas de nota
+ * no mesmo quadro chamariam SetAnimation varias vezes e a pose ficaria presa no frame 0. */
+#define SING_RETRIGGER_COOLDOWN 0.002
+
+typedef struct {
+    int anim;
+    double time;
+} SingTrigger;
+
+static SingTrigger dadSing = { -1, -1.0 };
+static SingTrigger bfSing = { -1, -1.0 };
+static SingTrigger bfMissSing = { -1, -1.0 };
+
+/* Reinicia a animacao so se for outra, ou se a mesma ja foi disparada ha mais que o cooldown. */
+static void TriggerSing(RayAnimatedObject* obj, int anim, SingTrigger* last) {
+    const double now = GetTime();
+    if (anim == last->anim && last->time >= 0.0 && now - last->time < SING_RETRIGGER_COOLDOWN)
+        return;
+
+    last->anim = anim;
+    last->time = now;
+    AnimatedObject_SetAnimation(obj, anim);
+}
+
 void PlayStateAnimations_OpponentHit(int lane) {
     dad.idleTimer = 0;
-    AnimatedObject_SetAnimation(&dad.object, dad.animations.notes[lane]);
+    TriggerSing(&dad.object, dad.animations.notes[lane], &dadSing);
 }
 
 void PlayStateAnimations_OpponentHold(void) {
@@ -218,7 +242,7 @@ void PlayStateAnimations_BotHit(int lane) {
         PlayBotHitSound();
 
     bf.idleTimer = 0;
-    AnimatedObject_SetAnimation(&bf.object, bf.animations.notes[lane]);
+    TriggerSing(&bf.object, bf.animations.notes[lane], &bfSing);
 }
 
 void PlayStateAnimations_BotHold(void) {
@@ -230,7 +254,7 @@ void PlayStateAnimations_PlayerHit(int lane) {
         PlayHitSound();
 
     bf.idleTimer = 0;
-    AnimatedObject_SetAnimation(&bf.object, bf.animations.notes[lane]);
+    TriggerSing(&bf.object, bf.animations.notes[lane], &bfSing);
 }
 
 void PlayStateAnimations_PlayerHold(void) {
@@ -249,7 +273,7 @@ void PlayStateAnimations_PlayerMiss(int lane) {
         PlaySound(missSFX[GetRandomValue(0, 2)]);
     }
 
-    AnimatedObject_SetAnimation(&bf.object, bf.missAnimations.notes[lane]);
+    TriggerSing(&bf.object, bf.missAnimations.notes[lane], &bfMissSing);
 }
 
 /* ------------------------------------------------------------------ */

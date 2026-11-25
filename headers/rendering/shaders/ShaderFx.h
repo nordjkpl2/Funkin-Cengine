@@ -14,7 +14,10 @@ typedef enum {
     SHADERFX_TV,
     SHADERFX_GLITCH,
     SHADERFX_BLACKNESS,
-    SHADERFX_GRAYSCALE
+    SHADERFX_GRAYSCALE,
+    SHADERFX_BLOOM,
+    SHADERFX_SPACE,   /* nebulosa + estrelas animadas */
+    SHADERFX_PULSE    /* pulso de batida: zoom + brilho + borda, no ritmo */
 } ShaderFxKind;
 
 /* Respeita gameOptions.shaders: com a opcao off, ShaderFx_Set nao liga nada. */

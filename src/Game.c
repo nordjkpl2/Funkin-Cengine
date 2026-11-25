@@ -123,6 +123,21 @@ static inline void RayGame_UpdateOverlay(float frameDelta)
     }
 }
 
+/* Ociosidade: cena marcada como staticWhenIdle pode pular o draw. Input sempre pede redesenho. */
+#define RAYGAME_IDLE_SLEEP_S   0.008f  /* dorme entre frames ociosos (sem V-SYNC, o loop nao bloqueia) */
+#define RAYGAME_IDLE_REDRAW_S  0.25f   /* redesenho forcado mesmo parado (janela exposta, texturas async) */
+
+static inline bool RayGame_HadInput(void)
+{
+    const Vector2 md = GetMouseDelta();
+    if (md.x != 0.0f || md.y != 0.0f || GetMouseWheelMove() != 0.0f) return true;
+    for (int k = 0; k <= KEY_MENU; k++)
+        if (IsKeyPressed(k) || IsKeyReleased(k)) return true;
+    for (int b = 0; b < 8; b++)   /* raylib: MAX_MOUSE_BUTTONS = 8 (interno, nao exposto) */
+        if (IsMouseButtonPressed(b) || IsMouseButtonReleased(b)) return true;
+    return false;
+}
+
 /* Textura do rotulo de FPS (ver RayGame_DrawOverlay). */
 #define FPS_LABEL_W 96
 #define FPS_LABEL_H 36
@@ -448,11 +463,36 @@ void RayGame_GameLoop(void)
         if (IsKeyPressed(KEY_MINUS) || IsKeyPressed(KEY_KP_SUBTRACT))
             RayGame_BumpMusicVolume(-0.1f);
 
+        if (game.scene != NULL && RayGame_HadInput())
+            RayScene_RequestRedraw(game.scene);
+
         if (game.scene != NULL && game.scene->functions.updateFunc != NULL)
             game.scene->functions.updateFunc(game.scene);
 
         if (playingMusic && musicLoaded)
             UpdateMusicStream(gameMusic);
+
+        /* Frame parado: cena opt-in sem pedido de redesenho pula o draw e dorme.
+           Nao pula com FPS visivel ou overlay F3 (eles mudam a cada frame). */
+        {
+            static float idleAge = 0.0f;
+            const bool idleOk = game.scene != NULL && game.scene->staticWhenIdle
+                && !game.scene->redrawRequested && idleAge < RAYGAME_IDLE_REDRAW_S
+                && !gameOptions.showFps;
+#if defined(FNF_DEBUG_STATS)
+            const bool idleOkDbg = idleOk && !dbg.on;
+#else
+            const bool idleOkDbg = idleOk;
+#endif
+            if (idleOkDbg)
+            {
+                idleAge += dt;
+                PollInputEvents();     /* EndDrawing nao roda aqui: precisa ler o input na mao */
+                WaitTime(RAYGAME_IDLE_SLEEP_S);
+                continue;
+            }
+            idleAge = 0.0f;
+        }
 
         if (game.scene == NULL)
         {
@@ -469,6 +509,8 @@ void RayGame_GameLoop(void)
 #else
         const double tDraw0 = 0.0;
 #endif
+
+        game.scene->redrawRequested = false;   /* este frame vai ser desenhado */
 
         /* Sempre desenha no canvas 1280x720 (render target) e so depois escala para a janela:
            cameras, HUD e textos ficam no mesmo espaco, com ou sem Stretch. */
