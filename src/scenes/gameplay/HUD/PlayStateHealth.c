@@ -20,6 +20,7 @@ static float sway;
 static float minHealth;       /* -inf se mortal (morre abaixo de 0), senao 0 */
 /* Play as oponente (sem Co-Op): "health" e a vida do jogador, que fica do lado do oponente na barra. */
 static char healthOnDad;
+static bool healthHidden;     /* evento Health Bar = 0: nao desenha barra nem icones */
 
 /* area interna da barra em pixels inteiros: calculada uma vez no Init */
 static int innerX, innerY, innerW, innerH;
@@ -106,7 +107,12 @@ float PlayStateHealth_CenterX(float width) {
 #define ICON_LOSE_BF 0.2f   /* BF perdendo: vida abaixo disso */
 #define ICON_LOSE_DAD 0.8f  /* oponente perdendo: vida acima disso */
 
+void PlayStateHealth_SetVisible(bool visible) {
+    healthHidden = !visible;
+}
+
 void PlayStateHealth_Draw(Texture2D dadIcon, Texture2D bfIcon) {
+    if (healthHidden) return;
     const int C = 35;
     /* vida do BF (a barra e desenhada desse ponto de vista); com Play as oponente, a do BF e o inverso */
     const float bfHealth = healthOnDad ? 1.0f - health : health;

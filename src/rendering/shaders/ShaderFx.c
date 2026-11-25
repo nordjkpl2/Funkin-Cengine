@@ -337,6 +337,27 @@ static const char kFsDepth[] =
     "    finalColor = vec4(clamp(col, 0.0, 1.0), 1.0);\n"
     "}\n";
 
+/* Bordas pretas: vinheta pelo centro da tela. intensidade = quanto escurece o canto;
+ * animacao > 0 faz a borda respirar no tempo (pulso lento). */
+static const char kFsVignette[] =
+    "#version 330\n"
+    "in vec2 fragTexCoord;\n"
+    "uniform sampler2D texture0;\n"
+    "uniform vec2 uRes;\n"
+    "uniform float uTime;\n"
+    "uniform float uAmt;\n"
+    "uniform float uAnim;\n"
+    "out vec4 finalColor;\n"
+    "void main() {\n"
+    "    float asp = uRes.x / max(uRes.y, 1.0);\n"
+    "    vec3 col = texture(texture0, fragTexCoord).rgb;\n"
+    "    vec2 c = (fragTexCoord - 0.5) * vec2(asp, 1.0);\n"
+    "    float pulse = 1.0 + 0.06 * sin(uTime * uAnim * 2.0) * step(0.001, uAnim);\n"
+    "    float v = smoothstep(0.30, 0.95, length(c) * pulse);\n"
+    "    col *= 1.0 - uAmt * 0.95 * v;\n"
+    "    finalColor = vec4(col, 1.0);\n"
+    "}\n";
+
 /* Ondulacao do fundo: NAO e da pilha. Roda so nas imagens da camada de tras do stage
  * (ShaderFx_BeginBackgroundWave / EndBackgroundWave), deslocando a UV por senoides. */
 static const char kFsWave[] =
@@ -368,10 +389,10 @@ typedef struct {
     float lastRes[2], lastAmt, lastAnim;
 } FxSlot;
 
-#define FX_COUNT 12
+#define FX_COUNT 13
 #define FX_STACK_MAX 3       /* efeitos ao mesmo tempo */
-#define WAVE_SLOT 11         /* ondulacao do fundo: fora da pilha (on = ligada) */
-static FxSlot slots[FX_COUNT];   /* [0] = TV, [1] = glitch, ..., [10] = depth, [11] = wave (fundo) */
+#define WAVE_SLOT 12         /* ondulacao do fundo: fora da pilha (on = ligada) */
+static FxSlot slots[FX_COUNT];   /* [0] = TV, [1] = glitch, ..., [10] = depth, [11] = vinheta, [12] = wave (fundo) */
 static ShaderFxKind order[FX_STACK_MAX];   /* ordem da pilha: order[0] = aplicado primeiro */
 static int orderLen;
 static char triedLoad;
@@ -407,11 +428,12 @@ static void EnsureLoaded(void) {
     FxSlot_Load(&slots[8], kFsChromatic);
     FxSlot_Load(&slots[9], kFsDissolve);
     FxSlot_Load(&slots[10], kFsDepth);
+    FxSlot_Load(&slots[11], kFsVignette);
     FxSlot_Load(&slots[WAVE_SLOT], kFsWave);
 }
 
 static int IsValidKind(ShaderFxKind k) {
-    return k > SHADERFX_NONE && k <= SHADERFX_DEPTH;
+    return k > SHADERFX_NONE && k <= SHADERFX_VIGNETTE;
 }
 
 /* Tira da pilha a posicao idx (o efeito continua carregado, so deixa de ser aplicado). */

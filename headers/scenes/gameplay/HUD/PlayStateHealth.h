@@ -47,4 +47,7 @@ float PlayStateHealth_CenterX(float width);
 /* Desenha barra e icones (dad a esquerda, bf a direita). */
 void PlayStateHealth_Draw(Texture2D dadIcon, Texture2D bfIcon);
 
+/* Evento "Health Bar": esconde ou mostra barra e icones (a vida continua contando). */
+void PlayStateHealth_SetVisible(bool visible);
+
 #endif /* PLAYSTATE_HEALTH_H */

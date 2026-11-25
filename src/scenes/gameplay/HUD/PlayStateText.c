@@ -27,6 +27,10 @@
 #define TIME_LOW_Y 690.0f
 #define TIME_RIGHTDOWN_Y 640.0f
 #define TIME_TOP_Y 15.0f
+// Estilo "bar" do tempo (gameOptions.timeStyle): barra de progresso atras do texto.
+#define TIME_BAR_W 260.0f
+#define TIME_BAR_H 20.0f
+#define TIME_BAR_FONT 20.0f
 
 // Margem do raster (px) para a sombra nao ser cortada.
 #define HUD_TEXT_PAD 4.0f
@@ -62,6 +66,9 @@ static int lastScoreDrawn = -1;
 static int lastMissesDrawn = -1;
 static int lastTimeSec = -1;
 static int lastTimePos = -1;
+static int lastTimeStyle = -1;
+static float timeProgress;      // 0..1 da musica (barra do estilo bar)
+static float timeBarX, timeBarY; // canto superior esquerdo da barra (coordenadas logicas)
 
 static void HudText_Style(HudText* t, float size, Color color, Color shadow,
                           float shadowX, float shadowY, HudAlign align) {
@@ -253,12 +260,14 @@ void PlayStateText_Reset(void) {
     lastPsychMisses = -1;
     lastTimeSec = -1;
     lastTimePos = -1;
+    lastTimeStyle = -1;
 }
 
-// Aplica gameOptions.timePosition ao texto do tempo (so mexe quando a opcao muda).
+// Aplica gameOptions.timePosition e timeStyle ao tempo (so mexe quando a opcao muda).
 static void ApplyTimePosition(void) {
-    if (gameOptions.timePosition == lastTimePos) return;
+    if (gameOptions.timePosition == lastTimePos && gameOptions.timeStyle == lastTimeStyle) return;
     lastTimePos = gameOptions.timePosition;
+    lastTimeStyle = gameOptions.timeStyle;
     HudAlign align = HUD_ALIGN_CENTER;
     float x = TEXT_CENTER_X, y = TIME_TOP_Y;
     switch (gameOptions.timePosition) {
@@ -266,6 +275,12 @@ static void ApplyTimePosition(void) {
         case TIME_POS_RIGHTUP:   align = HUD_ALIGN_RIGHT; x = TEXT_RIGHT_X; break;
         case TIME_POS_RIGHTDOWN: align = HUD_ALIGN_RIGHT; x = TEXT_RIGHT_X; y = TIME_RIGHTDOWN_Y; break;
         default: break;
+    }
+    if (gameOptions.timeStyle == TIME_STYLE_BAR) {
+        // Barra centrada em x (ou terminando em x, se alinhado a direita); texto centralizado nela.
+        timeBarX = align == HUD_ALIGN_RIGHT ? x - TIME_BAR_W : x - TIME_BAR_W * 0.5f;
+        timeBarY = y;
+        y += (TIME_BAR_H - TIME_BAR_FONT) * 0.5f;
     }
     if (hTime.align != align) {
         hTime.align = align;
@@ -282,15 +297,16 @@ void PlayStateText_Refresh(int score, int misses, float songTime, char showScore
     // Tempo
     ApplyTimePosition();
     {
+        const float total = fmaxf(PlayStateAudio_Length(), 0.0f);
         int currentSec = (int)(songTime < 0 ? 0 : songTime);
         if (currentSec != lastTimeSec) {
             lastTimeSec = currentSec;
-            float total = PlayStateAudio_Length();
-            if (total < 0) total = 0;
             snprintf(buf, sizeof(buf), "%d:%02d / %d:%02d",
                 currentSec / 60, currentSec % 60, (int)total / 60, (int)total % 60);
             HudText_SetText(&hTime, buf);
         }
+        // Progresso por frame (so usado no estilo bar; a barra nao rasteriza nada).
+        timeProgress = total > 0.0f ? fminf(fmaxf(songTime / total, 0.0f), 1.0f) : 0.0f;
     }
 
     // Score e Misses (Cengine: canto direito; Psych: centro sob a barra)
@@ -326,6 +342,11 @@ void PlayStateText_Refresh(int score, int misses, float songTime, char showScore
 
 // Desenha so os blits (ja rasterizados em Refresh). Dentro da camera do HUD.
 void PlayStateText_Draw(char showScore, char scorePosition) {
+    if (gameOptions.timeStyle == TIME_STYLE_BAR) {
+        DrawRectangleRec((Rectangle){timeBarX, timeBarY, TIME_BAR_W, TIME_BAR_H}, (Color){0, 0, 0, 160});
+        DrawRectangleRec((Rectangle){timeBarX, timeBarY, TIME_BAR_W * timeProgress, TIME_BAR_H}, (Color){255, 255, 255, 220});
+    }
+
     BeginBlendMode(BLEND_ALPHA_PREMULTIPLY);
 
     HudText_Blit(&hTime);

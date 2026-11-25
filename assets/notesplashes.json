@@ -3,7 +3,8 @@
     "splashes": [
         {
             "animset": "assets/images/noteSplashes-sparkles.xml",
-            "prefix": "splash sparkles blue "
+            "prefix": "splash sparkles red ",
+            "tint": 4
         }
     ]
 }

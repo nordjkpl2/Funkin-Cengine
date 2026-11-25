@@ -37,6 +37,7 @@
 #define LIST_SCROLL_SPEED 10.0f
 #define SELECT_EASE 12.0f       /* velocidade do pulso ao trocar de musica */
 #define WARM_RADIUS 4           /* quantas musicas de cada lado ja ficam com icone pronto */
+#define PAGE_STEP 10            /* musicas por PgUp/PgDn */
 
 /* Card */
 #define CARD_X 852.0f
@@ -200,6 +201,9 @@ static void Freeplay_Update(RayScene* scene) {
         return;
     }
 
+    // Icone que ainda esta sendo resolvido/decodificado em fundo: redesenha ate chegar.
+    if (FreeplayIcon_Tick()) RayScene_RequestRedraw(scene);
+
     // Letras, Backspace, Esc e Enter pertencem ao campo enquanto ele estava focado.
     const bool typing = SearchBox_Focused(&search);
     if (SearchBox_Update(&search)) ApplyFilter();
@@ -218,6 +222,16 @@ static void Freeplay_Update(RayScene* scene) {
             if (++selectedSong >= shownCount) selectedSong = 0;
         } else if (up) {
             if (--selectedSong < 0) selectedSong = shownCount - 1;
+        }
+
+        // PgUp/PgDn pulam uma pagina de musicas (sem dar a volta). Home/End vao pras pontas.
+        if (!typing) {
+            if (IsKeyPressed(KEY_PAGE_DOWN)) selectedSong += PAGE_STEP;
+            if (IsKeyPressed(KEY_PAGE_UP)) selectedSong -= PAGE_STEP;
+            if (IsKeyPressed(KEY_HOME)) selectedSong = 0;
+            if (IsKeyPressed(KEY_END)) selectedSong = shownCount - 1;
+            if (selectedSong >= shownCount) selectedSong = shownCount - 1;
+            if (selectedSong < 0) selectedSong = 0;
         }
 
         // Roda do mouse: so faz algo quando rolada. Shift = 5 itens. Sem dar a volta.
@@ -358,8 +372,8 @@ static void DrawCoverEdge(Rectangle frame) {
 
 /* Passada de textos da capa: so aparece quando a imagem nao carregou. */
 static void DrawCoverText(Rectangle frame) {
-    if (FreeplayIcon_IsLoaded())
-        return;
+    if (FreeplayIcon_IsLoaded() || FreeplayIcon_Busy())
+        return;   /* carregando: nada de "NO ICON" piscando */
     static const char* const missing = "NO ICON";
     static TextMeasure missingMeasure;
     const Vector2 size = TextMeasure_Get(&missingMeasure, mainFont, missing, 25.0f, 2.0f);

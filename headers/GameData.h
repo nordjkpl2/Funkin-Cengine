@@ -16,6 +16,7 @@ typedef struct GameOptions {
     char botplay, ghost, scroll, hitSound, showFps;
     char scorePosition; /* SCORE_POS_CENGINE ou SCORE_POS_PSYCH */
     char timePosition;  /* TIME_POS_*: onde o tempo da musica aparece (padrao: default) */
+    char timeStyle;     /* TIME_STYLE_*: texto do tempo (default) ou texto sobre barra de progresso (bar) */
     char healthDrainPlay;     /* oponente acerta -> perde vida no jogo normal (padrao: off) */
     char healthDrainBotplay;  /* botplay ganha/perde vida como o jogador (padrao: off; off = barra travada) */
     char streamingJsonParse;  /* chart JSON em janelas por secao (streaming): menos RAM em charts grandes (padrao: off) */
@@ -47,6 +48,10 @@ typedef struct GameOptions {
 #define TIME_POS_LOW       1
 #define TIME_POS_RIGHTUP   2
 #define TIME_POS_RIGHTDOWN 3
+
+/* Estilo do tempo: texto puro (default) ou texto sobre uma barra que mostra o progresso (bar). */
+#define TIME_STYLE_DEFAULT 0
+#define TIME_STYLE_BAR     1
 
 /* Estilo de scroll (gameOptions.scroll): Middledown = middlescroll + downscroll ao mesmo tempo. */
 #define SCROLL_UP         0

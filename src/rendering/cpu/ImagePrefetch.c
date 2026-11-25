@@ -10,7 +10,7 @@
 #include "threads/Thread.h"
 #include "threads/cpu/Jobs.h"
 
-#define PF_MAX 16
+#define PF_MAX 40
 #define PF_PATH_MAX 260
 
 #define PF_CACHE_MAX 64
@@ -194,18 +194,23 @@ static void Pf_Detach(PfSlot* s) {
     Pf_Release(s);
 }
 
-void ImagePrefetch_Start(const char* path) {
+bool ImagePrefetch_Start(const char* path) {
     if(path == NULL || path[0] == '\0' || strlen(path) >= PF_PATH_MAX) {
         stats.pathInvalid++; // sem caminho guardavel: so conta
-        return;
+        return false;
     }
     if(Pf_Find(path) != NULL)
-        return; // ja pedido: nao e falha
+        return true; // ja pedido (em andamento ou pronto): nao e falha
+    PfCacheEntry* cached = Cache_Find(path);
+    if(cached != NULL) {
+        cached->stamp = ++cacheTick; // ja decodificado: nao decodifica de novo
+        return true;
+    }
 
     // Ordem: tudo que nao exige I/O primeiro. Recusa repetida sai aqui, sem tocar no disco.
     if(Pf_IsRefused(path)) {
         stats.refusedAgain++;
-        return;
+        return false;
     }
 
     // Slots prontos e nao usados viram cache, liberando espaco. So os RUNNING continuam ocupados.
@@ -225,23 +230,23 @@ void ImagePrefetch_Start(const char* path) {
     }
     if(s == NULL) {
         Pf_Refuse(&stats.noSlot, "todos os slots ocupados, carrega na hora", path);
-        return;
+        return false;
     }
 
     // A partir daqui ha I/O (ler o cabecalho do PNG); so depois de ter slot livre.
     unsigned w, h;
     if(!Pf_PngSize(path, &w, &h)) {
         Pf_Refuse(&stats.notPng, "nao e PNG valido", path);
-        return;
+        return false;
     }
     if(w > 16384 || h > 16384) {
         Pf_Refuse(&stats.tooBig, "imagem maior que 16384 px", path);
-        return;
+        return false;
     }
     size_t bytes = (size_t)w * h * 4;
     if(usedBytes + bytes > (size_t)IMAGE_PREFETCH_CAP_MB * 1024 * 1024) {
         Pf_Refuse(&stats.overBudget, "sem orcamento de memoria, carrega na hora", path);
-        return;
+        return false;
     }
 
     memcpy(s->path, path, strlen(path) + 1);
@@ -254,7 +259,19 @@ void ImagePrefetch_Start(const char* path) {
     if(!Jobs_Submit(Pf_Job, s, NULL)) {
         Pf_Refuse(&stats.submitFailed, "fila de jobs recusou, carrega na hora", path);
         Pf_Release(s);
+        return false;
     }
+    return true;
+}
+
+/* Ja da para subir sem esperar: decodificado com sucesso, falhou (Upload decide) ou esta no cache. */
+bool ImagePrefetch_Ready(const char* path) {
+    if(path == NULL || path[0] == '\0')
+        return false;
+    const PfSlot* s = Pf_Find(path);
+    if(s != NULL)
+        return atomic_load(&s->state) != PF_RUNNING;
+    return Cache_Find(path) != NULL;
 }
 
 /* Envia a imagem pronta para a GPU direto da memoria do cache (sem copia). A imagem continua

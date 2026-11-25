@@ -23,7 +23,8 @@ typedef enum {
     SHADERFX_DISTORTION, /* ondas de calor + curvatura de lente */
     SHADERFX_CHROMATIC,  /* aberracao cromatica: separa R e B do centro */
     SHADERFX_DISSOLVE,   /* dissolver: pixels somem por ruido, com borda incandescente */
-    SHADERFX_DEPTH       /* ilusao de profundidade: paralaxe por luminancia + nevoa no fundo */
+    SHADERFX_DEPTH,      /* ilusao de profundidade: paralaxe por luminancia + nevoa no fundo */
+    SHADERFX_VIGNETTE    /* bordas pretas: escurece os cantos, pulso opcional */
 } ShaderFxKind;
 
 /* Pilha de ate 3 efeitos, aplicados em ordem de entrada (encadeados em passes).

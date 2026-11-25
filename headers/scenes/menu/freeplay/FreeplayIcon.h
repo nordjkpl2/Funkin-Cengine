@@ -9,24 +9,28 @@
 #include "raylib.h"
 #include "data/song/SongList.h"
 
-/* Prepara o cache para a lista songs[0..count-1] (ponteiros devem vir dessa lista). */
-void FreeplayIcon_Init(const SongEntry* songs, int count);
+/* Nada daqui bloqueia a thread principal: a busca do caminho roda em fundo (Jobs) e o PNG e
+ * decodificado em fundo (ImagePrefetch); so o envio para a GPU acontece no frame. */
 
-/* Carrega o icone da musica (descarrega o anterior). NULL so descarrega.
- * A busca em disco roda uma vez por musica (memo); a textura sai do cache se ja existir. */
-void FreeplayIcon_Load(const SongEntry* song);
-/* Pede a decodificacao em fundo do PNG da musica, sem subir para a GPU. Nao bloqueia. */
-void FreeplayIcon_Warm(const SongEntry* song);
+/* Prepara o cache para a lista songs[0..count-1] (ponteiros devem vir dessa lista). Solta o anterior. */
+void FreeplayIcon_Init(const SongEntry* songs, int count);
 void FreeplayIcon_Unload(void);
 
-/* Carrega o icone de uma musica sem mexer no icone unico (uso: lista do Chart Editor).
- * id 0 = nada achado. Quem chama faz UnloadTexture. */
-Texture2D FreeplayIcon_Resolve(const SongEntry* song);
-
+/* Musica atual (Freeplay): a troca e instantanea; FreeplayIcon_Tick termina o carregamento. NULL limpa. */
+void FreeplayIcon_Load(const SongEntry* song);
+/* Pede em fundo a resolucao e a decodificacao de uma musica vizinha. */
+void FreeplayIcon_Warm(const SongEntry* song);
+/* Chamar 1x por frame na thread principal. true = a musica atual ainda esta carregando (redesenhar). */
+bool FreeplayIcon_Tick(void);
+bool FreeplayIcon_Busy(void);
 char FreeplayIcon_IsLoaded(void);
 Texture2D FreeplayIcon_Texture(void);
 
-/* Oponente da musica carregada ("unknown" se nao achou). */
+/* Oponente da musica atual ("..." enquanto resolve, "unknown" se nao achou). */
 const char* FreeplayIcon_Opponent(void);
+
+/* Icone de qualquer musica da lista (Chart Editor). 1 = pronta (em *out; nao liberar),
+ * 0 = carregando, -1 = sem icone. */
+int FreeplayIcon_Get(const SongEntry* song, Texture2D* out);
 
 #endif

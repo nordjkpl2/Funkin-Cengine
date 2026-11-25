@@ -15,9 +15,11 @@
 #include "raylib.h"
 #include <stdbool.h>
 
-// Comeca a decodificar 'path' em fundo. Ignora o pedido se ja existe, se nao for PNG legivel
-// ou se passaria do limite de memoria (IMAGE_PREFETCH_CAP_MB).
-void ImagePrefetch_Start(const char* path);
+// Comeca a decodificar 'path' em fundo. true = ja pedido, ja no cache ou enfileirado agora.
+// false = recusado (nao e PNG legivel, sem slot, sem orcamento de memoria): quem chama decide o fallback.
+bool ImagePrefetch_Start(const char* path);
+// true = 'path' ja pode subir para a GPU sem bloquear (decodificado, falhou ou no cache).
+bool ImagePrefetch_Ready(const char* path);
 // Se 'path' foi pre-decodificado (ou esta no cache), envia para a GPU e devolve a textura. false = nao ha.
 bool ImagePrefetch_Upload(const char* path, Texture2D* out);
 // Descarta pedidos que ninguem usou (libera a memoria).

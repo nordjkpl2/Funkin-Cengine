@@ -502,7 +502,8 @@ void DrawExtraIcon(int i, float rowY, Color fill, Color shadow) {
             case OPTION_FILL_SCREEN:    DrawStretchIcon(cx, y, color); break;
             case OPTION_SHOW_SCORE:
             case OPTION_SCORE_POSITION:
-            case OPTION_TIME_POSITION:  DrawTextIcon(cx, y, color); break;
+            case OPTION_TIME_POSITION:
+            case OPTION_TIME_STYLE:     DrawTextIcon(cx, y, color); break;
             case OPTION_BOPPING_ICONS:  DrawBopIcon(cx, y, color); break;
             case OPTION_KEYBOARD_SCHEME: DrawKeyboardIcon(cx, y, color); break;
             case OPTION_ZOOMFACTOR_UI:

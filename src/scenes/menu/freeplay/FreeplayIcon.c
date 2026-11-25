@@ -9,7 +9,10 @@
 #include "scenes/menu/freeplay/FreeplayIcon.h"
 #include "yyjson.h"
 #include "rendering/cpu/ImagePrefetch.h"
+#include "threads/cpu/Jobs.h"
+#include "threads/Thread.h"
 
+#include <stdatomic.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -20,9 +23,8 @@
 #define MAX_ICON_DIRS 7
 #define MAX_JSON_SIZE (1024L * 1024L)
 
-static Texture2D icon;
-static bool iconLoaded;
-static char opponentName[NAME_MAX_LEN];
+static const SongEntry* curSong;  /* musica do Freeplay (FreeplayIcon_Load) */
+static bool busy;                 /* curSong ainda resolvendo ou decodificando */
 
 /* ------------------------------------------------------------------ */
 /* Utilitarios de string                                               */
@@ -323,20 +325,27 @@ static bool FindIconPath(const char* songDir, const char* modRoot, const char* h
 /* ------------------------------------------------------------------ */
 
 /*
- * Memo: uma entrada por musica (indice = posicao em songs[]). Resolver o caminho le disco,
- * entao cada musica so e resolvida uma vez. Texturas: LRU pequeno; icones se repetem por oponente.
+ * Memo: uma entrada por musica (indice = posicao em songs[]). Resolver o caminho le disco, entao roda
+ * numa thread de fundo (Jobs); so depois de MEMO_DONE a thread principal le o resultado.
+ * Texturas: LRU; o PNG ja vem decodificado do ImagePrefetch, so o envio para a GPU fica no frame.
  */
-#define TEX_SLOTS 12
+#define TEX_SLOTS 48        /* a lista do Chart Editor mostra ~20 icones; o LRU nunca despeja os visiveis */
+#define WANT_MAX 64         /* vizinhos esperando a resolucao para pedir o PNG em fundo */
+#define SYNC_PER_FRAME 1    /* fallback: no maximo uma decodificacao na thread principal por frame */
+
+enum { MEMO_IDLE = 0, MEMO_BUSY = 1, MEMO_DONE = 2 };
 
 typedef struct {
-    char path[PATH_MAX_LEN];       /* vazio = nada achado */
+    char path[PATH_MAX_LEN];       /* vazio = nada achado; escrito pela thread de fundo ate MEMO_DONE */
     char opponent[NAME_MAX_LEN];
-    char resolved;
+    const SongEntry* song;
+    atomic_int state;              /* MEMO_*; a thread de fundo publica MEMO_DONE por ultimo */
+    char failed;                   /* so thread principal: a textura nao carregou, nao tenta de novo */
 } IconMemo;
 
 typedef struct {
     char path[PATH_MAX_LEN];
-    Texture2D texture;             /* id 0 = falha, tambem fica em cache */
+    Texture2D texture;
     unsigned long long stamp;
     bool used;
 } IconTexture;
@@ -346,6 +355,9 @@ static IconMemo* memo;
 static int memoCount;
 static IconTexture textures[TEX_SLOTS];
 static unsigned long long useClock;
+static int wants[WANT_MAX];        /* indices em memo que esperam a resolucao para pedir o PNG */
+static int wantCount;
+static int syncBudget;             /* decodificacoes sincronas ainda permitidas neste frame */
 
 /* Caminho do icone (ou vazio) e oponente da musica. Le disco: so uma vez por musica. */
 static void ResolvePath(const SongEntry* song, char opponent[NAME_MAX_LEN], char out[PATH_MAX_LEN]) {
@@ -381,42 +393,85 @@ static void ResolvePath(const SongEntry* song, char opponent[NAME_MAX_LEN], char
         CopyString(out, PATH_MAX_LEN, "assets/images/icons/bf.png");
 }
 
-/* Garante que o memo da musica esta resolvido; devolve a entrada (ou NULL se fora da lista). */
-static IconMemo* MemoFor(const SongEntry* song) {
+/* Thread de fundo: so le disco (ResolvePath usa buffers locais e constantes). Publica DONE por ultimo. */
+static void ResolveJob(void* data) {
+    IconMemo* m = (IconMemo*)data;
+    ResolvePath(m->song, m->opponent, m->path);
+    atomic_store_explicit(&m->state, MEMO_DONE, memory_order_release);
+}
+
+/* Pede a resolucao da musica se ainda nao foi (nao bloqueia). NULL se a musica nao esta na lista. */
+static IconMemo* MemoRequest(const SongEntry* song) {
     if (!memo || !song || song < memoBase || song >= memoBase + memoCount) return NULL;
     IconMemo* m = memo + (song - memoBase);
-    if (!m->resolved) {
-        ResolvePath(song, m->opponent, m->path);
-        m->resolved = 1;
+    if (atomic_load_explicit(&m->state, memory_order_acquire) == MEMO_IDLE) {
+        atomic_store_explicit(&m->state, MEMO_BUSY, memory_order_relaxed);
+        Jobs_Init(0);
+        if (!Jobs_Submit(ResolveJob, m, NULL)) ResolveJob(m); /* fila recusou: resolve agora (raro) */
     }
     return m;
 }
 
-/* Textura para o caminho: reaproveita a do cache ou descarrega a menos usada. */
-static Texture2D TextureForPath(const char* path) {
-    int victim = -1;
-    for (int i = 0; i < TEX_SLOTS; ++i) {
-        IconTexture* t = textures + i;
-        if (t->used && strcmp(t->path, path) == 0) {
-            t->stamp = ++useClock;
-            return t->texture;
-        }
-        if (!t->used && victim < 0) victim = i;
-    }
+static bool MemoDone(const IconMemo* m) {
+    return atomic_load_explicit(&m->state, memory_order_acquire) == MEMO_DONE;
+}
 
+/* Musica ainda sem resolucao: Tick pede o PNG em fundo quando ela ficar pronta. */
+static void Want(int idx) {
+    for (int i = 0; i < wantCount; ++i)
+        if (wants[i] == idx) return;
+    if (wantCount < WANT_MAX) wants[wantCount++] = idx;
+}
+
+static IconTexture* TextureSlot(const char* path) {
+    for (int i = 0; i < TEX_SLOTS; ++i)
+        if (textures[i].used && strcmp(textures[i].path, path) == 0) return textures + i;
+    return NULL;
+}
+
+/* Guarda a textura no LRU, despejando a menos usada. Os visiveis neste frame tem stamp recente e nao caem. */
+static void TextureStore(const char* path, Texture2D texture) {
+    int victim = -1;
+    for (int i = 0; i < TEX_SLOTS && victim < 0; ++i)
+        if (!textures[i].used) victim = i;
     if (victim < 0) {
         victim = 0;
         for (int i = 1; i < TEX_SLOTS; ++i)
             if (textures[i].stamp < textures[victim].stamp) victim = i;
-        if (textures[victim].texture.id != 0) UnloadTexture(textures[victim].texture);
+        UnloadTexture(textures[victim].texture);
     }
-
     IconTexture* t = textures + victim;
     CopyString(t->path, sizeof(t->path), path);
-    t->texture = Render_LoadTexture(path);
+    t->texture = texture;
     t->stamp = ++useClock;
     t->used = true;
-    return t->texture;
+}
+
+/* Textura sem bloquear: 1 = pronta (em *out), 0 = ainda decodificando, -1 = sem icone.
+ * So sobe para a GPU o PNG ja decodificado em fundo. Sem prefetch (fila cheia, sem memoria), carrega
+ * na hora, mas no maximo SYNC_PER_FRAME vezes por frame. */
+static int TryTexture(IconMemo* m, Texture2D* out) {
+    if (m->path[0] == '\0' || m->failed) return -1;
+    IconTexture* hit = TextureSlot(m->path);
+    if (hit != NULL) {
+        hit->stamp = ++useClock;
+        *out = hit->texture;
+        return 1;
+    }
+    if (ImagePrefetch_Start(m->path)) {
+        if (!ImagePrefetch_Ready(m->path)) return 0;
+    } else {
+        if (syncBudget <= 0) return 0;
+        --syncBudget;
+    }
+    const Texture2D t = Render_LoadTexture(m->path);
+    if (t.id == 0) {
+        m->failed = 1;
+        return -1;
+    }
+    TextureStore(m->path, t);
+    *out = t;
+    return 1;
 }
 
 /* ------------------------------------------------------------------ */
@@ -428,11 +483,19 @@ void FreeplayIcon_Init(const SongEntry* songs, int count) {
     memoBase = songs;
     memoCount = count > 0 ? count : 0;
     memo = memoCount > 0 ? calloc((size_t)memoCount, sizeof(IconMemo)) : NULL;
-    if (memo == NULL) memoCount = 0;
+    if (memo == NULL) {
+        memoCount = 0;
+        return;
+    }
+    for (int i = 0; i < memoCount; ++i) memo[i].song = songs + i;
 }
 
-/* Solta tudo: texturas, memo e icone atual. Chamar ao entrar e sair do Freeplay. */
+/* Solta tudo: texturas, memo e musica atual. Espera as resolucoes em voo (elas apontam para o memo). */
 void FreeplayIcon_Unload(void) {
+    for (int i = 0; i < memoCount; ++i)
+        while (atomic_load_explicit(&memo[i].state, memory_order_acquire) == MEMO_BUSY)
+            Thread_SleepMs(0);
+
     for (int i = 0; i < TEX_SLOTS; ++i) {
         if (textures[i].used && textures[i].texture.id != 0)
             UnloadTexture(textures[i].texture);
@@ -443,45 +506,78 @@ void FreeplayIcon_Unload(void) {
     memoCount = 0;
     memoBase = NULL;
     useClock = 0;
-
-    icon = (Texture2D){0};
-    iconLoaded = false;
-    opponentName[0] = '\0';
+    wantCount = 0;
+    curSong = NULL;
+    busy = false;
 }
 
-/* Troca o icone atual. Nao descarrega: a textura continua no cache. */
+/* Troca a musica atual (Freeplay). Nao bloqueia: FreeplayIcon_Tick termina o carregamento. */
 void FreeplayIcon_Load(const SongEntry* song) {
-    icon = (Texture2D){0};
-    iconLoaded = false;
-    opponentName[0] = '\0';
-    if (!song) return;
-
-    const IconMemo* m = MemoFor(song);
-    if (m == NULL) return;
-    CopyString(opponentName, sizeof(opponentName), m->opponent);
-    if (m->path[0] == '\0') return;
-
-    icon = TextureForPath(m->path);
-    iconLoaded = icon.id != 0;
+    curSong = song;
+    busy = song != NULL;
 }
 
-/* Pede a decodificacao em fundo do icone da musica (sem subir para a GPU). Nao bloqueia. */
+/* Pede em fundo a resolucao e, quando pronta, a decodificacao de uma musica vizinha. Nao bloqueia. */
 void FreeplayIcon_Warm(const SongEntry* song) {
-    const IconMemo* m = MemoFor(song);
-    if (m != NULL && m->path[0] != '\0')
+    IconMemo* m = MemoRequest(song);
+    if (m == NULL) return;
+    if (!MemoDone(m))
+        Want((int)(m - memo));
+    else if (m->path[0] != '\0' && !m->failed)
         ImagePrefetch_Start(m->path);
 }
 
-/* Carrega sem cache (uso: lista do Chart Editor). Quem chama descarrega. */
-Texture2D FreeplayIcon_Resolve(const SongEntry* song) {
-    if (!song) return (Texture2D){0};
+/* Chamar 1x por frame na thread principal: reseta o orcamento de decodificacao sincrona, manda decodificar
+ * os vizinhos que ficaram prontos e tenta subir a musica atual. true = ainda carregando (redesenhar). */
+bool FreeplayIcon_Tick(void) {
+    syncBudget = SYNC_PER_FRAME;
 
-    char opponent[NAME_MAX_LEN];
-    char path[PATH_MAX_LEN];
-    ResolvePath(song, opponent, path);
-    return path[0] ? Render_LoadTexture(path) : (Texture2D){0};
+    int keep = 0;
+    for (int i = 0; i < wantCount; ++i) {
+        IconMemo* m = memo + wants[i];
+        if (!MemoDone(m))
+            wants[keep++] = wants[i];
+        else if (m->path[0] != '\0' && !m->failed)
+            ImagePrefetch_Start(m->path);
+    }
+    wantCount = keep;
+
+    busy = false;
+    if (curSong != NULL) {
+        IconMemo* m = MemoRequest(curSong);
+        if (m != NULL) {
+            Texture2D t = {0};
+            busy = !MemoDone(m) || TryTexture(m, &t) == 0;
+        }
+    }
+    return busy;
 }
 
-char FreeplayIcon_IsLoaded(void) { return iconLoaded; }
-Texture2D FreeplayIcon_Texture(void) { return icon; }
-const char* FreeplayIcon_Opponent(void) { return opponentName[0] ? opponentName : "unknown"; }
+/* Icone de qualquer musica da lista (Chart Editor). 1 = pronta (em *out), 0 = carregando, -1 = sem icone. */
+int FreeplayIcon_Get(const SongEntry* song, Texture2D* out) {
+    IconMemo* m = MemoRequest(song);
+    if (m == NULL || out == NULL) return -1;
+    if (!MemoDone(m)) return 0;
+    return TryTexture(m, out);
+}
+
+bool FreeplayIcon_Busy(void) { return busy; }
+
+/* Textura da musica atual, se ja subiu. Renova o LRU para ela nao ser despejada enquanto aparece. */
+Texture2D FreeplayIcon_Texture(void) {
+    if (curSong == NULL) return (Texture2D){0};
+    const IconMemo* m = MemoRequest(curSong);
+    if (m == NULL || !MemoDone(m) || m->path[0] == '\0') return (Texture2D){0};
+    IconTexture* t = TextureSlot(m->path);
+    if (t == NULL) return (Texture2D){0};
+    t->stamp = ++useClock;
+    return t->texture;
+}
+
+char FreeplayIcon_IsLoaded(void) { return FreeplayIcon_Texture().id != 0; }
+
+const char* FreeplayIcon_Opponent(void) {
+    const IconMemo* m = curSong ? MemoRequest(curSong) : NULL;
+    if (m == NULL || !MemoDone(m)) return "...";
+    return m->opponent[0] ? m->opponent : "unknown";
+}

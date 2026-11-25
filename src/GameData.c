@@ -93,6 +93,7 @@ static const SaveField saveFields[] = {
     { 32, gameOptions.coopName, (uint16_t)sizeof(gameOptions.coopName), SF_RAW, 0, 0, 0 },
     { 33, gameOptions.coopKeys, (uint16_t)sizeof(gameOptions.coopKeys), SF_RAW, 0, 0, 0 },
     SAVE_FIELD(34, timePosition,       TIME_POS_DEFAULT,     TIME_POS_DEFAULT,   TIME_POS_RIGHTDOWN),
+    SAVE_FIELD(35, timeStyle,          TIME_STYLE_DEFAULT,   TIME_STYLE_DEFAULT, TIME_STYLE_BAR),
 };
 #define SAVE_FIELD_COUNT (sizeof(saveFields) / sizeof(saveFields[0]))
 

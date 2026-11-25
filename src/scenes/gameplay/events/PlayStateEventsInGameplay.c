@@ -20,7 +20,9 @@
 #define SCREEN_W 1280.0f
 #include "scenes/gameplay/events/PlayStateParallax.h"
 #include "scenes/gameplay/events/PlayStateCameraMove.h"
+#include "scenes/gameplay/HUD/PlayStateHealth.h"
 #define SCREEN_H 720.0f
+#define HEALTH_BAR_NAME "Health Bar"
 #define SHOW_IMAGE_NAME "Show Image"
 #define HIDE_IMAGE_NAME "Hide Image"
 #define CHANGE_CHAR_NAME "Change Character"
@@ -49,6 +51,8 @@ const PlayStateEventType playStateEventTypes[] = {
     {"Shader Chromatic", "aberracao cromatica: separa vermelho e azul do centro (intensidade % = forca, animacao % = pulso)", 50, 0, 0, "intensidade %:", "animacao %:", NULL, 0, 1},
     {"Shader Dissolve", "dissolver: pedacos da tela somem por ruido, borda laranja (intensidade % = quanto sumiu, animacao % = velocidade)", 50, 0, 0, "intensidade %:", "animacao %:", NULL, 0, 1},
     {"Shader Depth", "profundidade: paralaxe pelo brilho + nevoa no fundo (intensidade % = forca, animacao % = balanco da camera)", 50, 0, 0, "intensidade %:", "animacao %:", NULL, 0, 1},
+    {"Shader Vignette", "bordas pretas: escurece os cantos da tela (intensidade % = quanto escurece, animacao % = pulso da borda)", 50, 0, 0, "intensidade %:", "animacao %:", NULL, 0, 1},
+    {HEALTH_BAR_NAME, "barra de vida e icones: 1 = mostra, 0 = esconde", 1, 0, 0, "ligada (1/0):", NULL, NULL, 0},
     {"Shader Wave",   "ondulacao do fundo do stage (nao conta nos 3 shaders; intensidade % = forca, animacao % = velocidade)", 50, 0, 0, "intensidade %:", "animacao %:", NULL, 0, 1},
     {"Shader Off",    "desliga o shader de tela e a ondulacao do fundo", 0, 0, 0, NULL, NULL, NULL, 0, 1},
     {"Camera Parallax", "camera 3D: afasta (zoom out) e balanca em profundidade (0 desliga)", 100, 0, 0, "intensidade %:", "velocidade %:", NULL, 0, 0},
@@ -173,6 +177,7 @@ void PlayStateEvents_ApplyShader(const char* name, double intensityPct, double a
     else if (strcmp(name, "Shader Chromatic") == 0) ShaderFx_Push(SHADERFX_CHROMATIC, amt, spd);
     else if (strcmp(name, "Shader Dissolve") == 0) ShaderFx_Push(SHADERFX_DISSOLVE, amt, spd);
     else if (strcmp(name, "Shader Depth") == 0) ShaderFx_Push(SHADERFX_DEPTH, amt, spd);
+    else if (strcmp(name, "Shader Vignette") == 0) ShaderFx_Push(SHADERFX_VIGNETTE, amt, spd);
     else if (strcmp(name, "Shader Wave") == 0) ShaderFx_SetBackgroundWave(amt, spd);   /* fora da pilha */
     else if (strcmp(name, "Shader Off") == 0) ShaderFx_Reset();                        /* limpa pilha e ondulacao */
 }
@@ -210,6 +215,10 @@ static void Fire(const PsEvent* e) {
         creditStartMs = e->timeMs;
         creditDurMs = e->v1 > 0.0 ? e->v1 : CREDIT_DEFAULT_MS;
         snprintf(creditName, sizeof(creditName), "%s", e->img);
+        return;
+    }
+    if (strcmp(e->name, HEALTH_BAR_NAME) == 0) {
+        PlayStateHealth_SetVisible(e->v1 != 0.0);
         return;
     }
     if (strcmp(e->name, LETTERBOX_NAME) == 0) {
@@ -287,6 +296,7 @@ void PlayStateEvents_Unload(void) {
     curBar = 0.0f;
     hasCredit = 0;
     ShaderFx_Reset();
+    PlayStateHealth_SetVisible(1);   /* barra volta ao normal: o evento Health Bar a esconde de novo se precisar */
     PlayStateParallax_Reset();
     PlayStateCameraMove_Reset();
 }
@@ -354,6 +364,7 @@ void PlayStateEvents_Reset(void) {
     hasCredit = 0;
     curMs = 0.0;
     ShaderFx_Reset();
+    PlayStateHealth_SetVisible(1);   /* barra volta ao normal: o evento Health Bar a esconde de novo se precisar */
     PlayStateParallax_Reset();
     PlayStateCameraMove_Reset();
 }

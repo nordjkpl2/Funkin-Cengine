@@ -48,56 +48,43 @@ char copyValid = 0;
 
 RayGraphicObject bgEd;
 
-// ---- busca + icones da lista (so linhas perto da selecao ficam na GPU)
-#define PICK_ICON_SIZE 56.0f
-#define PICK_ICON_KEEP 10
-#define PICK_WINDOW 8      /* linhas para cada lado da selecao; alem disso ja saiu da tela */
+// ---- lista de musicas: icones vem do FreeplayIcon (resolve e decodifica em fundo; so o envio roda aqui)
+#define PICK_ICON_SIZE 46.0f
+#define PICK_ROW_STEP 66.0f      /* altura de cada linha */
+#define PICK_ROW_CY 372.0f       /* centro vertical da linha selecionada */
+#define PICK_ROW_X 150.0f        /* x da coluna de icones */
+#define PICK_WINDOW 9            /* linhas para cada lado da selecao; alem disso ja saiu da tela */
+#define PICK_WARM 14             /* vizinhos pedidos em fundo quando a selecao muda */
+#define PICK_PAGE 10             /* linhas por pagina (PgUp/PgDn) */
 #define PICK_MAX_VISIBLE 32
+#define PICK_TRACK_X 890.0f      /* barra de rolagem da lista */
 
 /* Geometria de uma linha da lista, calculada uma vez por frame e usada nas passadas de desenho. */
 typedef struct {
-    char name[128];
-    Vector2 pos;
-    Rectangle fr, box;     /* quadradinho e icone (so i > 0) */
-    Texture2D icon;
+    const char* name;            /* rotulo pre-montado (pickLabels), sem copia por frame */
+    const SongEntry* song;       /* NULL na linha "open file directory" */
+    Vector2 pos;                 /* canto do texto */
+    Rectangle box;               /* icone (so musicas) */
+    Texture2D icon;              /* id 0 = ainda sem textura */
     float size;
-    Color fill, out;
+    float sel;                   /* 1 = selecionada, 0 = longe: dirige destaque, recuo e alpha */
     unsigned char a;
-    bool hasBox;
+    Color fill, out;
 } PickRow;
 
 static SearchBox pickSearch;
 static bool pickSearchInit;
-static int* pickShown;        // indices de pickerSongs que passam no filtro
+static int* pickShown;          // indices de pickerSongs que passam no filtro
 static int pickShownCount;
-static Texture2D* pickIcons;  // um por musica (id 0 = ainda nao carregou / sem icone)
-static unsigned char* pickTried;
-static int pickWinLo = 0, pickWinHi = -1; // janela (posicoes em pickShown) com icones tratados
+static char (*pickLabels)[128]; // rotulo pronto por musica ("[mod]" incluso), montado so ao escanear
+static int pickWarmSel = -1;    // selecao ja aquecida (vizinhos so são pedidos quando ela muda)
 
+// Solta o cache de icones e os rotulos (a textura fica no cache do FreeplayIcon ate ser despejada)
 static void Picker_FreeIcons(void) {
-    if(pickIcons) {
-        for(int i = 0; i < pickerCount; i++)
-            if(pickIcons[i].id != 0) UnloadTexture(pickIcons[i]);
-    }
-    free(pickIcons);
-    free(pickTried);
-    pickIcons = NULL;
-    pickTried = NULL;
-    pickWinLo = 0;
-    pickWinHi = -1;
-}
-
-// Solta todos os icones carregados (usado quando o filtro muda as posicoes)
-static void Picker_ResetIcons(void) {
-    if(pickIcons) {
-        for(int i = 0; i < pickerCount; i++) {
-            if(pickIcons[i].id != 0) UnloadTexture(pickIcons[i]);
-            pickIcons[i] = (Texture2D) {0};
-            pickTried[i] = 0;
-        }
-    }
-    pickWinLo = 0;
-    pickWinHi = -1;
+    FreeplayIcon_Unload();
+    free(pickLabels);
+    pickLabels = NULL;
+    pickWarmSel = -1;
 }
 
 void Picker_Free(void) {
@@ -109,7 +96,6 @@ void Picker_Free(void) {
 }
 
 static void Picker_ApplyFilter(void) {
-    Picker_ResetIcons();
     pickShownCount = 0;
     for(int i = 0; i < pickerCount; i++)
         if(SearchBox_Match(&pickSearch, pickerSongs[i].name))
@@ -129,47 +115,20 @@ void Picker_Refresh(void) {
     }
     if(pickerCount > 0) {
         pickShown = malloc(sizeof(int) * (size_t)pickerCount);
-        pickIcons = calloc((size_t)pickerCount, sizeof(Texture2D));
-        pickTried = calloc((size_t)pickerCount, 1);
-        if(!pickShown || !pickIcons || !pickTried) {
+        pickLabels = malloc(sizeof(*pickLabels) * (size_t)pickerCount);
+        if(!pickShown || !pickLabels) {
             Picker_Free();
             SongList_Free(pickerSongs);
             pickerSongs = NULL;
             pickerCount = 0;
+        } else {
+            for(int i = 0; i < pickerCount; i++)
+                snprintf(pickLabels[i], sizeof(pickLabels[i]), "%s%s", pickerSongs[i].name,
+                    strstr(pickerSongs[i].dir, "mods") != NULL ? "  [mod]" : "");
+            FreeplayIcon_Init(pickerSongs, pickerCount);
         }
     }
     Picker_ApplyFilter();
-}
-
-// carrega no maximo 1 icone por frame (le disco) e solta os que ficaram longe
-static void Picker_StreamIcons(void) {
-    if(!pickIcons || pickShownCount <= 0) return;
-    const int center = pickerSel - 1; // posicao na lista filtrada
-    int lo = center - PICK_ICON_KEEP;
-    int hi = center + PICK_ICON_KEEP;
-    if(lo < 0) lo = 0;
-    if(hi > pickShownCount - 1) hi = pickShownCount - 1;
-    // solta so o que saiu da janela desde a ultima vez (custo proporcional a janela, nao a lista)
-    for(int k = pickWinLo; k <= pickWinHi; k++) {
-        if(k >= lo && k <= hi) continue;
-        const int idx = pickShown[k];
-        if(pickIcons[idx].id != 0) {
-            UnloadTexture(pickIcons[idx]);
-            pickIcons[idx] = (Texture2D) {0};
-        }
-        pickTried[idx] = 0;
-    }
-    pickWinLo = lo;
-    pickWinHi = hi;
-    // carrega no maximo 1 icone por frame, o primeiro pendente da janela
-    for(int k = lo; k <= hi; k++) {
-        const int idx = pickShown[k];
-        if(!pickTried[idx]) {
-            pickTried[idx] = 1;
-            pickIcons[idx] = FreeplayIcon_Resolve(&pickerSongs[idx]);
-            break;
-        }
-    }
 }
 
 static Rectangle Picker_SquareCrop(Texture2D t) {
@@ -588,36 +547,29 @@ static void Picker_NewSong(void) {
 
 /* Calcula a linha i; false se ela esta fora da tela. */
 static bool Picker_RowGeom(int i, PickRow* r) {
-    const int fontSize = (i == 0) ? 40 : 56;
-    const float y = 720 / 2 + ((float)i - pickerOffset) * (10 + fontSize);
-    if(y < -60 || y > 780)
+    const float d = (float)i - pickerOffset;
+    const float y = PICK_ROW_CY + d * PICK_ROW_STEP;
+    if(y < 100.0f || y > 640.0f)
         return false;
-    if(i == 0) {
-        strncpy(r->name, "open file directory...", sizeof(r->name) - 1);
-        r->name[sizeof(r->name) - 1] = 0;
-    } else {
-        const SongEntry* se = &pickerSongs[pickShown[i - 1]];
-        strncpy(r->name, se->name, sizeof(r->name) - 1);
-        r->name[sizeof(r->name) - 1] = 0;
-        if(strstr(se->dir, "mods") != NULL)
-            strncat(r->name, "  [mod]", sizeof(r->name) - strlen(r->name) - 1);
-    }
-    const float d = fabsf((float)i - pickerOffset);
-    const float iconX = 150.0f + d * -30.0f;
-    r->size = (float)fontSize;
-    r->pos = (Vector2) {(float)(5 + 150 + d * -30) + (i == 0 ? 0.0f : PICK_ICON_SIZE + 20.0f), y + 5};
-    r->fill = WHITE;
-    r->out = BLACK;
-    r->fill.a = (pickerSel == i) ? 255 : 150;
-    r->out.a = (pickerSel == i) ? 255 : 100;
-    if(i == 0) r->fill = (pickerSel == 0) ? GREEN : (Color) {150, 255, 150, 150};
-    r->hasBox = i > 0 && pickerSel == i;   // so a selecionada mostra o icone; as outras ficam so com o nome
-    if(r->hasBox) {
-        r->a = (pickerSel == i) ? 255 : 150;
-        r->fr = (Rectangle) {iconX - 6.0f, y - 4.0f, PICK_ICON_SIZE + 12.0f, PICK_ICON_SIZE + 12.0f};
-        r->box = (Rectangle) {iconX, y + 2.0f, PICK_ICON_SIZE, PICK_ICON_SIZE};
-        r->icon = pickIcons ? pickIcons[pickShown[i - 1]] : (Texture2D) {0};
-    }
+    const float ad = fabsf(d);
+    r->sel = fmaxf(0.0f, 1.0f - ad);                 /* 1 = selecionada, 0 = longe */
+    const float ind = fminf(ad, 3.0f) * 22.0f;       /* recuo por distancia (como no freeplay) */
+    r->song = (i == 0) ? NULL : &pickerSongs[pickShown[i - 1]];
+    r->name = (i == 0) ? "open file directory..." : pickLabels[pickShown[i - 1]];
+    r->size = (i == 0 ? 30.0f : 34.0f) + 10.0f * r->sel;
+    const float textX = PICK_ROW_X + ind + (i == 0 ? 0.0f : PICK_ICON_SIZE + 16.0f);
+    r->pos = (Vector2) {textX, y - r->size * 0.5f};
+    r->box = (Rectangle) {PICK_ROW_X + ind, y - PICK_ICON_SIZE * 0.5f, PICK_ICON_SIZE, PICK_ICON_SIZE};
+    r->icon = (Texture2D) {0};
+    r->a = (unsigned char)(255.0f * fmaxf(0.25f, 1.0f - ad * 0.16f));
+    const Color base = (i == 0) ? (Color) {150, 255, 150, 255} : (Color) {200, 196, 226, 255};
+    r->fill = (Color) {
+        (unsigned char)(base.r + (255 - base.r) * r->sel),
+        (unsigned char)(base.g + (255 - base.g) * r->sel),
+        (unsigned char)(base.b + (255 - base.b) * r->sel),
+        r->a
+    };
+    r->out = (Color) {0, 0, 0, r->a};
     return true;
 }
 
@@ -635,38 +587,74 @@ void Picker_Draw(void) {
     for(int i = first; i <= last && n < PICK_MAX_VISIBLE; ++i)
         if(Picker_RowGeom(i, &rows[n])) ++n;
 
-    // Passada 1: quadradinhos de fundo e borda.
+    // Icones: uma textura por musica visivel. Get so devolve o que ja foi decodificado em fundo.
     for(int k = 0; k < n; ++k) {
-        if(!rows[k].hasBox) continue;
-        DrawRectangleRec(rows[k].fr, (Color) {20, 20, 30, (unsigned char)(rows[k].a * 200 / 255)});
-        DrawRectangleLinesEx(rows[k].fr, 2.0f, (Color) {255, 255, 255, rows[k].a});
+        if(rows[k].song != NULL)
+            FreeplayIcon_Get(rows[k].song, &rows[k].icon);
     }
-    // Passada 2: icones do oponente (uma textura por musica).
-    for(int k = 0; k < n; ++k) {
-        if(!rows[k].hasBox || rows[k].icon.id == 0) continue;
-        DrawTexturePro(rows[k].icon, Picker_SquareCrop(rows[k].icon), rows[k].box, (Vector2) {0, 0}, 0.0f,
-            (Color) {255, 255, 255, rows[k].a});
+    // Backdrop: icone da musica selecionada, grande e esmaecido (mesmo truque do freeplay).
+    if(pickerSel >= 1 && pickerSel <= pickShownCount) {
+        Texture2D bgIcon = {0};
+        if(FreeplayIcon_Get(&pickerSongs[pickShown[pickerSel - 1]], &bgIcon) == 1) {
+            DrawTexturePro(bgIcon, Picker_SquareCrop(bgIcon), (Rectangle) {-60, -20, 1400, 1400}, (Vector2) {0, 0}, 0.0f,
+                (Color) {255, 255, 255, 70});
+        }
     }
-    // Passada 3: textos (titulo, "?", nomes, mensagens e dica), todos com a textura da fonte.
-    // cartao escuro atras da lista + titulo com barra de destaque
-    DrawRectangleRounded((Rectangle) {130, 40, 780, 650}, 0.04f, 8, (Color) {8, 10, 18, 170});
-    DrawRectangleRounded((Rectangle) {150, 56, 6, 40}, 0.5f, 4, GREEN);
+    DrawRectangleGradientV(0, 0, 1280, 720, (Color) {8, 6, 18, 90}, (Color) {8, 6, 18, 210});
+
+    // Cartao escuro (paleta do freeplay) e titulo com barra rosa
+    DrawRectangleRounded((Rectangle) {130, 40, 780, 650}, 0.04f, 8, (Color) {12, 10, 26, 222});
+    DrawRectangleRoundedLinesEx((Rectangle) {130, 40, 780, 650}, 0.04f, 8, 1.0f, (Color) {120, 100, 200, 150});
+    DrawRectangleRounded((Rectangle) {150, 56, 6, 40}, 0.5f, 4, (Color) {255, 92, 176, 255});
     DrawTextEx(mainFont, "song selector", (Vector2) {166, 60}, 48, 4, WHITE);
+    {
+        // contador e pagina no cabecalho: 12 / 340 - pagina 2 de 34
+        const int cur = pickerSel;
+        const int pages = (total + PICK_PAGE - 1) / PICK_PAGE;
+        char info[64];
+        snprintf(info, sizeof(info), "%d / %d   pagina %d de %d", cur + 1 > total ? total : cur + 1, total,
+            cur / PICK_PAGE + 1, pages < 1 ? 1 : pages);
+        DrawTextEx(mainFont, info, (Vector2) {166, 112}, 20, 1, (Color) {150, 146, 178, 255});
+    }
+
+    // Passada de formas: pilula da linha selecionada (com leve fade nas vizinhas) e barra de destaque.
     for(int k = 0; k < n; ++k) {
         const PickRow* r = &rows[k];
-        if(r->hasBox && r->icon.id == 0) {
-            const Vector2 q = MeasureTextEx(mainFont, "?", 32, 2);
-            DrawTextEx(mainFont, "?", (Vector2) {r->box.x + (r->box.width - q.x) * 0.5f, r->box.y + (r->box.height - q.y) * 0.5f},
-                32, 2, (Color) {200, 200, 200, r->a});
-        }
-        DrawTextEx(mainFont, r->name, r->pos, r->size, 4, r->out);
-        const Vector2 fillPos = {r->pos.x - 5, r->pos.y - 5};
-        DrawTextEx(mainFont, r->name, fillPos, r->size, 4, r->fill);
+        if(r->sel <= 0.01f) continue;
+        const Rectangle pill = {r->box.x - 18.0f, r->box.y - 9.0f, 690.0f * (0.85f + 0.15f * r->sel), 64.0f};
+        DrawRectangleRounded(pill, 0.5f, 12, Fade((Color) {40, 26, 72, 235}, r->sel));
+        DrawRectangle((int)pill.x, (int)(pill.y + 10.0f), 5, 44, Fade((Color) {255, 92, 176, 255}, r->sel));
     }
+    // Passada de icones: sem quadrado de fundo; so a imagem (e um contorno rosa na selecionada).
+    for(int k = 0; k < n; ++k) {
+        const PickRow* r = &rows[k];
+        if(r->song == NULL || r->icon.id == 0) continue;
+        DrawTexturePro(r->icon, Picker_SquareCrop(r->icon), r->box, (Vector2) {0, 0}, 0.0f,
+            (Color) {255, 255, 255, r->a});
+        if(r->sel > 0.5f)
+            DrawRectangleRoundedLinesEx(r->box, 0.12f, 8, 2.0f, (Color) {255, 92, 176, 255});
+    }
+    // Passada de textos: sombra e texto (textura da fonte).
+    for(int k = 0; k < n; ++k) {
+        const PickRow* r = &rows[k];
+        DrawTextEx(mainFont, r->name, (Vector2) {r->pos.x + 2.0f, r->pos.y + 3.0f}, r->size, 2.0f,
+            (Color) {0, 0, 0, (unsigned char)(160.0f * r->sel + 40.0f)});
+        DrawTextEx(mainFont, r->name, r->pos, r->size, 2.0f, r->fill);
+    }
+
+    // Barra de rolagem: tamanho proporcional a fatia visivel, posicao proporcional a selecao.
+    if(total > PICK_WINDOW * 2 + 1) {
+        const float trackY = 130.0f, trackH = 500.0f;
+        const float thumbH = fmaxf(24.0f, trackH * (PICK_WINDOW * 2 + 1) / (float)total);
+        const float thumbY = trackY + (trackH - thumbH) * (float)pickerSel / (float)(total - 1);
+        DrawRectangleRounded((Rectangle) {PICK_TRACK_X, trackY, 4, trackH}, 0.5f, 4, (Color) {50, 44, 80, 255});
+        DrawRectangleRounded((Rectangle) {PICK_TRACK_X, thumbY, 4, thumbH}, 0.5f, 4, (Color) {255, 92, 176, 255});
+    }
+
     if(pickShownCount == 0 && pickerCount > 0)
         DrawTextEx(mainFont, "nenhuma musica encontrada", (Vector2) {260, 400}, 32, 2, (Color) {255, 200, 120, 255});
     DrawRectangleRounded((Rectangle) {140, 684, 760, 28}, 0.4f, 6, (Color) {20, 24, 36, 220});
-    DrawTextEx(mainFont, "ENTER open   R update   N new   arraste um .json pra ca   ESC return",
+    DrawTextEx(mainFont, "ENTER abrir   R atualizar   N nova   PGUP/PGDN pagina   ESC voltar",
         (Vector2) {156, 689}, 20, 1, (Color) {200, 200, 200, 255});
 
     // Caixas de busca e botoes por ultimo (formas e textos proprios).
@@ -684,7 +672,21 @@ static void Picker_Move(int delta, int rows) {
     if(wrapped) pickerOffset = (float)pickerSel;
 }
 
+/* Pula N linhas (pagina, roda rapida, pontas) sem dar a volta: prende nos limites. */
+static void Picker_Jump(int delta, int rows) {
+    pickerSel += delta;
+    if(pickerSel < 0) pickerSel = 0;
+    if(pickerSel > rows - 1) pickerSel = rows - 1;
+}
+
+/* Y do centro da linha i na tela (mesma conta de Picker_RowGeom). */
+static float Picker_RowY(int i) {
+    return PICK_ROW_CY + ((float)i - pickerOffset) * PICK_ROW_STEP;
+}
+
 void Picker_Update(void) {
+    FreeplayIcon_Tick();   // resolve e decodifica em fundo; o desenho so envia para a GPU
+
     // arrastou arquivo pra janela
     if(IsFileDropped()) {
         FilePathList drop = LoadDroppedFiles();
@@ -721,14 +723,29 @@ void Picker_Update(void) {
         Picker_Move(1, rows);
     if(IsKeyPressed(KEY_UP) || (!typing && IsKeyPressed(KEY_W)))
         Picker_Move(-1, rows);
+    // paginacao: PgUp/PgDn pulam uma pagina (sem dar a volta); Home/End vao pras pontas
+    if(!typing) {
+        if(IsKeyPressed(KEY_PAGE_DOWN)) Picker_Jump(PICK_PAGE, rows);
+        if(IsKeyPressed(KEY_PAGE_UP)) Picker_Jump(-PICK_PAGE, rows);
+        if(IsKeyPressed(KEY_HOME)) Picker_Jump(-rows, rows);
+        if(IsKeyPressed(KEY_END)) Picker_Jump(rows, rows);
+    }
     const float wheel = GetMouseWheelMove();
-    if(wheel != 0.0f)
-        Picker_Move(wheel > 0.0f ? -1 : 1, rows);
+    if(wheel != 0.0f) {
+        const int step = (IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT)) ? 5 : 1;
+        Picker_Jump(wheel > 0.0f ? -step : step, rows);
+    }
     if(!typing && IsKeyPressed(KEY_R))
         Picker_Refresh();
     if(!typing && IsKeyPressed(KEY_N))
         Picker_NewSong();
-    Picker_StreamIcons();
+    // vizinhos fora da tela ja comecam a resolver/decodificar quando a selecao muda
+    if(pickerSel != pickWarmSel) {
+        pickWarmSel = pickerSel;
+        for(int i = pickerSel - PICK_WARM; i <= pickerSel + PICK_WARM; ++i)
+            if(i >= 1 && i <= pickShownCount)
+                FreeplayIcon_Warm(&pickerSongs[pickShown[i - 1]]);
+    }
     if(!typing && (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_BACKSPACE))) {
         RayGame_ResetMusic();
         RayGame_ToggleMusic(1);
@@ -744,9 +761,8 @@ void Picker_Update(void) {
        !CheckCollisionPointRec(EdMouseWorld(), pickSearch.bounds)) {
         Vector2 m = EdMouseWorld();
         for(int i = 0; i < rows; i++) {
-            int fs = (i == 0) ? 40 : 56;
-            float y = 720 / 2 + ((float)i - pickerOffset) * (10 + fs);
-            if(m.x >= 60 && m.x <= 1100 && m.y >= y - 5 && m.y <= y + fs) {
+            const float y = Picker_RowY(i);
+            if(m.x >= PICK_ROW_X - 20.0f && m.x <= 880.0f && m.y >= y - 33.0f && m.y <= y + 33.0f) {
                 if(pickerSel == i)
                     Picker_OpenSelected();
                 else
