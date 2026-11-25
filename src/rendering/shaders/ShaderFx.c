@@ -283,6 +283,60 @@ static const char kFsPulse[] =
     "    finalColor = vec4(clamp(col, 0.0, 1.0), 1.0);\n"
     "}\n";
 
+/* Dissolver: ruido de valor (2 oitavas) corta os pixels abaixo de intensidade; a borda do corte brilha laranja.
+ * intensidade = quanto da tela ja sumiu (0 = nada, 1 = tudo). animacao > 0 faz o ruido deslizar. */
+static const char kFsDissolve[] =
+    "#version 330\n"
+    "in vec2 fragTexCoord;\n"
+    "uniform sampler2D texture0;\n"
+    "uniform vec2 uRes;\n"
+    "uniform float uTime;\n"
+    "uniform float uAmt;\n"
+    "uniform float uAnim;\n"
+    "out vec4 finalColor;\n"
+    "float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }\n"
+    "float vnoise(vec2 p) {\n"
+    "    vec2 i = floor(p), f = fract(p);\n"
+    "    f = f * f * (3.0 - 2.0 * f);\n"
+    "    return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);\n"
+    "}\n"
+    "void main() {\n"
+    "    float asp = uRes.x / max(uRes.y, 1.0);\n"
+    "    vec2 p = fragTexCoord * vec2(asp, 1.0) * 6.0;\n"
+    "    vec2 drift = vec2(uTime * uAnim * 0.20, uTime * uAnim * 0.13);\n"  /* estatico: drift = 0 */
+    "    float n = 0.6 * vnoise(p + drift) + 0.4 * vnoise(p * 2.3 + drift * 1.7 + 7.1);\n"
+    "    float keep = step(uAmt, n);\n"
+    "    float rim = (1.0 - smoothstep(0.0, 0.035, abs(n - uAmt))) * step(0.001, uAmt);\n"
+    "    vec3 col = texture(texture0, fragTexCoord).rgb * keep;\n"
+    "    col = mix(col, vec3(1.0, 0.55, 0.12), rim);\n"
+    "    finalColor = vec4(clamp(col, 0.0, 1.0), 1.0);\n"
+    "}\n";
+
+/* Ilusao de profundidade: a luminancia vira um "mapa de profundidade" falso (escuro = longe).
+ * Uma camera que balanca (senoides) desloca mais o que esta perto; o que esta longe ganha nevoa.
+ * intensidade = forca do paralaxe e da nevoa; animacao 0 = so a nevoa, parado. */
+static const char kFsDepth[] =
+    "#version 330\n"
+    "in vec2 fragTexCoord;\n"
+    "uniform sampler2D texture0;\n"
+    "uniform float uTime;\n"
+    "uniform float uAmt;\n"
+    "uniform float uAnim;\n"
+    "out vec4 finalColor;\n"
+    "void main() {\n"
+    "    vec2 uv = fragTexCoord;\n"
+    "    vec3 c0 = texture(texture0, uv).rgb;\n"
+    "    float lum = dot(c0, vec3(0.299, 0.587, 0.114));\n"
+    "    float depth = clamp(mix(length(uv - 0.5) * 1.4, 1.0 - lum, 0.5), 0.0, 1.0);\n"  /* 0 = perto, 1 = longe */
+    "    float t = uTime * uAnim;\n"
+    "    vec2 cam = vec2(sin(t * 0.7), cos(t * 0.5) * 0.5) * uAmt * 0.04;\n"
+    "    vec2 suv = clamp(uv + cam * (1.0 - depth), 0.0, 1.0);\n"
+    "    vec3 col = texture(texture0, suv).rgb;\n"
+    "    vec3 fog = vec3(0.10, 0.08, 0.22);\n"
+    "    col = mix(col, fog, depth * uAmt * 0.45);\n"                   /* nevoa no fundo */
+    "    finalColor = vec4(clamp(col, 0.0, 1.0), 1.0);\n"
+    "}\n";
+
 typedef struct {
     Shader sh;
     int locRes, locTime, locAmt, locAnim;
@@ -293,7 +347,7 @@ typedef struct {
     float lastRes[2], lastAmt, lastAnim;
 } FxSlot;
 
-#define FX_COUNT 9
+#define FX_COUNT 11
 #define FX_STACK_MAX 3       /* efeitos ao mesmo tempo */
 static FxSlot slots[FX_COUNT];   /* [0] = TV, [1] = glitch, [2] = blackness, [3] = grayscale, [4] = bloom, [5] = space, [6] = pulse, [7] = distortion, [8] = chromatic */
 static ShaderFxKind order[FX_STACK_MAX];   /* ordem da pilha: order[0] = aplicado primeiro */
@@ -329,10 +383,12 @@ static void EnsureLoaded(void) {
     FxSlot_Load(&slots[6], kFsPulse);
     FxSlot_Load(&slots[7], kFsDistortion);
     FxSlot_Load(&slots[8], kFsChromatic);
+    FxSlot_Load(&slots[9], kFsDissolve);
+    FxSlot_Load(&slots[10], kFsDepth);
 }
 
 static int IsValidKind(ShaderFxKind k) {
-    return k > SHADERFX_NONE && k <= SHADERFX_CHROMATIC;
+    return k > SHADERFX_NONE && k <= SHADERFX_DEPTH;
 }
 
 /* Tira da pilha a posicao idx (o efeito continua carregado, so deixa de ser aplicado). */

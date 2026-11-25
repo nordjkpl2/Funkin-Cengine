@@ -76,9 +76,29 @@ typedef struct {
 static const NoteColorPreset presets[] = {
     {"Reimagined/Modern", {{9, 0, 40}, {11, 100, 35}, {40, 100, 28}, {9, 100, 29}}},
     {"beach", {{102, 0, 40}, {17, 100, 35}, {19, 100, 28}, {-23, 100, 29}}},
+    {"pink", {{-24, 0, 40}, {-43, -86, 35}, {-161, -30, 28}, {-114, 8, 29}}},
+    {"Sunset", {{104, 80, 20}, {143, 76, 15}, {-76, 90, 25}, {43, 80, 20}}},
+    {"Ocean", {{-79, 40, 0}, {32, 60, 10}, {-20, 50, 10}, {-40, 40, 5}}},
 };
 #define NC_PRESET_COUNT ((int)(sizeof presets / sizeof presets[0]))
-static int presetIdx; /* proximo preset a aplicar (o botao mostra este nome) */
+/* Seletor de presets: linha 0 = Reset, linha 1+i = presets[i]. presetSel = ultima linha aplicada (-1 = nenhuma). */
+#define NC_PRESET_ROWS (NC_PRESET_COUNT + 1)
+#define NC_PRESET_ROW_H 40.0f
+#define NC_PRESET_GAP 4.0f
+#define NC_PRESET_PAD 8.0f
+static bool presetPick;   /* seletor aberto */
+static int presetCursor;  /* linha com foco no teclado */
+static int presetSel = -1;
+
+static Rectangle PresetPanel(void) {
+    const float h = NC_PRESET_PAD * 2.0f + NC_PRESET_ROWS * NC_PRESET_ROW_H + (NC_PRESET_ROWS - 1) * NC_PRESET_GAP;
+    return (Rectangle) {NC_PRESET_BTN.x, NC_PRESET_BTN.y - 8.0f - h, NC_PRESET_BTN.width, h};
+}
+static Rectangle PresetRow(int r) {
+    const Rectangle p = PresetPanel();
+    return (Rectangle) {p.x + NC_PRESET_PAD, p.y + NC_PRESET_PAD + (float)r * (NC_PRESET_ROW_H + NC_PRESET_GAP),
+                        p.width - 2.0f * NC_PRESET_PAD, NC_PRESET_ROW_H};
+}
 
 static Rectangle LaneButton(int i) { return (Rectangle) {NC_LANE_X + (float)i * NC_LANE_STEP, NC_LANE_Y, NC_LANE_W, NC_LANE_H}; }
 static Rectangle SliderRect(int s) { return (Rectangle) {NC_SL_X, NC_SL_Y0 + (float)s * NC_SL_STEP, NC_SL_W, NC_SL_H}; }
@@ -103,13 +123,43 @@ static void ResetLane(void) {
 }
 
 /* Aplica o preset em todas as colunas (offsets HSB; sliders e previa leem daqui a cada frame). */
-static void ApplyPreset(void) {
-    const NoteColorPreset* p = &presets[presetIdx];
+/* r = linha escolhida no seletor: 0 = Reset (tudo zero), 1+i = presets[i]. */
+static void ApplyPreset(int r) {
     for (int i = 0; i < 4; i++)
-        for (int s = 0; s < NC_SL_COUNT; s++) gameOptions.laneHSB[i][s] = p->hsb[i][s];
-    presetIdx = (presetIdx + 1) % NC_PRESET_COUNT;
+        for (int s = 0; s < NC_SL_COUNT; s++) gameOptions.laneHSB[i][s] = r == 0 ? 0 : presets[r - 1].hsb[i][s];
+    presetSel = r;
+    presetPick = false;
     drag = 0;
     wheelDrag = false;
+}
+
+static void TogglePresetPicker(void) {
+    presetPick = !presetPick;
+    presetOpen = true;
+    presetCursor = presetSel < 0 ? 0 : presetSel;
+}
+
+/* Seletor aberto: consome teclado e mouse (ESC fecha o seletor, nao sai da tela). */
+static void PresetPicker_Update(void) {
+    if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_BACKSPACE) || IsKeyPressed(KEY_P)) {
+        presetPick = false;
+        return;
+    }
+    if (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W)) presetCursor = (presetCursor + NC_PRESET_ROWS - 1) % NC_PRESET_ROWS;
+    if (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S)) presetCursor = (presetCursor + 1) % NC_PRESET_ROWS;
+    if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER)) {
+        ApplyPreset(presetCursor);
+        return;
+    }
+    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+        const Vector2 m = RayGame_MouseWorld();
+        for (int r = 0; r < NC_PRESET_ROWS; r++)
+            if (CheckCollisionPointRec(m, PresetRow(r))) {
+                ApplyPreset(r);
+                return;
+            }
+        presetPick = false;   /* clique fora fecha */
+    }
 }
 
 /* Mouse no slider: posicao na barra vira valor (arredondado para inteiro). */
@@ -171,6 +221,10 @@ static void CloseScreen(void) {
 }
 
 void NoteColorScreen_Update(void) {
+    if (presetPick) {
+        PresetPicker_Update();
+        return;
+    }
     if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_BACKSPACE)) {
         CloseScreen();
         return;
@@ -182,7 +236,7 @@ void NoteColorScreen_Update(void) {
     if (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S)) slider = (slider + 1) % NC_SL_COUNT;
     if (IsKeyPressedRepeat(KEY_LEFT) || IsKeyPressedRepeat(KEY_A)) SetVal(slider, *Val(slider) - step);
     if (IsKeyPressedRepeat(KEY_RIGHT) || IsKeyPressedRepeat(KEY_D)) SetVal(slider, *Val(slider) + step);
-    if (IsKeyPressed(KEY_P)) ApplyPreset();   /* mesmo efeito do botao PRESET */
+    if (IsKeyPressed(KEY_P)) TogglePresetPicker();   /* abre/fecha o seletor de presets */
     if (IsKeyPressed(KEY_Q)) SelectLane((lane + 3) % 4);
     if (IsKeyPressed(KEY_E)) SelectLane((lane + 1) % 4);
     if (IsKeyPressed(KEY_R)) {
@@ -217,8 +271,11 @@ void NoteColorScreen_Update(void) {
         if (CheckCollisionPointRec(m, PasteButton()) && hasClip)
             for (int s = 0; s < NC_SL_COUNT; s++) SetVal(s, clip[s]);
         if (CheckCollisionPointRec(m, ResetButton())) ResetLane();
-        if (CheckCollisionPointRec(m, NC_PRESET_ARROW)) presetOpen = !presetOpen;
-        if (presetOpen && CheckCollisionPointRec(m, NC_PRESET_BTN)) ApplyPreset();
+        if (CheckCollisionPointRec(m, NC_PRESET_ARROW)) {
+            presetOpen = !presetOpen;
+            presetPick = false;
+        }
+        if (presetOpen && CheckCollisionPointRec(m, NC_PRESET_BTN)) TogglePresetPicker();
     }
 
     if (drag > 0) {
@@ -360,13 +417,36 @@ void NoteColorScreen_Draw(void) {
             DrawTriangle((Vector2) {ax - 5.0f, ay - 8.0f}, (Vector2) {ax - 5.0f, ay + 8.0f}, (Vector2) {ax + 6.0f, ay}, WHITE);
     }
     if (presetOpen) {
-        DrawRectangleRounded(NC_PRESET_BTN, NC_ROUND, 6, (Color) {46, 46, 52, 255});
-        DrawRectangleRoundedLinesEx(NC_PRESET_BTN, NC_ROUND, 6, 2.0f, WHITE);
-        const char* pname = presets[presetIdx].name;
+        DrawRectangleRounded(NC_PRESET_BTN, NC_ROUND, 6, presetPick ? (Color) {60, 60, 70, 255} : (Color) {46, 46, 52, 255});
+        DrawRectangleRoundedLinesEx(NC_PRESET_BTN, NC_ROUND, 6, 2.0f, presetPick ? YELLOW : WHITE);
+        const char* pname = presetSel < 0 ? "Select preset" : presetSel == 0 ? "Reset" : presets[presetSel - 1].name;
         static TextMeasure presetMeasure;
         const Vector2 ps = TextMeasure_Get(&presetMeasure, mainFont, pname, 22, 1.0f);
         DrawTextEx(mainFont, pname, (Vector2) {NC_PRESET_BTN.x + (NC_PRESET_BTN.width - ps.x) * 0.5f,
                    NC_PRESET_BTN.y + (NC_PRESET_BTN.height - ps.y) * 0.5f}, 22, 1.0f, WHITE);
+        // Seta do botao: aponta para cima quando o seletor esta aberto.
+        const float tx = NC_PRESET_BTN.x + NC_PRESET_BTN.width - 22.0f, ty = NC_PRESET_BTN.y + NC_PRESET_BTN.height * 0.5f;
+        if (presetPick) DrawTriangle((Vector2) {tx - 7.0f, ty + 4.0f}, (Vector2) {tx + 7.0f, ty + 4.0f}, (Vector2) {tx, ty - 4.0f}, WHITE);
+        else            DrawTriangle((Vector2) {tx - 7.0f, ty - 4.0f}, (Vector2) {tx + 7.0f, ty - 4.0f}, (Vector2) {tx, ty + 4.0f}, WHITE);
+
+        // Seletor: painel acima do botao, com sombra; linha atual marcada a amarelo, foco do teclado com contorno.
+        if (presetPick) {
+            const Vector2 mouse = RayGame_MouseWorld();
+            const Rectangle pp = PresetPanel();
+            DrawRectangleRounded((Rectangle) {pp.x + 4.0f, pp.y + 6.0f, pp.width, pp.height}, NC_ROUND, 6, (Color) {0, 0, 0, 150});
+            DrawRectangleRounded(pp, NC_ROUND, 6, (Color) {24, 24, 30, 250});
+            DrawRectangleRoundedLinesEx(pp, NC_ROUND, 6, 2.0f, GRAY);
+            for (int r = 0; r < NC_PRESET_ROWS; r++) {
+                const Rectangle rr = PresetRow(r);
+                const bool cur = r == presetSel, kbd = r == presetCursor, hover = CheckCollisionPointRec(mouse, rr);
+                DrawRectangleRounded(rr, NC_ROUND, 6, (hover || kbd) ? (Color) {70, 70, 80, 255} : (Color) {36, 36, 44, 255});
+                if (cur) DrawRectangleRec((Rectangle) {rr.x + 2.0f, rr.y + 8.0f, 4.0f, rr.height - 16.0f}, YELLOW);
+                if (kbd) DrawRectangleRoundedLinesEx(rr, NC_ROUND, 6, 2.0f, WHITE);
+                const char* lbl = r == 0 ? "Reset" : presets[r - 1].name;
+                const Color tc = r == 0 ? (Color) {255, 150, 130, 255} : cur ? YELLOW : WHITE;
+                DrawTextEx(mainFont, lbl, (Vector2) {rr.x + 18.0f, rr.y + (rr.height - 22.0f) * 0.5f}, 22, 1.0f, tc);
+            }
+        }
     }
 
     // Estado da coluna: original ou ajustada.

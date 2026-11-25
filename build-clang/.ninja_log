@@ -390,3 +390,22 @@
 22	76	8173327585207388	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
 82	199	8173327585817948	CMakeFiles/FunkinCengine.dir/src/scenes/menu/options/OptionsMenuNoteColors.c.obj	744fe5c5ca885fba
 199	2960	8173327586984755	D:/dev/funkin c/FunkinCengine.exe	57a7e1081659c464
+21	76	8173328830054470	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+267	918	8173328832514075	CMakeFiles/FunkinCengine.dir/src/scenes/menu/options/OptionsMenuNoteColors.c.obj	744fe5c5ca885fba
+222	939	8173328832069298	CMakeFiles/FunkinCengine.dir/src/rendering/shaders/ShaderFx.c.obj	395b032d05bdf535
+280	1049	8173328832634067	CMakeFiles/FunkinCengine.dir/src/scenes/modding/charteditor/ChartEditor.c.obj	36b6b08430ac032
+286	1054	8173328832704084	CMakeFiles/FunkinCengine.dir/src/scenes/modding/charteditor/ui/EditorPanels.c.obj	3e5abb0e456800b0
+84	1125	8173328830671329	CMakeFiles/FunkinCengine.dir/src/Game.c.obj	6623ac047e5567b7
+274	1228	8173328832584069	CMakeFiles/FunkinCengine.dir/src/scenes/menu/options/OptionsMenuValues.c.obj	63fc2c0bbfdbf58c
+227	1337	8173328832124409	CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/events/PlayStateEventsInGameplay.c.obj	1ab2c340a5e5a42
+1337	13632	8173328843205820	D:/dev/funkin c/FunkinCengine.exe	57a7e1081659c464
+30	66	8173328998984495	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+76	160	8173328999444437	CMakeFiles/FunkinCengine.dir/src/rendering/shaders/ShaderFx.c.obj	395b032d05bdf535
+80	227	8173328999479733	CMakeFiles/FunkinCengine.dir/src/scenes/gameplay/events/PlayStateEventsInGameplay.c.obj	1ab2c340a5e5a42
+227	3643	8173329000951505	D:/dev/funkin c/FunkinCengine.exe	57a7e1081659c464
+33	79	8173331815731121	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+86	206	8173331816265228	CMakeFiles/FunkinCengine.dir/src/scenes/menu/options/OptionsMenuNoteColors.c.obj	744fe5c5ca885fba
+206	3776	8173331817459708	D:/dev/funkin c/FunkinCengine.exe	57a7e1081659c464
+31	98	8173335114209527	D:/dev/funkin c/build-clang/CMakeFiles/cmake.verify_globs	356b90918daaa218
+107	254	8173335114961044	CMakeFiles/FunkinCengine.dir/src/scenes/menu/options/OptionsMenuNoteColors.c.obj	744fe5c5ca885fba
+255	5551	8173335116446980	D:/dev/funkin c/FunkinCengine.exe	57a7e1081659c464

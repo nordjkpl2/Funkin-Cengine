@@ -47,6 +47,8 @@ const PlayStateEventType playStateEventTypes[] = {
     {"Shader Pulse",  "pulso: batida tum-tum no ritmo (zoom + clarao + borda; animacao % = BPM: 100 = 120)", 50, 0, 0, "intensidade %:", "animacao %:", NULL, 0, 1},
     {"Shader Distortion", "distorcao: ondas de calor + curvatura de lente (intensidade % = forca, animacao % = velocidade)", 50, 0, 0, "intensidade %:", "animacao %:", NULL, 0, 1},
     {"Shader Chromatic", "aberracao cromatica: separa vermelho e azul do centro (intensidade % = forca, animacao % = pulso)", 50, 0, 0, "intensidade %:", "animacao %:", NULL, 0, 1},
+    {"Shader Dissolve", "dissolver: pedacos da tela somem por ruido, borda laranja (intensidade % = quanto sumiu, animacao % = velocidade)", 50, 0, 0, "intensidade %:", "animacao %:", NULL, 0, 1},
+    {"Shader Depth", "profundidade: paralaxe pelo brilho + nevoa no fundo (intensidade % = forca, animacao % = balanco da camera)", 50, 0, 0, "intensidade %:", "animacao %:", NULL, 0, 1},
     {"Shader Off",    "desliga o shader de tela", 0, 0, 0, NULL, NULL, NULL, 0, 1},
     {"Camera Parallax", "camera 3D: afasta (zoom out) e balanca em profundidade (0 desliga)", 100, 0, 0, "intensidade %:", "velocidade %:", NULL, 0, 0},
     {CAMERA_MOVE_NAME, "camera: zoom % (100 = normal), x e y em px do mundo (transicao suave)", 100, 0, 0, "zoom %:", "x (px):", "y (px):", 0, 0},
@@ -168,6 +170,8 @@ void PlayStateEvents_ApplyShader(const char* name, double intensityPct, double a
     else if (strcmp(name, "Shader Pulse") == 0) ShaderFx_Push(SHADERFX_PULSE, amt, spd);
     else if (strcmp(name, "Shader Distortion") == 0) ShaderFx_Push(SHADERFX_DISTORTION, amt, spd);
     else if (strcmp(name, "Shader Chromatic") == 0) ShaderFx_Push(SHADERFX_CHROMATIC, amt, spd);
+    else if (strcmp(name, "Shader Dissolve") == 0) ShaderFx_Push(SHADERFX_DISSOLVE, amt, spd);
+    else if (strcmp(name, "Shader Depth") == 0) ShaderFx_Push(SHADERFX_DEPTH, amt, spd);
     else if (strcmp(name, "Shader Off") == 0) ShaderFx_Reset();
 }
 

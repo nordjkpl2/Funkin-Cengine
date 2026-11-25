@@ -21,7 +21,9 @@ typedef enum {
     SHADERFX_SPACE,   /* nebulosa + estrelas animadas */
     SHADERFX_PULSE,   /* pulso de batida: zoom + brilho + borda, no ritmo */
     SHADERFX_DISTORTION, /* ondas de calor + curvatura de lente */
-    SHADERFX_CHROMATIC   /* aberracao cromatica: separa R e B do centro */
+    SHADERFX_CHROMATIC,  /* aberracao cromatica: separa R e B do centro */
+    SHADERFX_DISSOLVE,   /* dissolver: pixels somem por ruido, com borda incandescente */
+    SHADERFX_DEPTH       /* ilusao de profundidade: paralaxe por luminancia + nevoa no fundo */
 } ShaderFxKind;
 
 /* Pilha de ate 3 efeitos, aplicados em ordem de entrada (encadeados em passes).

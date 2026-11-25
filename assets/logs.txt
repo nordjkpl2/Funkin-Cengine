@@ -59,3 +59,9 @@ LOAD [Fatigue] init: 0.0 ms, chart: 33.2 ms, sounds: 74.9 ms, characters: 437.2 
 [WARN] ImagePrefetch: sem orcamento de memoria, carrega na hora (assets/mods/images/absolute-zeroBG.png)
 LOAD [absolute-zero] init: 0.0 ms, chart: 8.6 ms, sounds: 1.1 ms, characters: 475.7 ms, stage: 1259.7 ms, song audio: 1.7 ms, notes: 237.6 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 1733.5 ms) total: 1984.6 ms
 LOAD [agony] init: 0.0 ms, chart: 35.3 ms, sounds: 106.3 ms, characters: 450.3 ms, stage: 28.5 ms, song audio: 1.8 ms, notes: 232.7 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 461.7 ms) total: 855.1 ms
+[WARN] ImagePrefetch: sem orcamento de memoria, carrega na hora (assets/mods/images/absolute-zeroBG.png)
+LOAD [absolute-zero] init: 1.6 ms, chart: 9.9 ms, sounds: 59.9 ms, characters: 465.5 ms, stage: 1298.6 ms, song audio: 1.7 ms, notes: 231.9 ms, ui: 9.0 ms, warmup: 0.2 ms, (textures on main thread: 1770.1 ms) total: 2078.2 ms
+[WARN] ImagePrefetch: sem orcamento de memoria, carrega na hora (assets/mods/images/absolute-zeroBG.png)
+LOAD [absolute-zero] init: 0.0 ms, chart: 14.0 ms, sounds: 1.9 ms, characters: 479.8 ms, stage: 1287.5 ms, song audio: 1.6 ms, notes: 235.1 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 1765.1 ms) total: 2020.1 ms
+[WARN] ImagePrefetch: sem orcamento de memoria, carrega na hora (assets/mods/images/absolute-zeroBG.png)
+LOAD [absolute-zero] init: 0.7 ms, chart: 7.8 ms, sounds: 70.2 ms, characters: 439.9 ms, stage: 1384.7 ms, song audio: 1.7 ms, notes: 241.5 ms, ui: 11.4 ms, warmup: 0.2 ms, (textures on main thread: 1833.0 ms) total: 2158.1 ms
