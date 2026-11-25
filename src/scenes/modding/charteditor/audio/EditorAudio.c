@@ -6,7 +6,7 @@
 
 char playing = 0;
 
-char playFollow = 1; // View: trava a grade no receptor durante o OUVIR, igual ao jogo
+char playFollow = 1; // View: trava a grade no receptor durante o LISTEN, igual ao jogo
 
 float edVolApplied = -1.0f;
 

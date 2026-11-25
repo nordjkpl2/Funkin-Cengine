@@ -149,7 +149,7 @@ static char PlayFileExists(const char* dir, const char* base) {
 
 void Editor_EnterDir(const char* dir) {
     if(!EdChart_OpenDir(&chart, dir)) {
-        EdStatusMsg("NAO ABRIU ESSA MUSICA");
+        EdStatusMsg("COULD NOT OPEN THIS SONG");
         return;
     }
     Picker_FreeIcons();
@@ -285,9 +285,9 @@ void Editor_Save(void) {
     if(EdChart_Save(&chart)) {
         chart.dirty = 0;
         Editor_LoadIcons();
-        EdStatusMsg("SALVO!");
+        EdStatusMsg("SAVED!");
     } else {
-        EdStatusMsg("ERRO AO SALVAR");
+        EdStatusMsg("ERROR SAVING");
     }
 }
 
@@ -296,32 +296,32 @@ char ImportJSON(const char* jsonPath, const char* modName) {
     char clean[64];
     EdSanitizeName(clean, sizeof(clean), modName);
     if(clean[0] == 0) {
-        EdStatusMsg("NOME INVALIDO");
+        EdStatusMsg("INVALID NAME");
         return 0;
     }
     char dir[256];
     snprintf(dir, sizeof(dir), "assets/mods/%s", clean);
     if(Song_HasChart(dir)) {
-        EdStatusMsg("JA EXISTE ESSE NOME");
+        EdStatusMsg("NAME ALREADY EXISTS");
         return 0;
     }
     MakeDirectory(dir);
     char dst[300];
     snprintf(dst, sizeof(dst), "%s/data.json", dir);
     if(!EdCopyFile(jsonPath, dst)) {
-        EdStatusMsg("NAO DEU PRA COPIAR");
+        EdStatusMsg("COULD NOT COPY");
         return 0;
     }
     Editor_EnterDir(dir);
     return 1;
 }
 
-// SALVAR COMO: copia audio + salva json com outro nome (1 = ok)
+// SAVE AS: copia audio + salva json com outro nome (1 = ok)
 char Editor_SaveAs(const char* modName) {
     char clean[64];
     EdSanitizeName(clean, sizeof(clean), modName);
     if(clean[0] == 0) {
-        EdStatusMsg("NOME INVALIDO");
+        EdStatusMsg("INVALID NAME");
         return 0;
     }
     char dir[256];
@@ -331,7 +331,7 @@ char Editor_SaveAs(const char* modName) {
         return 1;
     }
     if(Song_HasChart(dir)) {
-        EdStatusMsg("JA EXISTE ESSE NOME");
+        EdStatusMsg("NAME ALREADY EXISTS");
         return 0;
     }
     // mesma musica, outro nome: RENOMEIA a pasta ( so vale pros mods )
@@ -343,7 +343,7 @@ char Editor_SaveAs(const char* modName) {
             chart.name[sizeof(chart.name) - 1] = 0;
             Editor_Save();
             Picker_Refresh();
-            EdStatusMsg("PASTA RENOMEADA");
+            EdStatusMsg("FOLDER RENAMED");
             return 1;
         }
         // rename falhou: cai pro copia normal abaixo
@@ -455,7 +455,7 @@ void CharDrop_Draw(void) {
     }
 
     if(n == 0) {
-        DrawTextEx(mainFont, dropQueryLen > 0 ? "(no results)" : "(vazio)", (Vector2) {r.x + 8, listY + 8}, 20, 1, YELLOW);
+        DrawTextEx(mainFont, dropQueryLen > 0 ? "(no results)" : "(empty)", (Vector2) {r.x + 8, listY + 8}, 20, 1, YELLOW);
     }
     // o clique que abriu a lista nao pode escolher o item que ficou embaixo do mouse
     const char canPick = !dropJustOpened;
@@ -542,7 +542,7 @@ static void Picker_NewSong(void) {
     ceDlg = DLG_NONE;
     focusBox = NULL;
     focusNum = NULL;
-    EdStatusMsg("NEW SONG - SALVAR COMO");
+    EdStatusMsg("NEW SONG - SAVE AS");
 }
 
 /* Calcula a linha i; false se ela esta fora da tela. */
@@ -612,7 +612,7 @@ void Picker_Draw(void) {
         const int cur = pickerSel;
         const int pages = (total + PICK_PAGE - 1) / PICK_PAGE;
         char info[64];
-        snprintf(info, sizeof(info), "%d / %d   pagina %d de %d", cur + 1 > total ? total : cur + 1, total,
+        snprintf(info, sizeof(info), "%d / %d   page %d of %d", cur + 1 > total ? total : cur + 1, total,
             cur / PICK_PAGE + 1, pages < 1 ? 1 : pages);
         DrawTextEx(mainFont, info, (Vector2) {166, 112}, 20, 1, (Color) {150, 146, 178, 255});
     }
@@ -652,9 +652,9 @@ void Picker_Draw(void) {
     }
 
     if(pickShownCount == 0 && pickerCount > 0)
-        DrawTextEx(mainFont, "nenhuma musica encontrada", (Vector2) {260, 400}, 32, 2, (Color) {255, 200, 120, 255});
+        DrawTextEx(mainFont, "no song found", (Vector2) {260, 400}, 32, 2, (Color) {255, 200, 120, 255});
     DrawRectangleRounded((Rectangle) {140, 684, 760, 28}, 0.4f, 6, (Color) {20, 24, 36, 220});
-    DrawTextEx(mainFont, "ENTER abrir   R atualizar   N nova   PGUP/PGDN pagina   ESC voltar",
+    DrawTextEx(mainFont, "ENTER open   R refresh   N new   PGUP/PGDN page   ESC back",
         (Vector2) {156, 689}, 20, 1, (Color) {200, 200, 200, 255});
 
     // Caixas de busca e botoes por ultimo (formas e textos proprios).
@@ -703,7 +703,7 @@ void Picker_Update(void) {
                     ceDlg = DLG_SAVEAS;
                     focusBox = &saveAsBox;
                 } else {
-                    EdStatusMsg("ESSE JSON NAO E MUSICA");
+                    EdStatusMsg("THIS JSON IS NOT A SONG");
                 }
                 break;
             }

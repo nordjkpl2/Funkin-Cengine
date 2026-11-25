@@ -95,6 +95,7 @@ static void ActivateCurrent(void) {
     Option* cur = options + currentOption;
 
     if (currentOption == OPTION_GAMEPLAY_EXTRA) { GameplayExtra_Begin(); return; }
+    if (currentOption == OPTION_WARNS) { WarnsScreen_Begin(); return; }
 
     if (cur->type == OPTION_VALUE_ACTION) {
         if (!resetArmed) { resetArmed = true; return; }
@@ -254,6 +255,10 @@ static void OptionsMenu_UpdateInput(void) {
     }
     if (gameplayExtraScreen) {
         GameplayExtra_Update();
+        return;
+    }
+    if (warnsScreen) {
+        WarnsScreen_Update();
         return;
     }
 
@@ -472,6 +477,7 @@ static const char* CurrentHint(void) {
     if (currentOption == OPTION_HITSOUND) return "a sound when hit a note";
     if (currentOption == OPTION_STRUM_BG) return "background in notereceptor";
     if (currentOption == OPTION_GAMEPLAY_EXTRA) return "ENTER: co-op and play as";
+    if (currentOption == OPTION_WARNS) return "ENTER: loading warnings (dev info)";
     if (currentOption == OPTION_RESET_CONFIG)
         return resetArmed ? "ENTER again to confirm: resets every option" : "ENTER: reset all options to default";
     return NULL;
@@ -572,6 +578,8 @@ static void OptionsMenu_Draw([[maybe_unused]] RayScene* scene) {
         NoteColorScreen_Draw();
     else if (gameplayExtraScreen)
         GameplayExtra_Draw();
+    else if (warnsScreen)
+        WarnsScreen_Draw();
 
     Render_StopCamera();
 }

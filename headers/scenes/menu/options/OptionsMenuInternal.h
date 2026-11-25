@@ -204,6 +204,7 @@ typedef enum {
     OPTION_HEALTH_DRAIN_BOTPLAY,
     OPTION_GAMEPLAY_EXTRA,
     OPTION_HORIZONTAL_MENU,
+    OPTION_WARNS,
     OPTION_HEADER_MUSIC,
     OPTION_MENU_MUSIC,
     OPTION_RESET_CONFIG,
@@ -253,6 +254,11 @@ void Capture_Draw(void);
 void ThreadsScreen_Begin(void);
 void ThreadsScreen_Update(void);
 void ThreadsScreen_Draw(void);
+/* OptionsMenuWarns.c */
+extern bool warnsScreen;   /* tela de avisos aberta */
+void WarnsScreen_Begin(void);
+void WarnsScreen_Update(void);
+void WarnsScreen_Draw(void);
 /* OptionsMenuNoteColors.c */
 void NoteColorScreen_Begin(void);
 void NoteColorScreen_Update(void);

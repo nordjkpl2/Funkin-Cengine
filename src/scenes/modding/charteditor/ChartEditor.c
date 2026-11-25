@@ -36,7 +36,7 @@ static void Dialogs_Update(void) {
         }
         if(ceDlg == DLG_OPEN) {
             if(openBox.buf[0] == 0) {
-                EdStatusMsg("COLE O CAMINHO PRIMEIRO");
+                EdStatusMsg("PASTE THE PATH FIRST");
                 return;
             }
             EdChart tmp;
@@ -48,7 +48,7 @@ static void Dialogs_Update(void) {
                 ceDlg = DLG_SAVEAS;
                 focusBox = &saveAsBox;
             } else {
-                EdStatusMsg("NAO ABRIU: confira o caminho");
+                EdStatusMsg("COULD NOT OPEN: check the path");
             }
         } else if(ceDlg == DLG_SAVEAS) {
             char ok = 0;
@@ -71,15 +71,15 @@ static void Dialogs_Draw(void) {
     Render_SetCamera(&camEd);
     DrawRectangle(0, 0, 1280, 720, (Color) {0, 0, 0, 180});
     if(ceDlg == DLG_LEAVE) {
-        Ed_DrawText(mainFont, "Salvar as alteracoes?", (Vector2) {340, 250}, 40, 3, WHITE);
-        Ed_DrawText(mainFont, "enter salva, esc cancela", (Vector2) {340, 310}, 20, 1, YELLOW);
-        if(EdDlgButton((Rectangle) {340, 360, 170, 48}, "SALVAR", GREEN)) {
+        Ed_DrawText(mainFont, "Save changes?", (Vector2) {340, 250}, 40, 3, WHITE);
+        Ed_DrawText(mainFont, "enter saves, esc cancels", (Vector2) {340, 310}, 20, 1, YELLOW);
+        if(EdDlgButton((Rectangle) {340, 360, 170, 48}, "SAVE", GREEN)) {
             Editor_Save();
             Editor_LeaveToPicker();
-        } else if(EdDlgButton((Rectangle) {530, 360, 170, 48}, "DESCARTAR", RED)) {
+        } else if(EdDlgButton((Rectangle) {530, 360, 170, 48}, "DISCARD", RED)) {
             chart.dirty = 0;
             Editor_LeaveToPicker();
-        } else if(EdDlgButton((Rectangle) {720, 360, 170, 48}, "CANCELAR", GRAY)) {
+        } else if(EdDlgButton((Rectangle) {720, 360, 170, 48}, "CANCEL", GRAY)) {
             ceDlg = DLG_NONE;
         }
     } else if(ceDlg == DLG_OPEN) {
@@ -149,7 +149,7 @@ static void Dialogs_Draw(void) {
                 if(clean[0] != 0) snprintf(mod, sizeof(mod), "    %.28s/", clean);
                 else snprintf(mod, sizeof(mod), "    <your-song>/");
                 Ed_DrawText(mainFont, mod, (Vector2) {tx, ty}, 18, 1, WHITE);
-                Ed_DrawText(mainFont, tChart ? "[existe]" : "[novo]", (Vector2) {tx + 240, ty}, 18, 1, tChart ? YELLOW : GREEN);
+                Ed_DrawText(mainFont, tChart ? "[exists]" : "[new]", (Vector2) {tx + 240, ty}, 18, 1, tChart ? YELLOW : GREEN);
             }
             ty += 24;
             Ed_DrawText(mainFont, "      data.json", (Vector2) {tx, ty}, 18, 1, WHITE);
@@ -243,7 +243,7 @@ static void Edit_UpdateKeys(void) {
             cursorMs = SecStartMs(secIdx);
             viewTopMs = cursorMs - VIEW_MS * 0.3;
             if(viewTopMs < 0) viewTopMs = 0;
-            EdStatusMsg("TRECHO NOVO NO FIM");
+            EdStatusMsg("NEW PART AT END");
         }
         return;
     }
@@ -258,7 +258,7 @@ static void Edit_UpdateKeys(void) {
             if(secIdx >= chart.nsec) secIdx = chart.nsec - 1;
             EdStatusMsg("part deleted");
         } else {
-            EdStatusMsg("NOT POSSIBLE TO DELETE HAVE ONLY 1 PART");
+            EdStatusMsg("CANNOT DELETE: ONLY 1 PART");
         }
         return;
     }
@@ -277,13 +277,13 @@ static void Edit_UpdateKeys(void) {
             memcpy(copyBuf.notes, s->notes, sizeof(EdNote) * (size_t)s->count);
         }
         copyValid = 1;
-        EdStatusMsg("part Copyed");
+        EdStatusMsg("part copied");
         return;
     }
     if(IsKeyPressed(KEY_V)) {
         /* // * if pressing control v without control c */
         if(!copyValid) {
-            EdStatusMsg("V pressed missing Copy Before (C)");
+            EdStatusMsg("V pressed: copy first (C)");
             return;
         }
         EdTouchAddSec();
@@ -301,7 +301,7 @@ static void Edit_UpdateKeys(void) {
                 EdSec_Add(n, (float)(base + (copyBuf.notes[i].time - srcStart)), copyBuf.notes[i].lane, copyBuf.notes[i].len);
             chart.nsec++;
             secIdx = chart.nsec - 1;
-            EdStatusMsg("Copyed on End");
+            EdStatusMsg("copied at end");
         }
         return;
     }
@@ -354,7 +354,7 @@ static void Edit_Update(void) {
             Editor_ApplyNoteSkin(skinApplied, chart.dir);
         }
     }
-    // volume global (+/-) vale pro OUVIR tambem (so reaplica se mudou)
+    // volume global (+/-) vale pro LISTEN tambem (so reaplica se mudou)
     {
         float v = RayGame_MusicVolumeLevel();
         if(v != edVolApplied) {

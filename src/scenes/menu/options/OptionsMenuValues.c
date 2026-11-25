@@ -73,6 +73,7 @@ Option options[OPTION_COUNT] = {
     [OPTION_HEALTH_DRAIN_BOTPLAY] = {.text = "Health Drain (Botplay)", .type = OPTION_VALUE_BOOL},
     [OPTION_GAMEPLAY_EXTRA] = {.text = "Gameplay Extra", .type = OPTION_VALUE_ACTION},
     [OPTION_HORIZONTAL_MENU] = {.text = "Horizontal Menu", .type = OPTION_VALUE_BOOL},
+    [OPTION_WARNS] = {.text = "Warns", .type = OPTION_VALUE_ACTION},
     [OPTION_HEADER_MUSIC] = {.text = "[Musica]", .type = OPTION_VALUE_HEADER},
     [OPTION_MENU_MUSIC] = {.text = "Track", .type = OPTION_VALUE_LIST, .step = 1, .min = 0}, // options/max: Create
     [OPTION_RESET_CONFIG] = {.text = "Reset Config to Default", .type = OPTION_VALUE_ACTION},

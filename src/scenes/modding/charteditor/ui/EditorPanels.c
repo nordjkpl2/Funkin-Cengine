@@ -35,11 +35,11 @@ static void Edit_DoNewPart(void) {
     cursorMs = SecStartMs(secIdx);
     viewTopMs = cursorMs - VIEW_MS * 0.3;
     if(viewTopMs < 0) viewTopMs = 0;
-    EdStatusMsg("TRECHO NOVO NO FIM");
+    EdStatusMsg("NEW PART AT END");
 }
 
 static void Edit_DoDelPart(void) {
-    if(chart.nsec <= 1) { EdStatusMsg("NOT POSSIBLE TO DELETE HAVE ONLY 1 PART"); return; }
+    if(chart.nsec <= 1) { EdStatusMsg("CANNOT DELETE: ONLY 1 PART"); return; }
     EdTouchDelSec(secIdx);
     free(chart.secs[secIdx].notes);
     memmove(chart.secs + secIdx, chart.secs + secIdx + 1, sizeof(EdSec) * (size_t)(chart.nsec - secIdx - 1));
@@ -64,11 +64,11 @@ static void Edit_DoCopy(void) {
         }
     }
     copyValid = 1;
-    EdStatusMsg("TRECHO COPIADO");
+    EdStatusMsg("PART COPIED");
 }
 
 static void Edit_DoPaste(void) {
-    if(!copyValid) { EdStatusMsg("COPIE ANTES (C)"); return; }
+    if(!copyValid) { EdStatusMsg("COPY FIRST (C)"); return; }
     EdTouchAddSec();
     double base = SongEndMs();
     double srcStart = SecStartMs(secIdx);
@@ -89,7 +89,7 @@ static void Edit_DoPaste(void) {
     cursorMs = SecStartMs(secIdx);
     viewTopMs = cursorMs - VIEW_MS * 0.3;
     if(viewTopMs < 0) viewTopMs = 0;
-    EdStatusMsg("COLADO NO FIM");
+    EdStatusMsg("PASTED AT END");
 }
 
 /* Salva e abre o test play com o modo pedido (FULL = F5, RECEPTORS = F6, PLAY ONLY = botoes). */
@@ -156,9 +156,9 @@ void Edit_DrawMenuBar(void) {
         DrawRectangleLinesEx(box, 1, GREEN);
         if(EdMenuItemIcon((Rectangle){box.x + 4, box.y + 4, 222, 28}, "Save  Ctrl+S", ED_ICON_SAVE)) { menuOpen = 0; Editor_Save(); }
         else if(EdMenuItemIcon((Rectangle){box.x + 4, box.y + 32, 222, 28}, "Save As...", ED_ICON_SAVE)) { menuOpen = 0; saveAsBox.buf[0] = 0; importPath[0] = 0; ceDlg = DLG_SAVEAS; focusBox = &saveAsBox; }
-        else if(EdMenuItemIcon((Rectangle){box.x + 4, box.y + 60, 222, 28}, "Save Compressed", ED_ICON_SAVE)) { menuOpen = 0; EdChart_SaveCompressed(&chart); EdStatusMsg("SALVO COMPRIMIDO"); }
-        else if(EdMenuItemIcon((Rectangle){box.x + 4, box.y + 88, 222, 28}, "Save as binary", ED_ICON_SAVE)) { menuOpen = 0; if(EdChart_SaveBinary(&chart)) EdStatusMsg("SALVO BINARIO .song"); else EdStatusMsg("ERRO AO SALVAR BINARIO"); }
-        else if(EdMenuItemIcon((Rectangle){box.x + 4, box.y + 116, 222, 28}, "Save Events", ED_ICON_DOOR)) { menuOpen = 0; if(EdEvents_Save(chart.dir)) EdStatusMsg("EVENTOS SALVOS"); else EdStatusMsg("ERRO AO SALVAR EVENTOS"); }
+        else if(EdMenuItemIcon((Rectangle){box.x + 4, box.y + 60, 222, 28}, "Save Compressed", ED_ICON_SAVE)) { menuOpen = 0; EdChart_SaveCompressed(&chart); EdStatusMsg("SAVED COMPRESSED"); }
+        else if(EdMenuItemIcon((Rectangle){box.x + 4, box.y + 88, 222, 28}, "Save as binary", ED_ICON_SAVE)) { menuOpen = 0; if(EdChart_SaveBinary(&chart)) EdStatusMsg("SAVED BINARY .song"); else EdStatusMsg("ERROR SAVING BINARY"); }
+        else if(EdMenuItemIcon((Rectangle){box.x + 4, box.y + 116, 222, 28}, "Save Events", ED_ICON_DOOR)) { menuOpen = 0; if(EdEvents_Save(chart.dir)) EdStatusMsg("EVENTS SAVED"); else EdStatusMsg("ERROR SAVING EVENTS"); }
         else if(EdMenuItemIcon((Rectangle){box.x + 4, box.y + 144, 222, 28}, "Back to list  ESC", ED_ICON_BACK)) { menuOpen = 0; Editor_RequestLeave(); }
         else if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             if(!(m.x >= box.x && m.x <= box.x + box.width && m.y >= 0 && m.y <= box.y + box.height)) menuOpen = 0;
@@ -191,10 +191,10 @@ void Edit_DrawMenuBar(void) {
         DrawRectangleRec(box, (Color){15,15,15,245});
         DrawRectangleLinesEx(box, 1, GREEN);
         if(PlayMenuItem((Rectangle){box.x + 4, box.y + 4, 252, 28}, "All sounds", 1, "", -1)) { menuOpen = 0; Audio_SetSolo(0); }
-        else if(PlayMenuItem((Rectangle){box.x + 4, box.y + 32, 252, 28}, "Play only inst", edPlayHasInst, "NAO TEM Inst.ogg (ou mp3/wav)", 0)) { menuOpen = 0; Edit_PlaySolo(1, edPlayHasInst); }
-        else if(PlayMenuItem((Rectangle){box.x + 4, box.y + 60, 252, 28}, "Play only vocals", edPlayHasVocals, "NAO TEM Voices (ou Voices-Player/Opponent)", 1)) { menuOpen = 0; Edit_PlaySolo(2, edPlayHasVocals); }
-        else if(PlayMenuItem((Rectangle){box.x + 4, box.y + 88, 252, 28}, "Play only bf vocals", edPlayHasBf, "NAO TEM Voices-Player.ogg", 2)) { menuOpen = 0; Edit_PlaySolo(3, edPlayHasBf); }
-        else if(PlayMenuItem((Rectangle){box.x + 4, box.y + 116, 252, 28}, "Play only opponent vocals", edPlayHasOpp, "NAO TEM Voices-Opponent.ogg", 3)) { menuOpen = 0; Edit_PlaySolo(4, edPlayHasOpp); }
+        else if(PlayMenuItem((Rectangle){box.x + 4, box.y + 32, 252, 28}, "Play only inst", edPlayHasInst, "NO Inst.ogg (ou mp3/wav)", 0)) { menuOpen = 0; Edit_PlaySolo(1, edPlayHasInst); }
+        else if(PlayMenuItem((Rectangle){box.x + 4, box.y + 60, 252, 28}, "Play only vocals", edPlayHasVocals, "NO Voices (ou Voices-Player/Opponent)", 1)) { menuOpen = 0; Edit_PlaySolo(2, edPlayHasVocals); }
+        else if(PlayMenuItem((Rectangle){box.x + 4, box.y + 88, 252, 28}, "Play only bf vocals", edPlayHasBf, "NO Voices-Player.ogg", 2)) { menuOpen = 0; Edit_PlaySolo(3, edPlayHasBf); }
+        else if(PlayMenuItem((Rectangle){box.x + 4, box.y + 116, 252, 28}, "Play only opponent vocals", edPlayHasOpp, "NO Voices-Opponent.ogg", 3)) { menuOpen = 0; Edit_PlaySolo(4, edPlayHasOpp); }
         else if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             if(!(m.x >= box.x && m.x <= box.x + box.width && m.y >= 0 && m.y <= box.y + box.height)) menuOpen = 0;
         }
@@ -320,8 +320,8 @@ static void Edit_DrawPanel_Song(float x, float y) {
     }
     y += 44;
 
-    if(EdButton((Rectangle){x, y, 190, 40}, "SALVAR", 22)) Editor_Save();
-    if(EdButton((Rectangle){x + 200, y, 190, 40}, "SALVAR COMO", 20)) {
+    if(EdButton((Rectangle){x, y, 190, 40}, "SAVE", 22)) Editor_Save();
+    if(EdButton((Rectangle){x + 200, y, 190, 40}, "SAVE AS", 20)) {
         saveAsBox.buf[0] = 0; importPath[0] = 0; ceDlg = DLG_SAVEAS; focusBox = &saveAsBox;
     }
 }
@@ -346,7 +346,7 @@ static void Edit_DrawPanel_Section(float x, float y) {
         NumBox_Update(&nbLen, r, blocked);
         NumBox_Draw(&nbLen, r);
     }
-    Ed_DrawText(mainFont, "16=4 tempos", (Vector2){x + 250, y + 8}, 18, 1, YELLOW);
+    Ed_DrawText(mainFont, "16=4 beats", (Vector2){x + 250, y + 8}, 18, 1, YELLOW);
     y += 42;
     Ed_DrawText(mainFont, "bpm:", (Vector2){x, y + 4}, 22, 1, WHITE);
     {
@@ -401,7 +401,7 @@ static void Edit_DrawPanel_Data(float x, float y) {
 static void Edit_DrawPanel_Charting(float x, float y) {
     Ed_DrawHeader(x, y, "CHARTING", GREEN);
     y += 34;
-    if(EdButton((Rectangle){x, y, 190, 40}, playing ? "PAUSAR" : "OUVIR", 22)) Audio_Toggle();
+    if(EdButton((Rectangle){x, y, 190, 40}, playing ? "PAUSE" : "LISTEN", 22)) Audio_Toggle();
     y += 50;
     // arquivos de audio achados (flags ja existem, custo zero)
     Ed_DrawText(mainFont, edHasAudio ? "inst.ogg: yes" : "inst.ogg: no", (Vector2){x, y}, 18, 1,
@@ -421,7 +421,7 @@ static void Edit_DrawPanel_Charting(float x, float y) {
 static char evPickOpen;
 static char evPickShaders;  // picker abre so com os shaders de tela
 static TxtBox evSearchBox;
-static TxtBox evImgBox;     // nome da imagem do Show Image selecionado
+static TxtBox evImgBox;     // image name do Show Image selecionado
 static TxtBox evNumBox[3];  // valores 1..3 do evento selecionado (campo de texto numerico)
 static int evSelected = -1; // indice em edEvents (-1 = nenhum)
 
@@ -456,7 +456,7 @@ static void EvAddFromType(const PlayStateEventType* t) {
     snprintf(v3, sizeof(v3), "%d", t->defaultScalePct);
     evSelected = EdEvent_Add((float)cursorMs, t->name, v1, v2, v3, "");
     chart.dirty = 1;
-    EdStatusMsg("EVENTO ADICIONADO (CTRL+S salva events.json)");
+    EdStatusMsg("EVENT ADDED (CTRL+S saves events.json)");
 }
 
 // seletor: lista com rolagem (linhas inteiras, igual ao menu de faixas)
@@ -520,7 +520,7 @@ char Edit_EventPickerWheel(float wheel) {
     return 1;
 }
 
-/* Roda do mouse sobre a lista de eventos da musica: rola as linhas e retorna 1. */
+/* Roda do mouse sobre a lista de song events: rola as linhas e retorna 1. */
 char Edit_EventListWheel(float wheel) {
     if(activeTab != TAB_EVENTS || evPickOpen || wheel == 0) return 0;
     if(!CheckCollisionPointRec(EdMouseWorld(), evListBox)) return 0;
@@ -534,7 +534,7 @@ char Edit_EventListWheel(float wheel) {
 // lista filtrada pela busca; clicar adiciona no cursor
 static void Edit_DrawEventPicker(float x, float y) {
     const char blocked = (ceDlg != DLG_NONE || activeDrop || menuOpen);
-    Ed_DrawText(mainFont, evPickShaders ? "escolha o shader:" : "pesquisar evento:", (Vector2){x, y + 4}, 20, 1, WHITE);
+    Ed_DrawText(mainFont, evPickShaders ? "choose shader:" : "search event:", (Vector2){x, y + 4}, 20, 1, WHITE);
     y += 28;
     Rectangle sr = {x, y, 250, 32};
     TxtBox_Update(&evSearchBox, sr, blocked);
@@ -578,7 +578,7 @@ static void Edit_DrawEventPicker(float x, float y) {
     }
 
     if(n == 0) {
-        Ed_DrawText(mainFont, "nenhum evento encontrado", (Vector2){x + 6, y + 8}, 18, 1, YELLOW);
+        Ed_DrawText(mainFont, "no event found", (Vector2){x + 6, y + 8}, 18, 1, YELLOW);
         return;
     }
 
@@ -675,7 +675,7 @@ static void Edit_DrawPanel_Events(float x, float y) {
     if(evSelected >= edEventCount) evSelected = -1;
 
     // grupos recolhiveis: ">" fecha/abre; o botao do grupo aberto mostra "v"
-    if(EdButton((Rectangle){x, y, 350, 36}, (evPickOpen && !evPickShaders) ? "v Adicionar evento" : "> Adicionar evento", 20)) {
+    if(EdButton((Rectangle){x, y, 350, 36}, (evPickOpen && !evPickShaders) ? "v Add event" : "> Add event", 20)) {
         if(evPickOpen && !evPickShaders) EvClosePicker();
         else {
             evPickOpen = 1;
@@ -685,7 +685,7 @@ static void Edit_DrawPanel_Events(float x, float y) {
             focusBox = &evSearchBox;
         }
     }
-    if(EdButton((Rectangle){x + 360, y, 220, 36}, (evPickOpen && evPickShaders) ? "v Adicionar shader" : "> Adicionar shader", 20)) {
+    if(EdButton((Rectangle){x + 360, y, 220, 36}, (evPickOpen && evPickShaders) ? "v Add shader" : "> Add shader", 20)) {
         if(evPickOpen && evPickShaders) EvClosePicker();
         else {
             evPickOpen = 1;
@@ -701,7 +701,7 @@ static void Edit_DrawPanel_Events(float x, float y) {
         return;
     }
 
-    Ed_DrawText(mainFont, "eventos da musica:", (Vector2){x, y}, 20, 1, GREEN);
+    Ed_DrawText(mainFont, "song events:", (Vector2){x, y}, 20, 1, GREEN);
     y += 28;
     // lista com rolagem (roda do mouse): so EV_LIST_ROWS linhas por vez, com barra lateral
     const float listTop = y;
@@ -741,7 +741,7 @@ static void Edit_DrawPanel_Events(float x, float y) {
 
     if(evSelected >= 0) {
         EdEvent* e = &edEvents[evSelected];
-        snprintf(tb, sizeof(tb), "editando: %s", e->name);
+        snprintf(tb, sizeof(tb), "editing: %s", e->name);
         Ed_DrawText(mainFont, tb, (Vector2){x, y}, 20, 1, GREEN);
         y += 34;
 
@@ -749,17 +749,17 @@ static void Edit_DrawPanel_Events(float x, float y) {
         const PlayStateEventType* t = EvTypeOf(e->name);
         if(t != NULL && t->label1 == NULL) {
             // tipo sem valores (ex.: Hide Image): so informa
-            Ed_DrawText(mainFont, "(sem valores)", (Vector2){x, y + 4}, 18, 1, YELLOW);
+            Ed_DrawText(mainFont, "(no values)", (Vector2){x, y + 4}, 18, 1, YELLOW);
             y += 40;
-            snprintf(tb, sizeof(tb), "%d evento(s) no total", edEventCount);
+            snprintf(tb, sizeof(tb), "%d event(s) in total", edEventCount);
             Ed_DrawText(mainFont, tb, (Vector2){x, y}, 18, 1, YELLOW);
             return;
         }
         const char img = (t != NULL && t->usesImage);
         const char chr = (t != NULL && t->usesChar);  // troca de personagem: alvo 0..2 + nome (s1)
         const char txt = (t != NULL && t->usesText);  // so texto livre em s1 (ex.: criador da musica)
-        const char* lab1 = (t != NULL) ? t->label1 : "valor 1:";
-        const char* lab2 = (t != NULL) ? t->label2 : "valor 2:";
+        const char* lab1 = (t != NULL) ? t->label1 : "value 1:";
+        const char* lab2 = (t != NULL) ? t->label2 : "value 2:";
         // shader e parallax: intensidade e velocidade 0..100 (passos de 10)
         const char fx = (t != NULL && (t->usesShader || strcmp(t->name, "Camera Parallax") == 0));
         const char cam = (t != NULL && strcmp(t->name, "Camera Move") == 0);  // zoom % + x/y com sinal
@@ -794,7 +794,7 @@ static void Edit_DrawPanel_Events(float x, float y) {
         }
 
         if(img || chr || txt) {
-            // caixa de texto com o nome da imagem (ou do personagem): sincroniza com o evento selecionado
+            // caixa de texto com o image name (ou do personagem): sincroniza com o evento selecionado
             static int evImgSel = -2;
             static int evImgGen = -1;
             if(evImgSel != evSelected || evImgGen != edEventsGen) {
@@ -802,12 +802,12 @@ static void Edit_DrawPanel_Events(float x, float y) {
                 evImgGen = edEventsGen;
                 snprintf(evImgBox.buf, sizeof(evImgBox.buf), "%s", e->s1);
             }
-            Ed_DrawText(mainFont, chr ? "personagem (nome pasta/xml):" : txt ? "criador (texto):" : "imagem (images/<nome>.png):", (Vector2){x, y}, 18, 1, WHITE);
+            Ed_DrawText(mainFont, chr ? "character (folder/xml name):" : txt ? "creator (text):" : "image (images/<name>.png):", (Vector2){x, y}, 18, 1, WHITE);
             y += 26;
             const char evBlocked = (ceDlg != DLG_NONE || activeDrop || menuOpen);
             Rectangle ir = {x, y, 250, 32};
             TxtBox_Update(&evImgBox, ir, evBlocked);
-            TxtBox_Draw(&evImgBox, ir, chr ? "ex.: bf-car, gf, dad" : txt ? "nome do criador" : "nome da imagem");
+            TxtBox_Draw(&evImgBox, ir, chr ? "e.g.: bf-car, gf, dad" : txt ? "creator name" : "image name");
             if(strcmp(evImgBox.buf, e->s1) != 0) {
                 snprintf(e->s1, sizeof(e->s1), "%s", evImgBox.buf);
                 snprintf(evImgBox.buf, sizeof(evImgBox.buf), "%s", e->s1); /* ja truncado */
@@ -818,7 +818,7 @@ static void Edit_DrawPanel_Events(float x, float y) {
         y += 4;
     }
 
-    snprintf(tb, sizeof(tb), "%d evento(s) no total", edEventCount);
+    snprintf(tb, sizeof(tb), "%d event(s) in total", edEventCount);
     Ed_DrawText(mainFont, tb, (Vector2){x, y}, 18, 1, YELLOW);
 }
 
@@ -869,7 +869,7 @@ void Edit_DrawPanel(void) {
     else if(activeTab == TAB_CHARTING) Edit_DrawPanel_Charting(x, y + 30);
     else Edit_DrawPanel_Events(x, y + 30);
     // linha de ajuda enxuta: so aponta o TAB; a lista completa abre no overlay
-    Ed_DrawText(mainFont, "TAB = atalhos", (Vector2){PANEL_X, 690}, 18, 1, (Color){190, 255, 90, 255});
+    Ed_DrawText(mainFont, "TAB = shortcuts", (Vector2){PANEL_X, 690}, 18, 1, (Color){190, 255, 90, 255});
 }
 
 /* Overlay de atalhos: TAB abre/fecha, fundo preto cobrindo a tela. */
@@ -891,5 +891,5 @@ void Edit_DrawHelpOverlay(void) {
     Ed_DrawHeader(120, 120, "ATALHOS", GREEN);
     for(int i = 0; i < 4; i++)
         Ed_DrawText(mainFont, edHelpLines[i], (Vector2){120, 190 + i * 44}, 26, 1, WHITE);
-    Ed_DrawText(mainFont, "TAB fecha", (Vector2){120, 420}, 20, 1, YELLOW);
+    Ed_DrawText(mainFont, "TAB closes", (Vector2){120, 420}, 20, 1, YELLOW);
 }

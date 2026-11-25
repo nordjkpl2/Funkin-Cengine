@@ -62,7 +62,7 @@ static void Reload(const char* stage, const char* songDir) {
 static void Save(void) {
     yyjson_doc* src = yyjson_read_file(jsonPath, 0, NULL, NULL);
     if(src == NULL) {
-        EdStatusMsg("stage.json invalido, nao salvei");
+        EdStatusMsg("invalid stage.json, not saved");
         return;
     }
     yyjson_mut_doc* doc = yyjson_doc_mut_copy(src, NULL);
@@ -70,7 +70,7 @@ static void Save(void) {
     yyjson_mut_val* root = doc != NULL ? yyjson_mut_doc_get_root(doc) : NULL;
     if(root == NULL || !yyjson_mut_is_obj(root)) {
         if(doc != NULL) yyjson_mut_doc_free(doc);
-        EdStatusMsg("stage.json invalido, nao salvei");
+        EdStatusMsg("invalid stage.json, not saved");
         return;
     }
     ModEd_PutRealArr2(doc, root, "boyfriend", pos[0][0], pos[0][1]);
@@ -81,7 +81,7 @@ static void Save(void) {
     const bool ok = yyjson_mut_write_file(jsonPath, doc, YYJSON_WRITE_PRETTY, NULL, NULL);
     yyjson_mut_doc_free(doc);
     dirty = ok ? 0 : dirty;
-    EdStatusMsg(ok ? "posicao salva no stage.json" : "ERRO ao salvar stage.json");
+    EdStatusMsg(ok ? "position saved to stage.json" : "ERROR saving stage.json");
 }
 
 float StagePos_Draw(float x, float y, const char* stage, const char* songDir, char blocked) {
@@ -94,7 +94,7 @@ float StagePos_Draw(float x, float y, const char* stage, const char* songDir, ch
     if(!open)
         return y - top;
     if(!hasJson) {
-        Ed_DrawText(mainFont, "sem stage.json (so .lua ou nenhum)", (Vector2){x, y + 4}, 18, 1, YELLOW);
+        Ed_DrawText(mainFont, "no stage.json (only .lua or none)", (Vector2){x, y + 4}, 18, 1, YELLOW);
         return y + 30 - top;
     }
 
@@ -119,7 +119,7 @@ float StagePos_Draw(float x, float y, const char* stage, const char* songDir, ch
         }
     }
     const float by = y + POS_ROWS * 34.0f + 4;
-    if(EdButton((Rectangle){x, by, 190, 32}, dirty ? "SALVAR POSICOES *" : "SALVAR POSICOES", 20) && !blocked && dirty)
+    if(EdButton((Rectangle){x, by, 190, 32}, dirty ? "SAVE POSITIONS *" : "SAVE POSITIONS", 20) && !blocked && dirty)
         Save();
     return by + 32 - top + 4;
 }

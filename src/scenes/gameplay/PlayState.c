@@ -30,6 +30,7 @@
 #include "scenes/gameplay/visual/PlayStateNoteSplash.h"
 #include "scenes/gameplay/events/PlayStateEventsInGameplay.h"
 #include "core/Log.h"
+#include "scenes/Transition.h"
 #include "rendering/cpu/ImagePrefetch.h"
 #include <stdlib.h>
 #include <string.h>
@@ -50,7 +51,6 @@
 static char songDir[256];
 static char returnToEditor, returnToWeek, diffSuf[16], overrideP2[SONG_NAME_MAX];
 static char restarted;
-static char warnScreen;   // tela de avisos aberta (antes da contagem)
 static float lastAppliedMusicVolume = -1.0f;
 static PlayStateTestMode testMode = PLAYSTATE_TEST_FULL;  // so o test play do chart editor muda isto
 
@@ -279,7 +279,6 @@ static void LoadMark_End(double start) {
 static void PlayState_Create([[maybe_unused]] RayScene* scene) {
     ResetState();
 
-    warnScreen = 0;
     if (restarted) {
         Restart();
         return;
@@ -345,29 +344,6 @@ static void PlayState_Create([[maybe_unused]] RayScene* scene) {
         PlayStateAudio_UpdateStreams();
     LoadMark("warmup");
     LoadMark_End(loadStart);
-
-    warnScreen = Log_WarnCount() > 0;
-}
-
-// Avisos de carregamento (stage/personagem/audio nao encontrado...). ENTER continua.
-static void WarnScreen_Draw(void) {
-    DrawRectangle(0, 0, (int)SCREEN_W, (int)SCREEN_H, (Color) {0, 0, 0, 215});
-
-    char title[48];
-    snprintf(title, sizeof(title), "AVISOS (%d)", Log_WarnCount());
-    DrawTextEx(mainFont, title, (Vector2) {60, 50}, 44, 3, YELLOW);
-
-    const int shown = Log_WarnCount() < LOG_WARN_MAX ? Log_WarnCount() : LOG_WARN_MAX;
-    for (int i = 0; i < shown; i++)
-        DrawTextEx(mainFont, Log_WarnAt(i), (Vector2) {60, 130.0f + (float)i * 30.0f}, 20, 1, WHITE);
-
-    if (Log_WarnCount() > shown) {
-        char more[64];
-        snprintf(more, sizeof(more), "... e mais %d (veja assets/logs.txt)", Log_WarnCount() - shown);
-        DrawTextEx(mainFont, more, (Vector2) {60, 130.0f + (float)shown * 30.0f}, 20, 1, GRAY);
-    }
-
-    DrawTextEx(mainFont, "ENTER para continuar", (Vector2) {60, SCREEN_H - 70}, 24, 2, GREEN);
 }
 
 /* ------------------------------------------------------------------ */
@@ -471,11 +447,6 @@ static void PlayState_Update([[maybe_unused]] RayScene* scene) {
     // ja esta dentro de render target (tela cheia) e o raster aninhado quebra o framebuffer.
     PlayStateText_Refresh(PlayStatePlayerInput_Score(), PlayStatePlayerInput_Misses(), (float)PlayStateBeat_Time(),
                           gameOptions.showScore, gameOptions.scorePosition);
-
-    if (warnScreen) {
-        if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)) warnScreen = 0;
-        return;
-    }
 
     if (!IsWindowFocused()) {
         PlayStateAudio_Pause();
@@ -630,9 +601,8 @@ static void PlayState_Draw([[maybe_unused]] RayScene* scene) {
 
     if (PlayStatePause_IsPaused())
         DrawPause();
-    if (warnScreen)
-        WarnScreen_Draw();
     Render_StopCamera();
+    Transition_Draw();      // veu de entrada vindo da loading (no-op depois)
 }
 
 /* ------------------------------------------------------------------ */
