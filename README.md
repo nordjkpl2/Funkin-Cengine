@@ -122,6 +122,8 @@ It’s being developed by me, and I’m writing the code from scratch, so it mig
 
   > shaders and other things support
 
+  > community fan made
+
   </details>
 
 <div align="left">
