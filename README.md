@@ -86,14 +86,18 @@ It’s being developed by me, and I’m writing the code from scratch, so it mig
   for View Copyright/License
 
   </div>
-  
+
 <div align="left">
   
   ```text
   All Friday Night Funkin' assets belong to their respective owners
   ```
 
-  > nord in @nordjkpl 2 github
+  <div align="right">
+
+  nord in @nordjkpl 2 github
+
+  </div>
 
   >> [...] I would like to thank Shadow Mario in (https://github.com/ShadowMario/FNF-PsychEngine) and Jordan SantiagoYT in (https://github.com/JordanSantiagoYT/FNF-JS-Engine) and the open-source community for the logic; without it, we wouldn't have been able to achieve the best result
 
