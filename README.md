@@ -78,10 +78,15 @@ It’s being developed by me, and I’m writing the code from scratch, so it mig
   <details>
   <summary><b>——Credits</b></summary>
 
+  <div align="right">
+
   Created by (c)2026 nordjkpl
 
-  View License file for View Copyright/License
+  View License file 
+  for View Copyright/License
 
+  </div>
+  
 <div align="left">
   
   ```text
