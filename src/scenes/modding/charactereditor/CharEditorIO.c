@@ -189,6 +189,13 @@ bool CharEd_Save(const CharEdEntry *entry, const Character *character, char *msg
     PutVec2(doc, root, "position", object->position.x - character->psychShift.x,
             object->position.y - character->psychShift.y);
     PutReal(doc, root, "sing_duration", character->singDuration);
+    if (character->hasHealthColor) {
+        yyjson_mut_obj_remove_key(root, "healthbar_colors");
+        yyjson_mut_val *rgb = yyjson_mut_obj_add_arr(doc, root, "healthbar_colors");
+        yyjson_mut_arr_add_int(doc, rgb, character->healthColor.r);
+        yyjson_mut_arr_add_int(doc, rgb, character->healthColor.g);
+        yyjson_mut_arr_add_int(doc, rgb, character->healthColor.b);
+    }
 
     if (!yyjson_mut_obj_get(root, "healthicon"))
         PutStr(doc, root, "healthicon", entry->name);

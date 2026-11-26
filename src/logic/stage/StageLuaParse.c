@@ -436,11 +436,14 @@ int Stage_ParseLua(const char *luaText, StageSprite *out, int capacity, int *ign
                             (void)Stage_ParseColor(colorText, &red, &green, &blue, &alpha);
                         }
 
+                        const int before = objectCount;
                         index = Stage_GetOrCreateSprite(maps, &mapCount, out, &objectCount, capacity, tag);
                         if (index >= 0) {
                             StageSprite *sprite = &out[index];
                             sprite->image[0] = '\0';
-                            sprite->x = sprite->y = 0.0f;
+                            /* makeLuaSprite(tag, '', x, y) antes do makeGraphic: mantem a posicao. */
+                            if (objectCount != before)
+                                sprite->x = sprite->y = 0.0f;
                             sprite->graphicWidth = width;
                             sprite->graphicHeight = height;
                             sprite->colorR = red;

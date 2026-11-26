@@ -99,6 +99,7 @@ static void Event_OpponentHit(Note* note) {
 static void Event_BotHit(Note* note) {
     if (gameOptions.botplay) {
         PlayStatePlayerInput_AddScore(350); // sick fixo no botplay
+        PlayStatePlayerInput_CountHit(PLAYER_RATING_SICK);
         if (botGain > 0.0f)
             PlayStateHealth_Add(botGain);
     }
@@ -117,6 +118,7 @@ static void Event_PlayerHold(const Note* note) {
 
 static void Event_PlayerHit(Note* note, PlayerRating rating) {
     PlayStateRatingPopups_Show(rating);
+    PlayStateText_Bump();
     if (note->mustHit) PlayStateAnimations_PlayerHit(note->id);
     else PlayStateAnimations_OpponentHit(note->id);
     PlayStateNoteSplash_Spawn(note->id, note->mustHit);   // splash no receptor do lado que acertou
@@ -445,7 +447,8 @@ static void PlayState_Update([[maybe_unused]] RayScene* scene) {
 
     // Textos do HUD rasterizam aqui (so os que mudaram). Nao pode ser no Draw: la a cena
     // ja esta dentro de render target (tela cheia) e o raster aninhado quebra o framebuffer.
-    PlayStateText_Refresh(PlayStatePlayerInput_Score(), PlayStatePlayerInput_Misses(), (float)PlayStateBeat_Time(),
+    PlayStateText_Refresh(PlayStatePlayerInput_Score(), PlayStatePlayerInput_Misses(), PlayStatePlayerInput_Accuracy(),
+                          (float)PlayStateBeat_Time(),
                           gameOptions.showScore, gameOptions.scorePosition);
 
     if (!IsWindowFocused()) {

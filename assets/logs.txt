@@ -166,3 +166,52 @@ LOAD [ampersand] init: 0.0 ms, chart: 23.3 ms, sounds: 1.5 ms, characters: 434.4
 LOAD [ampersand] init: 1.7 ms, chart: 6.0 ms, sounds: 60.1 ms, characters: 412.8 ms, stage: 2.1 ms, song audio: 3.4 ms, notes: 0.1 ms, ui: 9.1 ms, warmup: 0.2 ms, (textures on main thread: 422.1 ms) total: 495.5 ms
 LOAD [ampersand] init: 0.0 ms, chart: 4.7 ms, sounds: 0.8 ms, characters: 463.3 ms, stage: 1.8 ms, song audio: 3.3 ms, notes: 0.1 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 463.9 ms) total: 474.2 ms
 LOAD [moribund-3] init: 0.0 ms, chart: 134.1 ms, sounds: 1.0 ms, characters: 475.9 ms, stage: 4.6 ms, song audio: 1.8 ms, notes: 0.7 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 478.2 ms) total: 618.2 ms
+[WARN] ImagePrefetch: sem orcamento de memoria, carrega na hora (assets/mods/images/absolute-zeroBG.png)
+LOAD [absolute-zero] init: 1.5 ms, chart: 13.5 ms, sounds: 59.4 ms, characters: 485.4 ms, stage: 1332.9 ms, song audio: 1.7 ms, notes: 0.2 ms, ui: 9.8 ms, warmup: 0.2 ms, (textures on main thread: 1825.1 ms) total: 1904.6 ms
+[WARN] Stage: imagem nao encontrada: characters/corniexpunged
+LOAD [hydromania-kooled] init: 31.8 ms, chart: 7.9 ms, sounds: 71.5 ms, characters: 375.6 ms, stage: 12.7 ms, song audio: 1.6 ms, notes: 0.3 ms, ui: 8.8 ms, warmup: 0.2 ms, (textures on main thread: 422.8 ms) total: 510.4 ms
+[WARN] Stage: imagem nao encontrada: characters/corniexpunged
+LOAD [hydromania-kooled] init: 0.0 ms, chart: 11.1 ms, sounds: 1.1 ms, characters: 452.1 ms, stage: 13.4 ms, song audio: 1.6 ms, notes: 0.2 ms, ui: 0.0 ms, warmup: 0.1 ms, (textures on main thread: 464.1 ms) total: 479.7 ms
+[WARN] ImagePrefetch: sem orcamento de memoria, carrega na hora (assets/mods/images/trauma.png)
+LOAD [inevitable-v2] init: 0.0 ms, chart: 15.6 ms, sounds: 59.8 ms, characters: 443.0 ms, stage: 1225.6 ms, song audio: 28.9 ms, notes: 0.1 ms, ui: 0.0 ms, warmup: 0.3 ms, (textures on main thread: 1647.2 ms) total: 1773.3 ms
+LOAD [imprisonment] init: 0.0 ms, chart: 156.1 ms, sounds: 1.9 ms, characters: 432.6 ms, stage: 20.6 ms, song audio: 1.7 ms, notes: 0.2 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 449.7 ms) total: 613.3 ms
+LOAD [agony] init: 11.9 ms, chart: 26.0 ms, sounds: 307.0 ms, characters: 384.0 ms, stage: 22.7 ms, song audio: 4.8 ms, notes: 0.2 ms, ui: 48.9 ms, warmup: 0.2 ms, (textures on main thread: 404.0 ms) total: 805.7 ms
+LOAD [agony] init: 0.0 ms, chart: 6.7 ms, sounds: 1.3 ms, characters: 517.6 ms, stage: 12.0 ms, song audio: 1.9 ms, notes: 0.1 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 527.2 ms) total: 539.8 ms
+[WARN] ImagePrefetch: sem orcamento de memoria, carrega na hora (assets/mods/images/absolute-zeroBG.png)
+LOAD [absolute-zero] init: 10.1 ms, chart: 16.8 ms, sounds: 214.7 ms, characters: 347.0 ms, stage: 1435.3 ms, song audio: 2.3 ms, notes: 0.2 ms, ui: 39.7 ms, warmup: 0.3 ms, (textures on main thread: 1763.8 ms) total: 2066.4 ms
+[WARN] ImagePrefetch: sem orcamento de memoria, carrega na hora (assets/mods/images/absolute-zeroBG.png)
+LOAD [absolute-zero] init: 0.0 ms, chart: 12.7 ms, sounds: 1.3 ms, characters: 459.3 ms, stage: 1220.0 ms, song audio: 1.6 ms, notes: 0.2 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 1677.5 ms) total: 1695.3 ms
+[WARN] ImagePrefetch: sem orcamento de memoria, carrega na hora (assets/mods/images/absolute-zeroBG.png)
+LOAD [absolute-zero] init: 1.6 ms, chart: 10.6 ms, sounds: 63.4 ms, characters: 504.0 ms, stage: 1441.9 ms, song audio: 1.8 ms, notes: 0.2 ms, ui: 9.9 ms, warmup: 0.3 ms, (textures on main thread: 1952.5 ms) total: 2033.8 ms
+[WARN] ImagePrefetch: sem orcamento de memoria, carrega na hora (assets/mods/images/absolute-zeroBG.png)
+LOAD [absolute-zero] init: 0.0 ms, chart: 18.9 ms, sounds: 2.1 ms, characters: 507.4 ms, stage: 1392.8 ms, song audio: 1.8 ms, notes: 0.2 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 1898.1 ms) total: 1923.5 ms
+[WARN] ImagePrefetch: sem orcamento de memoria, carrega na hora (assets/mods/images/absolute-zeroBG.png)
+LOAD [absolute-zero] init: 2.5 ms, chart: 14.5 ms, sounds: 68.4 ms, characters: 442.2 ms, stage: 1431.6 ms, song audio: 1.8 ms, notes: 0.2 ms, ui: 9.5 ms, warmup: 0.2 ms, (textures on main thread: 1880.6 ms) total: 1971.0 ms
+[WARN] ImagePrefetch: sem orcamento de memoria, carrega na hora (assets/mods/images/absolute-zeroBG.png)
+LOAD [absolute-zero] init: 0.0 ms, chart: 15.3 ms, sounds: 2.3 ms, characters: 507.2 ms, stage: 1404.0 ms, song audio: 1.8 ms, notes: 0.2 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 1908.7 ms) total: 1930.9 ms
+LOAD [triklizo-koooled] init: 0.0 ms, chart: 31.3 ms, sounds: 150.6 ms, characters: 479.3 ms, stage: 9.3 ms, song audio: 2.4 ms, notes: 0.2 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 466.6 ms) total: 673.2 ms
+[WARN] ImagePrefetch: sem orcamento de memoria, carrega na hora (assets/mods/images/absolute-zeroBG.png)
+LOAD [absolute-zero] init: 1.0 ms, chart: 9.6 ms, sounds: 64.1 ms, characters: 452.6 ms, stage: 1396.2 ms, song audio: 1.8 ms, notes: 0.2 ms, ui: 9.8 ms, warmup: 0.2 ms, (textures on main thread: 1856.0 ms) total: 1935.5 ms
+[WARN] ImagePrefetch: sem orcamento de memoria, carrega na hora (assets/mods/images/absolute-zeroBG.png)
+LOAD [absolute-zero] init: 36.9 ms, chart: 13.6 ms, sounds: 118.9 ms, characters: 718.8 ms, stage: 3021.2 ms, song audio: 5.6 ms, notes: 0.7 ms, ui: 19.6 ms, warmup: 0.5 ms, (textures on main thread: 3787.9 ms) total: 3935.8 ms
+[WARN] ImagePrefetch: sem orcamento de memoria, carrega na hora (assets/mods/images/absolute-zeroBG.png)
+LOAD [absolute-zero] init: 47.2 ms, chart: 16.9 ms, sounds: 116.8 ms, characters: 777.0 ms, stage: 2191.6 ms, song audio: 3.4 ms, notes: 0.3 ms, ui: 15.6 ms, warmup: 0.4 ms, (textures on main thread: 3024.2 ms) total: 3169.3 ms
+LOAD [agony] init: 0.0 ms, chart: 43.2 ms, sounds: 119.5 ms, characters: 673.5 ms, stage: 27.2 ms, song audio: 3.6 ms, notes: 0.5 ms, ui: 0.0 ms, warmup: 0.3 ms, (textures on main thread: 670.3 ms) total: 867.9 ms
+LOAD [remorse] init: 23.9 ms, chart: 14.3 ms, sounds: 94.2 ms, characters: 353.8 ms, stage: 8.4 ms, song audio: 4.1 ms, notes: 0.1 ms, ui: 8.2 ms, warmup: 0.2 ms, (textures on main thread: 376.6 ms) total: 507.3 ms
+LOAD [remorse] init: 27.3 ms, chart: 14.3 ms, sounds: 57.9 ms, characters: 369.0 ms, stage: 2.5 ms, song audio: 1.8 ms, notes: 0.1 ms, ui: 8.7 ms, warmup: 0.2 ms, (textures on main thread: 402.4 ms) total: 481.5 ms
+LOAD [ampersand] init: 0.0 ms, chart: 36.3 ms, sounds: 94.0 ms, characters: 439.9 ms, stage: 16.9 ms, song audio: 10.4 ms, notes: 0.1 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 415.1 ms) total: 597.8 ms
+[WARN] ImagePrefetch: sem orcamento de memoria, carrega na hora (assets/mods/images/absolute-zeroBG.png)
+LOAD [absolute-zero] init: 2.3 ms, chart: 15.1 ms, sounds: 59.6 ms, characters: 410.3 ms, stage: 1231.1 ms, song audio: 1.6 ms, notes: 0.1 ms, ui: 9.4 ms, warmup: 0.2 ms, (textures on main thread: 1648.1 ms) total: 1729.7 ms
+LOAD [insane] init: 0.0 ms, chart: 31.6 ms, sounds: 137.8 ms, characters: 412.9 ms, stage: 10.3 ms, song audio: 1.8 ms, notes: 0.1 ms, ui: 0.0 ms, warmup: 0.3 ms, (textures on main thread: 404.6 ms) total: 594.8 ms
+LOAD [moribund] init: 0.0 ms, chart: 291.2 ms, sounds: 54.0 ms, characters: 405.3 ms, stage: 19.1 ms, song audio: 1.9 ms, notes: 0.6 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 401.9 ms) total: 772.2 ms
+LOAD [moribund] init: 1.6 ms, chart: 284.3 ms, sounds: 58.7 ms, characters: 364.8 ms, stage: 3.3 ms, song audio: 1.7 ms, notes: 0.5 ms, ui: 8.4 ms, warmup: 0.2 ms, (textures on main thread: 374.4 ms) total: 723.5 ms
+LOAD [end-of-the-world] init: 0.0 ms, chart: 48.5 ms, sounds: 66.2 ms, characters: 81.0 ms, stage: 7.7 ms, song audio: 18.1 ms, notes: 0.5 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 62.6 ms) total: 222.1 ms
+LOAD [end-of-the-world-remake] init: 0.0 ms, chart: 17.8 ms, sounds: 41.1 ms, characters: 406.1 ms, stage: 5.1 ms, song audio: 20.1 ms, notes: 0.1 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 390.9 ms) total: 490.4 ms
+LOAD [end-of-the-world-remake] init: 0.0 ms, chart: 6.6 ms, sounds: 0.7 ms, characters: 425.9 ms, stage: 3.2 ms, song audio: 1.7 ms, notes: 0.0 ms, ui: 0.0 ms, warmup: 0.1 ms, (textures on main thread: 427.9 ms) total: 438.1 ms
+LOAD [moribund] init: 0.0 ms, chart: 195.6 ms, sounds: 1.9 ms, characters: 425.6 ms, stage: 3.2 ms, song audio: 1.7 ms, notes: 0.6 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 427.3 ms) total: 628.8 ms
+LOAD [end-of-the-world] init: 0.0 ms, chart: 21.4 ms, sounds: 3.7 ms, characters: 95.7 ms, stage: 7.8 ms, song audio: 1.7 ms, notes: 0.5 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 101.5 ms) total: 131.0 ms
+LOAD [end-of-the-world-remake] init: 0.0 ms, chart: 1.1 ms, sounds: 5.4 ms, characters: 427.2 ms, stage: 2.8 ms, song audio: 1.6 ms, notes: 0.0 ms, ui: 0.0 ms, warmup: 0.1 ms, (textures on main thread: 427.8 ms) total: 438.4 ms
+LOAD [moribund-3] init: 0.0 ms, chart: 114.9 ms, sounds: 65.3 ms, characters: 485.8 ms, stage: 4.5 ms, song audio: 29.5 ms, notes: 1.1 ms, ui: 0.0 ms, warmup: 0.3 ms, (textures on main thread: 468.9 ms) total: 701.5 ms
+LOAD [moribund-3] init: 0.0 ms, chart: 93.2 ms, sounds: 0.9 ms, characters: 475.7 ms, stage: 3.0 ms, song audio: 1.7 ms, notes: 0.7 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 477.4 ms) total: 575.4 ms
+LOAD [moribund-3] init: 0.0 ms, chart: 92.1 ms, sounds: 0.7 ms, characters: 463.0 ms, stage: 3.6 ms, song audio: 1.6 ms, notes: 0.7 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 465.3 ms) total: 561.8 ms
+LOAD [moribund-3] init: 0.0 ms, chart: 99.7 ms, sounds: 1.0 ms, characters: 458.3 ms, stage: 2.8 ms, song audio: 1.7 ms, notes: 0.7 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 459.9 ms) total: 564.4 ms

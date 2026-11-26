@@ -37,6 +37,10 @@ void PlayStatePlayerInput_Reset(void);
 int PlayStatePlayerInput_Score(void);
 int PlayStatePlayerInput_Misses(void);
 void PlayStatePlayerInput_AddScore(int amount);
+/* Conta um acerto na precisao (o botplay chama com SICK). */
+void PlayStatePlayerInput_CountHit(PlayerRating rating);
+/* Precisao em centesimos de % (0..10000), estilo Psych: acerto no tempo sobe, fora do tempo desce, miss desce. */
+int PlayStatePlayerInput_Accuracy(void);
 
 /* Co-Op e Play as: quem controla a nota. 0 = jogador 1, 1 = jogador 2, -1 = automatico (oponente, BF da IA, botplay). */
 int PlayStatePlayerInput_Owner(const Note* note);

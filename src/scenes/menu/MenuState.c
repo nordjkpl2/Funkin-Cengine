@@ -47,7 +47,7 @@ static Camera2D cam;
 
 static const Vector2 versionPos = {12.0f, 694.0f};
 // # VERSION
-static const char* const versionText = "FNFCengine v0060";
+static const char* const versionText = ENGINE_VERSION_TEXT;
 static const char* const moddingText = "Modding";
 static Vector2 moddingPos; // calculado uma vez no Create
 static Vector2 moddingSize;

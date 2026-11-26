@@ -1,811 +1,854 @@
 /* // * Friday Night Funkin´ c engine (c) 2026 nordjkpl */
 /*
- * Stage Editor: escolhe um stage (ou digita um nome novo) e posiciona as imagens do palco
- * sobre um canvas. Salva o .lua de sprites e o .json (defaultZoom) do stage.
+ * Stage Editor: escolhe um stage (lista com busca ou nome novo) e monta o palco num canvas com
+ * as imagens reais (animadas tocam), os personagens (bf, gf, dad) nas posicoes do .json e a
+ * moldura da tela do jogo no zoom padrao. Grava <raiz>/stages/<nome>.lua (sprites) e .json.
  *
- * Controles (modo edicao):
- *   mouse esq. arrasta sprite | mouse dir. arrasta a camera | roda do mouse = escala do sprite
- *   Up/Down seleciona | I/J/K/L move (Shift = 10 px) | Z/X e C/V = scrollFactor X/Y
- *   E = frente/atras | Del remove | Enter = adiciona imagem | -/= zoom da camera
- *   [ / ] = defaultZoom do stage | Ctrl+S salva | ESC sai (2x se houver mudancas)
+ * Canvas: esq. seleciona/arrasta (sprite ou personagem) | dir./meio arrasta a vista |
+ *         roda = zoom na vista | Shift+roda = escala do sprite
+ * Teclas: setas movem (Shift x10) | PgUp/PgDn troca selecao | Ctrl+Up/Down ordem | E frente/atras
+ *         Ctrl+D duplica | Del remove | A +imagem | F enquadra | G moldura | H personagens
+ *         Ctrl+Z/Y desfaz/refaz | Ctrl+S salva | Esc volta a lista (pergunta se ha mudancas)
  */
 
 #include "scenes/modding/stageeditor/StageEditor.h"
 #include "scenes/modding/stageeditor/StageEditorIO.h"
 #include "scenes/modding/ModdingCommon.h"
-#include "scenes/api/FontLoader.h"
-#include "scenes/menu/MenuBackground.h"
+#include "scenes/modding/ModdingUi.h"
 #include "scenes/menu/modding/ModdingMenu.h"
+#include "characters/Character.h"
+#include "characters/Girlfriend.h"
 #include "Render.h"
 #include "Game.h"
 
-#include <ctype.h>
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
 
 /* ------------------------------------------------------------------------- */
-/* Layout (canvas virtual 1280x720)                                          */
+/* Layout                                                                    */
 /* ------------------------------------------------------------------------- */
 
-#define SE_FILTER_MAX 64
-#define SE_PICK_ROWS  20
-#define SE_PICK_X     60.0f
-#define SE_PICK_Y     140.0f
-#define SE_PICK_ROW_H 26.0f
-#define SE_LIST_X     20.0f
-#define SE_LIST_Y     130.0f
-#define SE_LIST_W     240.0f
-#define SE_LIST_ROW_H 22.0f
-#define SE_LIST_ROWS  24
+#define LIST_ROW_H 30.0f
+#define ROW_H      40.0f
+#define UNDO_MAX   24
+#define CACHE_MAX  48
 
-static const Rectangle kCanvas = {270.0f, 90.0f, 690.0f, 600.0f};
-static const float kCanvasCX = 270.0f + 690.0f * 0.5f;
-static const float kCanvasCY = 90.0f + 600.0f * 0.5f;
+enum { PROMPT_NEW = 1, CONFIRM_LEAVE };
+
+typedef enum { SE_PICK = 0, SE_EDIT, SE_ADD } SeMode;
+typedef enum { TAB_SPRITE = 0, TAB_STAGE, TAB_COUNT } SeTab;
+typedef enum { SEL_NONE = 0, SEL_SPRITE, SEL_CHAR } SelKind;
+enum { CH_BF = 0, CH_GF, CH_DAD, CH_COUNT };
+
+static const Rectangle kPicker = {200.0f, 66.0f, 880.0f, 612.0f};
+static const Rectangle kLeft = {16.0f, 62.0f, 240.0f, 620.0f};
+static const Rectangle kList = {24.0f, 100.0f, 224.0f, 470.0f};
+static const Rectangle kCanvas = {264.0f, 62.0f, 640.0f, 620.0f};
+static const Rectangle kRight = {912.0f, 62.0f, 352.0f, 620.0f};
+static const Rectangle kTabs = {924.0f, 72.0f, 328.0f, 34.0f};
+static const Rectangle kBtnSave = {1134.0f, 8.0f, 130.0f, 32.0f};
+static const Rectangle kBtnList = {994.0f, 8.0f, 130.0f, 32.0f};
+static const Rectangle kBtnFit = {854.0f, 8.0f, 130.0f, 32.0f};
+static const Rectangle kBtnNew = {1104.0f, 8.0f, 160.0f, 32.0f};
+
+static const char *const kTabNames[TAB_COUNT] = {"Sprite", "Stage"};
+static const char *const kCharNames[CH_COUNT] = {"BF", "GF", "Oponente"};
+static const Color kCharColor[CH_COUNT] = {{110, 200, 255, 255}, {255, 140, 200, 255}, {255, 170, 90, 255}};
+
+/* Botoes do painel esquerdo: +imagem, +retangulo, duplicar, remover, subir, descer. */
+static Rectangle LeftBtn(int i)
+{
+    return (Rectangle){24.0f + (float)(i % 2) * 116.0f, 578.0f + (float)(i / 2) * 34.0f, 108.0f, 28.0f};
+}
+
+static float RowY(int row) { return 118.0f + (float)row * ROW_H; }
+static Rectangle Wide(int row) { return (Rectangle){1020.0f, RowY(row), 232.0f, 30.0f}; }
+static Rectangle Half(int row, int col) { return (Rectangle){1020.0f + (float)col * 120.0f, RowY(row), 112.0f, 30.0f}; }
+static Rectangle Quarter(int row, int col) { return (Rectangle){1020.0f + (float)col * 59.0f, RowY(row), 55.0f, 30.0f}; }
+static Rectangle CheckAt(int row, int col) { return (Rectangle){924.0f + (float)col * 168.0f, RowY(row), 160.0f, 30.0f}; }
 
 /* ------------------------------------------------------------------------- */
 /* Estado                                                                    */
 /* ------------------------------------------------------------------------- */
 
-typedef enum {
-    SE_PICK = 0,
-    SE_EDIT,
-    SE_ADD
-} SeMode;
+/* Tudo que vai para o disco: base do desfazer e do "ha mudancas". Copiado so com memcpy. */
+typedef struct {
+    StageSprite sprites[STAGE_MAX_SPRITES];
+    int count;
+    StageMeta meta;
+} StageDoc;
 
-static RayGraphicObject bg;
-static Camera2D uiCam;
+typedef struct {
+    char image[128];
+    bool animated;
+    Texture2D tex;               /* imagem simples */
+    RayAnimationHandler set;     /* animado com .xml (dono da textura) */
+} Visual;
+
 static SeMode mode;
-
+static SeTab tab;
 static char roots[MODED_ROOTS_MAX][MODED_ROOT_MAX];
-static int rootCount;
 
-/* escolha de stage */
 static StageEdEntry entries[STAGEED_LIST_MAX];
 static int entryCount;
-static char filter[SE_FILTER_MAX];
-static int pickVisible[STAGEED_LIST_MAX];
-static int pickVisibleCount;
-static int pickSel;
-static int pickTop;
+static MUiPicker stagePicker;
 
-/* stage aberto */
-static StageEdEntry current;
-static StageSprite sprites[STAGE_MAX_SPRITES];
-static Texture2D tex[STAGE_MAX_SPRITES];
-static int spriteCount;
-static int sel;
-static int listTop;
-static StageMeta meta;
-static bool dirty;
-static bool escArmed;
-
-/* picker de imagens */
 static char imageNames[STAGEED_LIST_MAX][MODED_NAME_MAX];
 static int imageCount;
-static char addFilter[SE_FILTER_MAX];
-static int addVisible[STAGEED_LIST_MAX];
-static int addVisibleCount;
-static int addSel;
-static int addTop;
+static MUiPicker imagePicker;
 
-/* camera do canvas: ponto do mundo no centro do canvas + zoom */
+static StageEdEntry current;
+static StageDoc doc, committed, saved;
+static StageDoc undoBuf[UNDO_MAX], redoBuf[UNDO_MAX];
+static int undoCount, redoCount;
+
+static SelKind selKind;
+static int selIndex;
+static MUiList spriteList;
+static bool lockScale = true;
+static char imageBuf[128];     /* campo "Imagem": aplica no Enter/clique fora */
+
+static Visual cache[CACHE_MAX];
+static int cacheCount;
+static float animTime;
+
+static Character bf, dad;
+static Girlfriend gf;
+static bool charsLoaded;
+static bool showChars = true;
+static bool showFrame = true;
+
+/* vista do canvas: ponto do mundo no centro + zoom */
 static Vector2 camTarget;
 static float camZoom = 0.5f;
-static bool dragging;
+static SelKind dragKind;
+static Vector2 dragWorld0, dragPos0;
 static bool panning;
-static Vector2 dragWorld0;
-static Vector2 dragSprite0;
 static Vector2 panLast;
 
-static char status[192];
-static float statusTimer;
-
 /* ------------------------------------------------------------------------- */
-/* Texto e status                                                            */
+/* Visuais (cache de texturas por imagem)                                    */
 /* ------------------------------------------------------------------------- */
 
-static void SE_Text(const char *text, float x, float y, float size, Color color)
+static void Cache_FreeAll(void)
 {
-    DrawTextEx(mainFont, text, (Vector2){x, y}, size, 1.0f, color);
-}
-
-static void SetStatus(const char *text)
-{
-    snprintf(status, sizeof(status), "%s", text);
-    statusTimer = 4.0f;
-}
-
-/* "assets/mods/MeuMod" -> "MeuMod"; "assets" -> "assets". */
-static const char *RootLabel(const char *root)
-{
-    const char *slash = strrchr(root, '/');
-    const char *back = strrchr(root, '\\');
-    if (back && (!slash || back > slash))
-        slash = back;
-    return slash ? slash + 1 : root;
-}
-
-static bool ContainsCI(const char *hay, const char *needle)
-{
-    const size_t n = strlen(needle);
-    if (n == 0)
-        return true;
-
-    for (const char *h = hay; *h; ++h) {
-        size_t i = 0;
-        while (i < n && h[i] && tolower((unsigned char)h[i]) == tolower((unsigned char)needle[i]))
-            ++i;
-        if (i == n)
-            return true;
+    for (int i = 0; i < cacheCount; ++i) {
+        if (cache[i].set.animationCount > 0 || cache[i].set.texture.id)
+            AnimationSet_FreeAll(&cache[i].set);
+        else if (cache[i].tex.id)
+            UnloadTexture(cache[i].tex);
     }
-    return false;
+    memset(cache, 0, sizeof(cache));
+    cacheCount = 0;
 }
 
-/* Digita no buffer (imprimiveis, Backspace, Ctrl+V cola). true = mudou. */
-static bool TypeText(char *buf, size_t capacity)
+/* NULL = retangulo (makeGraphic). Falha de carga fica no cache (tex.id 0) para nao tentar todo frame. */
+static const Visual *GetVisual(const StageSprite *s)
 {
-    bool changed = false;
-    size_t len = strlen(buf);
-    int c;
+    if (s->isGraphic)
+        return NULL;
+    const bool animated = s->isAnimated != 0;
+    for (int i = 0; i < cacheCount; ++i) {
+        if (cache[i].animated == animated && strcmp(cache[i].image, s->image) == 0)
+            return &cache[i];
+    }
+    if (cacheCount >= CACHE_MAX)
+        Cache_FreeAll();
 
-    while ((c = GetCharPressed()) > 0) {
-        if (c >= 32 && c <= 126 && len + 1 < capacity) {
-            buf[len++] = (char)c;
-            buf[len] = '\0';
-            changed = true;
+    Visual *v = &cache[cacheCount++];
+    memset(v, 0, sizeof(*v));
+    snprintf(v->image, sizeof(v->image), "%s", s->image);
+    v->animated = animated;
+
+    char png[MODED_ROOT_MAX + 192];
+    if (!StageEd_ImagePath(current.root, s->image, png, sizeof(png)))
+        return v;
+    const Texture2D tex = Render_LoadTexture(png);
+    if (!tex.id)
+        return v;
+
+    if (animated) {
+        char xml[sizeof(png)];
+        snprintf(xml, sizeof(xml), "%.*s.xml", (int)(strlen(png) - 4), png);
+        if (FileExists(xml)) {
+            v->set = AnimationSet_LoadAnimations(xml, tex);
+            if (v->set.animationCount > 0) {
+                if (!v->set.texture.id)
+                    v->set.texture = tex;
+                return v;
+            }
+            v->set.texture = (Texture2D){0};
+            AnimationSet_FreeAll(&v->set);
+            v->set = (RayAnimationHandler){0};
         }
     }
-    if ((IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL)) && IsKeyPressed(KEY_V)) {
-        const char *clip = GetClipboardText();
-        for (; clip && *clip && *clip != '\n' && *clip != '\r' && len + 1 < capacity; ++clip) {
-            if (*clip >= 32 && *clip <= 126)
-                buf[len++] = *clip;
-        }
-        buf[len] = '\0';
-        changed = true;
-    }
-    if ((IsKeyPressed(KEY_BACKSPACE) || IsKeyPressedRepeat(KEY_BACKSPACE)) && len > 0) {
-        buf[--len] = '\0';
-        changed = true;
-    }
-    return changed;
+    v->tex = tex;
+    return v;
 }
 
-static bool KeyHeld(int a, int b)
+static int SpriteAnim(const StageSprite *s, const Visual *v)
 {
-    return IsKeyDown(a) || IsKeyDown(b);
+    int idx = s->animPrefix[0] ? AnimationSet_FindAnimation(&v->set, s->animPrefix) : 0;
+    if (idx < 0 || idx >= v->set.animationCount)
+        idx = 0;
+    return idx;
 }
 
-static bool Pressed(int key)
+/* Tamanho sem escala: retangulo, 1o frame da animacao ou a textura (100x100 se faltar). */
+static Vector2 BaseSize(const StageSprite *s)
 {
-    return IsKeyPressed(key) || IsKeyPressedRepeat(key);
+    if (s->isGraphic)
+        return (Vector2){s->graphicWidth, s->graphicHeight};
+    const Visual *v = GetVisual(s);
+    if (v->set.animationCount > 0) {
+        const RayAnimation *a = &v->set.animations[SpriteAnim(s, v)];
+        if (a->frameCount > 0)
+            return (Vector2){(float)a->frames[0].w, (float)a->frames[0].h};
+    }
+    if (v->tex.id)
+        return (Vector2){(float)v->tex.width, (float)v->tex.height};
+    return (Vector2){100.0f, 100.0f};
+}
+
+static Rectangle SpriteRect(int i)
+{
+    const StageSprite *s = &doc.sprites[i];
+    const Vector2 b = BaseSize(s);
+    return (Rectangle){s->x, s->y, b.x * s->scaleX, b.y * s->scaleY};
 }
 
 /* ------------------------------------------------------------------------- */
-/* Listas                                                                    */
+/* Personagens                                                               */
 /* ------------------------------------------------------------------------- */
 
-static void Rebuild_Pick(void)
+static float *CharPos(int c)
 {
-    pickVisibleCount = 0;
-    for (int i = 0; i < entryCount; ++i) {
-        if (ContainsCI(entries[i].name, filter))
-            pickVisible[pickVisibleCount++] = i;
-    }
-    if (pickSel >= pickVisibleCount)
-        pickSel = pickVisibleCount > 0 ? pickVisibleCount - 1 : 0;
-    pickTop = 0;
+    return c == CH_BF ? doc.meta.boyfriend : (c == CH_GF ? doc.meta.girlfriend : doc.meta.opponent);
 }
 
-static void Rebuild_Add(void)
+static const RayAnimatedObject *CharObj(int c, int *anim)
 {
-    addVisibleCount = 0;
-    for (int i = 0; i < imageCount; ++i) {
-        if (ContainsCI(imageNames[i], addFilter))
-            addVisible[addVisibleCount++] = i;
-    }
-    if (addSel >= addVisibleCount)
-        addSel = addVisibleCount > 0 ? addVisibleCount - 1 : 0;
-    addTop = 0;
+    const RayAnimatedObject *o = c == CH_BF ? &bf.object : (c == CH_GF ? &gf.object : &dad.object);
+    *anim = c == CH_BF ? bf.animations.idle : (c == CH_GF ? gf.anims[0] : dad.animations.idle);
+    if (*anim < 0 || *anim >= o->animationSet.animationCount)
+        *anim = 0;
+    return o;
 }
 
-static void ScrollTo(int *top, int selIndex, int rows)
+static const Frame *AnimFrame(const RayAnimationHandler *set, int anim, float fps, bool *ok)
 {
-    if (selIndex < *top)
-        *top = selIndex;
-    if (selIndex >= *top + rows)
-        *top = selIndex - rows + 1;
-    if (*top < 0)
-        *top = 0;
+    *ok = false;
+    if (anim < 0 || anim >= set->animationCount)
+        return NULL;
+    const RayAnimation *a = &set->animations[anim];
+    if (a->frameCount <= 0 || !a->frames)
+        return NULL;
+    *ok = true;
+    return &a->frames[(int)(animTime * (fps > 0.0f ? fps : 24.0f)) % a->frameCount];
 }
 
-static void MoveSel(int *index, int count, int delta)
+/* Caixa do personagem no mundo (1o frame da idle), como o Render_DrawAnimatedObject. */
+static Rectangle CharRect(int c)
 {
-    if (count <= 0)
+    int anim;
+    const RayAnimatedObject *o = CharObj(c, &anim);
+    const float *p = CharPos(c);
+    bool ok;
+    const Frame *f = AnimFrame(&o->animationSet, anim, 0.0f, &ok);
+    if (!ok)
+        return (Rectangle){p[0], p[1], 300.0f, 400.0f};
+    f = &o->animationSet.animations[anim].frames[0];
+    const float sx = fabsf(o->scaleX), sy = o->scaleY;
+    const Vector2 off = o->animationSet.animations[anim].animationOffset;
+    return (Rectangle){o->position.x + p[0] - off.x - (float)f->fx * sx,
+                       o->position.y + p[1] - off.y - (float)f->fy * sy, (float)f->w * sx, (float)f->h * sy};
+}
+
+static void LoadChars(void)
+{
+    if (charsLoaded)
         return;
-    *index = (*index + delta + count) % count;
+    Character_SetSongDir(current.root);
+    Character_Load(&bf, "bf", CHAR_BF);
+    Character_Load(&dad, "dad", CHAR_DAD);
+    Girlfriend_Load(&gf, "gf");
+    charsLoaded = true;
 }
 
-/* ------------------------------------------------------------------------- */
-/* Sprites e texturas                                                        */
-/* ------------------------------------------------------------------------- */
-
-static void Textures_FreeAt(int i)
+static void FreeChars(void)
 {
-    if (tex[i].id > 0)
-        UnloadTexture(tex[i]);
-    tex[i] = (Texture2D){0};
-}
-
-static void Textures_FreeAll(void)
-{
-    for (int i = 0; i < STAGE_MAX_SPRITES; ++i)
-        Textures_FreeAt(i);
-}
-
-static void Texture_LoadAt(int i)
-{
-    char path[MODED_ROOT_MAX + MODED_NAME_MAX + 32];
-
-    Textures_FreeAt(i);
-    if (sprites[i].isGraphic)
+    if (!charsLoaded)
         return;
-    if (StageEd_ImagePath(current.root, sprites[i].image, path, sizeof(path)))
-        tex[i] = Render_LoadTexture(path);
+    AnimationSet_FreeAll(&bf.object.animationSet);
+    AnimationSet_FreeAll(&dad.object.animationSet);
+    AnimationSet_FreeAll(&gf.object.animationSet);
+    if (bf.icon.id)
+        UnloadTexture(bf.icon);
+    if (dad.icon.id)
+        UnloadTexture(dad.icon);
+    memset(&bf, 0, sizeof(bf));
+    memset(&dad, 0, sizeof(dad));
+    memset(&gf, 0, sizeof(gf));
+    charsLoaded = false;
 }
 
-/* Tamanho desenhado no mundo: graphic usa graphicWidth; imagem usa o tamanho da textura (ou 100). */
-static void SpriteSize(int i, float *w, float *h)
-{
-    const StageSprite *s = &sprites[i];
-    float baseW = 100.0f, baseH = 100.0f;
-
-    if (s->isGraphic) {
-        baseW = s->graphicWidth;
-        baseH = s->graphicHeight;
-    } else if (tex[i].id > 0) {
-        baseW = (float)tex[i].width;
-        baseH = (float)tex[i].height;
-    }
-    *w = baseW * s->scaleX;
-    *h = baseH * s->scaleY;
-}
-
-static Rectangle SpriteRectWorld(int i)
-{
-    float w, h;
-    SpriteSize(i, &w, &h);
-    return (Rectangle){sprites[i].x, sprites[i].y, w, h};
-}
-
-static Vector2 WorldToScreen(Vector2 p)
-{
-    return (Vector2){kCanvasCX + (p.x - camTarget.x) * camZoom,
-                     kCanvasCY + (p.y - camTarget.y) * camZoom};
-}
+/* ------------------------------------------------------------------------- */
+/* Vista                                                                     */
+/* ------------------------------------------------------------------------- */
 
 static Vector2 ScreenToWorld(Vector2 p)
 {
-    return (Vector2){camTarget.x + (p.x - kCanvasCX) / camZoom,
-                     camTarget.y + (p.y - kCanvasCY) / camZoom};
+    return (Vector2){camTarget.x + (p.x - (kCanvas.x + kCanvas.width * 0.5f)) / camZoom,
+                     camTarget.y + (p.y - (kCanvas.y + kCanvas.height * 0.5f)) / camZoom};
 }
 
-static int HitTest(Vector2 world)
+static void ZoomAt(Vector2 screen, float factor)
 {
-    for (int i = spriteCount - 1; i >= 0; --i) {
-        if (CheckCollisionPointRec(world, SpriteRectWorld(i)))
-            return i;
-    }
-    return -1;
+    const Vector2 before = ScreenToWorld(screen);
+    camZoom = fminf(fmaxf(camZoom * factor, 0.05f), 4.0f);
+    const Vector2 after = ScreenToWorld(screen);
+    camTarget.x += before.x - after.x;
+    camTarget.y += before.y - after.y;
 }
 
-/* Enquadra os sprites no canvas. */
+static void Grow(Rectangle r, float *x0, float *y0, float *x1, float *y1)
+{
+    *x0 = fminf(*x0, r.x);
+    *y0 = fminf(*y0, r.y);
+    *x1 = fmaxf(*x1, r.x + r.width);
+    *y1 = fmaxf(*y1, r.y + r.height);
+}
+
+/* Enquadra sprites e personagens. */
 static void FitView(void)
 {
-    if (spriteCount <= 0) {
-        camTarget = (Vector2){0.0f, 0.0f};
+    float x0 = 1e9f, y0 = 1e9f, x1 = -1e9f, y1 = -1e9f;
+    for (int i = 0; i < doc.count; ++i)
+        Grow(SpriteRect(i), &x0, &y0, &x1, &y1);
+    if (showChars) {
+        for (int c = 0; c < CH_COUNT; ++c)
+            Grow(CharRect(c), &x0, &y0, &x1, &y1);
+    }
+    if (x1 < x0) {
+        camTarget = (Vector2){640.0f, 360.0f};
         camZoom = 0.5f;
         return;
     }
-
-    Rectangle first = SpriteRectWorld(0);
-    float minX = first.x, minY = first.y, maxX = first.x + first.width, maxY = first.y + first.height;
-    for (int i = 1; i < spriteCount; ++i) {
-        const Rectangle r = SpriteRectWorld(i);
-        if (r.x < minX) minX = r.x;
-        if (r.y < minY) minY = r.y;
-        if (r.x + r.width > maxX) maxX = r.x + r.width;
-        if (r.y + r.height > maxY) maxY = r.y + r.height;
-    }
-
-    const float bw = maxX - minX + 200.0f;
-    const float bh = maxY - minY + 200.0f;
-    float zoom = fminf(kCanvas.width / bw, kCanvas.height / bh);
-    camZoom = fminf(fmaxf(zoom, 0.1f), 2.0f);
-    camTarget = (Vector2){(minX + maxX) * 0.5f, (minY + maxY) * 0.5f};
-}
-
-static void MarkDirty(void)
-{
-    dirty = true;
-    escArmed = false;
+    const float zoom = fminf(kCanvas.width / (x1 - x0 + 200.0f), kCanvas.height / (y1 - y0 + 200.0f));
+    camZoom = fminf(fmaxf(zoom, 0.05f), 2.0f);
+    camTarget = (Vector2){(x0 + x1) * 0.5f, (y0 + y1) * 0.5f};
 }
 
 /* ------------------------------------------------------------------------- */
-/* Abrir / salvar / remover                                                  */
+/* Documento: desfazer, selecao, operacoes                                   */
 /* ------------------------------------------------------------------------- */
 
-static void OpenEntry(const StageEdEntry *entry)
+static bool Dirty(void)
 {
-    char msg[160] = {0};
-
-    current = *entry;
-    if (!StageEd_Load(&current, sprites, STAGE_MAX_SPRITES, &spriteCount, &meta, msg, sizeof(msg))) {
-        SetStatus("nao consegui ler o stage");
-        return;
-    }
-
-    Textures_FreeAll();
-    for (int i = 0; i < spriteCount; ++i)
-        Texture_LoadAt(i);
-
-    FitView();
-    sel = spriteCount > 0 ? 0 : -1;
-    listTop = 0;
-    dirty = false;
-    escArmed = false;
-    mode = SE_EDIT;
-    SetStatus(msg);
+    return memcmp(&doc, &saved, sizeof(doc)) != 0;
 }
 
-static void SaveCurrent(void)
+static StageSprite *SelSprite(void)
 {
-    char msg[256] = {0};
-    const bool ok = StageEd_Save(&current, sprites, spriteCount, &meta, msg, sizeof(msg));
-    dirty = !ok;
-    if (ok)
-        escArmed = false;
-    SetStatus(msg);
+    return selKind == SEL_SPRITE && selIndex >= 0 && selIndex < doc.count ? &doc.sprites[selIndex] : NULL;
 }
 
-static void RemoveSelected(void)
+static void Select(SelKind kind, int index)
 {
-    if (sel < 0 || sel >= spriteCount)
-        return;
-
-    Textures_FreeAt(sel);
-    for (int i = sel; i < spriteCount - 1; ++i) {
-        sprites[i] = sprites[i + 1];
-        tex[i] = tex[i + 1];
+    selKind = kind;
+    selIndex = index;
+    if (kind == SEL_SPRITE) {
+        spriteList.sel = index;
+        MUi_ListShow(&spriteList, kList, LIST_ROW_H, doc.count);
+        snprintf(imageBuf, sizeof(imageBuf), "%s", doc.sprites[index].image);
+        tab = TAB_SPRITE;
     }
-    tex[spriteCount - 1] = (Texture2D){0};
-    sprites[spriteCount - 1] = (StageSprite){0};
-    --spriteCount;
+    MUi_TextBlur();
+}
 
-    if (sel >= spriteCount)
-        sel = spriteCount - 1;
-    MarkDirty();
+static void ClampSel(void)
+{
+    if (selKind == SEL_SPRITE && selIndex >= doc.count) {
+        if (doc.count > 0)
+            Select(SEL_SPRITE, doc.count - 1);
+        else
+            selKind = SEL_NONE;
+    }
+}
+
+/* Fim do Update: guarda o estado anterior quando algo mudou e nenhum gesto esta em andamento
+   (arraste, numero, digitacao), assim um arraste inteiro vira um passo so. */
+static void CommitUndo(void)
+{
+    if (IsMouseButtonDown(MOUSE_BUTTON_LEFT) || IsMouseButtonDown(MOUSE_BUTTON_RIGHT) || MUi_NumBusy() ||
+        MUi_TextActive() || memcmp(&doc, &committed, sizeof(doc)) == 0)
+        return;
+    if (undoCount == UNDO_MAX) {
+        memmove(&undoBuf[0], &undoBuf[1], sizeof(StageDoc) * (UNDO_MAX - 1));
+        --undoCount;
+    }
+    memcpy(&undoBuf[undoCount++], &committed, sizeof(doc));
+    memcpy(&committed, &doc, sizeof(doc));
+    redoCount = 0;
+}
+
+static void Undo(bool redo)
+{
+    StageDoc *from = redo ? redoBuf : undoBuf;
+    StageDoc *to = redo ? undoBuf : redoBuf;
+    int *fromN = redo ? &redoCount : &undoCount;
+    int *toN = redo ? &undoCount : &redoCount;
+    if (*fromN == 0) {
+        MUi_SetStatus(MUI_INFO, redo ? "nada para refazer" : "nada para desfazer");
+        return;
+    }
+    if (*toN == UNDO_MAX) {
+        memmove(&to[0], &to[1], sizeof(StageDoc) * (UNDO_MAX - 1));
+        --*toN;
+    }
+    memcpy(&to[(*toN)++], &doc, sizeof(doc));
+    memcpy(&doc, &from[--*fromN], sizeof(doc));
+    memcpy(&committed, &doc, sizeof(doc));
+    ClampSel();
+    if (SelSprite())
+        snprintf(imageBuf, sizeof(imageBuf), "%s", doc.sprites[selIndex].image);
+    MUi_SetStatus(MUI_INFO, redo ? "refeito" : "desfeito");
+}
+
+static void ResetHistory(void)
+{
+    memcpy(&committed, &doc, sizeof(doc));
+    memcpy(&saved, &doc, sizeof(doc));
+    undoCount = redoCount = 0;
+}
+
+static int NewSprite(void)
+{
+    if (doc.count >= STAGE_MAX_SPRITES) {
+        MUi_SetStatus(MUI_WARN, "limite de %d sprites", STAGE_MAX_SPRITES);
+        return -1;
+    }
+    StageSprite *s = &doc.sprites[doc.count];
+    memset(s, 0, sizeof(*s));
+    s->scaleX = s->scaleY = 1.0f;
+    s->scrollX = s->scrollY = 1.0f;
+    s->animFps = 24.0f;
+    s->animLoop = 1;
+    return doc.count++;
+}
+
+static void PlaceAtView(int i)
+{
+    const Vector2 b = BaseSize(&doc.sprites[i]);
+    doc.sprites[i].x = roundf(camTarget.x - b.x * 0.5f);
+    doc.sprites[i].y = roundf(camTarget.y - b.y * 0.5f);
+    Select(SEL_SPRITE, i);
 }
 
 static void AddImage(const char *image)
 {
-    if (spriteCount >= STAGE_MAX_SPRITES) {
-        SetStatus("limite de sprites atingido");
+    if (!StageEd_IsImageName(image)) {
+        MUi_SetStatus(MUI_WARN, "nome de imagem invalido");
         return;
     }
+    const int i = NewSprite();
+    if (i < 0)
+        return;
+    snprintf(doc.sprites[i].image, sizeof(doc.sprites[i].image), "%s", image);
+    /* com .xml ao lado vira animado (primeira animacao) */
+    char png[MODED_ROOT_MAX + 192];
+    if (StageEd_ImagePath(current.root, image, png, sizeof(png))) {
+        char xml[sizeof(png)];
+        snprintf(xml, sizeof(xml), "%.*s.xml", (int)(strlen(png) - 4), png);
+        doc.sprites[i].isAnimated = FileExists(xml) ? 1 : 0;
+    } else {
+        MUi_SetStatus(MUI_WARN, "%s.png nao encontrado em images/", image);
+    }
+    PlaceAtView(i);
+}
 
-    const int i = spriteCount;
-    StageSprite *s = &sprites[i];
-    memset(s, 0, sizeof(*s));
-    snprintf(s->image, sizeof(s->image), "%s", image);
-    s->scaleX = 1.0f;
-    s->scaleY = 1.0f;
-    s->scrollX = 1.0f;
-    s->scrollY = 1.0f;
-    s->front = 0;
-    ++spriteCount;
+static void AddRect(void)
+{
+    const int i = NewSprite();
+    if (i < 0)
+        return;
+    StageSprite *s = &doc.sprites[i];
+    s->isGraphic = 1;
+    s->graphicWidth = 400.0f;
+    s->graphicHeight = 200.0f;
+    s->colorR = 120; s->colorG = 100; s->colorB = 200; s->colorA = 255;
+    snprintf(s->image, sizeof(s->image), "retangulo");
+    PlaceAtView(i);
+}
 
-    Texture_LoadAt(i);
-    float w, h;
-    SpriteSize(i, &w, &h);
-    s->x = camTarget.x - w * 0.5f;
-    s->y = camTarget.y - h * 0.5f;
+static void Duplicate(void)
+{
+    const StageSprite *src = SelSprite();
+    if (!src)
+        return;
+    const StageSprite copy = *src;
+    const int i = NewSprite();
+    if (i < 0)
+        return;
+    doc.sprites[i] = copy;
+    doc.sprites[i].x += 40.0f;
+    doc.sprites[i].y += 40.0f;
+    Select(SEL_SPRITE, i);
+}
 
-    sel = i;
-    MarkDirty();
+static void RemoveSel(void)
+{
+    if (!SelSprite())
+        return;
+    memmove(&doc.sprites[selIndex], &doc.sprites[selIndex + 1], sizeof(StageSprite) * (size_t)(doc.count - selIndex - 1));
+    memset(&doc.sprites[--doc.count], 0, sizeof(StageSprite));
+    if (doc.count == 0)
+        selKind = SEL_NONE;
+    else
+        Select(SEL_SPRITE, selIndex < doc.count ? selIndex : doc.count - 1);
+}
+
+/* Ordem de desenho dentro do grupo (atras/frente) segue a lista. */
+static void MoveSel(int delta)
+{
+    if (!SelSprite())
+        return;
+    const int t = selIndex + delta;
+    if (t < 0 || t >= doc.count)
+        return;
+    const StageSprite tmp = doc.sprites[t];
+    doc.sprites[t] = doc.sprites[selIndex];
+    doc.sprites[selIndex] = tmp;
+    Select(SEL_SPRITE, t);
+}
+
+static void Nudge(float dx, float dy)
+{
+    StageSprite *s = SelSprite();
+    if (s) {
+        s->x += dx;
+        s->y += dy;
+    } else if (selKind == SEL_CHAR) {
+        CharPos(selIndex)[0] += dx;
+        CharPos(selIndex)[1] += dy;
+    }
+}
+
+static void CycleSel(int delta)
+{
+    if (doc.count <= 0)
+        return;
+    const int base = SelSprite() ? selIndex : (delta > 0 ? -1 : 0);
+    Select(SEL_SPRITE, (base + delta + doc.count) % doc.count);
 }
 
 /* ------------------------------------------------------------------------- */
-/* Update: escolha de stage                                                  */
+/* Abrir / salvar                                                            */
 /* ------------------------------------------------------------------------- */
 
-static void CreateNewFromFilter(void)
+static const char *StageLabel(int i, int col)
 {
-    if (!ModEd_IsSafeName(filter)) {
-        SetStatus("nome invalido: use letras, digitos, - _ . (sem espacos)");
+    if (col == 0)
+        return entries[i].name;
+    return col == 2 ? ModEd_RootLabel(entries[i].root) : NULL;
+}
+
+static const char *ImageLabel(int i, int col)
+{
+    return col == 0 ? imageNames[i] : NULL;
+}
+
+static void ToPick(void)
+{
+    Cache_FreeAll();
+    FreeChars();
+    MUi_TextBlur();
+    mode = SE_PICK;
+    entryCount = StageEd_ScanList(entries, STAGEED_LIST_MAX);
+    MUi_PickerFilter(&stagePicker, entryCount, StageLabel);
+}
+
+static void OpenEntry(const StageEdEntry *entry)
+{
+    char msg[160] = {0};
+    current = *entry;
+    memset(&doc, 0, sizeof(doc));
+    if (!StageEd_Load(&current, doc.sprites, STAGE_MAX_SPRITES, &doc.count, &doc.meta, msg, sizeof(msg))) {
+        MUi_SetStatus(MUI_ERR, "nao consegui ler o stage %s", entry->name);
         return;
     }
+    Cache_FreeAll();
+    LoadChars();
 
+    /* setProperty('x.scale.x') cresce do centro; o .lua gravado usa scaleObject (canto). Converte a
+       posicao para o resultado ficar igual no jogo. */
+    for (int i = 0; i < doc.count; ++i) {
+        StageSprite *s = &doc.sprites[i];
+        if (!s->scaleCenter)
+            continue;
+        const Vector2 b = BaseSize(s);
+        s->x -= b.x * (s->scaleX - 1.0f) * 0.5f;
+        s->y -= b.y * (s->scaleY - 1.0f) * 0.5f;
+        s->scaleCenter = 0;
+    }
+    ResetHistory();
+
+    selKind = SEL_NONE;
+    spriteList = (MUiList){0};
+    tab = TAB_SPRITE;
+    mode = SE_EDIT;
+    if (doc.count > 0)
+        Select(SEL_SPRITE, 0);
+    FitView();
+    MUi_SetStatus(MUI_OK, "%s", msg);
+}
+
+static void TryNew(const char *name)
+{
+    if (!ModEd_IsSafeName(name)) {
+        MUi_PromptReopen("nome invalido: use letras, digitos, - _ . (sem espacos)");
+        return;
+    }
+    for (int i = 0; i < entryCount; ++i) {
+        if (strcmp(entries[i].name, name) == 0) {
+            OpenEntry(&entries[i]);
+            return;
+        }
+    }
     StageEdEntry entry = {0};
-    snprintf(entry.name, sizeof(entry.name), "%s", filter);
+    snprintf(entry.name, sizeof(entry.name), "%s", name);
     snprintf(entry.root, sizeof(entry.root), "%s", roots[0]);
     OpenEntry(&entry);
 }
 
-static void Pick_Update(void)
+static bool SaveCurrent(void)
 {
-    if (TypeText(filter, sizeof(filter)))
-        Rebuild_Pick();
-
-    if (IsKeyPressed(KEY_ESCAPE)) {
-        ModdingMenu_SetScene();
-        return;
+    char msg[256] = {0};
+    MUi_TextBlur();
+    if (!StageEd_Save(&current, doc.sprites, doc.count, &doc.meta, msg, sizeof(msg))) {
+        MUi_SetStatus(MUI_ERR, "%s", msg[0] ? msg : "falha ao salvar");
+        return false;
     }
-
-    if (Pressed(KEY_DOWN))
-        MoveSel(&pickSel, pickVisibleCount, 1);
-    if (Pressed(KEY_UP))
-        MoveSel(&pickSel, pickVisibleCount, -1);
-    ScrollTo(&pickTop, pickSel, SE_PICK_ROWS);
-
-    if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER)) {
-        if (pickVisibleCount > 0)
-            OpenEntry(&entries[pickVisible[pickSel]]);
-        else
-            CreateNewFromFilter();
-        return;
-    }
-
-    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-        const Vector2 m = RayGame_MouseWorld();
-        if (m.x >= SE_PICK_X && m.x < SE_PICK_X + 700.0f && m.y >= SE_PICK_Y) {
-            const int row = (int)((m.y - SE_PICK_Y) / SE_PICK_ROW_H) + pickTop;
-            if (row >= 0 && row < pickVisibleCount)
-                OpenEntry(&entries[pickVisible[row]]);
-        }
-    }
-}
-
-/* ------------------------------------------------------------------------- */
-/* Update: picker de imagens (ADD)                                           */
-/* ------------------------------------------------------------------------- */
-
-static void Add_Update(void)
-{
-    if (TypeText(addFilter, sizeof(addFilter)))
-        Rebuild_Add();
-
-    if (IsKeyPressed(KEY_ESCAPE)) {
-        mode = SE_EDIT;
-        return;
-    }
-    if (Pressed(KEY_DOWN))
-        MoveSel(&addSel, addVisibleCount, 1);
-    if (Pressed(KEY_UP))
-        MoveSel(&addSel, addVisibleCount, -1);
-    ScrollTo(&addTop, addSel, SE_LIST_ROWS);
-
-    if ((IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER)) && addVisibleCount > 0) {
-        AddImage(imageNames[addVisible[addSel]]);
-        mode = SE_EDIT;
-    }
-}
-
-/* ------------------------------------------------------------------------- */
-/* Update: edicao                                                            */
-/* ------------------------------------------------------------------------- */
-
-static void NudgeSelected(float dx, float dy)
-{
-    if (sel < 0)
-        return;
-    sprites[sel].x += dx;
-    sprites[sel].y += dy;
-    MarkDirty();
-}
-
-static void ScrollSelected(int axisX, float delta)
-{
-    if (sel < 0)
-        return;
-    StageSprite *s = &sprites[sel];
-    if (axisX)
-        s->scrollX = fminf(fmaxf(s->scrollX + delta, -10.0f), 10.0f);
-    else
-        s->scrollY = fminf(fmaxf(s->scrollY + delta, -10.0f), 10.0f);
-    MarkDirty();
-}
-
-static void ScaleSelected(float factor)
-{
-    if (sel < 0)
-        return;
-    StageSprite *s = &sprites[sel];
-    s->scaleX = fminf(fmaxf(s->scaleX * factor, 0.02f), 20.0f);
-    s->scaleY = fminf(fmaxf(s->scaleY * factor, 0.02f), 20.0f);
-    MarkDirty();
-}
-
-/* ------------------------------------------------------------------------- */
-/* Painel de propriedades com mouse (campos arrastaveis + botoes)           */
-/* ------------------------------------------------------------------------- */
-
-#define SE_VAL_X 1100.0f
-#define SE_VAL_W 150.0f
-
-typedef enum {
-    SF_X = 0,
-    SF_Y,
-    SF_SCALE,
-    SF_SCROLLX,
-    SF_SCROLLY,
-    SF_META_ZOOM,
-    SF_COUNT
-} SeField;
-
-static const char *const kFieldLabel[SF_COUNT] = {"x", "y", "escala", "scroll X", "scroll Y", "zoom padrao"};
-static int activeField = -1;
-static float fieldStartMouse;
-static float fieldStartValue;
-
-static const Rectangle kBtnFront = {985.0f, 360.0f, 138.0f, 28.0f};
-static const Rectangle kBtnRemove = {1127.0f, 360.0f, 123.0f, 28.0f};
-static const Rectangle kBtnAdd = {985.0f, 396.0f, 265.0f, 28.0f};
-static const Rectangle kPadUp = {1110.0f, 440.0f, 50.0f, 30.0f};
-static const Rectangle kPadLeft = {1050.0f, 478.0f, 50.0f, 30.0f};
-static const Rectangle kPadRight = {1170.0f, 478.0f, 50.0f, 30.0f};
-static const Rectangle kPadDown = {1110.0f, 516.0f, 50.0f, 30.0f};
-static const Rectangle kZoomOut = {985.0f, 570.0f, 60.0f, 30.0f};
-static const Rectangle kZoomIn = {1190.0f, 570.0f, 60.0f, 30.0f};
-static const Rectangle kBtnSave = {985.0f, 620.0f, 265.0f, 34.0f};
-
-static float Clampf(float v, float lo, float hi)
-{
-    return fminf(fmaxf(v, lo), hi);
-}
-
-static Rectangle FieldRect(int id)
-{
-    return (Rectangle){SE_VAL_X, 150.0f + id * 34.0f, SE_VAL_W, 26.0f};
-}
-
-static bool FieldEnabled(int id)
-{
-    return id == SF_META_ZOOM || sel >= 0;
-}
-
-static float FieldGet(int id)
-{
-    if (id == SF_META_ZOOM)
-        return meta.defaultZoom;
-    if (sel < 0)
-        return 0.0f;
-
-    const StageSprite *s = &sprites[sel];
-    switch (id) {
-        case SF_X: return s->x;
-        case SF_Y: return s->y;
-        case SF_SCALE: return s->scaleX;
-        case SF_SCROLLX: return s->scrollX;
-        default: return s->scrollY;
-    }
-}
-
-static void FieldSet(int id, float v)
-{
-    if (id == SF_META_ZOOM) {
-        meta.defaultZoom = Clampf(v, 0.05f, 10.0f);
-        MarkDirty();
-        return;
-    }
-    if (sel < 0)
-        return;
-
-    StageSprite *s = &sprites[sel];
-    switch (id) {
-        case SF_X: s->x = v; break;
-        case SF_Y: s->y = v; break;
-        case SF_SCALE: s->scaleX = s->scaleY = Clampf(v, 0.02f, 20.0f); break;
-        case SF_SCROLLX: s->scrollX = Clampf(v, -10.0f, 10.0f); break;
-        default: s->scrollY = Clampf(v, -10.0f, 10.0f); break;
-    }
-    MarkDirty();
-}
-
-/* Quanto o valor muda por pixel arrastado. */
-static float FieldStep(int id)
-{
-    switch (id) {
-        case SF_SCALE:
-        case SF_META_ZOOM: return 0.01f;
-        case SF_SCROLLX:
-        case SF_SCROLLY: return 0.05f;
-        default: return 1.0f;
-    }
-}
-
-static bool Hover(Rectangle r)
-{
-    return CheckCollisionPointRec(RayGame_MouseWorld(), r);
-}
-
-static bool Clicked(Rectangle r)
-{
-    return IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && Hover(r);
+    memcpy(&saved, &doc, sizeof(doc));
+    MUi_SetStatus(MUI_OK, "%s", msg);
+    return true;
 }
 
 static void OpenAddPicker(void)
 {
-    addFilter[0] = '\0';
-    addSel = 0;
+    memset(&imagePicker, 0, sizeof(imagePicker));
     imageCount = StageEd_ScanImages(imageNames, STAGEED_LIST_MAX);
-    Rebuild_Add();
+    MUi_PickerFilter(&imagePicker, imageCount, ImageLabel);
+    MUi_TextBlur();
     mode = SE_ADD;
 }
 
-static void Panel_Update(bool shift)
+static void AskLeave(void)
 {
-    const Vector2 m = RayGame_MouseWorld();
-    const float mult = shift ? 10.0f : 1.0f;
-
-    if (activeField >= 0) {
-        if (IsMouseButtonDown(MOUSE_BUTTON_LEFT))
-            FieldSet(activeField, fieldStartValue + (m.x - fieldStartMouse) * FieldStep(activeField) * mult);
-        else
-            activeField = -1;
-        return;
-    }
-
-    for (int id = 0; id < SF_COUNT; ++id) {
-        if (FieldEnabled(id) && Clicked(FieldRect(id))) {
-            activeField = id;
-            fieldStartMouse = m.x;
-            fieldStartValue = FieldGet(id);
-            return;
-        }
-    }
-
-    if (Clicked(kBtnFront) && sel >= 0) {
-        sprites[sel].front = !sprites[sel].front;
-        MarkDirty();
-    }
-    if (Clicked(kBtnRemove))
-        RemoveSelected();
-    if (Clicked(kBtnAdd))
-        OpenAddPicker();
-
-    if (Clicked(kPadUp)) NudgeSelected(0.0f, -mult);
-    if (Clicked(kPadDown)) NudgeSelected(0.0f, mult);
-    if (Clicked(kPadLeft)) NudgeSelected(-mult, 0.0f);
-    if (Clicked(kPadRight)) NudgeSelected(mult, 0.0f);
-
-    if (Clicked(kZoomOut)) camZoom = fmaxf(camZoom / 1.1f, 0.1f);
-    if (Clicked(kZoomIn)) camZoom = fminf(camZoom * 1.1f, 4.0f);
-
-    if (Clicked(kBtnSave))
-        SaveCurrent();
-}
-
-static void DrawBtn(Rectangle r, const char *label, bool active)
-{
-    const bool hover = Hover(r);
-    DrawRectangleRec(r, active ? (Color){30, 70, 40, 230} : (hover ? (Color){60, 60, 60, 230} : (Color){18, 18, 18, 220}));
-    DrawRectangleLinesEx(r, 1, active ? GREEN : (hover ? WHITE : GRAY));
-    const Vector2 size = MeasureTextEx(mainFont, label, 18.0f, 1.0f);
-    SE_Text(label, r.x + (r.width - size.x) * 0.5f, r.y + (r.height - size.y) * 0.5f, 18.0f, WHITE);
-}
-
-static void Panel_Draw(void)
-{
-    DrawRectangleRec((Rectangle){965.0f, 95.0f, 300.0f, 560.0f}, (Color){20, 20, 26, 220});
-
-    char line[64];
-    if (sel >= 0)
-        snprintf(line, sizeof(line), "%s", sprites[sel].image);
+    if (Dirty())
+        MUi_ConfirmOpen(CONFIRM_LEAVE, "Voltar a lista", "Ha alteracoes nao salvas neste stage.");
     else
-        snprintf(line, sizeof(line), "nenhum sprite");
-    SE_Text(line, 985.0f, 104.0f, 22.0f, sel >= 0 ? YELLOW : GRAY);
-    SE_Text("arraste o numero para mudar", 985.0f, 128.0f, 15.0f, GRAY);
-
-    for (int id = 0; id < SF_COUNT; ++id) {
-        const Rectangle r = FieldRect(id);
-        const bool on = FieldEnabled(id);
-        SE_Text(kFieldLabel[id], 985.0f, r.y + 4.0f, 18.0f, on ? WHITE : DARKGRAY);
-        DrawRectangleRec(r, activeField == id ? (Color){30, 70, 40, 230} : (Color){18, 18, 18, 220});
-        DrawRectangleLinesEx(r, 1, Hover(r) ? WHITE : GRAY);
-        if (!on) {
-            SE_Text("-", r.x + 8.0f, r.y + 4.0f, 18.0f, DARKGRAY);
-            continue;
-        }
-        const float v = FieldGet(id);
-        if (id == SF_X || id == SF_Y)
-            snprintf(line, sizeof(line), "%.0f", v);
-        else
-            snprintf(line, sizeof(line), "%.2f", v);
-        SE_Text(line, r.x + 8.0f, r.y + 4.0f, 18.0f, WHITE);
-    }
-
-    DrawBtn(kBtnFront, sel >= 0 && sprites[sel].front ? "frente" : "atras", false);
-    DrawBtn(kBtnRemove, "remover", false);
-    DrawBtn(kBtnAdd, "+ imagem (Enter)", false);
-
-    SE_Text("mover (Shift = 10)", 985.0f, 448.0f, 15.0f, GRAY);
-    DrawBtn(kPadUp, "^", false);
-    DrawBtn(kPadLeft, "<", false);
-    DrawBtn(kPadRight, ">", false);
-    DrawBtn(kPadDown, "v", false);
-
-    DrawBtn(kZoomOut, "-", false);
-    snprintf(line, sizeof(line), "zoom %d%%", (int)(camZoom * 100.0f + 0.5f));
-    SE_Text(line, 1060.0f, 578.0f, 18.0f, WHITE);
-    DrawBtn(kZoomIn, "+", false);
-
-    DrawBtn(kBtnSave, "salvar (Ctrl+S)", dirty);
+        ToPick();
 }
 
-static void Edit_Update(void)
+/* ------------------------------------------------------------------------- */
+/* Update                                                                    */
+/* ------------------------------------------------------------------------- */
+
+static void HandleModal(void)
 {
-    const Vector2 m = RayGame_MouseWorld();
-    const bool inCanvas = CheckCollisionPointRec(m, kCanvas);
-    const bool ctrl = KeyHeld(KEY_LEFT_CONTROL, KEY_RIGHT_CONTROL);
-    const bool shift = KeyHeld(KEY_LEFT_SHIFT, KEY_RIGHT_SHIFT);
-    const float step = shift ? 10.0f : 1.0f;
+    int id = 0;
+    const MUiModalResult res = MUi_ModalUpdate(&id);
+    if (res == MUI_MODAL_NONE)
+        return;
+    if (id == PROMPT_NEW && res == MUI_MODAL_OK)
+        TryNew(MUi_PromptText());
+    else if (id == CONFIRM_LEAVE && (res == MUI_MODAL_DISCARD || (res == MUI_MODAL_OK && SaveCurrent())))
+        ToPick();
+}
 
-    Panel_Update(shift);
-
-    if (ctrl && IsKeyPressed(KEY_S)) {
-        SaveCurrent();
+static void Pick_Update(void)
+{
+    if (MUi_Button(kBtnNew) || (MUi_Ctrl() && IsKeyPressed(KEY_N))) {
+        MUi_PromptOpen(PROMPT_NEW, "Novo stage", "Nome do arquivo (sem extensao), criado em stages/", stagePicker.search);
         return;
     }
+    const int pick = MUi_PickerUpdate(&stagePicker, kPicker, entryCount, StageLabel);
+    if (pick >= 0)
+        OpenEntry(&entries[pick]);
+    else if (pick == MUI_PICK_NEW)
+        TryNew(stagePicker.search);
+    else if (pick == MUI_PICK_BACK)
+        ModdingMenu_SetScene();
+}
 
-    if (IsKeyPressed(KEY_ESCAPE)) {
-        if (dirty && !escArmed) {
-            escArmed = true;
-            SetStatus("ha mudancas nao salvas: ESC de novo sai sem salvar (Ctrl+S salva)");
-            return;
+static void Add_Update(void)
+{
+    if (MUi_Button(kBtnNew)) {
+        mode = SE_EDIT;
+        return;
+    }
+    const int pick = MUi_PickerUpdate(&imagePicker, kPicker, imageCount, ImageLabel);
+    if (pick >= 0) {
+        AddImage(imageNames[pick]);
+        mode = SE_EDIT;
+    } else if (pick == MUI_PICK_NEW) {
+        AddImage(imagePicker.search);
+        mode = SE_EDIT;
+    } else if (pick == MUI_PICK_BACK) {
+        mode = SE_EDIT;
+    }
+}
+
+static void CheckU8(Rectangle r, uint8_t *v)
+{
+    bool b = *v != 0;
+    if (MUi_Check(r, &b))
+        *v = b ? 1 : 0;
+}
+
+static void SpriteTab_Update(void)
+{
+    StageSprite *s = SelSprite();
+    if (!s)
+        return;
+
+    if (!s->isGraphic) {
+        if (!MUi_TextIsFocused(imageBuf) && strcmp(imageBuf, s->image) != 0)
+            snprintf(imageBuf, sizeof(imageBuf), "%s", s->image);
+        const MUiTextEvent ev = MUi_TextField(Wide(0), imageBuf, sizeof(imageBuf));
+        if (ev == MUI_TXT_SUBMIT || ev == MUI_TXT_BLUR) {
+            if (StageEd_IsImageName(imageBuf))
+                snprintf(s->image, sizeof(s->image), "%s", imageBuf);
+            else
+                MUi_SetStatus(MUI_WARN, "nome de imagem invalido");
         }
-        Textures_FreeAll();
-        dirty = false;
-        escArmed = false;
-        mode = SE_PICK;
-        entryCount = StageEd_ScanList(entries, STAGEED_LIST_MAX);
-        Rebuild_Pick();
-        return;
     }
 
-    /* Mouse: arrastar sprite, arrastar camera, roda = escala. */
-    if (inCanvas && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+    MUi_Num(Half(1, 0), &s->x, 1.0f, -100000.0f, 100000.0f);
+    MUi_Num(Half(1, 1), &s->y, 1.0f, -100000.0f, 100000.0f);
+
+    const float oldX = s->scaleX;
+    if (MUi_Num(Half(2, 0), &s->scaleX, 0.01f, 0.01f, 50.0f) && lockScale && oldX > 0.0f)
+        s->scaleY = fminf(fmaxf(s->scaleY * s->scaleX / oldX, 0.01f), 50.0f);
+    MUi_Num(Half(2, 1), &s->scaleY, 0.01f, 0.01f, 50.0f);
+    MUi_Check(CheckAt(3, 0), &lockScale);
+    bool front = s->front != 0;
+    if (MUi_Check(CheckAt(3, 1), &front))
+        s->front = front ? 1 : 0;
+
+    MUi_Num(Half(4, 0), &s->scrollX, 0.05f, -10.0f, 10.0f);
+    MUi_Num(Half(4, 1), &s->scrollY, 0.05f, -10.0f, 10.0f);
+
+    if (s->isGraphic) {
+        MUi_Num(Half(5, 0), &s->graphicWidth, 1.0f, 1.0f, 20000.0f);
+        MUi_Num(Half(5, 1), &s->graphicHeight, 1.0f, 1.0f, 20000.0f);
+        uint8_t *ch[4] = {&s->colorR, &s->colorG, &s->colorB, &s->colorA};
+        for (int i = 0; i < 4; ++i) {
+            int v = *ch[i];
+            if (MUi_NumInt(Quarter(6, i), &v, 1, 0, 255))
+                *ch[i] = (uint8_t)v;
+        }
+    } else {
+        CheckU8(CheckAt(5, 0), &s->isAnimated);
+        if (s->isAnimated) {
+            MUi_TextField(Wide(6), s->animPrefix, sizeof(s->animPrefix));
+            MUi_Num(Half(7, 0), &s->animFps, 1.0f, 1.0f, 120.0f);
+            CheckU8(CheckAt(7, 1), &s->animLoop);
+        }
+    }
+}
+
+static void StageTab_Update(void)
+{
+    StageMeta *m = &doc.meta;
+    MUi_Num(Half(0, 0), &m->defaultZoom, 0.01f, 0.05f, 10.0f);
+    MUi_Num(Half(1, 0), &m->cameraSpeed, 0.05f, 0.0f, 20.0f);
+    CheckU8(CheckAt(2, 0), &m->isPixelStage);
+    CheckU8(CheckAt(2, 1), &m->hideGirlfriend);
+    float *pairs[5] = {m->boyfriend, m->girlfriend, m->opponent, m->cameraBoyfriend, m->cameraOpponent};
+    for (int i = 0; i < 5; ++i) {
+        MUi_Num(Half(3 + i, 0), &pairs[i][0], 1.0f, -100000.0f, 100000.0f);
+        MUi_Num(Half(3 + i, 1), &pairs[i][1], 1.0f, -100000.0f, 100000.0f);
+    }
+    MUi_Check(CheckAt(8, 0), &showChars);
+    MUi_Check(CheckAt(8, 1), &showFrame);
+}
+
+/* Clique no canvas: frente, personagens, atras (mesma ordem do desenho, de cima para baixo). */
+static void HitTest(Vector2 w, SelKind *kind, int *index)
+{
+    *kind = SEL_NONE;
+    for (int pass = 1; pass >= 0; --pass) {
+        for (int i = doc.count - 1; i >= 0; --i) {
+            if (doc.sprites[i].front == pass && CheckCollisionPointRec(w, SpriteRect(i))) {
+                *kind = SEL_SPRITE;
+                *index = i;
+                return;
+            }
+        }
+        if (pass == 1 && showChars) {
+            static const int order[CH_COUNT] = {CH_BF, CH_DAD, CH_GF};
+            for (int k = 0; k < CH_COUNT; ++k) {
+                if (order[k] == CH_GF && doc.meta.hideGirlfriend)
+                    continue;
+                if (CheckCollisionPointRec(w, CharRect(order[k]))) {
+                    *kind = SEL_CHAR;
+                    *index = order[k];
+                    return;
+                }
+            }
+        }
+    }
+}
+
+static void Canvas_Update(void)
+{
+    const Vector2 m = MUi_Mouse();
+    const bool over = MUi_Hover(kCanvas) && MUi_MouseFree();
+
+    if (over && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+        MUi_TakeMouse();
+        MUi_TextBlur();
         const Vector2 w = ScreenToWorld(m);
-        const int hit = HitTest(w);
-        sel = hit;
-        if (hit >= 0) {
-            dragging = true;
+        SelKind kind;
+        int index = 0;
+        HitTest(w, &kind, &index);
+        if (kind == SEL_NONE) {
+            selKind = SEL_NONE;
+        } else {
+            Select(kind, index);
+            dragKind = kind;
             dragWorld0 = w;
-            dragSprite0 = (Vector2){sprites[hit].x, sprites[hit].y};
+            dragPos0 = kind == SEL_SPRITE ? (Vector2){doc.sprites[index].x, doc.sprites[index].y}
+                                          : (Vector2){CharPos(index)[0], CharPos(index)[1]};
         }
     }
-    if (dragging) {
-        if (IsMouseButtonDown(MOUSE_BUTTON_LEFT) && sel >= 0) {
+    if (dragKind != SEL_NONE) {
+        if (IsMouseButtonDown(MOUSE_BUTTON_LEFT) && selKind == dragKind) {
             const Vector2 w = ScreenToWorld(m);
-            const float nx = dragSprite0.x + (w.x - dragWorld0.x);
-            const float ny = dragSprite0.y + (w.y - dragWorld0.y);
-            if (nx != sprites[sel].x || ny != sprites[sel].y) {
-                sprites[sel].x = nx;
-                sprites[sel].y = ny;
-                MarkDirty();
+            const float nx = roundf(dragPos0.x + w.x - dragWorld0.x);
+            const float ny = roundf(dragPos0.y + w.y - dragWorld0.y);
+            if (dragKind == SEL_SPRITE && SelSprite()) {
+                doc.sprites[selIndex].x = nx;
+                doc.sprites[selIndex].y = ny;
+            } else if (dragKind == SEL_CHAR) {
+                CharPos(selIndex)[0] = nx;
+                CharPos(selIndex)[1] = ny;
             }
         } else {
-            dragging = false;
+            dragKind = SEL_NONE;
         }
     }
 
-    if (inCanvas && IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) {
+    if (over && (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT) || IsMouseButtonPressed(MOUSE_BUTTON_MIDDLE))) {
+        MUi_TakeMouse();
         panning = true;
         panLast = m;
     }
     if (panning) {
-        if (IsMouseButtonDown(MOUSE_BUTTON_RIGHT)) {
+        if (IsMouseButtonDown(MOUSE_BUTTON_RIGHT) || IsMouseButtonDown(MOUSE_BUTTON_MIDDLE)) {
             camTarget.x -= (m.x - panLast.x) / camZoom;
             camTarget.y -= (m.y - panLast.y) / camZoom;
             panLast = m;
@@ -815,288 +858,396 @@ static void Edit_Update(void)
     }
 
     const float wheel = GetMouseWheelMove();
-    if (inCanvas && wheel != 0.0f)
-        ScaleSelected(1.0f + wheel * 0.08f);
-
-    /* Clique na lista de sprites. */
-    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && m.x >= SE_LIST_X && m.x < SE_LIST_X + SE_LIST_W &&
-        m.y >= SE_LIST_Y) {
-        const int row = (int)((m.y - SE_LIST_Y) / SE_LIST_ROW_H) + listTop;
-        if (row >= 0 && row < spriteCount)
-            sel = row;
-    }
-
-    /* Teclado. */
-    if (Pressed(KEY_DOWN))
-        MoveSel(&sel, spriteCount, 1);
-    if (Pressed(KEY_UP))
-        MoveSel(&sel, spriteCount, -1);
-    if (IsKeyPressed(KEY_TAB) && spriteCount > 0)
-        sel = (sel + 1) % spriteCount;
-    if (sel >= 0)
-        ScrollTo(&listTop, sel, SE_LIST_ROWS);
-
-    if (!ctrl) {
-        if (Pressed(KEY_J)) NudgeSelected(-step, 0.0f);
-        if (Pressed(KEY_L)) NudgeSelected(step, 0.0f);
-        if (Pressed(KEY_I)) NudgeSelected(0.0f, -step);
-        if (Pressed(KEY_K)) NudgeSelected(0.0f, step);
-
-        if (Pressed(KEY_Z)) ScrollSelected(1, -0.1f);
-        if (Pressed(KEY_X)) ScrollSelected(1, 0.1f);
-        if (Pressed(KEY_C)) ScrollSelected(0, -0.1f);
-        if (Pressed(KEY_V)) ScrollSelected(0, 0.1f);
-
-        if (IsKeyPressed(KEY_E) && sel >= 0) {
-            sprites[sel].front = !sprites[sel].front;
-            MarkDirty();
+    if (MUi_Hover(kCanvas) && wheel != 0.0f) {
+        StageSprite *s = SelSprite();
+        if (MUi_Shift() && s) {
+            const float f = 1.0f + wheel * 0.05f;
+            s->scaleX = fminf(fmaxf(s->scaleX * f, 0.01f), 50.0f);
+            s->scaleY = fminf(fmaxf(s->scaleY * f, 0.01f), 50.0f);
+        } else {
+            ZoomAt(m, wheel > 0.0f ? 1.15f : 1.0f / 1.15f);
         }
     }
+}
 
-    if (IsKeyPressed(KEY_DELETE))
-        RemoveSelected();
+static void Keys_Update(void)
+{
+    const bool ctrl = MUi_Ctrl();
+    const float step = MUi_Shift() ? 10.0f : 1.0f;
 
-    if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER)) {
-        addFilter[0] = '\0';
-        addSel = 0;
-        imageCount = StageEd_ScanImages(imageNames, STAGEED_LIST_MAX);
-        Rebuild_Add();
-        mode = SE_ADD;
+    if (ctrl) {
+        if (IsKeyPressed(KEY_S)) SaveCurrent();
+        if (MUi_Rep(KEY_Z)) Undo(MUi_Shift());
+        if (MUi_Rep(KEY_Y)) Undo(true);
+        if (IsKeyPressed(KEY_D)) Duplicate();
+        if (MUi_Rep(KEY_UP)) MoveSel(-1);
+        if (MUi_Rep(KEY_DOWN)) MoveSel(1);
         return;
     }
-
+    if (IsKeyPressed(KEY_ESCAPE)) {
+        AskLeave();
+        return;
+    }
+    if (MUi_Rep(KEY_LEFT)) Nudge(-step, 0.0f);
+    if (MUi_Rep(KEY_RIGHT)) Nudge(step, 0.0f);
+    if (MUi_Rep(KEY_UP)) Nudge(0.0f, -step);
+    if (MUi_Rep(KEY_DOWN)) Nudge(0.0f, step);
+    if (MUi_Rep(KEY_PAGE_UP)) CycleSel(-1);
+    if (MUi_Rep(KEY_PAGE_DOWN)) CycleSel(1);
+    if (IsKeyPressed(KEY_TAB)) tab = (SeTab)((tab + 1) % TAB_COUNT);
+    if (IsKeyPressed(KEY_DELETE)) RemoveSel();
+    if (IsKeyPressed(KEY_A)) OpenAddPicker();
+    if (IsKeyPressed(KEY_F)) FitView();
+    if (IsKeyPressed(KEY_G)) showFrame = !showFrame;
+    if (IsKeyPressed(KEY_H)) showChars = !showChars;
+    if (IsKeyPressed(KEY_E) && SelSprite())
+        doc.sprites[selIndex].front = !doc.sprites[selIndex].front;
     if (IsKeyPressed(KEY_EQUAL) || IsKeyPressed(KEY_KP_ADD))
-        camZoom = fminf(camZoom * 1.1f, 4.0f);
+        ZoomAt((Vector2){kCanvas.x + kCanvas.width * 0.5f, kCanvas.y + kCanvas.height * 0.5f}, 1.15f);
     if (IsKeyPressed(KEY_MINUS) || IsKeyPressed(KEY_KP_SUBTRACT))
-        camZoom = fmaxf(camZoom / 1.1f, 0.1f);
+        ZoomAt((Vector2){kCanvas.x + kCanvas.width * 0.5f, kCanvas.y + kCanvas.height * 0.5f}, 1.0f / 1.15f);
+}
 
-    if (IsKeyPressed(KEY_LEFT_BRACKET)) {
-        meta.defaultZoom = fmaxf(meta.defaultZoom - 0.05f, 0.05f);
-        MarkDirty();
+static void Edit_Update(void)
+{
+    if (MUi_Button(kBtnSave)) SaveCurrent();
+    if (MUi_Button(kBtnList)) {
+        AskLeave();
+        return;
     }
-    if (IsKeyPressed(KEY_RIGHT_BRACKET)) {
-        meta.defaultZoom = fminf(meta.defaultZoom + 0.05f, 10.0f);
-        MarkDirty();
+    if (MUi_Button(kBtnFit)) FitView();
+
+    const int clicked = MUi_List(&spriteList, kList, LIST_ROW_H, doc.count, NULL);
+    if (clicked >= 0)
+        Select(SEL_SPRITE, clicked);
+    if (MUi_Button(LeftBtn(0))) {
+        OpenAddPicker();
+        return;
     }
+    if (MUi_Button(LeftBtn(1))) AddRect();
+    if (MUi_Button(LeftBtn(2))) Duplicate();
+    if (MUi_Button(LeftBtn(3))) RemoveSel();
+    if (MUi_Button(LeftBtn(4))) MoveSel(-1);
+    if (MUi_Button(LeftBtn(5))) MoveSel(1);
+
+    const int t = MUi_Tabs(kTabs, TAB_COUNT, tab);
+    if (t != (int)tab) {
+        tab = (SeTab)t;
+        MUi_TextBlur();
+    }
+    if (tab == TAB_SPRITE)
+        SpriteTab_Update();
+    else
+        StageTab_Update();
+
+    Canvas_Update();
+    if (MUi_KeysFree())
+        Keys_Update();
 }
 
 static void StageEditor_Update([[maybe_unused]] RayScene *scene)
 {
-    if (statusTimer > 0.0f)
-        statusTimer -= RayGame_DeltaTime();
+    const float dt = fmaxf(RayGame_DeltaTime(), 0.0f);
+    MUi_FrameBegin();
+    MUi_Tick(dt);
+    animTime += dt;
 
-    if (mode == SE_PICK)
+    if (MUi_ModalActive())
+        HandleModal();
+    else if (mode == SE_PICK)
         Pick_Update();
     else if (mode == SE_ADD)
         Add_Update();
     else
         Edit_Update();
+
+    if (mode != SE_PICK)
+        CommitUndo();
 }
 
 /* ------------------------------------------------------------------------- */
 /* Draw                                                                      */
 /* ------------------------------------------------------------------------- */
 
-static void BeginUi(void)
+/* Frame de atlas no mundo (mesma conta do Render_DrawAnimatedObject, sem scroll). */
+static void DrawFrame(const RayAnimationHandler *set, int anim, const Frame *f, Vector2 pos, float sx, float sy, Color tint)
 {
-    Render_SetCamera(&uiCam);
+    const bool flip = sx < 0.0f;
+    sx = fabsf(sx);
+    const Vector2 off = set->animations[anim].animationOffset;
+    const Rectangle src = {(float)f->x, (float)f->y, flip ? -(float)f->w : (float)f->w, (float)f->h};
+    const Rectangle dst = {pos.x - off.x - (float)f->fx * sx, pos.y - off.y - (float)f->fy * sy,
+                           (float)f->w * sx, (float)f->h * sy};
+    DrawTexturePro(set->texture, src, dst, (Vector2){0}, 0.0f, tint);
 }
 
-static void EndUi(void)
+static void DrawSprite(int i)
 {
-    Render_StopCamera();
-}
-
-/* Chamado dentro de BeginUi(): tudo em coordenadas virtuais 1280x720. */
-static void DrawBackdrop(void)
-{
-    ClearBackground(BLACK);
-    Render_DrawGraphicObject(&bg);
-    DrawRectangle(0, 0, 1280, 720, (Color){0, 0, 0, 150});
-}
-
-static void DrawStatus(void)
-{
-    if (statusTimer > 0.0f && status[0])
-        SE_Text(status, 20.0f, 50.0f, 20.0f, YELLOW);
-}
-
-static void Pick_Draw(void)
-{
-    SE_Text("STAGE EDITOR - escolha um stage", 20.0f, 20.0f, 28.0f, WHITE);
-    SE_Text("filtro:", SE_PICK_X, 100.0f, 22.0f, GRAY);
-    SE_Text(filter, SE_PICK_X + 80.0f, 100.0f, 22.0f, WHITE);
-    DrawRectangle((int)(SE_PICK_X + 80.0f + MeasureTextEx(mainFont, filter, 22.0f, 1.0f).x + 2),
-                  100, 2, 22, WHITE);
-
-    for (int row = 0; row < SE_PICK_ROWS; ++row) {
-        const int idx = pickTop + row;
-        if (idx >= pickVisibleCount)
-            break;
-        const float y = SE_PICK_Y + row * SE_PICK_ROW_H;
-        const bool on = idx == pickSel;
-        if (on)
-            DrawRectangle((int)SE_PICK_X - 6, (int)y - 2, 700, (int)SE_PICK_ROW_H, (Color){42, 209, 86, 60});
-        const StageEdEntry *e = &entries[pickVisible[idx]];
-        char line[160];
-        snprintf(line, sizeof(line), "%s   [%s]", e->name, RootLabel(e->root));
-        SE_Text(line, SE_PICK_X, y, 22.0f, on ? GREEN : WHITE);
+    const StageSprite *s = &doc.sprites[i];
+    const Rectangle r = SpriteRect(i);
+    if (s->isGraphic) {
+        DrawRectangleRec(r, (Color){s->colorR, s->colorG, s->colorB, s->colorA});
+        return;
     }
-
-    if (entryCount == 0)
-        SE_Text("nenhum stage encontrado: digite um nome e Enter para criar", SE_PICK_X, SE_PICK_Y, 22.0f, GRAY);
-    else if (pickVisibleCount == 0 && filter[0])
-        SE_Text("Enter cria o stage novo com este nome", SE_PICK_X, SE_PICK_Y, 22.0f, GRAY);
-
-    SE_Text("Up/Down escolhe   Enter abre   ESC volta ao menu", 20.0f, 690.0f, 18.0f, GRAY);
-    DrawStatus();
-}
-
-/* ------------------------------------------------------------------------- */
-/* Draw: canvas e painel                                                     */
-/* ------------------------------------------------------------------------- */
-
-static void DrawCoverOutside(void)
-{
-    /* Sprites podem passar do canvas: pinta por cima das bordas (sem scissor). */
-    const Color cover = {10, 10, 14, 255};
-    const float right = kCanvas.x + kCanvas.width;
-    const float bottom = kCanvas.y + kCanvas.height;
-    DrawRectangle(0, 0, 1280, (int)kCanvas.y, cover);
-    DrawRectangle(0, (int)bottom, 1280, 720 - (int)bottom, cover);
-    DrawRectangle(0, (int)kCanvas.y, (int)kCanvas.x, (int)kCanvas.height, cover);
-    DrawRectangle((int)right, (int)kCanvas.y, 1280 - (int)right, (int)kCanvas.height, cover);
-}
-
-static void Edit_DrawCanvas(void)
-{
-    DrawRectangleRec(kCanvas, (Color){16, 16, 22, 255});
-
-    /* grade a cada 100 px do mundo */
-    const float halfW = kCanvas.width * 0.5f / camZoom;
-    const float halfH = kCanvas.height * 0.5f / camZoom;
-    const int k0 = (int)ceilf((camTarget.x - halfW) / 100.0f);
-    const int k1 = (int)floorf((camTarget.x + halfW) / 100.0f);
-    for (int k = k0; k <= k1 && k - k0 < 400; ++k) {
-        const float sx = WorldToScreen((Vector2){k * 100.0f, 0.0f}).x;
-        DrawLine((int)sx, (int)kCanvas.y, (int)sx, (int)(kCanvas.y + kCanvas.height), (Color){40, 40, 52, 255});
-    }
-    const int j0 = (int)ceilf((camTarget.y - halfH) / 100.0f);
-    const int j1 = (int)floorf((camTarget.y + halfH) / 100.0f);
-    for (int j = j0; j <= j1 && j - j0 < 400; ++j) {
-        const float sy = WorldToScreen((Vector2){0.0f, j * 100.0f}).y;
-        DrawLine((int)kCanvas.x, (int)sy, (int)(kCanvas.x + kCanvas.width), (int)sy, (Color){40, 40, 52, 255});
-    }
-
-    for (int i = 0; i < spriteCount; ++i) {
-        const Rectangle r = SpriteRectWorld(i);
-        const Vector2 tl = WorldToScreen((Vector2){r.x, r.y});
-        const Rectangle dst = {tl.x, tl.y, r.width * camZoom, r.height * camZoom};
-        const StageSprite *s = &sprites[i];
-
-        if (s->isGraphic) {
-            DrawRectangleRec(dst, (Color){s->colorR, s->colorG, s->colorB, s->colorA});
-        } else if (tex[i].id > 0) {
-            /* Animado: desenha o atlas inteiro (so uma previa de posicao e escala). */
-            DrawTexturePro(tex[i], (Rectangle){0, 0, (float)tex[i].width, (float)tex[i].height},
-                           dst, (Vector2){0, 0}, 0.0f, WHITE);
-        } else {
-            DrawRectangleLinesEx(dst, 1.0f, RED);
-        }
-
-        SE_Text(s->image, dst.x + 2.0f, dst.y - 16.0f, 14.0f, i == sel ? YELLOW : GRAY);
-        if (i == sel)
-            DrawRectangleLinesEx(dst, 2.0f, YELLOW);
-    }
-
-    DrawCoverOutside();
-    DrawRectangleLinesEx(kCanvas, 1.0f, GRAY);
-}
-
-static void Edit_DrawList(void)
-{
-    SE_Text("sprites", SE_LIST_X, SE_LIST_Y - 26.0f, 20.0f, GRAY);
-    for (int row = 0; row < SE_LIST_ROWS; ++row) {
-        const int idx = listTop + row;
-        if (idx >= spriteCount)
-            break;
-        const float y = SE_LIST_Y + row * SE_LIST_ROW_H;
-        const bool on = idx == sel;
-        if (on)
-            DrawRectangle((int)SE_LIST_X - 4, (int)y - 1, (int)SE_LIST_W + 8, (int)SE_LIST_ROW_H, (Color){42, 209, 86, 60});
-        char line[96];
-        snprintf(line, sizeof(line), "%d %s%s", idx, sprites[idx].image, sprites[idx].front ? " (F)" : "");
-        SE_Text(line, SE_LIST_X, y, 18.0f, on ? GREEN : WHITE);
-    }
-    if (spriteCount == 0)
-        SE_Text("vazio: Enter adiciona imagem", SE_LIST_X, SE_LIST_Y, 18.0f, GRAY);
-}
-
-static void Edit_DrawInfo(void)
-{
-    char line[256];
-    if (sel >= 0 && sel < spriteCount) {
-        const StageSprite *s = &sprites[sel];
-        snprintf(line, sizeof(line), "%s  x=%.0f y=%.0f  escala=%.2f  scroll=%.1f,%.1f  %s",
-                 s->image, s->x, s->y, s->scaleX, s->scrollX, s->scrollY, s->front ? "frente" : "atras");
+    const Visual *v = GetVisual(s);
+    if (v->set.animationCount > 0) {
+        const int anim = SpriteAnim(s, v);
+        bool ok;
+        const Frame *f = AnimFrame(&v->set, anim, s->animFps, &ok);
+        if (ok)
+            DrawFrame(&v->set, anim, f, (Vector2){s->x, s->y}, s->scaleX, s->scaleY, WHITE);
+    } else if (v->tex.id) {
+        DrawTexturePro(v->tex, (Rectangle){0, 0, (float)v->tex.width, (float)v->tex.height}, r, (Vector2){0}, 0.0f, WHITE);
     } else {
-        snprintf(line, sizeof(line), "nenhum sprite selecionado");
+        DrawRectangleRec(r, (Color){255, 60, 80, 40});
+        DrawRectangleLinesEx(r, 2.0f / camZoom, MUI_C_BAD);
     }
-    SE_Text(line, 20.0f, 68.0f, 18.0f, WHITE);
-
-    snprintf(line, sizeof(line), "stage: %s [%s]%s   zoom padrao=%.2f   camera=%.2fx",
-             current.name, RootLabel(current.root), dirty ? " *nao salvo*" : "", meta.defaultZoom, camZoom);
-    SE_Text(line, 20.0f, 92.0f - 2.0f, 16.0f, GRAY);
 }
 
-static void Edit_DrawHelp(void)
+static void DrawChar(int c)
 {
-    SE_Text("mouse: arrasta sprite / dir. arrasta camera / roda escala   |   I J K L move (Shift x10)   "
-            "Z/X C/V scroll   E frente   Del remove   Enter +imagem   -/= zoom   [ ] zoom padrao   Ctrl+S salvar   ESC sai",
-            20.0f, 696.0f, 15.0f, GRAY);
+    if (c == CH_GF && doc.meta.hideGirlfriend)
+        return;
+    int anim;
+    const RayAnimatedObject *o = CharObj(c, &anim);
+    bool ok;
+    const Frame *f = AnimFrame(&o->animationSet, anim, (float)(o->animationSet.animationCount > 0 ? o->animationSet.animations[anim].fps : 24), &ok);
+    const float *p = CharPos(c);
+    if (ok)
+        DrawFrame(&o->animationSet, anim, f, (Vector2){o->position.x + p[0], o->position.y + p[1]}, o->scaleX, o->scaleY, (Color){255, 255, 255, 200});
+    const Rectangle r = CharRect(c);
+    DrawRectangleLinesEx(r, 1.5f / camZoom, ColorAlpha(kCharColor[c], 0.7f));
+}
+
+static void DrawWorldGrid(void)
+{
+    const Vector2 a = ScreenToWorld((Vector2){kCanvas.x, kCanvas.y});
+    const Vector2 b = ScreenToWorld((Vector2){kCanvas.x + kCanvas.width, kCanvas.y + kCanvas.height});
+    const float step = camZoom < 0.15f ? 500.0f : 100.0f;
+    const Color line = {255, 255, 255, 14};
+    for (float x = floorf(a.x / step) * step; x <= b.x; x += step)
+        DrawLineEx((Vector2){x, a.y}, (Vector2){x, b.y}, 1.0f / camZoom, x == 0.0f ? (Color){255, 255, 255, 50} : line);
+    for (float y = floorf(a.y / step) * step; y <= b.y; y += step)
+        DrawLineEx((Vector2){a.x, y}, (Vector2){b.x, y}, 1.0f / camZoom, y == 0.0f ? (Color){255, 255, 255, 50} : line);
+}
+
+static void DrawCanvas(void)
+{
+    DrawRectangleRec(kCanvas, (Color){6, 4, 14, 255});
+    MUi_ClipBegin(kCanvas);
+
+    Camera2D cam = {0};
+    cam.offset = (Vector2){kCanvas.x + kCanvas.width * 0.5f, kCanvas.y + kCanvas.height * 0.5f};
+    cam.target = camTarget;
+    cam.zoom = camZoom;
+    BeginMode2D(cam);
+    DrawWorldGrid();
+    for (int pass = 0; pass < 2; ++pass) {
+        for (int i = 0; i < doc.count; ++i) {
+            if (doc.sprites[i].front == pass)
+                DrawSprite(i);
+        }
+        if (pass == 0 && showChars) {
+            DrawChar(CH_GF);
+            DrawChar(CH_DAD);
+            DrawChar(CH_BF);
+        }
+    }
+
+    const float lw = 2.0f / camZoom;
+    if (SelSprite()) {
+        DrawRectangleLinesEx(SpriteRect(selIndex), lw, MUI_C_ACCENT);
+    } else if (selKind == SEL_CHAR) {
+        DrawRectangleLinesEx(CharRect(selIndex), lw, MUI_C_ACCENT);
+    }
+    if (showFrame && doc.meta.defaultZoom > 0.01f) {
+        const float w = 1280.0f / doc.meta.defaultZoom, h = 720.0f / doc.meta.defaultZoom;
+        DrawRectangleLinesEx((Rectangle){camTarget.x - w * 0.5f, camTarget.y - h * 0.5f, w, h}, lw, MUI_C_HINT);
+    }
+    EndMode2D();
+
+    /* nomes dos personagens em tamanho de tela */
+    if (showChars) {
+        for (int c = 0; c < CH_COUNT; ++c) {
+            if (c == CH_GF && doc.meta.hideGirlfriend)
+                continue;
+            const Rectangle r = CharRect(c);
+            const Vector2 sp = GetWorldToScreen2D((Vector2){r.x, r.y}, cam);
+            MUi_TextShadow(kCharNames[c], sp.x + 4.0f, sp.y + 4.0f, 16.0f, kCharColor[c]);
+        }
+    }
+    MUi_ClipEnd();
+
+    char line[96];
+    snprintf(line, sizeof(line), "vista %d%%   %s%s", (int)(camZoom * 100.0f + 0.5f),
+             showFrame ? "moldura = tela no zoom padrao (G)" : "", "");
+    MUi_TextShadow(line, kCanvas.x + 8.0f, kCanvas.y + kCanvas.height - 24.0f, 15.0f, MUI_C_DIM);
+    DrawRectangleLinesEx(kCanvas, 1.0f, MUI_C_EDGE);
+}
+
+static void DrawSpriteList(void)
+{
+    MUi_DrawPanel(kLeft);
+    MUi_DrawSection(kLeft.x + 10.0f, kLeft.y + 10.0f, "Sprites");
+    MUi_DrawListBegin(kList);
+    const int rows = MUi_ListRows(kList, LIST_ROW_H);
+    for (int i = spriteList.top; i < doc.count && i <= spriteList.top + rows; ++i) {
+        const StageSprite *s = &doc.sprites[i];
+        const Rectangle row = MUi_ListRow(&spriteList, kList, LIST_ROW_H, i);
+        MUi_DrawListRow(row, selKind == SEL_SPRITE && i == selIndex);
+        const bool missing = !s->isGraphic && GetVisual(s)->tex.id == 0 && GetVisual(s)->set.animationCount == 0;
+        MUi_Text(s->isGraphic ? "R" : (s->isAnimated ? "A" : "I"), row.x + 6.0f, row.y + 6.0f, 16.0f, MUI_C_FAINT);
+        MUi_ClipBegin((Rectangle){row.x + 22.0f, row.y, row.width - 60.0f, row.height});
+        MUi_Text(s->image, row.x + 24.0f, row.y + 6.0f, 17.0f, missing ? MUI_C_BAD : MUI_C_TEXT);
+        MUi_ClipEnd();
+        if (s->front)
+            MUi_TextRight("frente", row.x + row.width - 8.0f, row.y + 7.0f, 14.0f, MUI_C_HINT);
+    }
+    if (doc.count == 0)
+        MUi_TextCenter("vazio: A adiciona imagem", (Rectangle){kList.x, kList.y + 10.0f, kList.width, 24.0f}, 16.0f, MUI_C_FAINT);
+    MUi_DrawListEnd(&spriteList, kList, LIST_ROW_H, doc.count);
+
+    const bool has = SelSprite() != NULL;
+    MUi_DrawButton(LeftBtn(0), "+ Imagem", MUI_BTN_ACCENT);
+    MUi_DrawButton(LeftBtn(1), "+ Retangulo", MUI_BTN_NORMAL);
+    MUi_DrawButton(LeftBtn(2), "Duplicar", has ? MUI_BTN_NORMAL : MUI_BTN_OFF);
+    MUi_DrawButton(LeftBtn(3), "Remover", has ? MUI_BTN_DANGER : MUI_BTN_OFF);
+    MUi_DrawButton(LeftBtn(4), "Subir", has && selIndex > 0 ? MUI_BTN_NORMAL : MUI_BTN_OFF);
+    MUi_DrawButton(LeftBtn(5), "Descer", has && selIndex + 1 < doc.count ? MUI_BTN_NORMAL : MUI_BTN_OFF);
+}
+
+static void Label(int row, const char *text)
+{
+    MUi_Text(text, 924.0f, RowY(row) + 6.0f, 17.0f, MUI_C_DIM);
+}
+
+static void DrawSpriteTab(void)
+{
+    const StageSprite *s = SelSprite();
+    if (!s) {
+        if (selKind == SEL_CHAR) {
+            MUi_Text(kCharNames[selIndex], 924.0f, RowY(0) + 4.0f, 20.0f, kCharColor[selIndex]);
+            MUi_Text("arraste no canvas ou edite na aba Stage", 924.0f, RowY(1), 16.0f, MUI_C_FAINT);
+        } else {
+            MUi_Text("nada selecionado", 924.0f, RowY(0) + 4.0f, 18.0f, MUI_C_FAINT);
+        }
+        return;
+    }
+    if (s->isGraphic) {
+        Label(0, "Retangulo");
+        MUi_Text("makeGraphic", 1020.0f, RowY(0) + 6.0f, 17.0f, MUI_C_FAINT);
+    } else {
+        Label(0, "Imagem");
+        MUi_DrawTextField(Wide(0), imageBuf, "pasta/nome em images/");
+    }
+    Label(1, "Posicao");
+    MUi_DrawNum(Half(1, 0), s->x, 1.0f);
+    MUi_DrawNum(Half(1, 1), s->y, 1.0f);
+    Label(2, "Escala");
+    MUi_DrawNum(Half(2, 0), s->scaleX, 0.01f);
+    MUi_DrawNum(Half(2, 1), s->scaleY, 0.01f);
+    MUi_DrawCheck(CheckAt(3, 0), "Proporcional", lockScale);
+    MUi_DrawCheck(CheckAt(3, 1), "Na frente (E)", s->front != 0);
+    Label(4, "Scroll");
+    MUi_DrawNum(Half(4, 0), s->scrollX, 0.05f);
+    MUi_DrawNum(Half(4, 1), s->scrollY, 0.05f);
+
+    if (s->isGraphic) {
+        Label(5, "Tamanho");
+        MUi_DrawNum(Half(5, 0), s->graphicWidth, 1.0f);
+        MUi_DrawNum(Half(5, 1), s->graphicHeight, 1.0f);
+        Label(6, "RGBA");
+        const uint8_t ch[4] = {s->colorR, s->colorG, s->colorB, s->colorA};
+        for (int i = 0; i < 4; ++i)
+            MUi_DrawNum(Quarter(6, i), (float)ch[i], 1.0f);
+        MUi_DrawSwatch((Rectangle){924.0f, RowY(7), 328.0f, 24.0f}, (Color){s->colorR, s->colorG, s->colorB, 255}, false);
+    } else {
+        MUi_DrawCheck(CheckAt(5, 0), "Animado (.xml)", s->isAnimated != 0);
+        if (s->isAnimated) {
+            Label(6, "Prefixo");
+            MUi_DrawTextField(Wide(6), s->animPrefix, "vazio = 1a animacao");
+            Label(7, "FPS");
+            MUi_DrawNum(Half(7, 0), s->animFps, 1.0f);
+            MUi_DrawCheck(CheckAt(7, 1), "Loop", s->animLoop != 0);
+        }
+        const Visual *v = GetVisual(s);
+        const Vector2 b = BaseSize(s);
+        char info[96];
+        if (!v->tex.id && v->set.animationCount == 0)
+            snprintf(info, sizeof(info), "%s.png nao encontrado", s->image);
+        else if (s->isAnimated && v->set.animationCount == 0)
+            snprintf(info, sizeof(info), "sem .xml: aparece parado no jogo");
+        else
+            snprintf(info, sizeof(info), "%.0f x %.0f px (%.0f x %.0f na tela)", b.x, b.y, b.x * s->scaleX, b.y * s->scaleY);
+        MUi_Text(info, 924.0f, RowY(8) + 8.0f, 16.0f, v->tex.id || v->set.animationCount ? MUI_C_FAINT : MUI_C_BAD);
+    }
+    if (s->scrollX == 0.0f && s->scrollY == 0.0f && !s->isGraphic)
+        MUi_Text("scroll 0,0: no jogo cobre a tela inteira", 924.0f, RowY(9) + 8.0f, 16.0f, MUI_C_HINT);
+    MUi_Text("arraste o numero, roda ou clique e digite", 924.0f, kRight.y + kRight.height - 28.0f, 15.0f, MUI_C_FAINT);
+}
+
+static void DrawStageTab(void)
+{
+    const StageMeta *m = &doc.meta;
+    Label(0, "Zoom");
+    MUi_DrawNum(Half(0, 0), m->defaultZoom, 0.01f);
+    Label(1, "Vel. cam.");
+    MUi_DrawNum(Half(1, 0), m->cameraSpeed, 0.05f);
+    MUi_DrawCheck(CheckAt(2, 0), "Pixel stage", m->isPixelStage != 0);
+    MUi_DrawCheck(CheckAt(2, 1), "Sem GF", m->hideGirlfriend != 0);
+    static const char *const names[5] = {"BF", "GF", "Oponente", "Cam. BF", "Cam. opon."};
+    const float *pairs[5] = {m->boyfriend, m->girlfriend, m->opponent, m->cameraBoyfriend, m->cameraOpponent};
+    for (int i = 0; i < 5; ++i) {
+        Label(3 + i, names[i]);
+        MUi_DrawNum(Half(3 + i, 0), pairs[i][0], 1.0f);
+        MUi_DrawNum(Half(3 + i, 1), pairs[i][1], 1.0f);
+    }
+    MUi_DrawCheck(CheckAt(8, 0), "Personagens (H)", showChars);
+    MUi_DrawCheck(CheckAt(8, 1), "Moldura (G)", showFrame);
+    MUi_Text("Cam.: deslocamento do foco da camera", 924.0f, RowY(9) + 8.0f, 15.0f, MUI_C_FAINT);
 }
 
 static void Edit_Draw(void)
 {
-    SE_Text("STAGE EDITOR", 20.0f, 14.0f, 22.0f, WHITE);
-    Edit_DrawInfo();
-    Edit_DrawCanvas();
-    Edit_DrawList();
-    Panel_Draw();
-    DrawStatus();
-    Edit_DrawHelp();
-}
+    char detail[MODED_NAME_MAX + MODED_ROOT_MAX + 8];
+    snprintf(detail, sizeof(detail), "%s  [%s]", current.name, ModEd_RootLabel(current.root));
+    MUi_DrawTopBar("Stage Editor", detail, Dirty());
+    MUi_DrawButton(kBtnFit, "Enquadrar (F)", MUI_BTN_NORMAL);
+    MUi_DrawButton(kBtnList, "Lista (Esc)", MUI_BTN_NORMAL);
+    MUi_DrawButton(kBtnSave, "Salvar", Dirty() ? MUI_BTN_ACCENT : MUI_BTN_NORMAL);
 
-static void Add_Draw(void)
-{
-    SE_Text("adicionar imagem", SE_LIST_X, SE_LIST_Y - 26.0f, 20.0f, YELLOW);
-    SE_Text(addFilter, SE_LIST_X + 4.0f, SE_LIST_Y - 2.0f, 18.0f, WHITE);
-    for (int row = 0; row < SE_LIST_ROWS; ++row) {
-        const int idx = addTop + row;
-        if (idx >= addVisibleCount)
-            break;
-        const float y = SE_LIST_Y + 22.0f + row * SE_LIST_ROW_H;
-        const bool on = idx == addSel;
-        if (on)
-            DrawRectangle((int)SE_LIST_X - 4, (int)y - 1, (int)SE_LIST_W + 8, (int)SE_LIST_ROW_H, (Color){42, 209, 86, 60});
-        SE_Text(imageNames[addVisible[idx]], SE_LIST_X, y, 18.0f, on ? GREEN : WHITE);
-    }
-    if (addVisibleCount == 0)
-        SE_Text("nenhuma imagem em images/", SE_LIST_X, SE_LIST_Y + 22.0f, 18.0f, GRAY);
+    DrawCanvas();
+    DrawSpriteList();
+    MUi_DrawPanel(kRight);
+    MUi_DrawTabs(kTabs, kTabNames, TAB_COUNT, tab);
+    if (tab == TAB_SPRITE)
+        DrawSpriteTab();
+    else
+        DrawStageTab();
+
+    MUi_DrawBottomBar("setas move (Shift x10)  PgUp/PgDn sel.  Ctrl+Up/Dn ordem  E frente  Ctrl+D dup.  Del  A +img  "
+                      "dir. arrasta vista  roda zoom  Shift+roda escala  Ctrl+Z/Y  Ctrl+S");
 }
 
 static void StageEditor_Draw([[maybe_unused]] RayScene *scene)
 {
-    BeginUi();
-    DrawBackdrop();
+    MUi_DrawBackdrop();
     if (mode == SE_PICK) {
-        Pick_Draw();
+        MUi_DrawTopBar("Stage Editor", "escolha um stage", false);
+        MUi_DrawButton(kBtnNew, "Novo (Ctrl+N)", MUI_BTN_ACCENT);
+        MUi_DrawPicker(&stagePicker, kPicker, StageLabel, "buscar stage...",
+                       entryCount ? "nenhum stage com esse nome: Enter cria um novo" : "nenhum stage: digite um nome e Enter");
+        MUi_DrawBottomBar("digite para buscar   Enter/clique abre   Ctrl+N novo   Esc volta");
+    } else if (mode == SE_ADD) {
+        MUi_DrawTopBar("Stage Editor", "adicionar imagem (images/)", Dirty());
+        MUi_DrawButton(kBtnNew, "Cancelar", MUI_BTN_NORMAL);
+        MUi_DrawPicker(&imagePicker, kPicker, ImageLabel, "buscar imagem...",
+                       "nenhuma imagem com esse nome: Enter usa o nome digitado");
+        MUi_DrawBottomBar("digite para buscar   Enter/clique adiciona   Esc cancela");
     } else {
         Edit_Draw();
-        if (mode == SE_ADD)
-            Add_Draw();
     }
-    EndUi();
+    MUi_DrawModal();
 }
 
 /* ------------------------------------------------------------------------- */
@@ -1105,48 +1256,26 @@ static void StageEditor_Draw([[maybe_unused]] RayScene *scene)
 
 static void StageEditor_Create([[maybe_unused]] RayScene *scene)
 {
-    Render_DefaultRGT(&bg);
-    bg.objType = RGT_IMAGE;
-    bg.image = MenuBackground_Get();
-
-    uiCam = (Camera2D){
-        .target = {640.0f, 360.0f},
-        .offset = {0.0f, 0.0f},
-        .rotation = 0.0f,
-        .zoom = 1.0f
-    };
-
-    rootCount = ModEd_Roots(roots, MODED_ROOTS_MAX);
-    memset(sprites, 0, sizeof(sprites));
-    memset(tex, 0, sizeof(tex));
-    spriteCount = 0;
-    sel = -1;
-    listTop = 0;
-    dirty = false;
-    escArmed = false;
-    dragging = false;
+    MUi_Reset();
+    if (ModEd_Roots(roots, MODED_ROOTS_MAX) == 0)
+        snprintf(roots[0], sizeof(roots[0]), "assets");
+    memset(&doc, 0, sizeof(doc));
+    memset(&current, 0, sizeof(current));
+    memset(&stagePicker, 0, sizeof(stagePicker));
+    ResetHistory();
+    selKind = dragKind = SEL_NONE;
     panning = false;
-    camTarget = (Vector2){0.0f, 0.0f};
+    animTime = 0.0f;
+    camTarget = (Vector2){640.0f, 360.0f};
     camZoom = 0.5f;
-    meta = (StageMeta){0};
-
-    mode = SE_PICK;
-    filter[0] = '\0';
-    pickSel = 0;
-    pickTop = 0;
-    entryCount = StageEd_ScanList(entries, STAGEED_LIST_MAX);
-    Rebuild_Pick();
-
-    status[0] = '\0';
-    statusTimer = 0.0f;
-    if (rootCount == 0)
-        SetStatus("nenhuma pasta de mod/assets encontrada");
+    ToPick();
 }
 
 static void StageEditor_Destroy([[maybe_unused]] RayScene *scene)
 {
-    Textures_FreeAll();
-    bg.image = (Texture2D){0}; /* compartilhada: nao descarrega aqui */
+    Cache_FreeAll();
+    FreeChars();
+    MUi_Reset();
 }
 
 static RayScene stageEditorScene;

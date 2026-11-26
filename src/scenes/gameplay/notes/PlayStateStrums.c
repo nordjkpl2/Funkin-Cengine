@@ -46,7 +46,7 @@ static float StrumY(void) {
 
 static float StrumX(char mustHit, int lane) {
     if (!SCROLL_IS_MIDDLE(gameOptions.scroll))
-        return (mustHit ? 700.0f : 50.0f) + LANE_SPACING * lane;
+        return (mustHit ? 740.0f : 90.0f) + LANE_SPACING * lane;   // simetrico ao centro (~Psych: 92/732)
 
     return mustHit ? bfMiddleX + LANE_SPACING * lane : 50.0f + 55.0f * lane;
 }

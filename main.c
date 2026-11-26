@@ -5,7 +5,7 @@
 #include "scenes/menu/EnterToPlay.h"
  
 int main() { 
-	RayGame_Start("Friday Night Funkin' Cengine");
+	RayGame_Start("Funkin'Cengine");
 	AllScenes_StartGame();
 	EnterToPlay_SetScene(); 
 

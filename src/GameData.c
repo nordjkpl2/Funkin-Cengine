@@ -74,7 +74,7 @@ static const SaveField saveFields[] = {
     SAVE_FIELD(13, zoomFactorUI,       1.0,                  0.1,                10.0),
     SAVE_FIELD(14, zoomFactorGAME,     1.0,                  0.1,                10.0),
     SAVE_FIELD(15, threadLimit,        0,                    0,                  64),
-    SAVE_FIELD(16, scorePosition,      SCORE_POS_PSYCH,      SCORE_POS_CENGINE,  SCORE_POS_PSYCH),
+    SAVE_FIELD(16, scorePosition,      SCORE_POS_PSYCH,      SCORE_POS_CENGINE,  SCORE_POS_TOP),
     SAVE_FIELD(17, healthDrainPlay,    0,                    0,                  1),
     SAVE_FIELD(18, healthDrainBotplay, 0,                    0,                  1),
     SAVE_FIELD(19, strumBgPercent,     0,                    0,                  100),
@@ -94,6 +94,10 @@ static const SaveField saveFields[] = {
     { 33, gameOptions.coopKeys, (uint16_t)sizeof(gameOptions.coopKeys), SF_RAW, 0, 0, 0 },
     SAVE_FIELD(34, timePosition,       TIME_POS_DEFAULT,     TIME_POS_DEFAULT,   TIME_POS_RIGHTDOWN),
     SAVE_FIELD(35, timeStyle,          TIME_STYLE_DEFAULT,   TIME_STYLE_DEFAULT, TIME_STYLE_BAR),
+    SAVE_FIELD(36, showAccuracy,       0,                    0,                  1),
+    SAVE_FIELD(37, timeText,           TIME_TEXT_DEFAULT,    TIME_TEXT_DEFAULT,  TIME_TEXT_ELAPSED),
+    SAVE_FIELD(38, engineMark,         0,                    0,                  1),
+    SAVE_FIELD(39, engineMarkPos,      ENGINE_MARK_POS_DEFAULT, ENGINE_MARK_POS_DEFAULT, ENGINE_MARK_POS_RIGHTUP),
 };
 #define SAVE_FIELD_COUNT (sizeof(saveFields) / sizeof(saveFields[0]))
 

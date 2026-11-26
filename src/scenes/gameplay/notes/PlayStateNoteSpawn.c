@@ -50,6 +50,9 @@ static unsigned short occupied[8][NOTE_OCC_ROWS];  /* (lado, casa) x linha de pi
 static unsigned short occupiedGen = 0;             /* geracao atual; evita memset por frame */
 #define TRAIL_SEGMENT_H 44.0f /* altura do sprite do sustain na escala 1 */
 #define END_SEGMENT_H 64.0f   /* altura do sprite da ponta na escala 1 */
+/* Teto de objetos (cabeca, corpo e ponta) desenhados por frame. As notas vem em ordem de tempo,
+   entao o corte so pega as mais distantes: chart absurdo (spam de sustains) nao explode em draw calls. */
+#define NOTE_DRAW_BUDGET 2048
 
 // Ordena por tempo (qsort): garante notas em ordem para o culling.
 static int Note_CompareChronological(const void* a, const void* b) {
@@ -546,6 +549,8 @@ void PlayStateNoteSpawn_Draw(const PlayStateNoteView* view) {
     const float cutoffTime = time + (900.0f / scrollSpeed);
     const float endHeight = fmaxf(END_SEGMENT_H, 18.0f * view->songSpeed);
 
+    int drawBudget = NOTE_DRAW_BUDGET;
+
     if (++occupiedGen == 0) {   /* wraparound: limpa uma vez a cada 65535 frames */
         memset(occupied, 0, sizeof(occupied));
         occupiedGen = 1;
@@ -590,15 +595,21 @@ void PlayStateNoteSpawn_Draw(const PlayStateNoteView* view) {
             *cell = occupiedGen;
         }
 
+        if (drawBudget <= 0)
+            break;
+
         /* Estado de animacao por lane: notas de lanes alternadas no mesmo trecho
            nao reiniciam a animacao umas das outras (antes voltava ao frame 0 a cada troca). */
         renderNote.currentAnim = laneAnimState[note->id];
         SetAnimIfChanged(&renderNote, Note_Animation(note->id));
 
-        if (note->length > 0)
+        if (note->length > 0) {
             DrawSustain(note, strum, endHeight, scrollSpeed, fullyAbove);
+            drawBudget -= 2;
+        }
 
         if (!note->pressed) {
+            drawBudget--;
             renderNote.scaleX = renderNote.scaleY = HeadScale(note);
             renderNote.color = WHITE;
             DrawLaneObjs(note->id, &renderNote, NULL);

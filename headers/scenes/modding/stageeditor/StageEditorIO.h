@@ -19,8 +19,11 @@ typedef struct {
 /* Stages dos mods ativos e de assets (mesma ordem de busca do jogo). Devolve a quantidade. */
 int StageEd_ScanList(StageEdEntry *out, int capacity);
 
-/* Imagens disponiveis em <raiz>/images/ (mods e assets), sem extensao. */
+/* Imagens disponiveis em <raiz>/images/ e um nivel de subpasta ("pasta/nome"), sem extensao. */
 int StageEd_ScanImages(char out[][MODED_NAME_MAX], int capacity);
+
+/* Nome de imagem aceito no .lua: letras, digitos, - _ . espaco e / (sem .. nem / inicial). */
+bool StageEd_IsImageName(const char *image);
 
 /* Caminho da imagem como o jogo procura: <raiz>/images/<nome>.png, senao assets/images. */
 bool StageEd_ImagePath(const char *root, const char *image, char *out, size_t capacity);

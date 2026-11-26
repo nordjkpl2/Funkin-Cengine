@@ -7,6 +7,8 @@
 #include "Scene.h"
 /* // OpenGL Version */
 #define GLSL_VERSION 330
+/* Nome e versao da engine (menu principal e codigo secreto das opcoes) */
+#define ENGINE_VERSION_TEXT "FN/FCv0060"
 
 typedef struct RayGame RayGame;
 

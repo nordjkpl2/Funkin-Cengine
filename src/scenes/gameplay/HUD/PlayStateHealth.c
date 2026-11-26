@@ -31,7 +31,7 @@ void PlayStateHealth_Init(char top, char mortal) {
     healthbarPadding = 4;
     healthbar.width = 600;
     healthbar.height = 17;
-    healthbar.x = 1200.0f / 2 - healthbar.width / 2;
+    healthbar.x = 1280.0f / 2 - healthbar.width / 2;   /* centro da tela */
     /* base: y 600 (103 px da borda de baixo); topo: mesma distancia de cima */
     healthbar.y = top ? 103 : 600;
 

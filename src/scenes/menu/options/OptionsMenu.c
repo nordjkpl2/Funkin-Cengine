@@ -238,6 +238,49 @@ static bool InputThisFrame(void) {
 
 static void Caches_Refresh(void);
 
+/* Codigo secreto: baixo, direita, baixo, direita, cima, esquerda mostra/esconde o nome e a versao
+ * da engine no canto. Fica ligado ate fechar o jogo (static do arquivo, sobrevive a troca de cena). */
+static const int secretCode[] = {KEY_DOWN, KEY_RIGHT, KEY_DOWN, KEY_RIGHT, KEY_UP, KEY_LEFT};
+#define SECRET_LEN ((int)(sizeof(secretCode) / sizeof(secretCode[0])))
+static int secretStep;
+static bool engineMarkOn;
+static float engineMarkT;   // 0..1: fade/slide de entrada
+
+static void SecretCode_Update(void) {
+    static const int arrows[4] = {KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT};
+    int key = -1;
+    for (int k = 0; k < 4; k++)
+        if (IsKeyPressed(arrows[k])) key = arrows[k];
+    if (key < 0) return;
+
+    if (key == secretCode[secretStep]) secretStep++;
+    else secretStep = key == secretCode[0] ? 1 : 0;
+
+    if (secretStep == SECRET_LEN) {
+        secretStep = 0;
+        engineMarkOn = !engineMarkOn;
+    }
+}
+
+/* Marca da engine (canto inferior direito): desliza e aparece com fade. */
+static void DrawEngineMark(void) {
+    const float target = engineMarkOn ? 1.0f : 0.0f;
+    engineMarkT = Lerp(engineMarkT, target, fminf(1.0f, RayGame_DeltaTime() * 10.0f));
+    if (engineMarkT < 0.01f) return;
+
+    static TextMeasure markMeasure;
+    const int size = 22;
+    const Vector2 ts = TextMeasure_Get(&markMeasure, mainFont, ENGINE_VERSION_TEXT, (float)size, TEXT_SPACING);
+    const float x = 1280.0f - 24.0f - ts.x + (1.0f - engineMarkT) * 40.0f;
+    const float y = SCREEN_H - 40.0f;
+    const unsigned char a = (unsigned char)(255.0f * engineMarkT);
+    const Rectangle box = {x - 12.0f, y - 6.0f, ts.x + 24.0f, ts.y + 12.0f};
+
+    DrawRectangleRounded(box, 0.5f, 8, (Color) {0, 0, 0, (unsigned char)(170.0f * engineMarkT)});
+    DrawRectangleRoundedLinesEx(box, 0.5f, 8, 2.0f, (Color) {OPT_ACCENT.r, OPT_ACCENT.g, OPT_ACCENT.b, (unsigned char)(150.0f * engineMarkT)});
+    DrawOptionText(ENGINE_VERSION_TEXT, x, y, size, (Color) {OPT_ACCENT.r, OPT_ACCENT.g, OPT_ACCENT.b, a}, (Color) {0, 0, 0, a});
+}
+
 static void OptionsMenu_UpdateInput(void) {
     if (InputThisFrame()) bakeDirty = true;
 
@@ -271,6 +314,8 @@ static void OptionsMenu_UpdateInput(void) {
     }
     if (typing || SearchBox_Focused(&search))
         return;
+
+    SecretCode_Update();
 
     if (IsKeyPressed(KEY_BACKSPACE) || IsKeyPressed(KEY_ESCAPE)) {
         if (MusicAutoOn()) MenuMusic_RestoreSaved();   // Auto nao fica tocando fora da aba
@@ -475,6 +520,8 @@ static const char* CurrentHint(void) {
     if (currentOption == OPTION_SHADERS) return "TV, glitch and other screen effects from charts";
     if (currentOption == OPTION_STREAM_JSON) return "less RAM, more CPU: only useful for very large note charts";
     if (currentOption == OPTION_HITSOUND) return "a sound when hit a note";
+    if (currentOption == OPTION_SHOW_ACCURACY) return "hit on time raises the %, early or late lowers it";
+    if (currentOption == OPTION_SCORE_POSITION) return "Left: like Cengine on the left  |  Top: like Psych on top";
     if (currentOption == OPTION_STRUM_BG) return "background in notereceptor";
     if (currentOption == OPTION_GAMEPLAY_EXTRA) return "ENTER: co-op and play as";
     if (currentOption == OPTION_WARNS) return "ENTER: loading warnings (dev info)";
@@ -568,6 +615,7 @@ static void OptionsMenu_Draw([[maybe_unused]] RayScene* scene) {
         EndBlendMode();
     }
 
+    DrawEngineMark();
     SearchBox_Draw(&search, mainFont);
 
     if (capturing)

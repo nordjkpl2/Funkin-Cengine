@@ -15,6 +15,14 @@ static int score;
 static int misses;
 static PlayStatePlayerInputEvents events;
 
+/* Precisao estilo Psych: soma do peso de cada acerto / notas jogadas (acertos + misses). */
+static float hitWeight;
+static int notesPlayed;
+static const float ratingWeight[4] = {
+    [PLAYER_RATING_SHIT] = 0.0f, [PLAYER_RATING_BAD] = 0.34f,
+    [PLAYER_RATING_GOOD] = 0.67f, [PLAYER_RATING_SICK] = 1.0f,
+};
+
 void PlayStatePlayerInput_SetEvents(const PlayStatePlayerInputEvents* newEvents) {
     events = *newEvents;
 }
@@ -22,11 +30,23 @@ void PlayStatePlayerInput_SetEvents(const PlayStatePlayerInputEvents* newEvents)
 void PlayStatePlayerInput_Reset(void) {
     score = 0;
     misses = 0;
+    hitWeight = 0.0f;
+    notesPlayed = 0;
 }
 
 int PlayStatePlayerInput_Score(void) { return score; }
 int PlayStatePlayerInput_Misses(void) { return misses; }
 void PlayStatePlayerInput_AddScore(int amount) { score += amount; }
+
+void PlayStatePlayerInput_CountHit(PlayerRating rating) {
+    hitWeight += ratingWeight[rating];
+    notesPlayed++;
+}
+
+int PlayStatePlayerInput_Accuracy(void) {
+    if (notesPlayed <= 0) return 0;
+    return (int)(hitWeight * 10000.0f / (float)notesPlayed + 0.5f);
+}
 
 /* ------------------------------------------------------------------ */
 /* Quem controla cada lado (Co-Op e Play as)                           */
@@ -77,6 +97,7 @@ static void HitNote(Note* note, float songTime) {
         rating = PLAYER_RATING_SICK;
     }
 
+    PlayStatePlayerInput_CountHit(rating);
     PlayStateHealth_AddForSide(HEALTH_GAIN_HIT, (char)note->mustHit);
     note->pressed = 1;
     events.hit(note, rating);
@@ -88,6 +109,7 @@ void PlayStatePlayerInput_MissNote(Note* note) {
     note->missed = 1;
     PlayStateHealth_AddForSide(-HEALTH_LOSS_MISS, (char)note->mustHit);
     misses++;
+    notesPlayed++;
     if (note->mustHit) events.miss(note->id); // so a nota do lado do BF tem animacao de erro
 }
 
@@ -97,6 +119,7 @@ static void GhostMiss(int slot, int lane) {
 
     PlayStateHealth_AddForSide(-HEALTH_LOSS_MISS, PlayStatePlayerInput_SlotSideBf(slot));
     misses++;
+    notesPlayed++;
     if (PlayStatePlayerInput_SlotSideBf(slot)) events.miss(lane);
 }
 

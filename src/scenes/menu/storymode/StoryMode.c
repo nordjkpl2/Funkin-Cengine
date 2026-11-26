@@ -106,9 +106,27 @@ static Camera2D storyCamera;
 static float discAngle;
 static int diffIndex = 1;   // 0 easy, 1 normal, 2 hard (padrao normal, como Psych/original)
 static const char* const DIFF_NAMES[3] = {"EASY", "NORMAL", "HARD"};
+static const Color DIFF_COLORS[3] = {{100, 225, 155, 255}, {255, 205, 92, 255}, {255, 105, 115, 255}};
+
+/* Animacoes curtas (0 -> 1): entrada do titulo ao trocar de week e troca de dificuldade. */
+#define HERO_ANIM_SPEED 4.0f
+#define DIFF_ANIM_SPEED 8.0f
+static float heroAnim = 1.0f;
+static float diffAnim = 1.0f;
+
+static char listCounter[32]; // "WEEK 2 / 7"
+
+/* Linha de atalhos: posicoes medidas uma vez no Create. */
+#define HELP_COUNT 6
+#define HELP_Y 692.0f
+#define HELP_FONT 13.0f
+static const char* const HELP_KEYS[HELP_COUNT] = {"UP / DOWN", "LEFT / RIGHT", "ENTER", "7", "DEL", "ESC"};
+static const char* const HELP_LABELS[HELP_COUNT] = {"SELECT", "DIFFICULTY", "PLAY", "HIDDEN", "DELETE", "BACK"};
+static float helpKeyX[HELP_COUNT], helpKeyW[HELP_COUNT], helpLabelX[HELP_COUNT];
 
 static char deleteConfirm;
 static char deletePrompt[TEXT_MAX];
+static float deletePromptX; // centralizado no modal
 
 static char statusText[128];
 static float statusWidth;
@@ -119,7 +137,9 @@ static char heroTitle[TEXT_MAX];
 static char heroCount[64];
 static char detailsCount[64];
 static char detailsLastScore[48];
-static char detailsLines[MAX_DISPLAY_SONGS][DETAIL_LINE_MAX];
+static char detailsLines[MAX_DISPLAY_SONGS][DETAIL_LINE_MAX]; // so o nome
+static char detailsNums[MAX_DISPLAY_SONGS][4];               // "01".."200"
+static float detailsNameDx; // distancia do numero ao nome
 static int detailsLineCount;
 static int detailsScroll; // primeira linha visivel da lista de faixas
 static char trackDragging; // arrastando a barra de rolagem com o mouse
@@ -194,8 +214,10 @@ static void Details_Build(void) {
 
     for (int i = 0; i < shown; i++) {
         const char* name = week->songs[i].song[0] ? week->songs[i].song : "Unknown";
-        snprintf(detailsLines[i], DETAIL_LINE_MAX, "%02d  %.17s", i + 1, name);
+        snprintf(detailsNums[i], sizeof(detailsNums[i]), "%02d", i + 1);
+        snprintf(detailsLines[i], DETAIL_LINE_MAX, "%.17s", name);
     }
+    detailsNameDx = MeasureTextEx(mainFont, shown >= 100 ? "000" : "00", DETAIL_FONT, 1.0f).x + 12.0f;
 
     const int lastScore = WeekRun_LastTotal(week);
     if (lastScore > 0)
@@ -250,6 +272,19 @@ static void SelectWeek(int index) {
     StoryCover_Load(selected, weeks + selected);
     Backdrop_Update();
     Details_Build();
+    snprintf(listCounter, sizeof(listCounter), "WEEK %d / %d", selected + 1, weekCount);
+    heroAnim = 0.0f;
+}
+
+/* Posicoes da linha de atalhos: tecla (dentro de uma "tecla" desenhada) e rotulo. */
+static void HelpLayout_Build(void) {
+    float x = 58.0f;
+    for (int i = 0; i < HELP_COUNT; i++) {
+        helpKeyX[i] = x + 6.0f;
+        helpKeyW[i] = MeasureTextEx(mainFont, HELP_KEYS[i], HELP_FONT, 1.0f).x;
+        helpLabelX[i] = helpKeyX[i] + helpKeyW[i] + 14.0f;
+        x = helpLabelX[i] + MeasureTextEx(mainFont, HELP_LABELS[i], HELP_FONT, 1.0f).x + 26.0f;
+    }
 }
 
 static void RefreshWeekList(void) {
@@ -363,7 +398,9 @@ static void StoryMode_Create([[maybe_unused]] RayScene* scene) {
     showHidden = false;
     anchorFile[0] = '\0';
     anchorDir[0] = '\0';
+    diffAnim = 1.0f;
 
+    HelpLayout_Build();
     RefreshWeekList();
     Backdrop_Update();
 
@@ -405,6 +442,8 @@ static void StoryMode_Update([[maybe_unused]] RayScene* scene) {
     discAngle += dt * DISC_SPEED;
     if (discAngle >= TWO_PI)
         discAngle -= TWO_PI;
+    heroAnim = fminf(heroAnim + dt * HERO_ANIM_SPEED, 1.0f);
+    diffAnim = fminf(diffAnim + dt * DIFF_ANIM_SPEED, 1.0f);
 
     if (deleteConfirm) {
         UpdateDeleteConfirm();
@@ -425,10 +464,14 @@ static void StoryMode_Update([[maybe_unused]] RayScene* scene) {
         return;
 
     // Dificuldade: setas esquerda/direita (A/D), com volta, como as setas da Psych.
-    if (IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_A))
+    if (IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_A)) {
         diffIndex = (diffIndex + 2) % 3;
-    if (IsKeyPressed(KEY_RIGHT) || IsKeyPressed(KEY_D))
+        diffAnim = 0.0f;
+    }
+    if (IsKeyPressed(KEY_RIGHT) || IsKeyPressed(KEY_D)) {
         diffIndex = (diffIndex + 1) % 3;
+        diffAnim = 0.0f;
+    }
 
     UpdateTrackScrollInput();
 
@@ -440,7 +483,10 @@ static void StoryMode_Update([[maybe_unused]] RayScene* scene) {
         SelectWeek((selected - 1 + weekCount) % weekCount);
 
     if (IsKeyPressed(KEY_DELETE) || IsKeyPressed(KEY_SLASH) || IsKeyPressed(KEY_KP_DIVIDE)) {
-        snprintf(deletePrompt, sizeof(deletePrompt), "DELETE %.80s?", weeks[selected].title);
+        char prompt[TEXT_MAX];
+        snprintf(prompt, sizeof(prompt), "DELETE %.80s?", WeekTitle(weeks + selected));
+        FitTitle(prompt, 30.0f, 600.0f, deletePrompt); // cabe no modal
+        deletePromptX = (SCREEN_W - MeasureTextEx(mainFont, deletePrompt, 30.0f, 1.5f).x) * 0.5f;
         deleteConfirm = 1;
         return;
     }
@@ -460,7 +506,18 @@ static void StoryMode_Update([[maybe_unused]] RayScene* scene) {
 
 static void DrawPanel(Rectangle rect, Color fill, Color border) {
     DrawRectangleRounded(rect, 0.045f, 8, fill);
-    DrawRectangleLinesEx(rect, 1.0f, border);
+    DrawRectangleRoundedLinesEx(rect, 0.045f, 8, 1.0f, border); // borda segue os cantos arredondados
+}
+
+/* Curva de saida cubica: rapida no inicio, assenta no fim. */
+static float EaseOut(float t) {
+    const float u = 1.0f - t;
+    return 1.0f - u * u * u;
+}
+
+/* Pulso 0..1 para brilhos. Multiplo inteiro de discAngle: continuo quando ele volta a 0. */
+static float Pulse(void) {
+    return 0.5f + 0.5f * sinf(discAngle * 8.0f);
 }
 
 /* Fundo em tela cheia (recorte), capa inteira por cima, e gradientes para leitura. */
@@ -496,26 +553,38 @@ static void DrawDisc(void) {
     DrawCircleV(marker, 2.0f, COLOR_ACCENT);
 }
 
-/* Titulo grande da week selecionada, com sombra, e contagem logo abaixo. */
+/*
+ * Titulo grande da week selecionada (entra deslizando ao trocar de week), contagem e
+ * seletor de dificuldade "< NORMAL >" na cor da dificuldade. Formas primeiro, depois textos.
+ */
 static void DrawHero(void) {
-    // Seletor de dificuldade ao lado da contagem: "< NORMAL >". Formas primeiro, depois os textos.
     static TextMeasure countMeasure, diffMeasure;   // textos mudam so ao trocar de week/dificuldade
+    const Color diffColor = DIFF_COLORS[diffIndex];
     const float countW = TextMeasure_Get(&countMeasure, mainFont, heroCount, 16.0f, 1.5f).x;
     const float diffX = HERO_TITLE_X + 2.0f + countW + 26.0f;
     const Rectangle pill = {diffX - 10.0f, HERO_COUNT_Y - 5.0f,
                             TextMeasure_Get(&diffMeasure, mainFont, DIFF_NAMES[diffIndex], 16.0f, 1.5f).x + 58.0f, 26.0f};
-    DrawRectangleRounded(pill, 0.5f, 8, (Color) {255, 205, 92, 34});
-    DrawRectangleRoundedLinesEx(pill, 0.5f, 8, 1.0f, (Color) {255, 205, 92, 150});
+    const float enter = EaseOut(heroAnim);
+    const float titleX = HERO_TITLE_X - (1.0f - enter) * 28.0f;
+    const float diffY = HERO_COUNT_Y - (1.0f - EaseOut(diffAnim)) * 6.0f;
 
-    DrawTextEx(mainFont, heroTitle, (Vector2) {HERO_TITLE_X + 3.0f, HERO_TITLE_Y + 3.0f},
-               HERO_TITLE_SIZE, 1.5f, (Color) {0, 0, 0, 190});
-    DrawTextEx(mainFont, heroTitle, (Vector2) {HERO_TITLE_X, HERO_TITLE_Y},
-               HERO_TITLE_SIZE, 1.5f, COLOR_TEXT);
+    DrawRectangleRounded(pill, 0.5f, 8, Fade(diffColor, 0.14f));
+    DrawRectangleRoundedLinesEx(pill, 0.5f, 8, 1.0f, Fade(diffColor, 0.6f));
+    // Traco de acento sob a contagem, cresce junto com a entrada do titulo.
+    DrawRectangleRounded((Rectangle) {HERO_TITLE_X + 2.0f, HERO_COUNT_Y + 34.0f, 28.0f + 52.0f * enter, 3.0f},
+                         1.0f, 4, COLOR_ACCENT);
+
+    DrawTextEx(mainFont, "STORY MODE", (Vector2) {HERO_TITLE_X + 2.0f, HERO_TITLE_Y - 18.0f},
+               13.0f, 4.0f, Fade(COLOR_ACCENT, 0.8f));
+    DrawTextEx(mainFont, heroTitle, (Vector2) {titleX + 3.0f, HERO_TITLE_Y + 3.0f},
+               HERO_TITLE_SIZE, 1.5f, Fade(BLACK, 0.75f * enter));
+    DrawTextEx(mainFont, heroTitle, (Vector2) {titleX, HERO_TITLE_Y},
+               HERO_TITLE_SIZE, 1.5f, Fade(COLOR_TEXT, enter));
     DrawTextEx(mainFont, heroCount, (Vector2) {HERO_TITLE_X + 2.0f, HERO_COUNT_Y},
                16.0f, 1.5f, COLOR_ACCENT);
-    DrawTextEx(mainFont, "<", (Vector2) {diffX, HERO_COUNT_Y}, 16.0f, 1.5f, COLOR_ACCENT);
-    DrawTextEx(mainFont, DIFF_NAMES[diffIndex], (Vector2) {diffX + 20.0f, HERO_COUNT_Y}, 16.0f, 1.5f, COLOR_TEXT);
-    DrawTextEx(mainFont, ">", (Vector2) {pill.x + pill.width - 18.0f, HERO_COUNT_Y}, 16.0f, 1.5f, COLOR_ACCENT);
+    DrawTextEx(mainFont, "<", (Vector2) {diffX, HERO_COUNT_Y}, 16.0f, 1.5f, diffColor);
+    DrawTextEx(mainFont, DIFF_NAMES[diffIndex], (Vector2) {diffX + 20.0f, diffY}, 16.0f, 1.5f, COLOR_TEXT);
+    DrawTextEx(mainFont, ">", (Vector2) {pill.x + pill.width - 18.0f, HERO_COUNT_Y}, 16.0f, 1.5f, diffColor);
 }
 
 /* Retangulo da linha i; false se ela nao cabe inteira na area da lista. */
@@ -541,16 +610,13 @@ static void DrawWeekRowShapes(int i) {
                          0.16f, 8, (Color) {3, 4, 10, 110});
 
     if (isSelected) {
-        // Brilho dourado por fora, fundo com faixa clara no topo (simula gradiente) e borda.
-        DrawRectangleRounded((Rectangle) {row.x - 3.0f, row.y - 3.0f, row.width + 6.0f, row.height + 6.0f},
-                             0.2f, 8, (Color) {255, 205, 92, 34});
+        // Brilho dourado pulsando por fora, fundo com faixa clara no topo (simula gradiente) e borda.
+        DrawRectangleRounded((Rectangle) {row.x - 4.0f, row.y - 4.0f, row.width + 8.0f, row.height + 8.0f},
+                             0.22f, 8, Fade(COLOR_ACCENT, 0.08f + 0.1f * Pulse()));
         DrawRectangleRounded(row, 0.16f, 8, (Color) {44, 38, 62, 248});
         DrawRectangleRounded((Rectangle) {row.x + 1.0f, row.y + 1.0f, row.width - 2.0f, row.height * 0.5f},
                              0.3f, 8, (Color) {255, 255, 255, 16});
         DrawRectangleRoundedLinesEx(row, 0.16f, 8, 1.5f, (Color) {255, 205, 92, 220});
-        // Barra de acento arredondada a esquerda.
-        DrawRectangleRounded((Rectangle) {row.x + 8.0f, row.y + 14.0f, 4.0f, ROW_BOX_H - 28.0f},
-                             1.0f, 4, COLOR_ACCENT);
     } else {
         DrawRectangleRounded(row, 0.16f, 8, (Color) {14, 18, 33, 200});
         DrawRectangleRoundedLinesEx(row, 0.16f, 8, 1.0f, (Color) {70, 84, 120, 110});
@@ -570,9 +636,9 @@ static void DrawWeekRowText(int i) {
     const bool isSelected = i == selected;
     const WeekRowText* text = rowTexts + i;
 
-    // Seta ">" no lugar do seletor, como no freeplay.
+    // Seta ">" no lugar do seletor, como no freeplay, balancando de leve.
     if (isSelected)
-        DrawTextEx(mainFont, ">", (Vector2) {row.x + 2.0f, row.y + 14.0f}, 34.0f, 1.0f, COLOR_ACCENT);
+        DrawTextEx(mainFont, ">", (Vector2) {row.x + 3.0f + 3.0f * Pulse(), row.y + 14.0f}, 34.0f, 1.0f, COLOR_ACCENT);
 
     // Titulo, com sombra leve quando selecionado.
     const Vector2 titlePos = {row.x + 25.0f, row.y + 13.0f};
@@ -599,6 +665,9 @@ static void DrawWeekList(void) {
         DrawWeekRowShapes(i);
     for (int i = first; i <= last; ++i)
         DrawWeekRowText(i);
+
+    // Posicao na lista, acima dela.
+    DrawTextEx(mainFont, listCounter, (Vector2) {LIST_X + 2.0f, LIST_Y - 22.0f}, 13.0f, 3.0f, COLOR_MUTED);
 }
 
 static int TrackRowsTotal(void) {
@@ -689,8 +758,9 @@ static void DrawTrackTexts(void) {
         const int column = i % DETAIL_COLUMNS;
         if (row < 0 || row >= visible) continue;
 
-        DrawTextEx(mainFont, detailsLines[i],
-                   (Vector2) {listX + (float)column * DETAIL_COLUMN_W, listY + (float)row * DETAIL_ROW_H},
+        const Vector2 pos = {listX + (float)column * DETAIL_COLUMN_W, listY + (float)row * DETAIL_ROW_H};
+        DrawTextEx(mainFont, detailsNums[i], pos, DETAIL_FONT, 1.0f, Fade(COLOR_ACCENT, 0.7f));
+        DrawTextEx(mainFont, detailsLines[i], (Vector2) {pos.x + detailsNameDx, pos.y},
                    DETAIL_FONT, 1.0f, COLOR_TEXT);
     }
 }
@@ -700,6 +770,8 @@ static void DrawWeekDetails(void) {
     const float firstX = DETAILS_X + 18.0f;
 
     DrawPanel((Rectangle) {DETAILS_X, DETAILS_Y, DETAILS_W, DETAILS_H}, COLOR_PANEL, COLOR_BORDER);
+    // Linha separando o cabecalho da lista.
+    DrawRectangle((int)firstX, (int)(DETAILS_Y + 30.0f), (int)(DETAILS_W - 36.0f), 1, Fade(COLOR_BORDER, 0.5f));
     DrawTrackScrollbar();
 
     DrawTextEx(mainFont, detailsCount, (Vector2) {firstX, DETAILS_Y + 10.0f}, 14.0f, 1.0f, COLOR_ACCENT);
@@ -717,9 +789,10 @@ static void DrawWeekDetails(void) {
 static void DrawDeleteModal(void) {
     DrawRectangle(0, 0, SCREEN_W, SCREEN_H, (Color) {0, 0, 0, 165});
     DrawPanel((Rectangle) {300.0f, 260.0f, 680.0f, 175.0f}, (Color) {27, 20, 34, 250}, COLOR_DANGER);
-    DrawTextEx(mainFont, deletePrompt, (Vector2) {350.0f, 294.0f}, 30.0f, 1.5f, COLOR_TEXT);
-    DrawTextEx(mainFont, "Y  CONFIRM", (Vector2) {390.0f, 365.0f}, 19.0f, 1.0f, COLOR_DANGER);
-    DrawTextEx(mainFont, "N  CANCEL", (Vector2) {650.0f, 365.0f}, 19.0f, 1.0f, COLOR_GREEN);
+    DrawRectangle(340, 345, 600, 1, Fade(COLOR_DANGER, 0.35f));
+    DrawTextEx(mainFont, deletePrompt, (Vector2) {deletePromptX, 294.0f}, 30.0f, 1.5f, COLOR_TEXT);
+    DrawTextEx(mainFont, "Y  CONFIRM", (Vector2) {420.0f, 370.0f}, 19.0f, 1.0f, COLOR_DANGER);
+    DrawTextEx(mainFont, "N  CANCEL", (Vector2) {720.0f, 370.0f}, 19.0f, 1.0f, COLOR_GREEN);
 }
 
 static void DrawEmptyState(void) {
@@ -736,9 +809,17 @@ static void DrawStatus(void) {
     DrawTextEx(mainFont, statusText, (Vector2) {75.0f, 654.0f}, 18.0f, 1.0f, COLOR_ACCENT);
 }
 
+/* Atalhos: cada tecla numa "tecla" arredondada, rotulo ao lado. Formas antes dos textos. */
 static void DrawHelpLine(void) {
-    DrawTextEx(mainFont, "UP / DOWN  SELECT     LEFT / RIGHT  DIFFICULTY     ENTER  PLAY     7  HIDDEN     DEL  DELETE     ESC  BACK",
-               (Vector2) {58.0f, 690.0f}, 14.0f, 1.0f, COLOR_MUTED);
+    for (int i = 0; i < HELP_COUNT; i++) {
+        const Rectangle cap = {helpKeyX[i] - 6.0f, HELP_Y - 3.0f, helpKeyW[i] + 12.0f, HELP_FONT + 6.0f};
+        DrawRectangleRounded(cap, 0.35f, 6, (Color) {255, 255, 255, 18});
+        DrawRectangleRoundedLinesEx(cap, 0.35f, 6, 1.0f, (Color) {155, 165, 190, 90});
+    }
+    for (int i = 0; i < HELP_COUNT; i++) {
+        DrawTextEx(mainFont, HELP_KEYS[i], (Vector2) {helpKeyX[i], HELP_Y}, HELP_FONT, 1.0f, COLOR_TEXT);
+        DrawTextEx(mainFont, HELP_LABELS[i], (Vector2) {helpLabelX[i], HELP_Y}, HELP_FONT, 1.0f, COLOR_MUTED);
+    }
 }
 
 static void StoryMode_Draw([[maybe_unused]] RayScene* scene) {

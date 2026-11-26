@@ -65,10 +65,23 @@ int StageEd_ScanList(StageEdEntry *out, int capacity)
     return count;
 }
 
+/* Junta os .png de dir em out (prefixo = "sub/" para subpastas). */
+static int AddImages(const char *dir, const char *prefix, char out[][MODED_NAME_MAX], int count, int capacity)
+{
+    static char names[STAGEED_LIST_MAX][MODED_NAME_MAX];
+    const int n = ModEd_ListStems(dir, ".png", names, STAGEED_LIST_MAX);
+    for (int i = 0; i < n && count < capacity; ++i) {
+        char full[MODED_NAME_MAX * 2];
+        snprintf(full, sizeof(full), "%s%s", prefix, names[i]);
+        if (strlen(full) < MODED_NAME_MAX && !Name_Known(out, count, full))
+            snprintf(out[count++], MODED_NAME_MAX, "%s", full);
+    }
+    return count;
+}
+
 int StageEd_ScanImages(char out[][MODED_NAME_MAX], int capacity)
 {
     static char roots[MODED_ROOTS_MAX][MODED_ROOT_MAX];
-    static char names[STAGEED_LIST_MAX][MODED_NAME_MAX];
     int count = 0;
     if (!out || capacity <= 0)
         return 0;
@@ -77,20 +90,45 @@ int StageEd_ScanImages(char out[][MODED_NAME_MAX], int capacity)
     for (int r = 0; r < rootCount && count < capacity; ++r) {
         char dir[MODED_ROOT_MAX + 16];
         snprintf(dir, sizeof(dir), "%s/images", roots[r]);
+        if (!DirectoryExists(dir))
+            continue;
+        count = AddImages(dir, "", out, count, capacity);
 
-        const int n = ModEd_ListStems(dir, ".png", names, STAGEED_LIST_MAX);
-        for (int i = 0; i < n && count < capacity; ++i) {
-            if (!Name_Known(out, count, names[i]))
-                snprintf(out[count++], MODED_NAME_MAX, "%s", names[i]);
+        /* um nivel de subpasta (images/philly/sky.png -> "philly/sky") */
+        FilePathList files = LoadDirectoryFiles(dir);
+        for (unsigned i = 0; i < files.count && count < capacity; ++i) {
+            if (IsPathFile(files.paths[i]))
+                continue;
+            const char *sub = GetFileName(files.paths[i]);
+            char prefix[MODED_NAME_MAX];
+            if (!ModEd_IsSafeName(sub) || strcmp(sub, "icons") == 0 || strcmp(sub, "menubackgrounds") == 0)
+                continue;
+            snprintf(prefix, sizeof(prefix), "%s/", sub);
+            count = AddImages(files.paths[i], prefix, out, count, capacity);
         }
+        UnloadDirectoryFiles(files);
     }
     return count;
+}
+
+bool StageEd_IsImageName(const char *image)
+{
+    if (!image || !image[0] || image[0] == '/' || strlen(image) >= 128 || strstr(image, ".."))
+        return false;
+    for (const char *p = image; *p; ++p) {
+        const char c = *p;
+        const bool ok = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') ||
+                        c == '-' || c == '_' || c == '.' || c == '/' || c == ' ';
+        if (!ok)
+            return false;
+    }
+    return true;
 }
 
 bool StageEd_ImagePath(const char *root, const char *image, char *out, size_t capacity)
 {
     char path[MODED_ROOT_MAX + MODED_NAME_MAX + 32];
-    if (!image || !image[0] || !ModEd_IsSafeName(image))
+    if (!StageEd_IsImageName(image))
         return false;
 
     if (root && root[0]) {
@@ -215,6 +253,9 @@ static bool WriteJson(const char *path, const StageMeta *meta, char *msg, size_t
     ModEd_PutRealArr2(doc, root, "boyfriend", meta->boyfriend[0], meta->boyfriend[1]);
     ModEd_PutRealArr2(doc, root, "girlfriend", meta->girlfriend[0], meta->girlfriend[1]);
     ModEd_PutRealArr2(doc, root, "opponent", meta->opponent[0], meta->opponent[1]);
+    ModEd_PutRealArr2(doc, root, "camera_boyfriend", meta->cameraBoyfriend[0], meta->cameraBoyfriend[1]);
+    ModEd_PutRealArr2(doc, root, "camera_opponent", meta->cameraOpponent[0], meta->cameraOpponent[1]);
+    ModEd_PutReal(doc, root, "camera_speed", meta->cameraSpeed);
 
     const bool ok = yyjson_mut_write_file(path, doc, YYJSON_WRITE_PRETTY, NULL, NULL);
     yyjson_mut_doc_free(doc);
@@ -229,6 +270,7 @@ static void WriteSpriteLua(FILE *f, const StageSprite *s, int index)
     snprintf(tag, sizeof(tag), "s%d", index);
 
     if (s->isGraphic) {
+        fprintf(f, "makeLuaSprite('%s', '', %.2f, %.2f)\n", tag, s->x, s->y);
         fprintf(f, "makeGraphic('%s', %.0f, %.0f, '#%02X%02X%02X%02X')\n", tag,
                 s->graphicWidth, s->graphicHeight, s->colorR, s->colorG, s->colorB, s->colorA);
     } else if (s->isAnimated) {
