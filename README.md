@@ -1,8 +1,8 @@
 <div align="center">
 
-  # 👒 Friday Night Funkin´ — Cengine
+  # 👒 Funkin´Cengine
 
-  > Performance, All Friday Night Funkin' assets belong to their respective owners.
+  > Performance, All assets belong to their respective owners.
 
 </div>
 
@@ -69,20 +69,21 @@ It’s being developed by me, and I’m writing the code from scratch, so it mig
   ```text
   All Things your 2d (or semi 3d) game/mod needs, Made for Make
   ```
-
-  ⚙️ Backend, performance focus, and be all your need
+  <div align="left">
+  ⚙️ Backend, performance focus, and be all your need for game/mod
+    </div>
 
   </details>
 
   <details>
   <summary><b>——Credits</b></summary>
 
-  <div align="left">
-
   Created by (c)2026 nordjkpl
 
   View License file for View Copyright/License
 
+<div align="left">
+  
   ```text
   All Friday Night Funkin' assets belong to their respective owners
   ```
