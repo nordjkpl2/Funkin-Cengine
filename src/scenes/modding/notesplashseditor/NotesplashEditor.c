@@ -294,7 +294,7 @@ static void SetPrefix(int i)
 static void CopyEntry(void)
 {
     if (draft.count >= NOTESPLASH_MAX) {
-        MUi_SetStatus(MUI_WARN, "limite de %d entradas", NOTESPLASH_MAX);
+        MUi_SetStatus(MUI_WARN, "limit of %d entries", NOTESPLASH_MAX);
         return;
     }
     draft.entries[draft.count] = *Current();
@@ -306,7 +306,7 @@ static void CopyEntry(void)
 static void RemoveEntry(void)
 {
     if (draft.count <= 1) {
-        MUi_SetStatus(MUI_WARN, "precisa ter ao menos 1 entrada");
+        MUi_SetStatus(MUI_WARN, "needs at least 1 entry");
         return;
     }
     const int e = entryList.sel;
@@ -327,7 +327,7 @@ static void SetActive(void)
         return;
     draft.active = entryList.sel;
     dirty = true;
-    MUi_SetStatus(MUI_INFO, "entrada %d vai ser usada na gameplay (salve com Ctrl+S)", draft.active + 1);
+    MUi_SetStatus(MUI_INFO, "entry %d will be used in gameplay (save with Ctrl+S)", draft.active + 1);
 }
 
 /* tint: -1 = padrao do Effects Editor; 0..EFFECTS_TINTS-1 */
@@ -343,11 +343,11 @@ static bool SaveNow(void)
 {
     NotesplashConfig_Set(&draft);
     if (!NotesplashConfig_Save()) {
-        MUi_SetStatus(MUI_ERR, "falha ao gravar assets/notesplashes.json");
+        MUi_SetStatus(MUI_ERR, "could not save assets/notesplashes.json");
         return false;
     }
     dirty = false;
-    MUi_SetStatus(MUI_OK, "gravado em assets/notesplashes.json");
+    MUi_SetStatus(MUI_OK, "saved to assets/notesplashes.json");
     return true;
 }
 
@@ -358,7 +358,7 @@ static void OpenTypedPath(const char *typed)
     snprintf(path, sizeof(path), "%s", typed);
     ModEd_CleanPath(path);
     if (!path[0]) {
-        MUi_PromptReopen("digite um caminho");
+        MUi_PromptReopen("type a path");
         return;
     }
 
@@ -372,26 +372,26 @@ static void OpenTypedPath(const char *typed)
 
     char msg[NOTESPLASH_PATH_MAX + 64];
     if (!FileExists(path)) {
-        snprintf(msg, sizeof(msg), "nao achei: %s", path);
+        snprintf(msg, sizeof(msg), "not found: %s", path);
         MUi_PromptReopen(msg);
         return;
     }
     char png[NOTESPLASH_PATH_MAX];
     if (!NotesplashConfig_TexturePath(path, png, sizeof(png)) || !FileExists(png)) {
-        snprintf(msg, sizeof(msg), "falta o .png do atlas ao lado do .xml");
+        snprintf(msg, sizeof(msg), "missing the atlas .png next to the .xml");
         MUi_PromptReopen(msg);
         return;
     }
     const int sheet = AddSheet(path, "aberto");
     if (sheet < 0) {
-        MUi_PromptReopen(sheetCount >= SHEETS_MAX ? "lista de atlas cheia" : "nao e um atlas Sparrow (TextureAtlas)");
+        MUi_PromptReopen(sheetCount >= SHEETS_MAX ? "atlas list is full" : "not a Sparrow atlas (TextureAtlas)");
         return;
     }
     search[0] = '\0';
     FilterSheets();
     SetSheet(sheet);
     SyncLists();
-    MUi_SetStatus(MUI_OK, "atlas aberto: %s", path);
+    MUi_SetStatus(MUI_OK, "atlas opened: %s", path);
 }
 
 static void Leave(void)
@@ -492,12 +492,14 @@ static void Editor_Update([[maybe_unused]] RayScene *scene)
         HandleModal();
         return;
     }
+    if (MUi_HelpUpdate())
+        return;
 
     /* barra de cima */
     if (MUi_Button(kBtnSave))
         SaveNow();
     if (MUi_Button(kBtnOpen))
-        MUi_PromptOpen(PROMPT_OPEN, "Abrir atlas", "Caminho do .xml (ou .png) Sparrow. Ex.: assets/mods/MeuMod/images/splash.xml", "");
+        MUi_PromptOpen(PROMPT_OPEN, "Open atlas", "Path to the .xml (or .png) Sparrow file. E.g.: assets/mods/MyMod/images/splash.xml", "");
 
     /* entradas */
     const int clickedEntry = MUi_List(&entryList, EntryListRect(), ENTRY_ROW_H, draft.count, NULL);
@@ -543,12 +545,12 @@ static void Editor_Update([[maybe_unused]] RayScene *scene)
         return;
     }
     if (MUi_Ctrl() && IsKeyPressed(KEY_O)) {
-        MUi_PromptOpen(PROMPT_OPEN, "Abrir atlas", "Caminho do .xml (ou .png) Sparrow. Ex.: assets/mods/MeuMod/images/splash.xml", "");
+        MUi_PromptOpen(PROMPT_OPEN, "Open atlas", "Path to the .xml (or .png) Sparrow file. E.g.: assets/mods/MyMod/images/splash.xml", "");
         return;
     }
     if (IsKeyPressed(KEY_ESCAPE)) {
         if (dirty)
-            MUi_ConfirmOpen(CONFIRM_LEAVE, "Sair do Notesplash Editor", "Ha alteracoes nao gravadas.");
+            MUi_ConfirmOpen(CONFIRM_LEAVE, "Leave Notesplash Editor", "There are unsaved changes.");
         else
             Leave();
         return;
@@ -571,17 +573,25 @@ static void Editor_Update([[maybe_unused]] RayScene *scene)
 /* Draw                                                                */
 /* ------------------------------------------------------------------ */
 
+static const MUiHelpRow kHelp[] = {
+    {"Ctrl+O", "open atlas by path"},
+    {"Ctrl+S", "save"},
+    {"Up / Down", "move in active list"},
+    {"Del", "remove entry"},
+    {"Esc", "return to editor menu"},
+};
+
 static void SectionTitle(Rectangle panel, float dy, const char *title, int list)
 {
     MUi_DrawSection(panel.x + 14.0f, panel.y + dy, title);
     if (list >= 0 && activeList == list)
-        MUi_Text("setas", panel.x + panel.width - 62.0f, panel.y + dy + 2.0f, 15.0f, MUI_C_FAINT);
+        MUi_Text("arrows", panel.x + panel.width - 62.0f, panel.y + dy + 2.0f, 15.0f, MUI_C_FAINT);
 }
 
 static void DrawEntries(void)
 {
     MUi_DrawPanel(kLeft);
-    SectionTitle(kLeft, 12.0f, "Entradas", LIST_ENTRIES);
+    SectionTitle(kLeft, 12.0f, "Entries", LIST_ENTRIES);
 
     const Rectangle r = EntryListRect();
     const int rows = MUi_ListRows(r, ENTRY_ROW_H);
@@ -602,15 +612,15 @@ static void DrawEntries(void)
         if (i == draft.active) {
             const Rectangle badge = {row.x + row.width - 72.0f, row.y + 24.0f, 62.0f, 17.0f};
             DrawRectangleRounded(badge, 0.5f, 6, MUI_C_ACCENT);
-            MUi_TextCenter("ATIVA", badge, 13.0f, WHITE);
+            MUi_TextCenter("ACTIVE", badge, 13.0f, WHITE);
         }
     }
     MUi_DrawListEnd(&entryList, r, ENTRY_ROW_H, draft.count);
 
-    MUi_DrawButton(BtnCopy(), "+ Copia", MUI_BTN_NORMAL);
-    MUi_DrawButton(BtnRemove(), "Remover", draft.count > 1 ? MUI_BTN_DANGER : MUI_BTN_OFF);
+    MUi_DrawButton(BtnCopy(), "+ Copy", MUI_BTN_NORMAL);
+    MUi_DrawButton(BtnRemove(), "Remove", draft.count > 1 ? MUI_BTN_DANGER : MUI_BTN_OFF);
     const bool isActive = draft.active == entryList.sel;
-    MUi_DrawButton(BtnActive(), isActive ? "Em uso na gameplay" : "Usar na gameplay",
+    MUi_DrawButton(BtnActive(), isActive ? "In use in gameplay" : "Use in gameplay",
                    isActive ? MUI_BTN_ACTIVE : MUI_BTN_ACCENT);
 }
 
@@ -618,7 +628,7 @@ static void DrawAtlas(void)
 {
     MUi_DrawPanel(kMid);
     SectionTitle(kMid, 12.0f, "Atlas", LIST_SHEETS);
-    MUi_DrawTextField(SearchRect(), search, "buscar atlas...");
+    MUi_DrawTextField(SearchRect(), search, "search atlas...");
 
     const NotesplashEntry *e = Current();
     const Rectangle r = SheetListRect();
@@ -634,9 +644,9 @@ static void DrawAtlas(void)
     }
     MUi_DrawListEnd(&sheetList, r, LIST_ROW_H, visibleCount);
     if (visibleCount == 0)
-        MUi_Text(sheetCount ? "nada com esse nome" : "nenhum atlas: use Abrir (Ctrl+O)", r.x + 10.0f, r.y + 8.0f, 16.0f, MUI_C_FAINT);
+        MUi_Text(sheetCount ? "nothing with that name" : "no atlas: use Open (Ctrl+O)", r.x + 10.0f, r.y + 8.0f, 16.0f, MUI_C_FAINT);
 
-    SectionTitle(kMid, 344.0f, "Animacao", LIST_ANIMS);
+    SectionTitle(kMid, 344.0f, "Animation", LIST_ANIMS);
     const Rectangle a = AnimListRect();
     const int arows = MUi_ListRows(a, LIST_ROW_H);
     MUi_DrawListBegin(a);
@@ -648,7 +658,7 @@ static void DrawAtlas(void)
     }
     MUi_DrawListEnd(&animList, a, LIST_ROW_H, prefixCount);
     if (prefixCount == 0)
-        MUi_Text("atlas sem animacoes", a.x + 10.0f, a.y + 8.0f, 16.0f, MUI_C_FAINT);
+        MUi_Text("atlas has no animations", a.x + 10.0f, a.y + 8.0f, 16.0f, MUI_C_FAINT);
 }
 
 static void DrawPreviewPanel(void)
@@ -669,25 +679,25 @@ static void DrawPreviewPanel(void)
         Render_DrawAnimatedObject(&previewObj);
     MUi_ClipEnd();
     if (previewAnim < 0)
-        MUi_TextCenter("animacao nao encontrada no atlas", (Rectangle){area.x, area.y + area.height - 40.0f, area.width, 30.0f},
+        MUi_TextCenter("animation not found in atlas", (Rectangle){area.x, area.y + area.height - 40.0f, area.width, 30.0f},
                        18.0f, MUI_C_BAD);
 
     const EffectsSplash *cfg = &EffectsConfig_Get()->splash;
     char info[128];
-    snprintf(info, sizeof(info), "escala %d%%  opacidade %d%%  %d fps  (Effects Editor)", cfg->scalePct, cfg->alphaPct, cfg->fps);
+    snprintf(info, sizeof(info), "scale %d%%  opacity %d%%  %d fps  (Effects Editor)", cfg->scalePct, cfg->alphaPct, cfg->fps);
     MUi_Text(info, area.x + 10.0f, area.y + 8.0f, 15.0f, MUI_C_FAINT);
 
-    SectionTitle(kRight, 456.0f, "Cor", -1);
+    SectionTitle(kRight, 456.0f, "Color", -1);
     const int tint = Current()->tint;
     for (int slot = 0; slot <= EFFECTS_TINTS; ++slot) {
         const Rectangle s = SwatchRect(slot);
         const Color c = EffectsConfig_TintColor(slot == 0 ? cfg->tint : slot - 1);
         MUi_DrawSwatch(s, c, tint == slot - 1);
         if (slot == 0)
-            MUi_TextCenter("padrao", s, 14.0f, (Color){20, 16, 40, 255});
+            MUi_TextCenter("default", s, 14.0f, (Color){20, 16, 40, 255});
     }
     char line[96];
-    snprintf(line, sizeof(line), "cor: %s", tint < 0 ? "padrao do Effects Editor" : EffectsConfig_TintName(tint));
+    snprintf(line, sizeof(line), "color: %s", tint < 0 ? "Effects Editor default" : EffectsConfig_TintName(tint));
     MUi_Text(line, kRight.x + 16.0f, kRight.y + 548.0f, 17.0f, MUI_C_DIM);
     MUi_Text(Current()->animset, kRight.x + 16.0f, kRight.y + 580.0f, 15.0f, MUI_C_FAINT);
 }
@@ -696,14 +706,15 @@ static void Editor_Draw([[maybe_unused]] RayScene *scene)
 {
     MUi_DrawBackdrop();
     MUi_DrawTopBar("Notesplash Editor", "assets/notesplashes.json", dirty);
-    MUi_DrawButton(kBtnOpen, "Abrir (Ctrl+O)", MUI_BTN_NORMAL);
-    MUi_DrawButton(kBtnSave, "Salvar", dirty ? MUI_BTN_ACCENT : MUI_BTN_NORMAL);
+    MUi_DrawButton(kBtnOpen, "Open (Ctrl+O)", MUI_BTN_NORMAL);
+    MUi_DrawButton(kBtnSave, "Save", dirty ? MUI_BTN_ACCENT : MUI_BTN_NORMAL);
 
     DrawEntries();
     DrawAtlas();
     DrawPreviewPanel();
 
-    MUi_DrawBottomBar("Ctrl+O abre atlas por caminho   Ctrl+S salva   setas: lista ativa   Del remove entrada   Esc volta");
+    MUi_DrawBottomBar();
+    MUi_DrawHelp("Notesplash Editor - shortcuts", kHelp, (int)(sizeof(kHelp) / sizeof(kHelp[0])));
     MUi_DrawModal();
 }
 

@@ -201,7 +201,7 @@ bool StageEd_Load(const StageEdEntry *entry, StageSprite *sprites, int capacity,
         if (msg && msgCap)
             snprintf(msg, msgCap, "carregado: %d objetos", n);
     } else if (msg && msgCap) {
-        snprintf(msg, msgCap, "stage novo (sem .lua ainda)");
+        snprintf(msg, msgCap, "new stage (no .lua yet)");
     }
 
     if (n < 0)
@@ -228,7 +228,7 @@ static bool WriteJson(const char *path, const StageMeta *meta, char *msg, size_t
     if (FileExists(path)) {
         source = yyjson_read_file(path, 0, NULL, NULL);
         if (!source) {
-            snprintf(msg, msgCap, "JSON invalido, nao salvei: %s", path);
+            snprintf(msg, msgCap, "invalid JSON, not saved: %s", path);
             return false;
         }
         doc = yyjson_doc_mut_copy(source, NULL);
@@ -237,7 +237,7 @@ static bool WriteJson(const char *path, const StageMeta *meta, char *msg, size_t
     if (!doc)
         doc = yyjson_mut_doc_new(NULL);
     if (!doc) {
-        snprintf(msg, msgCap, "sem memoria para salvar");
+        snprintf(msg, msgCap, "out of memory to save");
         return false;
     }
 
@@ -260,7 +260,7 @@ static bool WriteJson(const char *path, const StageMeta *meta, char *msg, size_t
     const bool ok = yyjson_mut_write_file(path, doc, YYJSON_WRITE_PRETTY, NULL, NULL);
     yyjson_mut_doc_free(doc);
     if (!ok)
-        snprintf(msg, msgCap, "ERRO ao salvar: %s", path);
+        snprintf(msg, msgCap, "ERROR saving: %s", path);
     return ok;
 }
 
@@ -309,13 +309,13 @@ bool StageEd_Save(const StageEdEntry *entry, const StageSprite *sprites, int cou
 
     const bool hadLua = FileExists(luaPath);
     if (hadLua && !ModEd_BackupOnce(luaPath)) {
-        snprintf(msg, msgCap, "nao consegui criar backup de %s", luaPath);
+        snprintf(msg, msgCap, "could not create backup of %s", luaPath);
         return false;
     }
 
     FILE *f = fopen(luaPath, "wb");
     if (!f) {
-        snprintf(msg, msgCap, "ERRO ao salvar: %s", luaPath);
+        snprintf(msg, msgCap, "ERROR saving: %s", luaPath);
         return false;
     }
     fprintf(f, "-- gerado pelo Stage Editor (sprites). Scripts antigos ficam em .lua.bak\n");
@@ -327,11 +327,11 @@ bool StageEd_Save(const StageEdEntry *entry, const StageSprite *sprites, int cou
 
     if (msg && msgCap) {
         if (ok && hadLua)
-            snprintf(msg, msgCap, "salvo: %s (original em .lua.bak)", luaPath);
+            snprintf(msg, msgCap, "saved: %s (original in .lua.bak)", luaPath);
         else if (ok)
-            snprintf(msg, msgCap, "salvo: %s", luaPath);
+            snprintf(msg, msgCap, "saved: %s", luaPath);
         else
-            snprintf(msg, msgCap, "ERRO ao salvar: %s", luaPath);
+            snprintf(msg, msgCap, "ERROR saving: %s", luaPath);
     }
     return ok;
 }

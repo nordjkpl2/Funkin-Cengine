@@ -62,6 +62,7 @@ void Modding_DrawImport(void);
 void Modding_DrawStub(void);
 void Modding_DrawList(void);
 int Modding_TabHit(int i, Vector2 m); /* 1 se o ponto m (coords do mundo) esta sobre a aba i */
+int Modding_OpenHit(Vector2 m); /* 1 se o ponto m esta sobre o botao OPEN do painel */
 /* Formas usam o retangulo branco do atlas da fonte: texto e formas no mesmo draw call.
    Font com texture.id 0 volta a textura padrao de formas (chamar assim no fim do Draw). */
 void Modding_BatchWith(Font font);

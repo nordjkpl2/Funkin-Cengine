@@ -181,7 +181,7 @@ static void Undo(bool redo)
     int *fromN = redo ? &redoCount : &undoCount;
     int *toN = redo ? &undoCount : &redoCount;
     if (*fromN == 0) {
-        MUi_SetStatus(MUI_INFO, redo ? "nada para refazer" : "nada para desfazer");
+        MUi_SetStatus(MUI_INFO, redo ? "nothing to redo" : "nothing to undo");
         return;
     }
     if (*toN == UNDO_MAX) {
@@ -294,7 +294,7 @@ static void CloseCharacter(void)
 static void OpenEntry(const CharEdEntry *entry)
 {
     if (!CharEd_LoadCharacter(entry, &chara)) {
-        MUi_SetStatus(MUI_ERR, "nao consegui carregar %s", entry->name);
+        MUi_SetStatus(MUI_ERR, "could not load %s", entry->name);
         return;
     }
     current = *entry;
@@ -307,7 +307,7 @@ static void OpenEntry(const CharEdEntry *entry)
     SelectAnim(chara.animations.idle >= 0 ? chara.animations.idle : 0);
     CenterView();
     if (chara.object.animationSet.animationCount > ANIM_MAX)
-        MUi_SetStatus(MUI_WARN, "%d animacoes: so as %d primeiras sao editaveis", chara.object.animationSet.animationCount, ANIM_MAX);
+        MUi_SetStatus(MUI_WARN, "%d animations: only the first %d are editable", chara.object.animationSet.animationCount, ANIM_MAX);
     else
         MUi_SetStatus(MUI_OK, "%s: %d animacoes", entry->name, AnimCount());
 }
@@ -318,7 +318,7 @@ static bool SaveCurrent(void)
     MUi_TextBlur();
     DocToChar();
     if (!CharEd_Save(&current, &chara, msg, sizeof(msg))) {
-        MUi_SetStatus(MUI_ERR, "%s", msg[0] ? msg : "falha ao salvar");
+        MUi_SetStatus(MUI_ERR, "%s", msg[0] ? msg : "save failed");
         return false;
     }
     memcpy(&saved, &doc, sizeof(doc));
@@ -329,7 +329,7 @@ static bool SaveCurrent(void)
 static void AskLeave(void)
 {
     if (Dirty())
-        MUi_ConfirmOpen(CONFIRM_LEAVE, "Voltar a lista", "Ha alteracoes nao salvas neste personagem.");
+        MUi_ConfirmOpen(CONFIRM_LEAVE, "Back to list", "There are unsaved changes in this character.");
     else
         CloseCharacter();
 }
@@ -342,7 +342,7 @@ static void Pick_Update(void)
 {
     if (MUi_Button(kBtnRescan) || IsKeyPressed(KEY_F5)) {
         Rescan();
-        MUi_SetStatus(MUI_INFO, "%d personagens", entryCount);
+        MUi_SetStatus(MUI_INFO, "%d characters", entryCount);
     }
     const int pick = MUi_PickerUpdate(&picker, kPicker, entryCount, CharLabel);
     if (pick >= 0)
@@ -510,6 +510,8 @@ static void CharEditor_Update([[maybe_unused]] RayScene *scene)
             CloseCharacter();
         return;
     }
+    if (MUi_HelpUpdate())
+        return;
     if (mode == CE_PICK)
         Pick_Update();
     else
@@ -561,7 +563,7 @@ static void DrawCanvas(void)
     MUi_ClipEnd();
 
     char line[96];
-    snprintf(line, sizeof(line), "vista %d%%%s", (int)(camZoom * 100.0f + 0.5f), paused ? "   PAUSADO" : "");
+    snprintf(line, sizeof(line), "view %d%%%s", (int)(camZoom * 100.0f + 0.5f), paused ? "   PAUSED" : "");
     MUi_TextShadow(line, kCanvas.x + 8.0f, kCanvas.y + kCanvas.height - 24.0f, 15.0f, paused ? MUI_C_HINT : MUI_C_DIM);
     DrawRectangleLinesEx(kCanvas, 1.0f, MUI_C_EDGE);
 }
@@ -569,7 +571,7 @@ static void DrawCanvas(void)
 static void DrawAnimList(void)
 {
     MUi_DrawPanel(kLeft);
-    MUi_DrawSection(kLeft.x + 10.0f, kLeft.y + 10.0f, "Animacoes");
+    MUi_DrawSection(kLeft.x + 10.0f, kLeft.y + 10.0f, "Animations");
     const int count = AnimCount();
     MUi_DrawListBegin(kList);
     const int rows = MUi_ListRows(kList, ANIM_ROW_H);
@@ -584,7 +586,7 @@ static void DrawAnimList(void)
         MUi_TextRight(off, row.x + row.width - 8.0f, row.y + 8.0f, 14.0f, doc.loop[i] ? MUI_C_HINT : MUI_C_FAINT);
     }
     if (count == 0)
-        MUi_TextCenter("sem animacoes", (Rectangle){kList.x, kList.y + 10.0f, kList.width, 24.0f}, 16.0f, MUI_C_FAINT);
+        MUi_TextCenter("no animations", (Rectangle){kList.x, kList.y + 10.0f, kList.width, 24.0f}, 16.0f, MUI_C_FAINT);
     MUi_DrawListEnd(&animList, kList, ANIM_ROW_H, count);
 }
 
@@ -596,17 +598,17 @@ static void Label(int row, const char *text)
 static void DrawPanel(void)
 {
     MUi_DrawPanel(kRight);
-    MUi_DrawSection(924.0f, RowY(0) + 4.0f, "Personagem");
-    Label(1, "Escala");
+    MUi_DrawSection(924.0f, RowY(0) + 4.0f, "Character");
+    Label(1, "Scale");
     MUi_DrawNum(Half(1, 0), doc.scale, 0.01f);
     MUi_DrawCheck(kFlip, "Flip (F)", doc.flip);
-    Label(2, "Posicao");
+    Label(2, "Position");
     MUi_DrawNum(Half(2, 0), doc.posX, 1.0f);
     MUi_DrawNum(Half(2, 1), doc.posY, 1.0f);
     Label(3, "Sing dur.");
     MUi_DrawNum(Half(3, 0), doc.sing, 0.1f);
-    MUi_Text("passos", 1140.0f, RowY(3) + 7.0f, 15.0f, MUI_C_FAINT);
-    Label(4, "Cor vida");
+    MUi_Text("steps", 1140.0f, RowY(3) + 7.0f, 15.0f, MUI_C_FAINT);
+    Label(4, "Health color");
     for (int i = 0; i < 3; ++i)
         MUi_DrawNum(Third(4, i), (float)doc.health[i], 1.0f);
     MUi_DrawSwatch((Rectangle){1218.0f, RowY(4), 34.0f, 30.0f},
@@ -614,7 +616,7 @@ static void DrawPanel(void)
 
     if (animSel >= 0 && animSel < AnimCount()) {
         char title[64];
-        snprintf(title, sizeof(title), "Animacao: %s", Anim(animSel)->name);
+        snprintf(title, sizeof(title), "Animation: %s", Anim(animSel)->name);
         MUi_DrawSection(924.0f, RowY(5) + 10.0f, title);
         Label(6, "Offset");
         MUi_DrawNum(Half(6, 0), doc.offset[animSel].x, 1.0f);
@@ -628,10 +630,10 @@ static void DrawPanel(void)
         snprintf(frame, sizeof(frame), "Frame %u/%d", chara.object.currentAnim.currentFrame + 1, a->frameCount);
         Label(8, frame);
         MUi_DrawButton(FrameBtn(0), "<", MUI_BTN_NORMAL);
-        MUi_DrawButton(FrameBtn(1), "Tocar", MUI_BTN_NORMAL);
+        MUi_DrawButton(FrameBtn(1), "Play", MUI_BTN_NORMAL);
         MUi_DrawButton(FrameBtn(2), ">", MUI_BTN_NORMAL);
-        MUi_DrawButton(FrameBtn(3), "Pausa", paused ? MUI_BTN_ACTIVE : MUI_BTN_NORMAL);
-        MUi_DrawCheck(CheckAt(9, 0), "Ghost da idle (G)", showGhost);
+        MUi_DrawButton(FrameBtn(3), "Pause", paused ? MUI_BTN_ACTIVE : MUI_BTN_NORMAL);
+        MUi_DrawCheck(CheckAt(9, 0), "Idle ghost (G)", showGhost);
     }
 
     /* icone da barra de vida */
@@ -641,7 +643,7 @@ static void DrawPanel(void)
         DrawTexturePro(chara.icon, src, dst, (Vector2){0}, 0.0f, WHITE);
         DrawRectangleRec((Rectangle){1032.0f, dst.y + 40.0f, 220.0f, 18.0f},
                          (Color){(unsigned char)doc.health[0], (unsigned char)doc.health[1], (unsigned char)doc.health[2], 255});
-        MUi_Text(doc.hasHealth ? "barra de vida" : "barra de vida (padrao)", 1032.0f, dst.y + 64.0f, 15.0f, MUI_C_FAINT);
+        MUi_Text(doc.hasHealth ? "health bar" : "health bar (default)", 1032.0f, dst.y + 64.0f, 15.0f, MUI_C_FAINT);
     }
 }
 
@@ -650,28 +652,55 @@ static void Edit_Draw(void)
     char detail[CHARED_NAME_MAX + CHARED_ROOT_MAX + 8];
     snprintf(detail, sizeof(detail), "%s  [%s]", current.name, ModEd_RootLabel(current.root));
     MUi_DrawTopBar("Character Editor", detail, Dirty());
-    MUi_DrawButton(kBtnCenter, "Centralizar (C)", MUI_BTN_NORMAL);
-    MUi_DrawButton(kBtnList, "Lista (Esc)", MUI_BTN_NORMAL);
-    MUi_DrawButton(kBtnSave, "Salvar", Dirty() ? MUI_BTN_ACCENT : MUI_BTN_NORMAL);
+    MUi_DrawButton(kBtnCenter, "Center (C)", MUI_BTN_NORMAL);
+    MUi_DrawButton(kBtnList, "List (Esc)", MUI_BTN_NORMAL);
+    MUi_DrawButton(kBtnSave, "Save", Dirty() ? MUI_BTN_ACCENT : MUI_BTN_NORMAL);
     DrawCanvas();
     DrawAnimList();
     DrawPanel();
-    MUi_DrawBottomBar("W/S anim  setas offset (Shift x10)  Ctrl+setas posicao  arraste: offset (Ctrl: posicao)  "
-                      "Espaco toca  P pausa  , . frame  L loop  F flip  -/= escala  Ctrl+Z/Y  Ctrl+S");
+    MUi_DrawBottomBar();
 }
+
+static const MUiHelpRow kPickHelp[] = {
+    {"type", "search character"},
+    {"Enter / click", "open character"},
+    {"F5", "refresh list"},
+    {"Esc", "return to editor menu"},
+};
+
+static const MUiHelpRow kEditHelp[] = {
+    {"W / S", "previous / next animation"},
+    {"Arrows", "offset (Shift x10)"},
+    {"Ctrl+Arrows", "position"},
+    {"Drag", "offset (Ctrl: position)"},
+    {"Space", "play from start"},
+    {"P", "pause"},
+    {", / .", "previous / next frame"},
+    {"L / F / G", "loop / flip / idle ghost"},
+    {"- / =", "scale"},
+    {"C", "center view"},
+    {"Ctrl+Z / Y", "undo / redo"},
+    {"Ctrl+S", "save"},
+    {"Esc", "return to character list"},
+    {"Wheel", "zoom view"},
+};
 
 static void CharEditor_Draw([[maybe_unused]] RayScene *scene)
 {
     MUi_DrawBackdrop();
     if (mode == CE_PICK) {
-        MUi_DrawTopBar("Character Editor", "escolha um personagem", false);
-        MUi_DrawButton(kBtnRescan, "Atualizar (F5)", MUI_BTN_NORMAL);
-        MUi_DrawPicker(&picker, kPicker, CharLabel, "buscar personagem...",
-                       entryCount ? "nenhum personagem com esse nome" : "nenhum personagem (.animset + png) encontrado");
-        MUi_DrawBottomBar("digite para buscar   Enter/clique abre   F5 atualiza   Esc volta");
+        MUi_DrawTopBar("Character Editor", "choose a character", false);
+        MUi_DrawButton(kBtnRescan, "Refresh (F5)", MUI_BTN_NORMAL);
+        MUi_DrawPicker(&picker, kPicker, CharLabel, "search character...",
+                       entryCount ? "no character with that name" : "no character found (.animset + png)");
+        MUi_DrawBottomBar();
     } else {
         Edit_Draw();
     }
+    if (mode == CE_PICK)
+        MUi_DrawHelp("Character Editor - list", kPickHelp, (int)(sizeof(kPickHelp) / sizeof(kPickHelp[0])));
+    else
+        MUi_DrawHelp("Character Editor - shortcuts", kEditHelp, (int)(sizeof(kEditHelp) / sizeof(kEditHelp[0])));
     MUi_DrawModal();
 }
 

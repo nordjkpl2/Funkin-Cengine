@@ -6,6 +6,7 @@
 #include "scenes/modding/ModdingMenuInternal.h"
 #include "data/modimport/ModImport.h"
 #include "rendering/TextMeasure.h"
+#include "Game.h"
 
 #include <math.h>
 #include <stdio.h>
@@ -67,7 +68,7 @@ static const char *Imp_FitTail(const char *text, float maxW, float size)
 }
 
 /* Quebras de linha de um texto ja medido. As linhas ficam em `packed`, separadas por '\0'. */
-enum { IMP_WRAP_INTRO, IMP_WRAP_DEST, IMP_WRAP_PROGRESS, IMP_WRAP_STATUS, IMP_WRAP_SLOTS };
+enum { IMP_WRAP_INTRO, IMP_WRAP_DEST, IMP_WRAP_PROGRESS, IMP_WRAP_STATUS, IMP_WRAP_DESC, IMP_WRAP_SLOTS };
 
 typedef struct {
     char valid;
@@ -157,7 +158,7 @@ static void Imp_Panel(Rectangle r, const char *title)
     DrawRectangle((int)r.x + 20, (int)r.y + 46, (int)r.width - 40, 1, (Color){255, 255, 255, 40});
 }
 
-#define IMP_CHIP_SLOTS 5
+#define IMP_CHIP_SLOTS 8
 
 /* Tecla + rotulo; devolve o x onde termina. `slot` (0..IMP_CHIP_SLOTS-1) identifica o chip: cada um
  * guarda a medida do proprio texto, que e fixo, entao nao mede de novo a cada frame. */
@@ -416,89 +417,212 @@ static void Modding_DrawHudIcon(float x, float y, float size, Color c)
     DrawRectangle((int)(x + size * 0.38f), (int)(y + h * 0.18f), (int)(size * 0.24f), (int)(size * 0.06f) + 1, c);
 }
 
+/* Palco: moldura + cortinas nos cantos + linha do chao. */
+static void Modding_DrawStageIcon(float x, float y, float size, Color c)
+{
+    const float h = size * 0.8f;
+    DrawRectangleLinesEx((Rectangle){x, y, size, h}, 2.0f, c);
+    DrawTriangle((Vector2){x, y}, (Vector2){x, y + h * 0.7f}, (Vector2){x + size * 0.28f, y}, c);
+    DrawTriangle((Vector2){x + size * 0.72f, y}, (Vector2){x + size, y + h * 0.7f}, (Vector2){x + size, y}, c);
+    DrawRectangle((int)x, (int)(y + h * 0.78f), (int)size, (int)(size * 0.06f) + 1, c);
+}
+
+/* Semana: calendario (cabecalho + grade 3x2). */
+static void Modding_DrawWeekIcon(float x, float y, float size, Color c)
+{
+    const float h = size * 0.85f;
+    const float cell = size * 0.16f;
+    DrawRectangleLinesEx((Rectangle){x, y, size, h}, 2.0f, c);
+    DrawRectangle((int)x, (int)y, (int)size, (int)(h * 0.22f), c);
+    for (int r = 0; r < 2; ++r)
+        for (int k = 0; k < 3; ++k)
+            DrawRectangle((int)(x + size * 0.14f + (float)k * size * 0.27f),
+                          (int)(y + h * 0.36f + (float)r * h * 0.30f), (int)cell, (int)cell, c);
+}
+
+/* Brilho de 4 pontas (losangos finos) centrado em (cx,cy). */
+static void Modding_DrawSparkle(float cx, float cy, float r, Color c)
+{
+    const float w = r * 0.28f;
+    DrawTriangle((Vector2){cx, cy - r}, (Vector2){cx - w, cy}, (Vector2){cx + w, cy}, c);
+    DrawTriangle((Vector2){cx - w, cy}, (Vector2){cx, cy + r}, (Vector2){cx + w, cy}, c);
+    DrawTriangle((Vector2){cx - r, cy}, (Vector2){cx, cy + w}, (Vector2){cx, cy - w}, c);
+    DrawTriangle((Vector2){cx, cy - w}, (Vector2){cx, cy + w}, (Vector2){cx + r, cy}, c);
+}
+
+static void Modding_DrawEffectsIcon(float x, float y, float size, Color c)
+{
+    Modding_DrawSparkle(x + size * 0.42f, y + size * 0.55f, size * 0.42f, c);
+    Modding_DrawSparkle(x + size * 0.84f, y + size * 0.16f, size * 0.16f, c);
+}
+
+/* Splash: circulo central + gotas em volta. */
+static void Modding_DrawSplashIcon(float x, float y, float size, Color c)
+{
+    const float cx = x + size * 0.5f, cy = y + size * 0.5f;
+    DrawCircleV((Vector2){cx, cy}, size * 0.18f, c);
+    for (int i = 0; i < 6; ++i) {
+        const float a = (float)i * (PI / 3.0f) + 0.3f;
+        DrawCircleV((Vector2){cx + cosf(a) * size * 0.38f, cy + sinf(a) * size * 0.38f}, size * 0.08f, c);
+    }
+}
+
 /* Icone de cada aba, na ordem de `tabs`. */
 static void Modding_DrawTabIcon(int tab, float x, float y, float size, Color c)
 {
     switch (tab) {
-        case 0: Modding_DrawMusicNote(x, y, size, c); break;
-        case 1: Modding_DrawPerson(x, y, size, c);    break;
-        case 2:
-        case 3: DrawRectangleLinesEx((Rectangle){x, y, size, size * 0.75f}, 2.0f, c); break;
-        case TAB_HUD: Modding_DrawHudIcon(x, y, size, c); break;
-        default: Modding_DrawDownload(x, y, size, c); break;
+        case 0: Modding_DrawMusicNote(x + size * 0.15f, y, size, c); break;
+        case 1: Modding_DrawPerson(x, y, size, c);      break;
+        case 2: Modding_DrawStageIcon(x, y, size, c);   break;
+        case 3: Modding_DrawWeekIcon(x, y, size, c);    break;
+        case 4: Modding_DrawEffectsIcon(x, y, size, c); break;
+        case 5: Modding_DrawSplashIcon(x, y, size, c);  break;
+        case TAB_HUD: Modding_DrawHudIcon(x, y + size * 0.1f, size, c); break;
+        default: Modding_DrawDownload(x, y, size, c);   break;
     }
 }
 
-static TextMeasure tabMeasure[TAB_COUNT]; // nomes das abas sao fixos
-static const float tabFontSize = 80.0f;
-static const float tabShadow = 5.0f;
+static const char *const tabDesc[TAB_COUNT] = {
+    "Place notes, events and BPM changes for any song.",
+    "Edit animations, offsets, health icons and colors of characters.",
+    "Arrange stage layers, props and camera positions.",
+    "Build story mode weeks: songs, characters and title art.",
+    "Create and tune visual effects used during songs.",
+    "Customize the splash shown when hitting a Sick note.",
+    "Move and style the health bar, score text and other HUD parts.",
+    "Copy mods from a folder into assets/mods."
+};
 
-/* Posicao da aba i (acompanha o offset animado). */
-static Vector2 Modding_TabPosition(int i)
+/* Layout da lista: cards a esquerda (rolam com `offset`), painel de detalhes a direita. */
+#define CARD_X   60.0f
+#define CARD_W   500.0f
+#define CARD_H   62.0f
+#define CARD_GAP 76.0f
+static const Rectangle panelRect = {620.0f, 150.0f, 600.0f, 440.0f};
+static const Rectangle openRect  = {650.0f, 510.0f, 540.0f, 56.0f};
+
+/* 0..1: quanto a aba i esta "em foco" (segue o offset animado). */
+static float Modding_TabFocus(int i)
 {
-    const float distance = (float)i - offset;
-    const float absDistance = (distance < 0.0f) ? -distance : distance;
+    const float d = fabsf((float)i - offset);
+    return d < 1.0f ? 1.0f - d : 0.0f;
+}
 
-    return (Vector2){
-        tabShadow + 150.0f - absDistance * 30.0f,
-        tabShadow + 360.0f + distance * 90.0f
-    };
+static Rectangle Modding_CardRect(int i)
+{
+    return (Rectangle){CARD_X + Modding_TabFocus(i) * 18.0f,
+                       360.0f - CARD_H * 0.5f + ((float)i - offset) * CARD_GAP,
+                       CARD_W, CARD_H};
 }
 
 int Modding_TabHit(int i, Vector2 m)
 {
-    const Vector2 p = Modding_TabPosition(i);
-    const float textW = TextMeasure_Get(&tabMeasure[i], mainFont, tabs[i], tabFontSize, 5).x;
-    const Rectangle r = {p.x - 10.0f, p.y - 10.0f,
-                         textW + 24.0f + tabFontSize + 40.0f, tabFontSize + 20.0f};
-
-    return CheckCollisionPointRec(m, r);
+    return CheckCollisionPointRec(m, Modding_CardRect(i));
 }
 
-/* Formas e texto dividem a textura (Modding_BatchWith), entao as passadas so mantem a ordem
- * sombra -> texto -> icone; tudo sai num draw call. Abas fora da tela nao sao desenhadas. */
+int Modding_OpenHit(Vector2 m)
+{
+    return CheckCollisionPointRec(m, openRect);
+}
+
+static void Modding_DrawCard(int i)
+{
+    const Rectangle r = Modding_CardRect(i);
+    const float f = Modding_TabFocus(i);
+    float a = 1.0f - fabsf((float)i - offset) * 0.2f;
+    char num[8];
+
+    if (r.y < -CARD_H || r.y > 720.0f) return;
+    if (a < 0.15f) a = 0.15f;
+
+    DrawRectangleRounded(r, 0.25f, 8, Fade((Color){12, 12, 20, 255}, 0.75f * a));
+    if (f > 0.0f) {
+        DrawRectangleRounded(r, 0.25f, 8, Fade(selectedColor, 0.22f * f));
+        DrawRectangleRoundedLinesEx(r, 0.25f, 8, 2.0f, Fade(selectedColor, f));
+        DrawRectangleRounded((Rectangle){r.x - 14.0f, r.y + 12.0f, 6.0f, r.height - 24.0f}, 1.0f, 4,
+                             Fade(selectedColor, f));
+    } else {
+        DrawRectangleRoundedLinesEx(r, 0.25f, 8, 1.0f, Fade(WHITE, 0.12f * a));
+    }
+
+    {
+        const Rectangle ib = {r.x + 10.0f, r.y + 9.0f, 44.0f, 44.0f};
+        const Color ic = f > 0.5f ? selectedColor : Fade(fontColor, a);
+        DrawRectangleRounded(ib, 0.3f, 6, f > 0.5f ? Fade(selectedColor, 0.18f) : Fade(WHITE, 0.07f * a));
+        Modding_DrawTabIcon(i, ib.x + 9.0f, ib.y + 9.0f, 26.0f, ic);
+    }
+
+    DrawTextEx(mainFont, tabs[i], (Vector2){r.x + 70.0f, r.y + 15.0f}, 32.0f, 2.0f,
+               f > 0.5f ? fontColor : Fade(fontColor, 0.7f * a));
+    snprintf(num, sizeof(num), "%02d", i + 1);
+    DrawTextEx(mainFont, num, (Vector2){r.x + r.width - 48.0f, r.y + 19.0f}, 24.0f, 1.0f,
+               Fade((Color){150, 150, 160, 255}, a));
+}
+
+static void Modding_DrawDetails(void)
+{
+    const Rectangle p = panelRect;
+    const float k = Modding_TabFocus(selected); // 0 logo apos trocar de aba, 1 quando assentou
+    const float slide = (1.0f - k) * 24.0f;
+    const float ca = 0.3f + 0.7f * k;
+    char line[32];
+
+    /* cabecalho da tela */
+    DrawTextEx(mainFont, "MODDING", (Vector2){p.x, 52.0f}, 56.0f, 4.0f, fontColor);
+    DrawTextEx(mainFont, "Choose a tool to create or edit content", (Vector2){p.x + 2.0f, 112.0f}, 20.0f, 1.0f,
+               (Color){150, 150, 160, 255});
+
+    DrawRectangleRounded(p, 0.06f, 8, Fade((Color){10, 10, 16, 255}, 0.82f));
+    DrawRectangleRoundedLinesEx(p, 0.06f, 8, 2.0f, Fade(selectedColor, 0.55f));
+
+    {
+        const Rectangle ib = {p.x + 30.0f + slide, p.y + 30.0f, 130.0f, 130.0f};
+        DrawRectangleRounded(ib, 0.2f, 8, Fade(selectedColor, 0.16f * ca));
+        DrawRectangleRoundedLinesEx(ib, 0.2f, 8, 2.0f, Fade(selectedColor, ca));
+        Modding_DrawTabIcon(selected, ib.x + 27.0f, ib.y + 27.0f, 76.0f, Fade(selectedColor, ca));
+    }
+    DrawTextEx(mainFont, tabs[selected], (Vector2){p.x + 190.0f + slide, p.y + 52.0f}, 44.0f, 3.0f,
+               Fade(fontColor, ca));
+    snprintf(line, sizeof(line), "TOOL %02d / %02d", selected + 1, TAB_COUNT);
+    DrawTextEx(mainFont, line, (Vector2){p.x + 192.0f + slide, p.y + 108.0f}, 20.0f, 2.0f,
+               Fade(selectedColor, ca));
+
+    DrawRectangle((int)p.x + 30, (int)p.y + 190, (int)p.width - 60, 1, (Color){255, 255, 255, 40});
+    (void)Imp_DrawWrapped(IMP_WRAP_DESC, tabDesc[selected], p.x + 30.0f + slide, p.y + 214.0f,
+                          p.width - 60.0f, 26.0f, Fade(fontColor, 0.9f * ca));
+
+    /* botao abrir (clicavel, ver Modding_OpenHit) */
+    {
+        static TextMeasure openM[2]; // "OPEN" e "IMPORT"
+        const int isImport = selected == TAB_IMPORT;
+        const char *label = isImport ? "IMPORT" : "OPEN";
+        const float tw = TextMeasure_Get(&openM[isImport], mainFont, label, 30.0f, 3.0f).x;
+        const char hover = Modding_OpenHit(RayGame_MouseWorld());
+        const float pulse = 0.85f + 0.15f * sinf((float)GetTime() * 4.0f);
+
+        DrawRectangleRounded(openRect, 0.35f, 8, Fade(selectedColor, hover ? 1.0f : pulse));
+        DrawTextEx(mainFont, label, (Vector2){openRect.x + (openRect.width - tw) * 0.5f, openRect.y + 13.0f},
+                   30.0f, 3.0f, (Color){8, 24, 12, 255});
+    }
+}
+
+/* Formas e texto dividem a textura (Modding_BatchWith): tudo sai num draw call. */
 void Modding_DrawList(void)
 {
+    float x;
+
     Modding_DrawBackground();
+    DrawRectangle(0, 0, 1280, 720, (Color){0, 0, 0, 110});
+    DrawRectangleGradientH(0, 0, 640, 720, (Color){0, 0, 0, 170}, (Color){0, 0, 0, 0});
 
-    Vector2 pos[TAB_COUNT];
-    char shown[TAB_COUNT];
-    Color textCol[TAB_COUNT], shadowCol[TAB_COUNT];
-    float iconX[TAB_COUNT], iconSize[TAB_COUNT];
-    for (int i = 0; i < TAB_COUNT; ++i) {
-        const int selectedItem = (selected == i);
-        textCol[i] = fontColor;
-        shadowCol[i] = outlineColor;
-        pos[i] = Modding_TabPosition(i);
-        shown[i] = pos[i].y > -tabFontSize - 20.0f && pos[i].y < 740.0f;
-        // Selecionado em verde, igual ao menu principal.
-        if (selectedItem) textCol[i] = selectedColor;
-        else textCol[i].a = 150;
-        shadowCol[i].a = selectedItem ? 255 : 100;
-        iconX[i] = pos[i].x - tabShadow + TextMeasure_Get(&tabMeasure[i], mainFont, tabs[i], tabFontSize, 5).x + 24.0f;
-        // icone do selecionado: maior e dentro de uma caixa verde, para destacar a aba ativa
-        iconSize[i] = tabFontSize * (selectedItem ? 0.92f : 0.8f);
-    }
+    for (int i = 0; i < TAB_COUNT; ++i)
+        Modding_DrawCard(i);
 
-    // passada 1: formas (caixa do selecionado)
-    for (int i = 0; i < TAB_COUNT; ++i) {
-        if (selected != i) continue;
-        const Rectangle box = {iconX[i] - 12.0f, pos[i].y - 4.0f, iconSize[i] + 24.0f, iconSize[i] + 20.0f};
-        DrawRectangleRounded(box, 0.3f, 8, Fade(selectedColor, 0.18f));
-        DrawRectangleRoundedLinesEx(box, 0.3f, 8, 3.0f, selectedColor);
-    }
-    // sombra (texto + icone), depois texto e icone por cima
-    for (int i = 0; i < TAB_COUNT; ++i) {
-        if (!shown[i] || shadowCol[i].a == 0) continue;
-        DrawTextEx(mainFont, tabs[i], pos[i], tabFontSize, 5, shadowCol[i]);
-        Modding_DrawTabIcon(i, iconX[i] + tabShadow, pos[i].y + 6.0f, iconSize[i], shadowCol[i]);
-    }
-    for (int i = 0; i < TAB_COUNT; ++i) {
-        if (!shown[i]) continue;
-        DrawTextEx(mainFont, tabs[i], (Vector2){pos[i].x - tabShadow, pos[i].y - tabShadow}, tabFontSize, 5, textCol[i]);
-        Modding_DrawTabIcon(i, iconX[i], pos[i].y - tabShadow + 6.0f, iconSize[i], textCol[i]);
-    }
+    Modding_DrawDetails();
+
+    x = Imp_Chip(5, panelRect.x, 630.0f, "UP/DOWN", "Select", selectedColor, 1);
+    x = Imp_Chip(6, x, 630.0f, "ENTER", "Open", selectedColor, 1);
+    (void)Imp_Chip(7, x, 630.0f, "ESC", "Back", selectedColor, 1);
 
     Render_StopCamera();
 }
-

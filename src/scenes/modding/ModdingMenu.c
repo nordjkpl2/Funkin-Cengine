@@ -186,6 +186,9 @@ static void ModdingMenu_Update([[maybe_unused]] RayScene *scene)
                 hovered = i;
         }
 
+        if (hovered < 0 && Modding_OpenHit(m) && IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
+            clicked = 1;
+
         if (hovered >= 0) {
             if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
                 selected = hovered;

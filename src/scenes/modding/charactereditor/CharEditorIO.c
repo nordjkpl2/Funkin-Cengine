@@ -160,7 +160,7 @@ bool CharEd_Save(const CharEdEntry *entry, const Character *character, char *msg
     if (FileExists(path)) {
         yyjson_doc *source = yyjson_read_file(path, 0, NULL, NULL);
         if (!source) {
-            snprintf(msg, msgCap, "JSON invalido, nao salvei: %s", path);
+            snprintf(msg, msgCap, "invalid JSON, not saved: %s", path);
             return false;
         }
         doc = yyjson_doc_mut_copy(source, NULL);
@@ -169,7 +169,7 @@ bool CharEd_Save(const CharEdEntry *entry, const Character *character, char *msg
     if (!doc)
         doc = yyjson_mut_doc_new(NULL);
     if (!doc) {
-        snprintf(msg, msgCap, "sem memoria para salvar");
+        snprintf(msg, msgCap, "out of memory to save");
         return false;
     }
 
@@ -237,9 +237,9 @@ bool CharEd_Save(const CharEdEntry *entry, const Character *character, char *msg
 
     if (msg && msgCap) {
         if (ok)
-            snprintf(msg, msgCap, "salvo: %s", path);
+            snprintf(msg, msgCap, "saved: %s", path);
         else
-            snprintf(msg, msgCap, "ERRO ao salvar: %s", path);
+            snprintf(msg, msgCap, "ERROR saving: %s", path);
     }
     return ok;
 }

@@ -155,14 +155,14 @@ bool WeekEd_Load(const WeekEdEntry *entry, WeekEdDraft *draft, char *msg, size_t
     yyjson_doc *doc = yyjson_read_file(path, 0, NULL, NULL);
     if (!doc) {
         if (msg && msgCap)
-            snprintf(msg, msgCap, "nao consegui ler: %s", path);
+            snprintf(msg, msgCap, "could not read: %s", path);
         return false;
     }
     yyjson_val *root = yyjson_doc_get_root(doc);
     if (!yyjson_is_obj(root)) {
         yyjson_doc_free(doc);
         if (msg && msgCap)
-            snprintf(msg, msgCap, "JSON nao e um objeto: %s", path);
+            snprintf(msg, msgCap, "JSON is not an object: %s", path);
         return false;
     }
 
@@ -221,7 +221,7 @@ bool WeekEd_Save(const WeekEdEntry *entry, const WeekEdDraft *draft, char *msg, 
     if (FileExists(path)) {
         yyjson_doc *source = yyjson_read_file(path, 0, NULL, NULL);
         if (!source) {
-            snprintf(msg, msgCap, "JSON invalido, nao salvei: %s", path);
+            snprintf(msg, msgCap, "invalid JSON, not saved: %s", path);
             return false;
         }
         doc = yyjson_doc_mut_copy(source, NULL);
@@ -230,7 +230,7 @@ bool WeekEd_Save(const WeekEdEntry *entry, const WeekEdDraft *draft, char *msg, 
     if (!doc)
         doc = yyjson_mut_doc_new(NULL);
     if (!doc) {
-        snprintf(msg, msgCap, "sem memoria para salvar");
+        snprintf(msg, msgCap, "out of memory to save");
         return false;
     }
 
@@ -277,9 +277,9 @@ bool WeekEd_Save(const WeekEdEntry *entry, const WeekEdDraft *draft, char *msg, 
 
     if (msg && msgCap) {
         if (ok)
-            snprintf(msg, msgCap, "salvo: %s", path);
+            snprintf(msg, msgCap, "saved: %s", path);
         else
-            snprintf(msg, msgCap, "ERRO ao salvar: %s", path);
+            snprintf(msg, msgCap, "ERROR saving: %s", path);
     }
     return ok;
 }

@@ -4,7 +4,7 @@
  * Tres abas com campos numericos (arrastar, roda do mouse ou clicar e digitar) e um preview ao vivo
  * com a mesma conta da gameplay. Gravacao: assets/effects.json (Ctrl+S).
  *
- * Controles: Tab/1-3 troca aba, Ctrl+S salva, R restaura a aba, Esc volta (pergunta se ha mudancas).
+ * Controles: 1-3 troca aba, Ctrl+S salva, R restaura a aba, Esc volta (TAB mostra os atalhos).
  */
 
 #include "scenes/modding/effectseditor/EffectsEditor.h"
@@ -46,6 +46,16 @@ typedef struct {
 static const char *const tabNames[TAB_COUNT] = {"Splash", "Popups", "Camera"};
 static const char *const ratingNames[EFFECTS_RATINGS] = {"shit", "bad", "good", "sick"};
 
+static const MUiHelpRow kHelp[] = {
+    {"1 / 2 / 3", "splash / popups / camera tab"},
+    {"Up / Down", "rating (Popups)"},
+    {"Drag / wheel", "change number"},
+    {"Shift", "x10 step"},
+    {"R", "reset current tab"},
+    {"Ctrl+S", "save"},
+    {"Esc", "return to editor menu"},
+};
+
 static const Rectangle kLeft = {16.0f, 62.0f, 560.0f, 620.0f};
 static const Rectangle kRight = {588.0f, 62.0f, 676.0f, 620.0f};
 static const Rectangle kTabs = {32.0f, 78.0f, 528.0f, 38.0f};
@@ -77,14 +87,14 @@ static int BuildFields(Field out[MAX_FIELDS])
     int n = 0;
     switch (tab) {
         case TAB_SPLASH:
-            out[n++] = (Field){"Escala", "%", &draft.splash.scalePct, 10, 300};
-            out[n++] = (Field){"Opacidade", "%", &draft.splash.alphaPct, 0, 100};
+            out[n++] = (Field){"Scale", "%", &draft.splash.scalePct, 10, 300};
+            out[n++] = (Field){"Opacity", "%", &draft.splash.alphaPct, 0, 100};
             out[n++] = (Field){"Velocidade", "fps", &draft.splash.fps, 1, 60};
             out[n++] = (Field){"Deslocamento X", "px", &draft.splash.offsetX, -1000, 1000};
             out[n++] = (Field){"Deslocamento Y", "px", &draft.splash.offsetY, -1000, 1000};
             break;
         case TAB_POPUP:
-            out[n++] = (Field){"Escala", "%", &draft.popups[popupRating].scalePct, 10, 300};
+            out[n++] = (Field){"Scale", "%", &draft.popups[popupRating].scalePct, 10, 300};
             out[n++] = (Field){"Deslocamento X", "px", &draft.popups[popupRating].offsetX, -1000, 1000};
             out[n++] = (Field){"Deslocamento Y", "px", &draft.popups[popupRating].offsetY, -1000, 1000};
             break;
@@ -129,18 +139,18 @@ static void ResetTab(void)
         default:         draft.camera = def.camera; break;
     }
     dirty = true;
-    MUi_SetStatus(MUI_INFO, "aba %s restaurada ao padrao (Ctrl+S grava)", tabNames[tab]);
+    MUi_SetStatus(MUI_INFO, "tab %s reset to default (Ctrl+S saves)", tabNames[tab]);
 }
 
 static bool SaveNow(void)
 {
     EffectsConfig_Set(&draft);
     if (!EffectsConfig_Save()) {
-        MUi_SetStatus(MUI_ERR, "falha ao gravar assets/effects.json");
+        MUi_SetStatus(MUI_ERR, "could not save assets/effects.json");
         return false;
     }
     dirty = false;
-    MUi_SetStatus(MUI_OK, "gravado em assets/effects.json");
+    MUi_SetStatus(MUI_OK, "saved to assets/effects.json");
     return true;
 }
 
@@ -207,7 +217,7 @@ static void DrawSplashPreview(Rectangle area)
     if (splashAnim >= 0)
         Render_DrawAnimatedObject(&splashObj);
     else
-        MUi_TextCenter("splash ativo sem animacao (Notesplash Editor)", (Rectangle){area.x, cy + 80.0f, area.width, 30.0f}, 18.0f, MUI_C_BAD);
+        MUi_TextCenter("active splash has no animation (Notesplash Editor)", (Rectangle){area.x, cy + 80.0f, area.width, 30.0f}, 18.0f, MUI_C_BAD);
 }
 
 static void DrawPopupPreview(Rectangle area)
@@ -215,7 +225,7 @@ static void DrawPopupPreview(Rectangle area)
     if (ratingAnim[popupRating] >= 0)
         Render_DrawAnimatedObject(&popupObj);
     else
-        MUi_TextCenter("ui.animset sem essa animacao", (Rectangle){area.x, area.y + 200.0f, area.width, 30.0f}, 18.0f, MUI_C_BAD);
+        MUi_TextCenter("ui.animset has no such animation", (Rectangle){area.x, area.y + 200.0f, area.width, 30.0f}, 18.0f, MUI_C_BAD);
 }
 
 /* Camera: mundo de referencia 1280x720 visto com o zoom e o deslocamento base da config. */
@@ -268,6 +278,8 @@ static void Editor_Update([[maybe_unused]] RayScene *scene)
             ModdingMenu_SetScene();
         return;
     }
+    if (MUi_HelpUpdate())
+        return;
 
     if (MUi_Button(kBtnSave))
         SaveNow();
@@ -309,13 +321,11 @@ static void Editor_Update([[maybe_unused]] RayScene *scene)
     }
     if (IsKeyPressed(KEY_ESCAPE)) {
         if (dirty)
-            MUi_ConfirmOpen(CONFIRM_LEAVE, "Sair do Effects Editor", "Ha alteracoes nao gravadas.");
+            MUi_ConfirmOpen(CONFIRM_LEAVE, "Leave Effects Editor", "There are unsaved changes.");
         else
             ModdingMenu_SetScene();
         return;
     }
-    if (IsKeyPressed(KEY_TAB))
-        SwitchTab(tab + (MUi_Shift() ? -1 : 1));
     for (int i = 0; i < TAB_COUNT; ++i) {
         if (IsKeyPressed(KEY_ONE + i))
             SwitchTab(i);
@@ -353,23 +363,23 @@ static void DrawFields(void)
     }
 
     if (tab == TAB_SPLASH) {
-        MUi_Text("Cor", kLeft.x + 24.0f, FieldsTop() + 5.0f * ROW_H + 6.0f, 20.0f, MUI_C_TEXT);
+        MUi_Text("Color", kLeft.x + 24.0f, FieldsTop() + 5.0f * ROW_H + 6.0f, 20.0f, MUI_C_TEXT);
         for (int i = 0; i < EFFECTS_TINTS; ++i)
             MUi_DrawSwatch(TintRect(i), EffectsConfig_TintColor(i), draft.splash.tint == i);
         MUi_Text(EffectsConfig_TintName(draft.splash.tint), kLeft.x + 24.0f, FieldsTop() + 5.0f * ROW_H + 86.0f, 17.0f, MUI_C_DIM);
-        MUi_Text("A animacao/atlas do splash vem do Notesplash Editor.", kLeft.x + 24.0f, kLeft.y + kLeft.height - 34.0f, 16.0f, MUI_C_FAINT);
+        MUi_Text("Splash animation/atlas comes from the Notesplash Editor.", kLeft.x + 24.0f, kLeft.y + kLeft.height - 34.0f, 16.0f, MUI_C_FAINT);
     } else if (tab == TAB_CAMERA) {
-        MUi_Text("Zoom e deslocamento base da camera de jogo.", kLeft.x + 24.0f, kLeft.y + kLeft.height - 34.0f, 16.0f, MUI_C_FAINT);
+        MUi_Text("Base zoom and offset of the game camera.", kLeft.x + 24.0f, kLeft.y + kLeft.height - 34.0f, 16.0f, MUI_C_FAINT);
     }
-    MUi_Text("arraste o numero, use a roda ou clique e digite (Shift x10)", kLeft.x + 24.0f, kLeft.y + kLeft.height - 58.0f, 16.0f, MUI_C_FAINT);
+    MUi_Text("drag the number, use the wheel, or click and type (Shift x10)", kLeft.x + 24.0f, kLeft.y + kLeft.height - 58.0f, 16.0f, MUI_C_FAINT);
 }
 
 static void Editor_Draw([[maybe_unused]] RayScene *scene)
 {
     MUi_DrawBackdrop();
     MUi_DrawTopBar("Effects Editor", "assets/effects.json", dirty);
-    MUi_DrawButton(kBtnReset, "Restaurar aba (R)", MUI_BTN_NORMAL);
-    MUi_DrawButton(kBtnSave, "Salvar", dirty ? MUI_BTN_ACCENT : MUI_BTN_NORMAL);
+    MUi_DrawButton(kBtnReset, "Reset tab (R)", MUI_BTN_NORMAL);
+    MUi_DrawButton(kBtnSave, "Save", dirty ? MUI_BTN_ACCENT : MUI_BTN_NORMAL);
 
     MUi_DrawPanel(kLeft);
     MUi_DrawTabs(kTabs, tabNames, TAB_COUNT, tab);
@@ -388,7 +398,8 @@ static void Editor_Draw([[maybe_unused]] RayScene *scene)
         DrawCameraPreview(area);
     MUi_ClipEnd();
 
-    MUi_DrawBottomBar("Tab/1-3 aba   Ctrl+S salva   R restaura a aba   setas: rating (Popups)   Esc volta");
+    MUi_DrawBottomBar();
+    MUi_DrawHelp("Effects Editor - shortcuts", kHelp, (int)(sizeof(kHelp) / sizeof(kHelp[0])));
     MUi_DrawModal();
 }
 

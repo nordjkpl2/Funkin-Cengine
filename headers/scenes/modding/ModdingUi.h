@@ -95,7 +95,13 @@ void  MUi_ClipEnd(void);
 /* ---------------- molduras ---------------- */
 void MUi_DrawBackdrop(void);
 void MUi_DrawTopBar(const char *title, const char *detail, bool dirty);
-void MUi_DrawBottomBar(const char *help);   /* status por cima quando ativo */
+void MUi_DrawBottomBar(void);   /* so status (quando ativo) ou "TAB shortcuts" a direita */
+
+/* ---------------- overlay de atalhos (TAB) ---------------- */
+typedef struct { const char *key; const char *what; } MUiHelpRow;
+bool MUi_HelpOpen(void);
+bool MUi_HelpUpdate(void);   /* Update: TAB abre; TAB/Esc fecha. Devolve true se o editor deve parar aqui */
+void MUi_DrawHelp(const char *title, const MUiHelpRow *rows, int count);   /* Draw: por ultimo */
 void MUi_DrawPanel(Rectangle r);
 void MUi_DrawSection(float x, float y, const char *title);
 void MUi_SetStatus(MUiTone tone, const char *fmt, ...) __attribute__((format(printf, 2, 3)));

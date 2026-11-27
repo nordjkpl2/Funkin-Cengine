@@ -54,13 +54,36 @@ typedef enum {
 } FormId;
 
 static const char *const kFormLabel[F_TEXT_COUNT] = {
-    "Titulo", "Nome curto", "Descricao", "Dificuldades", "Fundo (capa)", "Semana anterior"
+    "Title", "Short name", "Description", "Difficulties", "Background (cover)", "Previous week"
 };
 static const char *const kFormHint[F_TEXT_COUNT] = {
-    "storyName (aparece no Story Mode)", "weekName", "flavor (texto da semana)",
-    "vazio = Easy, Normal, Hard", "menu_<nome>.png em images/menubackgrounds", "vazio = nenhuma"
+    "storyName (shown in Story Mode)", "weekName", "flavor (week text)",
+    "empty = Easy, Normal, Hard", "menu_<name>.png in images/menubackgrounds", "empty = none"
 };
-static const char *const kCharHint[3] = {"oponente", "jogador", "gf"};
+static const MUiHelpRow kHelpPick[] = {
+    {"type", "search week"},
+    {"Enter / click", "open week"},
+    {"Ctrl+O", "open by path"},
+    {"Ctrl+N", "new week"},
+    {"Esc", "return to editor menu"},
+};
+static const MUiHelpRow kHelpSong[] = {
+    {"type", "search song folder"},
+    {"Enter / click", "add song"},
+    {"Esc", "cancel"},
+};
+static const MUiHelpRow kHelpEdit[] = {
+    {"Click + type", "edit field (Ctrl+C / Ctrl+V)"},
+    {"Up / Down", "select song"},
+    {"Ctrl+Up / Down", "reorder song"},
+    {"A", "add song"},
+    {"Del", "remove song"},
+    {"Ctrl+S", "save"},
+    {"Ctrl+O", "open another week"},
+    {"Esc", "back to week list"},
+};
+
+static const char *const kCharHint[3] = {"opponent", "player", "gf"};
 
 /* ------------------------------------------------------------------------- */
 /* Estado                                                                    */
@@ -212,7 +235,7 @@ static void CreateNew(const char *file)
     isNew = true;
     dirty = true;
     EnterEdit();
-    MUi_SetStatus(MUI_INFO, "semana nova em %s/weeks: Ctrl+S salva", current.root);
+    MUi_SetStatus(MUI_INFO, "new week in %s/weeks: Ctrl+S saves", current.root);
 }
 
 static bool SaveCurrent(void)
@@ -238,14 +261,14 @@ static void ToPick(void)
 
 static void AskOpenPath(void)
 {
-    MUi_PromptOpen(PROMPT_OPEN, "Abrir semana", "Caminho do .json da semana. Ex.: assets/mods/MeuMod/weeks/week1.json", "");
+    MUi_PromptOpen(PROMPT_OPEN, "Open week", "Path to the week .json. E.g.: assets/mods/MyMod/weeks/week1.json", "");
 }
 
 static void AskNew(const char *initial)
 {
     char hint[MODED_ROOT_MAX + 96];
     snprintf(hint, sizeof(hint), "Nome do arquivo (letras, numeros, - _ .). Vai para %s/weeks/", roots[0]);
-    MUi_PromptOpen(PROMPT_NEW, "Nova semana", hint, initial);
+    MUi_PromptOpen(PROMPT_NEW, "New week", hint, initial);
 }
 
 static void OpenTypedPath(const char *typed)
@@ -265,38 +288,38 @@ static void OpenTypedPath(const char *typed)
                 return;
             }
         }
-        MUi_PromptReopen("nenhuma semana com esse nome: cole o caminho do .json");
+        MUi_PromptReopen("no week with that name: paste the .json path");
         return;
     }
 
     WeekEdEntry entry = {0};
     char msg[MODED_ROOT_MAX * 2 + 32];
     if (!ModEd_SplitPath(path, "weeks", entry.root, sizeof(entry.root), entry.file, sizeof(entry.file))) {
-        MUi_PromptReopen("o arquivo precisa estar numa pasta weeks/ (ex.: .../weeks/week1.json)");
+        MUi_PromptReopen("the file must be in a weeks/ folder (e.g.: .../weeks/week1.json)");
         return;
     }
     char full[MODED_ROOT_MAX + MODED_NAME_MAX + 16];
     snprintf(full, sizeof(full), "%s/weeks/%s.json", entry.root, entry.file);
     if (!FileExists(full)) {
-        snprintf(msg, sizeof(msg), "nao achei: %s", full);
+        snprintf(msg, sizeof(msg), "not found: %s", full);
         MUi_PromptReopen(msg);
         return;
     }
     snprintf(entry.title, sizeof(entry.title), "%s", entry.file);
     if (!OpenEntry(&entry))
-        MUi_PromptReopen("JSON invalido (veja a barra de status)");
+        MUi_PromptReopen("invalid JSON (see status bar)");
 }
 
 static void TryNew(const char *name)
 {
     if (!ModEd_IsSafeName(name)) {
-        MUi_PromptReopen("nome invalido: use letras, digitos, - _ . (sem espacos)");
+        MUi_PromptReopen("invalid name: use letters, digits, - _ . (no spaces)");
         return;
     }
     char path[MODED_ROOT_MAX + MODED_NAME_MAX + 16];
     snprintf(path, sizeof(path), "%s/weeks/%s.json", roots[0], name);
     if (FileExists(path)) {
-        MUi_PromptReopen("ja existe uma semana com esse nome");
+        MUi_PromptReopen("a week with this name already exists");
         return;
     }
     CreateNew(name);
@@ -322,7 +345,7 @@ static void SelectSong(int i)
 static void AddSong(const char *name)
 {
     if (draft.songCount >= WEEK_MAX_SONGS) {
-        MUi_SetStatus(MUI_WARN, "limite de %d musicas", WEEK_MAX_SONGS);
+        MUi_SetStatus(MUI_WARN, "limit of %d songs", WEEK_MAX_SONGS);
         return;
     }
     WeekEdSong *song = &draft.songs[draft.songCount++];
@@ -487,7 +510,7 @@ static void Song_Update(void)
             AddSong(songPicker.search);
             mode = WK_EDIT;
         } else {
-            MUi_SetStatus(MUI_WARN, "nome de pasta invalido");
+            MUi_SetStatus(MUI_WARN, "invalid folder name");
         }
     } else if (pick == MUI_PICK_BACK) {
         mode = WK_EDIT;
@@ -500,7 +523,7 @@ static void Edit_Update(void)
         SaveCurrent();
     if (MUi_Button(kBtnLeft)) {
         if (dirty)
-            MUi_ConfirmOpen(CONFIRM_OPEN, "Abrir outra semana", "Ha alteracoes nao salvas nesta semana.");
+            MUi_ConfirmOpen(CONFIRM_OPEN, "Open another week", "There are unsaved changes in this week.");
         else
             AskOpenPath();
         return;
@@ -564,21 +587,21 @@ static void Edit_Update(void)
     }
     if (ctrl && IsKeyPressed(KEY_O)) {
         if (dirty)
-            MUi_ConfirmOpen(CONFIRM_OPEN, "Abrir outra semana", "Ha alteracoes nao salvas nesta semana.");
+            MUi_ConfirmOpen(CONFIRM_OPEN, "Open another week", "There are unsaved changes in this week.");
         else
             AskOpenPath();
         return;
     }
     if (ctrl && IsKeyPressed(KEY_N)) {
         if (dirty)
-            MUi_ConfirmOpen(CONFIRM_NEW, "Nova semana", "Ha alteracoes nao salvas nesta semana.");
+            MUi_ConfirmOpen(CONFIRM_NEW, "New week", "There are unsaved changes in this week.");
         else
             AskNew("");
         return;
     }
     if (IsKeyPressed(KEY_ESCAPE)) {
         if (dirty)
-            MUi_ConfirmOpen(CONFIRM_LEAVE, "Voltar a lista", "Ha alteracoes nao salvas nesta semana.");
+            MUi_ConfirmOpen(CONFIRM_LEAVE, "Back to list", "There are unsaved changes in this week.");
         else
             ToPick();
         return;
@@ -602,6 +625,8 @@ static void WeekEditor_Update(RayScene *scene)
 
     if (MUi_ModalActive())
         HandleModal();
+    else if (MUi_HelpUpdate())
+        ; /* overlay de atalhos aberto: o resto para */
     else if (mode == WK_PICK)
         Pick_Update();
     else if (mode == WK_SONG)
@@ -619,21 +644,21 @@ static void WeekEditor_Update(RayScene *scene)
 
 static void Pick_Draw(void)
 {
-    MUi_DrawTopBar("Week Editor", "escolha uma semana", false);
-    MUi_DrawButton(kBtnLeft, "Abrir (Ctrl+O)", MUI_BTN_NORMAL);
-    MUi_DrawButton(kBtnRight, "Nova (Ctrl+N)", MUI_BTN_ACCENT);
-    MUi_DrawPicker(&weekPicker, kPicker, WeekLabel, "buscar semana...",
-                   entryCount ? "nenhuma semana com esse nome: Enter cria uma nova" : "nenhuma semana: Enter cria uma nova");
-    MUi_DrawBottomBar("digite para buscar   Enter/clique abre   Ctrl+O abre por caminho   Ctrl+N nova   Esc volta");
+    MUi_DrawTopBar("Week Editor", "choose a week", false);
+    MUi_DrawButton(kBtnLeft, "Open (Ctrl+O)", MUI_BTN_NORMAL);
+    MUi_DrawButton(kBtnRight, "New (Ctrl+N)", MUI_BTN_ACCENT);
+    MUi_DrawPicker(&weekPicker, kPicker, WeekLabel, "search week...",
+                   entryCount ? "no week with that name: Enter creates a new one" : "no weeks: Enter creates a new one");
+    MUi_DrawBottomBar();
 }
 
 static void Song_Draw(void)
 {
-    MUi_DrawTopBar("Week Editor", "adicionar musica (pasta em songs/)", dirty);
-    MUi_DrawButton(kBtnRight, "Cancelar", MUI_BTN_NORMAL);
-    MUi_DrawPicker(&songPicker, kPicker, SongLabel, "buscar pasta de musica...",
-                   "nenhuma pasta com esse nome: Enter usa o nome digitado");
-    MUi_DrawBottomBar("digite para buscar   Enter/clique adiciona   Esc cancela");
+    MUi_DrawTopBar("Week Editor", "add song (folder in songs/)", dirty);
+    MUi_DrawButton(kBtnRight, "Cancel", MUI_BTN_NORMAL);
+    MUi_DrawPicker(&songPicker, kPicker, SongLabel, "search song folder...",
+                   "no folder with that name: Enter uses the typed name");
+    MUi_DrawBottomBar();
 }
 
 static void DrawCover(void)
@@ -647,39 +672,39 @@ static void DrawCover(void)
                        (Rectangle){box.x + (box.width - w) * 0.5f, box.y + (box.height - h) * 0.5f, w, h},
                        (Vector2){0, 0}, 0.0f, WHITE);
     } else {
-        MUi_TextCenter("sem capa", box, 17.0f, MUI_C_FAINT);
+        MUi_TextCenter("no cover", box, 17.0f, MUI_C_FAINT);
     }
     char line[160];
     const float tx = box.x + box.width + 14.0f;
     snprintf(line, sizeof(line), "menu_%s.png", draft.background[0] ? draft.background : "?");
     MUi_Text(line, tx, box.y + 4.0f, 16.0f, MUI_C_DIM);
-    MUi_Text(coverFound ? "encontrada" : "nao encontrada (usa o fundo padrao)", tx, box.y + 26.0f, 15.0f,
+    MUi_Text(coverFound ? "found" : "not found (uses default background)", tx, box.y + 26.0f, 15.0f,
              coverFound ? MUI_C_OK : MUI_C_HINT);
     snprintf(line, sizeof(line), "arquivo: %s/weeks/%s.json", current.root, current.file);
     MUi_ClipBegin((Rectangle){tx, box.y + 60.0f, kForm.x + kForm.width - tx - 10.0f, 60.0f});
     MUi_Text(line, tx, box.y + 60.0f, 15.0f, MUI_C_FAINT);
-    MUi_Text(isNew ? "(ainda nao salvo)" : "", tx, box.y + 80.0f, 15.0f, MUI_C_HINT);
+    MUi_Text(isNew ? "(not saved yet)" : "", tx, box.y + 80.0f, 15.0f, MUI_C_HINT);
     MUi_ClipEnd();
 }
 
 static void DrawForm(void)
 {
     MUi_DrawPanel(kForm);
-    MUi_DrawSection(kForm.x + 14.0f, kForm.y + 12.0f, "Semana");
+    MUi_DrawSection(kForm.x + 14.0f, kForm.y + 12.0f, "Week");
 
     for (int f = 0; f < F_TEXT_COUNT; ++f) {
         MUi_Text(kFormLabel[f], kForm.x + 20.0f, FormRowY(f) + 8.0f, 18.0f, MUI_C_DIM);
         MUi_DrawTextField(FormField(f), FormText(f), kFormHint[f]);
     }
-    MUi_Text("Personagens", kForm.x + 20.0f, FormRowY(F_TEXT_COUNT) + 8.0f, 18.0f, MUI_C_DIM);
+    MUi_Text("Characters", kForm.x + 20.0f, FormRowY(F_TEXT_COUNT) + 8.0f, 18.0f, MUI_C_DIM);
     for (int i = 0; i < 3; ++i)
         MUi_DrawTextField(CharField(i), draft.chars[i], kCharHint[i]);
 
-    MUi_DrawCheck(CheckRect(0), "Desbloqueada", draft.startUnlocked);
-    MUi_DrawCheck(CheckRect(1), "Esconder no Story", draft.hideStoryMode);
-    MUi_DrawCheck(CheckRect(2), "Esconder no Freeplay", draft.hideFreeplay);
+    MUi_DrawCheck(CheckRect(0), "Unlocked", draft.startUnlocked);
+    MUi_DrawCheck(CheckRect(1), "Hide in Story", draft.hideStoryMode);
+    MUi_DrawCheck(CheckRect(2), "Hide in Freeplay", draft.hideFreeplay);
 
-    MUi_DrawSection(kForm.x + 14.0f, kForm.y + 448.0f, "Capa");
+    MUi_DrawSection(kForm.x + 14.0f, kForm.y + 448.0f, "Cover");
     DrawCover();
 }
 
@@ -687,7 +712,7 @@ static void DrawSongs(void)
 {
     MUi_DrawPanel(kSongs);
     char title[48];
-    snprintf(title, sizeof(title), "Musicas (%d/%d)", draft.songCount, WEEK_MAX_SONGS);
+    snprintf(title, sizeof(title), "Songs (%d/%d)", draft.songCount, WEEK_MAX_SONGS);
     MUi_DrawSection(kSongs.x + 14.0f, kSongs.y + 12.0f, title);
 
     const Rectangle r = SongListRect();
@@ -702,28 +727,28 @@ static void DrawSongs(void)
         MUi_Text(num, row.x + 10.0f, row.y + 8.0f, 17.0f, MUI_C_FAINT);
         const Color c = {(unsigned char)song->color[0], (unsigned char)song->color[1], (unsigned char)song->color[2], 255};
         DrawRectangleRounded((Rectangle){row.x + 38.0f, row.y + 9.0f, 16.0f, 16.0f}, 0.4f, 4, c);
-        MUi_Text(song->name[0] ? song->name : "(sem nome)", row.x + 64.0f, row.y + 6.0f, 19.0f,
+        MUi_Text(song->name[0] ? song->name : "(no name)", row.x + 64.0f, row.y + 6.0f, 19.0f,
                  song->name[0] ? MUI_C_TEXT : MUI_C_BAD);
         MUi_TextRight(song->icon, row.x + row.width - 10.0f, row.y + 9.0f, 15.0f, MUI_C_DIM);
     }
     MUi_DrawListEnd(&songList, r, SONG_ROW_H, draft.songCount);
     if (draft.songCount == 0)
-        MUi_Text("sem musicas: + Musica (A)", r.x + 12.0f, r.y + 10.0f, 18.0f, MUI_C_HINT);
+        MUi_Text("no songs: + Song (A)", r.x + 12.0f, r.y + 10.0f, 18.0f, MUI_C_HINT);
 
-    MUi_DrawButton(SongBtn(0), "+ Musica (A)", MUI_BTN_NORMAL);
-    MUi_DrawButton(SongBtn(1), "Remover", draft.songCount ? MUI_BTN_DANGER : MUI_BTN_OFF);
-    MUi_DrawButton(SongBtn(2), "Subir", songList.sel > 0 ? MUI_BTN_NORMAL : MUI_BTN_OFF);
-    MUi_DrawButton(SongBtn(3), "Descer", songList.sel + 1 < draft.songCount ? MUI_BTN_NORMAL : MUI_BTN_OFF);
+    MUi_DrawButton(SongBtn(0), "+ Song (A)", MUI_BTN_NORMAL);
+    MUi_DrawButton(SongBtn(1), "Remove", draft.songCount ? MUI_BTN_DANGER : MUI_BTN_OFF);
+    MUi_DrawButton(SongBtn(2), "Up", songList.sel > 0 ? MUI_BTN_NORMAL : MUI_BTN_OFF);
+    MUi_DrawButton(SongBtn(3), "Down", songList.sel + 1 < draft.songCount ? MUI_BTN_NORMAL : MUI_BTN_OFF);
 
     if (songList.sel < 0 || songList.sel >= draft.songCount)
         return;
     const WeekEdSong *song = &draft.songs[songList.sel];
-    MUi_DrawSection(kSongs.x + 14.0f, kSongs.y + 400.0f, "Musica selecionada");
-    MUi_Text("Pasta", kSongs.x + 20.0f, SongName().y + 8.0f, 18.0f, MUI_C_DIM);
-    MUi_DrawTextField(SongName(), song->name, "nome da pasta em songs/");
-    MUi_Text("Icone", kSongs.x + 20.0f, SongIcon().y + 8.0f, 18.0f, MUI_C_DIM);
+    MUi_DrawSection(kSongs.x + 14.0f, kSongs.y + 400.0f, "Selected song");
+    MUi_Text("Folder", kSongs.x + 20.0f, SongName().y + 8.0f, 18.0f, MUI_C_DIM);
+    MUi_DrawTextField(SongName(), song->name, "folder name in songs/");
+    MUi_Text("Icon", kSongs.x + 20.0f, SongIcon().y + 8.0f, 18.0f, MUI_C_DIM);
     MUi_DrawTextField(SongIcon(), song->icon, "images/icons/<nome>.png");
-    MUi_Text("Cor", kSongs.x + 20.0f, SongColor(0).y + 8.0f, 18.0f, MUI_C_DIM);
+    MUi_Text("Color", kSongs.x + 20.0f, SongColor(0).y + 8.0f, 18.0f, MUI_C_DIM);
     for (int c = 0; c < 3; ++c)
         MUi_DrawNum(SongColor(c), (float)song->color[c], 1.0f);
     MUi_Text("R              G              B", kSongs.x + 132.0f, SongColor(0).y + 38.0f, 13.0f, MUI_C_FAINT);
@@ -735,7 +760,7 @@ static void DrawSongs(void)
         const Rectangle src = Character_IconFrame(icon);
         DrawTexturePro(icon, src, box, (Vector2){0, 0}, 0.0f, WHITE);
     } else {
-        MUi_TextCenter("sem icone", box, 16.0f, (Color){20, 16, 40, 255});
+        MUi_TextCenter("no icon", box, 16.0f, (Color){20, 16, 40, 255});
     }
 }
 
@@ -744,11 +769,11 @@ static void Edit_Draw(void)
     char detail[MODED_NAME_MAX + 48];
     snprintf(detail, sizeof(detail), "%s  [%s]", current.file, ModEd_RootLabel(current.root));
     MUi_DrawTopBar("Week Editor", detail, dirty);
-    MUi_DrawButton(kBtnLeft, "Abrir (Ctrl+O)", MUI_BTN_NORMAL);
-    MUi_DrawButton(kBtnRight, "Salvar (Ctrl+S)", dirty ? MUI_BTN_ACCENT : MUI_BTN_NORMAL);
+    MUi_DrawButton(kBtnLeft, "Open (Ctrl+O)", MUI_BTN_NORMAL);
+    MUi_DrawButton(kBtnRight, "Save (Ctrl+S)", dirty ? MUI_BTN_ACCENT : MUI_BTN_NORMAL);
     DrawForm();
     DrawSongs();
-    MUi_DrawBottomBar("clique e digite (Ctrl+C/V)   Up/Down musica   Ctrl+Up/Down ordem   A +musica   Del remove   Ctrl+S salva   Esc lista");
+    MUi_DrawBottomBar();
 }
 
 static void WeekEditor_Draw([[maybe_unused]] RayScene *scene)
@@ -760,6 +785,12 @@ static void WeekEditor_Draw([[maybe_unused]] RayScene *scene)
         Song_Draw();
     else
         Edit_Draw();
+    if (mode == WK_PICK)
+        MUi_DrawHelp("Week Editor - list", kHelpPick, (int)(sizeof(kHelpPick) / sizeof(kHelpPick[0])));
+    else if (mode == WK_SONG)
+        MUi_DrawHelp("Week Editor - add song", kHelpSong, (int)(sizeof(kHelpSong) / sizeof(kHelpSong[0])));
+    else
+        MUi_DrawHelp("Week Editor - shortcuts", kHelpEdit, (int)(sizeof(kHelpEdit) / sizeof(kHelpEdit[0])));
     MUi_DrawModal();
 }
 

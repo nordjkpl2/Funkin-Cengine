@@ -53,7 +53,7 @@ static const Rectangle kBtnFit = {854.0f, 8.0f, 130.0f, 32.0f};
 static const Rectangle kBtnNew = {1104.0f, 8.0f, 160.0f, 32.0f};
 
 static const char *const kTabNames[TAB_COUNT] = {"Sprite", "Stage"};
-static const char *const kCharNames[CH_COUNT] = {"BF", "GF", "Oponente"};
+static const char *const kCharNames[CH_COUNT] = {"BF", "GF", "Opponent"};
 static const Color kCharColor[CH_COUNT] = {{110, 200, 255, 255}, {255, 140, 200, 255}, {255, 170, 90, 255}};
 
 /* Botoes do painel esquerdo: +imagem, +retangulo, duplicar, remover, subir, descer. */
@@ -400,7 +400,7 @@ static void Undo(bool redo)
     int *fromN = redo ? &redoCount : &undoCount;
     int *toN = redo ? &undoCount : &redoCount;
     if (*fromN == 0) {
-        MUi_SetStatus(MUI_INFO, redo ? "nada para refazer" : "nada para desfazer");
+        MUi_SetStatus(MUI_INFO, redo ? "nothing to redo" : "nothing to undo");
         return;
     }
     if (*toN == UNDO_MAX) {
@@ -413,7 +413,7 @@ static void Undo(bool redo)
     ClampSel();
     if (SelSprite())
         snprintf(imageBuf, sizeof(imageBuf), "%s", doc.sprites[selIndex].image);
-    MUi_SetStatus(MUI_INFO, redo ? "refeito" : "desfeito");
+    MUi_SetStatus(MUI_INFO, redo ? "redone" : "undone");
 }
 
 static void ResetHistory(void)
@@ -426,7 +426,7 @@ static void ResetHistory(void)
 static int NewSprite(void)
 {
     if (doc.count >= STAGE_MAX_SPRITES) {
-        MUi_SetStatus(MUI_WARN, "limite de %d sprites", STAGE_MAX_SPRITES);
+        MUi_SetStatus(MUI_WARN, "limit of %d sprites", STAGE_MAX_SPRITES);
         return -1;
     }
     StageSprite *s = &doc.sprites[doc.count];
@@ -449,7 +449,7 @@ static void PlaceAtView(int i)
 static void AddImage(const char *image)
 {
     if (!StageEd_IsImageName(image)) {
-        MUi_SetStatus(MUI_WARN, "nome de imagem invalido");
+        MUi_SetStatus(MUI_WARN, "invalid image name");
         return;
     }
     const int i = NewSprite();
@@ -463,7 +463,7 @@ static void AddImage(const char *image)
         snprintf(xml, sizeof(xml), "%.*s.xml", (int)(strlen(png) - 4), png);
         doc.sprites[i].isAnimated = FileExists(xml) ? 1 : 0;
     } else {
-        MUi_SetStatus(MUI_WARN, "%s.png nao encontrado em images/", image);
+        MUi_SetStatus(MUI_WARN, "%s.png not found in images/", image);
     }
     PlaceAtView(i);
 }
@@ -575,7 +575,7 @@ static void OpenEntry(const StageEdEntry *entry)
     current = *entry;
     memset(&doc, 0, sizeof(doc));
     if (!StageEd_Load(&current, doc.sprites, STAGE_MAX_SPRITES, &doc.count, &doc.meta, msg, sizeof(msg))) {
-        MUi_SetStatus(MUI_ERR, "nao consegui ler o stage %s", entry->name);
+        MUi_SetStatus(MUI_ERR, "could not read stage %s", entry->name);
         return;
     }
     Cache_FreeAll();
@@ -607,7 +607,7 @@ static void OpenEntry(const StageEdEntry *entry)
 static void TryNew(const char *name)
 {
     if (!ModEd_IsSafeName(name)) {
-        MUi_PromptReopen("nome invalido: use letras, digitos, - _ . (sem espacos)");
+        MUi_PromptReopen("invalid name: use letters, digits, - _ . (no spaces)");
         return;
     }
     for (int i = 0; i < entryCount; ++i) {
@@ -627,7 +627,7 @@ static bool SaveCurrent(void)
     char msg[256] = {0};
     MUi_TextBlur();
     if (!StageEd_Save(&current, doc.sprites, doc.count, &doc.meta, msg, sizeof(msg))) {
-        MUi_SetStatus(MUI_ERR, "%s", msg[0] ? msg : "falha ao salvar");
+        MUi_SetStatus(MUI_ERR, "%s", msg[0] ? msg : "save failed");
         return false;
     }
     memcpy(&saved, &doc, sizeof(doc));
@@ -647,7 +647,7 @@ static void OpenAddPicker(void)
 static void AskLeave(void)
 {
     if (Dirty())
-        MUi_ConfirmOpen(CONFIRM_LEAVE, "Voltar a lista", "Ha alteracoes nao salvas neste stage.");
+        MUi_ConfirmOpen(CONFIRM_LEAVE, "Back to list", "There are unsaved changes in this stage.");
     else
         ToPick();
 }
@@ -671,7 +671,7 @@ static void HandleModal(void)
 static void Pick_Update(void)
 {
     if (MUi_Button(kBtnNew) || (MUi_Ctrl() && IsKeyPressed(KEY_N))) {
-        MUi_PromptOpen(PROMPT_NEW, "Novo stage", "Nome do arquivo (sem extensao), criado em stages/", stagePicker.search);
+        MUi_PromptOpen(PROMPT_NEW, "New stage", "File name (no extension), created in stages/", stagePicker.search);
         return;
     }
     const int pick = MUi_PickerUpdate(&stagePicker, kPicker, entryCount, StageLabel);
@@ -722,7 +722,7 @@ static void SpriteTab_Update(void)
             if (StageEd_IsImageName(imageBuf))
                 snprintf(s->image, sizeof(s->image), "%s", imageBuf);
             else
-                MUi_SetStatus(MUI_WARN, "nome de imagem invalido");
+                MUi_SetStatus(MUI_WARN, "invalid image name");
         }
     }
 
@@ -870,6 +870,34 @@ static void Canvas_Update(void)
     }
 }
 
+static const MUiHelpRow kHelpPick[] = {
+    {"type", "search stage"},
+    {"Enter / click", "open stage"},
+    {"Ctrl+N", "new stage"},
+    {"Esc", "return to editor menu"},
+};
+static const MUiHelpRow kHelpAdd[] = {
+    {"type", "search image"},
+    {"Enter / click", "add image"},
+    {"Esc", "cancel"},
+};
+static const MUiHelpRow kHelpEdit[] = {
+    {"Arrows", "move (Shift x10)"},
+    {"PgUp / PgDn", "previous / next sprite"},
+    {"Ctrl+Up / Down", "change order"},
+    {"E", "bring to front"},
+    {"Ctrl+D", "duplicate"},
+    {"Del", "remove"},
+    {"A", "add image"},
+    {"1 / 2", "sprite / stage tab"},
+    {"F / G / H", "fit / frame / characters"},
+    {"Right drag / wheel", "move view / zoom"},
+    {"Shift+wheel", "scale"},
+    {"Ctrl+Z / Y", "undo / redo"},
+    {"Ctrl+S", "save"},
+    {"Esc", "return to stage list"},
+};
+
 static void Keys_Update(void)
 {
     const bool ctrl = MUi_Ctrl();
@@ -894,7 +922,8 @@ static void Keys_Update(void)
     if (MUi_Rep(KEY_DOWN)) Nudge(0.0f, step);
     if (MUi_Rep(KEY_PAGE_UP)) CycleSel(-1);
     if (MUi_Rep(KEY_PAGE_DOWN)) CycleSel(1);
-    if (IsKeyPressed(KEY_TAB)) tab = (SeTab)((tab + 1) % TAB_COUNT);
+    if (IsKeyPressed(KEY_ONE)) tab = TAB_SPRITE;
+    if (IsKeyPressed(KEY_TWO)) tab = TAB_STAGE;
     if (IsKeyPressed(KEY_DELETE)) RemoveSel();
     if (IsKeyPressed(KEY_A)) OpenAddPicker();
     if (IsKeyPressed(KEY_F)) FitView();
@@ -954,6 +983,8 @@ static void StageEditor_Update([[maybe_unused]] RayScene *scene)
 
     if (MUi_ModalActive())
         HandleModal();
+    else if (MUi_HelpUpdate())
+        ; /* overlay de atalhos aberto: o resto para */
     else if (mode == SE_PICK)
         Pick_Update();
     else if (mode == SE_ADD)
@@ -1079,8 +1110,8 @@ static void DrawCanvas(void)
     MUi_ClipEnd();
 
     char line[96];
-    snprintf(line, sizeof(line), "vista %d%%   %s%s", (int)(camZoom * 100.0f + 0.5f),
-             showFrame ? "moldura = tela no zoom padrao (G)" : "", "");
+    snprintf(line, sizeof(line), "view %d%%   %s%s", (int)(camZoom * 100.0f + 0.5f),
+             showFrame ? "frame = screen at default zoom (G)" : "", "");
     MUi_TextShadow(line, kCanvas.x + 8.0f, kCanvas.y + kCanvas.height - 24.0f, 15.0f, MUI_C_DIM);
     DrawRectangleLinesEx(kCanvas, 1.0f, MUI_C_EDGE);
 }
@@ -1101,19 +1132,19 @@ static void DrawSpriteList(void)
         MUi_Text(s->image, row.x + 24.0f, row.y + 6.0f, 17.0f, missing ? MUI_C_BAD : MUI_C_TEXT);
         MUi_ClipEnd();
         if (s->front)
-            MUi_TextRight("frente", row.x + row.width - 8.0f, row.y + 7.0f, 14.0f, MUI_C_HINT);
+            MUi_TextRight("front", row.x + row.width - 8.0f, row.y + 7.0f, 14.0f, MUI_C_HINT);
     }
     if (doc.count == 0)
-        MUi_TextCenter("vazio: A adiciona imagem", (Rectangle){kList.x, kList.y + 10.0f, kList.width, 24.0f}, 16.0f, MUI_C_FAINT);
+        MUi_TextCenter("empty: A adds image", (Rectangle){kList.x, kList.y + 10.0f, kList.width, 24.0f}, 16.0f, MUI_C_FAINT);
     MUi_DrawListEnd(&spriteList, kList, LIST_ROW_H, doc.count);
 
     const bool has = SelSprite() != NULL;
-    MUi_DrawButton(LeftBtn(0), "+ Imagem", MUI_BTN_ACCENT);
-    MUi_DrawButton(LeftBtn(1), "+ Retangulo", MUI_BTN_NORMAL);
-    MUi_DrawButton(LeftBtn(2), "Duplicar", has ? MUI_BTN_NORMAL : MUI_BTN_OFF);
-    MUi_DrawButton(LeftBtn(3), "Remover", has ? MUI_BTN_DANGER : MUI_BTN_OFF);
-    MUi_DrawButton(LeftBtn(4), "Subir", has && selIndex > 0 ? MUI_BTN_NORMAL : MUI_BTN_OFF);
-    MUi_DrawButton(LeftBtn(5), "Descer", has && selIndex + 1 < doc.count ? MUI_BTN_NORMAL : MUI_BTN_OFF);
+    MUi_DrawButton(LeftBtn(0), "+ Image", MUI_BTN_ACCENT);
+    MUi_DrawButton(LeftBtn(1), "+ Rectangle", MUI_BTN_NORMAL);
+    MUi_DrawButton(LeftBtn(2), "Duplicate", has ? MUI_BTN_NORMAL : MUI_BTN_OFF);
+    MUi_DrawButton(LeftBtn(3), "Remove", has ? MUI_BTN_DANGER : MUI_BTN_OFF);
+    MUi_DrawButton(LeftBtn(4), "Up", has && selIndex > 0 ? MUI_BTN_NORMAL : MUI_BTN_OFF);
+    MUi_DrawButton(LeftBtn(5), "Down", has && selIndex + 1 < doc.count ? MUI_BTN_NORMAL : MUI_BTN_OFF);
 }
 
 static void Label(int row, const char *text)
@@ -1127,33 +1158,33 @@ static void DrawSpriteTab(void)
     if (!s) {
         if (selKind == SEL_CHAR) {
             MUi_Text(kCharNames[selIndex], 924.0f, RowY(0) + 4.0f, 20.0f, kCharColor[selIndex]);
-            MUi_Text("arraste no canvas ou edite na aba Stage", 924.0f, RowY(1), 16.0f, MUI_C_FAINT);
+            MUi_Text("drag on canvas or edit in the Stage tab", 924.0f, RowY(1), 16.0f, MUI_C_FAINT);
         } else {
-            MUi_Text("nada selecionado", 924.0f, RowY(0) + 4.0f, 18.0f, MUI_C_FAINT);
+            MUi_Text("nothing selected", 924.0f, RowY(0) + 4.0f, 18.0f, MUI_C_FAINT);
         }
         return;
     }
     if (s->isGraphic) {
-        Label(0, "Retangulo");
+        Label(0, "Rectangle");
         MUi_Text("makeGraphic", 1020.0f, RowY(0) + 6.0f, 17.0f, MUI_C_FAINT);
     } else {
-        Label(0, "Imagem");
-        MUi_DrawTextField(Wide(0), imageBuf, "pasta/nome em images/");
+        Label(0, "Image");
+        MUi_DrawTextField(Wide(0), imageBuf, "folder/name in images/");
     }
-    Label(1, "Posicao");
+    Label(1, "Position");
     MUi_DrawNum(Half(1, 0), s->x, 1.0f);
     MUi_DrawNum(Half(1, 1), s->y, 1.0f);
-    Label(2, "Escala");
+    Label(2, "Scale");
     MUi_DrawNum(Half(2, 0), s->scaleX, 0.01f);
     MUi_DrawNum(Half(2, 1), s->scaleY, 0.01f);
-    MUi_DrawCheck(CheckAt(3, 0), "Proporcional", lockScale);
-    MUi_DrawCheck(CheckAt(3, 1), "Na frente (E)", s->front != 0);
+    MUi_DrawCheck(CheckAt(3, 0), "Proportional", lockScale);
+    MUi_DrawCheck(CheckAt(3, 1), "In front (E)", s->front != 0);
     Label(4, "Scroll");
     MUi_DrawNum(Half(4, 0), s->scrollX, 0.05f);
     MUi_DrawNum(Half(4, 1), s->scrollY, 0.05f);
 
     if (s->isGraphic) {
-        Label(5, "Tamanho");
+        Label(5, "Size");
         MUi_DrawNum(Half(5, 0), s->graphicWidth, 1.0f);
         MUi_DrawNum(Half(5, 1), s->graphicHeight, 1.0f);
         Label(6, "RGBA");
@@ -1162,10 +1193,10 @@ static void DrawSpriteTab(void)
             MUi_DrawNum(Quarter(6, i), (float)ch[i], 1.0f);
         MUi_DrawSwatch((Rectangle){924.0f, RowY(7), 328.0f, 24.0f}, (Color){s->colorR, s->colorG, s->colorB, 255}, false);
     } else {
-        MUi_DrawCheck(CheckAt(5, 0), "Animado (.xml)", s->isAnimated != 0);
+        MUi_DrawCheck(CheckAt(5, 0), "Animated (.xml)", s->isAnimated != 0);
         if (s->isAnimated) {
-            Label(6, "Prefixo");
-            MUi_DrawTextField(Wide(6), s->animPrefix, "vazio = 1a animacao");
+            Label(6, "Prefix");
+            MUi_DrawTextField(Wide(6), s->animPrefix, "empty = 1st animation");
             Label(7, "FPS");
             MUi_DrawNum(Half(7, 0), s->animFps, 1.0f);
             MUi_DrawCheck(CheckAt(7, 1), "Loop", s->animLoop != 0);
@@ -1174,16 +1205,16 @@ static void DrawSpriteTab(void)
         const Vector2 b = BaseSize(s);
         char info[96];
         if (!v->tex.id && v->set.animationCount == 0)
-            snprintf(info, sizeof(info), "%s.png nao encontrado", s->image);
+            snprintf(info, sizeof(info), "%s.png not found", s->image);
         else if (s->isAnimated && v->set.animationCount == 0)
-            snprintf(info, sizeof(info), "sem .xml: aparece parado no jogo");
+            snprintf(info, sizeof(info), "no .xml: shows still in game");
         else
-            snprintf(info, sizeof(info), "%.0f x %.0f px (%.0f x %.0f na tela)", b.x, b.y, b.x * s->scaleX, b.y * s->scaleY);
+            snprintf(info, sizeof(info), "%.0f x %.0f px (%.0f x %.0f on screen)", b.x, b.y, b.x * s->scaleX, b.y * s->scaleY);
         MUi_Text(info, 924.0f, RowY(8) + 8.0f, 16.0f, v->tex.id || v->set.animationCount ? MUI_C_FAINT : MUI_C_BAD);
     }
     if (s->scrollX == 0.0f && s->scrollY == 0.0f && !s->isGraphic)
-        MUi_Text("scroll 0,0: no jogo cobre a tela inteira", 924.0f, RowY(9) + 8.0f, 16.0f, MUI_C_HINT);
-    MUi_Text("arraste o numero, roda ou clique e digite", 924.0f, kRight.y + kRight.height - 28.0f, 15.0f, MUI_C_FAINT);
+        MUi_Text("scroll 0,0: covers the whole screen in game", 924.0f, RowY(9) + 8.0f, 16.0f, MUI_C_HINT);
+    MUi_Text("drag the number, wheel, or click and type", 924.0f, kRight.y + kRight.height - 28.0f, 15.0f, MUI_C_FAINT);
 }
 
 static void DrawStageTab(void)
@@ -1191,20 +1222,20 @@ static void DrawStageTab(void)
     const StageMeta *m = &doc.meta;
     Label(0, "Zoom");
     MUi_DrawNum(Half(0, 0), m->defaultZoom, 0.01f);
-    Label(1, "Vel. cam.");
+    Label(1, "Cam. speed");
     MUi_DrawNum(Half(1, 0), m->cameraSpeed, 0.05f);
     MUi_DrawCheck(CheckAt(2, 0), "Pixel stage", m->isPixelStage != 0);
-    MUi_DrawCheck(CheckAt(2, 1), "Sem GF", m->hideGirlfriend != 0);
-    static const char *const names[5] = {"BF", "GF", "Oponente", "Cam. BF", "Cam. opon."};
+    MUi_DrawCheck(CheckAt(2, 1), "No GF", m->hideGirlfriend != 0);
+    static const char *const names[5] = {"BF", "GF", "Opponent", "Cam. BF", "Cam. opp."};
     const float *pairs[5] = {m->boyfriend, m->girlfriend, m->opponent, m->cameraBoyfriend, m->cameraOpponent};
     for (int i = 0; i < 5; ++i) {
         Label(3 + i, names[i]);
         MUi_DrawNum(Half(3 + i, 0), pairs[i][0], 1.0f);
         MUi_DrawNum(Half(3 + i, 1), pairs[i][1], 1.0f);
     }
-    MUi_DrawCheck(CheckAt(8, 0), "Personagens (H)", showChars);
-    MUi_DrawCheck(CheckAt(8, 1), "Moldura (G)", showFrame);
-    MUi_Text("Cam.: deslocamento do foco da camera", 924.0f, RowY(9) + 8.0f, 15.0f, MUI_C_FAINT);
+    MUi_DrawCheck(CheckAt(8, 0), "Characters (H)", showChars);
+    MUi_DrawCheck(CheckAt(8, 1), "Frame (G)", showFrame);
+    MUi_Text("Cam.: camera focus offset", 924.0f, RowY(9) + 8.0f, 15.0f, MUI_C_FAINT);
 }
 
 static void Edit_Draw(void)
@@ -1212,9 +1243,9 @@ static void Edit_Draw(void)
     char detail[MODED_NAME_MAX + MODED_ROOT_MAX + 8];
     snprintf(detail, sizeof(detail), "%s  [%s]", current.name, ModEd_RootLabel(current.root));
     MUi_DrawTopBar("Stage Editor", detail, Dirty());
-    MUi_DrawButton(kBtnFit, "Enquadrar (F)", MUI_BTN_NORMAL);
-    MUi_DrawButton(kBtnList, "Lista (Esc)", MUI_BTN_NORMAL);
-    MUi_DrawButton(kBtnSave, "Salvar", Dirty() ? MUI_BTN_ACCENT : MUI_BTN_NORMAL);
+    MUi_DrawButton(kBtnFit, "Fit (F)", MUI_BTN_NORMAL);
+    MUi_DrawButton(kBtnList, "List (Esc)", MUI_BTN_NORMAL);
+    MUi_DrawButton(kBtnSave, "Save", Dirty() ? MUI_BTN_ACCENT : MUI_BTN_NORMAL);
 
     DrawCanvas();
     DrawSpriteList();
@@ -1225,28 +1256,33 @@ static void Edit_Draw(void)
     else
         DrawStageTab();
 
-    MUi_DrawBottomBar("setas move (Shift x10)  PgUp/PgDn sel.  Ctrl+Up/Dn ordem  E frente  Ctrl+D dup.  Del  A +img  "
-                      "dir. arrasta vista  roda zoom  Shift+roda escala  Ctrl+Z/Y  Ctrl+S");
+    MUi_DrawBottomBar();
 }
 
 static void StageEditor_Draw([[maybe_unused]] RayScene *scene)
 {
     MUi_DrawBackdrop();
     if (mode == SE_PICK) {
-        MUi_DrawTopBar("Stage Editor", "escolha um stage", false);
-        MUi_DrawButton(kBtnNew, "Novo (Ctrl+N)", MUI_BTN_ACCENT);
-        MUi_DrawPicker(&stagePicker, kPicker, StageLabel, "buscar stage...",
-                       entryCount ? "nenhum stage com esse nome: Enter cria um novo" : "nenhum stage: digite um nome e Enter");
-        MUi_DrawBottomBar("digite para buscar   Enter/clique abre   Ctrl+N novo   Esc volta");
+        MUi_DrawTopBar("Stage Editor", "choose a stage", false);
+        MUi_DrawButton(kBtnNew, "New (Ctrl+N)", MUI_BTN_ACCENT);
+        MUi_DrawPicker(&stagePicker, kPicker, StageLabel, "search stage...",
+                       entryCount ? "no stage with that name: Enter creates a new one" : "no stages: type a name and press Enter");
+        MUi_DrawBottomBar();
     } else if (mode == SE_ADD) {
-        MUi_DrawTopBar("Stage Editor", "adicionar imagem (images/)", Dirty());
-        MUi_DrawButton(kBtnNew, "Cancelar", MUI_BTN_NORMAL);
-        MUi_DrawPicker(&imagePicker, kPicker, ImageLabel, "buscar imagem...",
-                       "nenhuma imagem com esse nome: Enter usa o nome digitado");
-        MUi_DrawBottomBar("digite para buscar   Enter/clique adiciona   Esc cancela");
+        MUi_DrawTopBar("Stage Editor", "add image (images/)", Dirty());
+        MUi_DrawButton(kBtnNew, "Cancel", MUI_BTN_NORMAL);
+        MUi_DrawPicker(&imagePicker, kPicker, ImageLabel, "search image...",
+                       "no image with that name: Enter uses the typed name");
+        MUi_DrawBottomBar();
     } else {
         Edit_Draw();
     }
+    if (mode == SE_PICK)
+        MUi_DrawHelp("Stage Editor - list", kHelpPick, (int)(sizeof(kHelpPick) / sizeof(kHelpPick[0])));
+    else if (mode == SE_ADD)
+        MUi_DrawHelp("Stage Editor - add image", kHelpAdd, (int)(sizeof(kHelpAdd) / sizeof(kHelpAdd[0])));
+    else
+        MUi_DrawHelp("Stage Editor - shortcuts", kHelpEdit, (int)(sizeof(kHelpEdit) / sizeof(kHelpEdit[0])));
     MUi_DrawModal();
 }
 

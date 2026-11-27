@@ -239,3 +239,11 @@ LOAD [end-of-the-world] init: 0.0 ms, chart: 22.3 ms, sounds: 1.8 ms, characters
 [WARN] Skin '@AstrayNote_assets': animacao 'purple hold end' nao existe no XML (a lane pode sumir)
 [WARN] ImagePrefetch: sem orcamento de memoria, carrega na hora (assets/mods/images/absolute-zeroBG.png)
 LOAD [absolute-zero] init: 0.7 ms, chart: 18.1 ms, sounds: 58.8 ms, characters: 422.3 ms, stage: 1339.4 ms, song audio: 1.7 ms, notes: 0.2 ms, ui: 9.6 ms, warmup: 0.2 ms, (textures on main thread: 1768.4 ms) total: 1851.0 ms
+LOAD [ingratiating] init: 24.9 ms, chart: 159.6 ms, sounds: 114.7 ms, characters: 39.1 ms, stage: 8.8 ms, song audio: 2.3 ms, notes: 226.6 ms, ui: 8.8 ms, warmup: 0.3 ms, (textures on main thread: 50.3 ms) total: 585.1 ms
+[WARN] Skin '@AstrayNote_assets': animacao 'purple hold end' nao existe no XML (a lane pode sumir)
+[WARN] ImagePrefetch: sem orcamento de memoria, carrega na hora (assets/mods/images/absolute-zeroBG.png)
+LOAD [absolute-zero] init: 0.0 ms, chart: 17.2 ms, sounds: 1.4 ms, characters: 466.5 ms, stage: 1288.6 ms, song audio: 1.7 ms, notes: 0.2 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 1760.5 ms) total: 1775.8 ms
+[WARN] Skin '@BewildermentNote_assets': animacao 'purple hold end' nao existe no XML (a lane pode sumir)
+LOAD [corrosion-v2] init: 0.0 ms, chart: 28.6 ms, sounds: 46.7 ms, characters: 416.1 ms, stage: 8.8 ms, song audio: 4.1 ms, notes: 0.3 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 421.3 ms) total: 504.8 ms
+LOAD [apostrophe] init: 0.0 ms, chart: 22.4 ms, sounds: 108.4 ms, characters: 452.8 ms, stage: 9.1 ms, song audio: 2.1 ms, notes: 221.0 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 444.2 ms) total: 816.2 ms
+LOAD [ampersand] init: 0.0 ms, chart: 5.2 ms, sounds: 8.5 ms, characters: 480.1 ms, stage: 1.5 ms, song audio: 3.2 ms, notes: 223.0 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 442.5 ms) total: 721.8 ms

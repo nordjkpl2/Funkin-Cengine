@@ -9,6 +9,7 @@
  */
 #include "scenes/modding/hudeditor/HudEditor.h"
 #include "scenes/modding/ModdingMenuInternal.h"
+#include "scenes/modding/ModdingUi.h"
 #include "scenes/api/FontLoader.h"
 #include "data/config/HudConfig.h"
 #include "characters/Character.h"
@@ -433,7 +434,7 @@ static void Hud_Keyboard(void)
         return;
     }
 
-    if (IsKeyPressed(KEY_TAB))
+    if (IsKeyPressed(KEY_N))
         sel = (sel + (shift ? HUD_ELEMENTS - 1 : 1)) % HUD_ELEMENTS;
 
     /* setas: Pressed guarda undo, Repeat so move */
@@ -585,6 +586,10 @@ void Hud_Leave(void)
 char Hud_Update(void)
 {
     const float dt = RayGame_DeltaTime();
+
+    MUi_FrameBegin();
+    if (MUi_HelpUpdate())
+        return 0;
 
     if (IsKeyPressed(KEY_ESCAPE)) {
         if (dragging) {
@@ -854,21 +859,21 @@ static void Hud_DrawPanel(void)
         }
     }
 
-    {
-        static const char *const help[] = {
-            "Drag: move   Alt: no snap",
-            "Arrows: 1 px   Shift: 10 px",
-            "Tab: next   +/- or wheel: scale",
-            "[ ]: bar width   V: show/hide",
-            "R: reset   Shift+R: reset all",
-            "D: scroll   H: hide panel",
-            "Ctrl+S save  Ctrl+Z undo  Esc back",
-        };
-        float y = p.y + ROW_BTN_Y + 46.0f;
-        for (size_t i = 0; i < sizeof(help) / sizeof(help[0]); ++i, y += 14.0f)
-            DrawTextEx(mainFont, help[i], (Vector2){p.x + 20.0f, y}, 14, 1, Alpha(muted, 0.9f));
-    }
 }
+
+static const MUiHelpRow kHelp[] = {
+    {"Drag", "move (Alt: no snap)"},
+    {"Arrows", "move 1 px (Shift: 10 px)"},
+    {"N / Shift+N", "next / previous element"},
+    {"+ / - / wheel", "scale"},
+    {"[ / ]", "bar width"},
+    {"V", "show / hide element"},
+    {"R / Shift+R", "reset element / reset all"},
+    {"D", "toggle upscroll / downscroll"},
+    {"H", "hide panel"},
+    {"Ctrl+S / Ctrl+Z", "save / undo"},
+    {"Esc", "return to editor menu"},
+};
 
 static void Hud_DrawToast(void)
 {
@@ -898,6 +903,7 @@ void Hud_Draw(void)
     Hud_DrawTag();
     if (panelShown) Hud_DrawPanel();
     if (statusT > 0.0f && status[0]) Hud_DrawToast();
+    MUi_DrawHelp("HUD Editor - shortcuts", kHelp, (int)(sizeof(kHelp) / sizeof(kHelp[0])));
 
     Render_StopCamera();
 }

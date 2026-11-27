@@ -259,10 +259,10 @@ void MUi_DrawTopBar(const char *title, const char *detail, bool dirty)
         x += MUi_TextWidth(detail, 18.0f) + 12.0f;
     }
     if (dirty)
-        MUi_Text("* nao salvo", x, 17.0f, 18.0f, MUI_C_HINT);
+        MUi_Text("* unsaved", x, 17.0f, 18.0f, MUI_C_HINT);
 }
 
-void MUi_DrawBottomBar(const char *help)
+void MUi_DrawBottomBar(void)
 {
     const float y = MUI_H - MUI_BOTTOM_H;
     DrawRectangle(0, (int)y, (int)MUI_W, (int)MUI_BOTTOM_H, MUI_C_BAR);
@@ -273,8 +273,55 @@ void MUi_DrawBottomBar(const char *help)
             c.a = (unsigned char)(255.0f * statusTimer / 0.5f);
         DrawRectangle(0, (int)y, 4, (int)MUI_BOTTOM_H, c);
         MUi_Text(statusText, 14.0f, y + 6.0f, 18.0f, c);
-    } else if (help) {
-        MUi_Text(help, 14.0f, y + 7.0f, 16.0f, MUI_C_DIM);
+    } else {
+        MUi_TextRight("TAB shortcuts", MUI_W - 14.0f, y + 8.0f, 15.0f, MUI_C_FAINT);
+    }
+}
+
+/* ------------------------------------------------------------------------- */
+/* Overlay de atalhos: mesmo cartao do chart editor (tecla + o que faz, 2 colunas) */
+/* ------------------------------------------------------------------------- */
+
+static bool helpOpen;
+
+bool MUi_HelpOpen(void)
+{
+    return helpOpen;
+}
+
+bool MUi_HelpUpdate(void)
+{
+    if (helpOpen) {
+        if (IsKeyPressed(KEY_TAB) || IsKeyPressed(KEY_ESCAPE))
+            helpOpen = false;
+        keysTaken = true;
+        return true;
+    }
+    if (MUi_KeysFree() && IsKeyPressed(KEY_TAB)) {
+        helpOpen = true;
+        keysTaken = true;
+        return true;
+    }
+    return false;
+}
+
+void MUi_DrawHelp(const char *title, const MUiHelpRow *rows, int count)
+{
+    if (!helpOpen || count <= 0)
+        return;
+    const int perCol = (count + 1) / 2;
+    DrawRectangle(0, 0, (int)MUI_W, (int)MUI_H, (Color){0, 0, 0, 215});
+    const Rectangle card = {170.0f, 110.0f, 940.0f, 110.0f + perCol * 44.0f};
+    Box(card, MUI_C_PANEL, MUI_C_EDGE, 12.0f);
+    MUi_TextShadow(title, card.x + 30.0f, card.y + 22.0f, 24.0f, MUI_C_TEXT);
+    MUi_TextRight("TAB or Esc closes", card.x + card.width - 24.0f, card.y + 30.0f, 18.0f, MUI_C_DIM);
+    for (int i = 0; i < count; i++) {
+        const float cx = card.x + 30.0f + (float)(i / perCol) * 460.0f;
+        const float cy = card.y + 76.0f + (float)(i % perCol) * 44.0f;
+        const Rectangle pill = {cx, cy, 150.0f, 32.0f};
+        Box(pill, MUI_C_BTN, MUI_C_EDGE, 6.0f);
+        MUi_Text(rows[i].key, pill.x + 10.0f, pill.y + 7.0f, 18.0f, MUI_C_TEXT);
+        MUi_Text(rows[i].what, pill.x + 166.0f, pill.y + 6.0f, 20.0f, MUI_C_DIM);
     }
 }
 
@@ -1331,19 +1378,19 @@ void MUi_DrawModal(void)
 
     if (modal.kind == MODAL_PROMPT) {
         MUi_Text(modal.hint, w.x + 20.0f, w.y + 54.0f, 16.0f, MUI_C_DIM);
-        MUi_DrawTextField(PromptField(), modal.text, "digite ou cole (Ctrl+V)");
+        MUi_DrawTextField(PromptField(), modal.text, "type or paste (Ctrl+V)");
         if (modal.error[0])
             MUi_Text(modal.error, w.x + 20.0f, w.y + 130.0f, 17.0f, MUI_C_BAD);
         else
-            MUi_Text("Ctrl+V cola   Ctrl+C copia   Ctrl+A seleciona tudo   Enter confirma   Esc cancela",
+            MUi_Text("Ctrl+V paste   Ctrl+C copy   Ctrl+A select all   Enter confirms   Esc cancels",
                      w.x + 20.0f, w.y + 130.0f, 15.0f, MUI_C_FAINT);
         MUi_DrawButton(ModalButton(0), "OK", MUI_BTN_ACCENT);
-        MUi_DrawButton(ModalButton(1), "Cancelar", MUI_BTN_NORMAL);
+        MUi_DrawButton(ModalButton(1), "Cancel", MUI_BTN_NORMAL);
     } else {
         MUi_Text(modal.hint, w.x + 20.0f, w.y + 62.0f, 18.0f, MUI_C_DIM);
-        MUi_DrawButton(ModalButton(0), "Salvar", MUI_BTN_ACCENT);
-        MUi_DrawButton(ModalButton(1), "Descartar", MUI_BTN_DANGER);
-        MUi_DrawButton(ModalButton(2), "Cancelar", MUI_BTN_NORMAL);
+        MUi_DrawButton(ModalButton(0), "Save", MUI_BTN_ACCENT);
+        MUi_DrawButton(ModalButton(1), "Discard", MUI_BTN_DANGER);
+        MUi_DrawButton(ModalButton(2), "Cancel", MUI_BTN_NORMAL);
     }
     drawingModal = false;
 }
