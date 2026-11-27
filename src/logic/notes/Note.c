@@ -96,6 +96,10 @@ const RayAnimationHandler* Note_GetCurrentSkin(void) {
     return defaultSkinPtr;
 }
 
+bool Note_IsCustomSkin(void) {
+    return currentSkin != NULL && currentSkin != Cache_GetDefaultNoteSkinPtr();
+}
+
 static void NoteStuff_LoadAnimationsInternal(const RayAnimationHandler* animations) {
     if (animations == NULL) {
         for (int i = 0; i < NOTE_LANE_COUNT; ++i) {

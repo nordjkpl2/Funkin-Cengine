@@ -90,10 +90,12 @@ void EdArrows_Init(void) {
     static const char* const ends[4] = {"purple hold end", "blue hold end", "green hold end", "red hold end"};
     const RayAnimationHandler* base = Note_GetCurrentSkin();
 
+    // skin de mod tem cor propria: sem ajuste HSB
+    const char customSkin = (char)Note_IsCustomSkin();
     char anyShift = 0;
     for(int i = 0; i < 4; i++) {
-        edShift[i] = GameData_LaneShift(i);
-        anyShift |= GameData_LaneShifted(i);
+        edShift[i] = customSkin ? (Vector3){0} : GameData_LaneShift(i);
+        anyShift |= !customSkin && GameData_LaneShifted(i);
     }
     NoteAtlas_Free();
     const char atlas = (base != NULL && anyShift) ? (char)NoteAtlas_Build(base, edShift) : 0;

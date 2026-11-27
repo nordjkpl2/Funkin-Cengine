@@ -227,3 +227,15 @@ LOAD [moribund-3] init: 23.1 ms, chart: 98.5 ms, sounds: 61.3 ms, characters: 41
 LOAD [Astray] init: 2.1 ms, chart: 20.6 ms, sounds: 120.9 ms, characters: 659.7 ms, stage: 40.6 ms, song audio: 3.8 ms, notes: 361.5 ms, ui: 10.7 ms, warmup: 0.1 ms, (textures on main thread: 685.8 ms) total: 1220.0 ms
 [WARN] ImagePrefetch: sem orcamento de memoria, carrega na hora (assets/mods/images/absolute-zeroBG.png)
 LOAD [absolute-zero] init: 21.3 ms, chart: 7.3 ms, sounds: 79.6 ms, characters: 490.3 ms, stage: 1664.4 ms, song audio: 1.9 ms, notes: 237.4 ms, ui: 8.4 ms, warmup: 0.2 ms, (textures on main thread: 2171.4 ms) total: 2511.0 ms
+[WARN] Skin '@AstrayNote_assets': animacao 'purple hold end' nao existe no XML (a lane pode sumir)
+[WARN] Skin '@DemiseNote_assets': animacao 'purple hold end' nao existe no XML (a lane pode sumir)
+[WARN] Skin 'dave': animacao 'purple hold end' nao existe no XML (a lane pode sumir)
+LOAD [end-of-the-world] init: 0.8 ms, chart: 31.1 ms, sounds: 80.8 ms, characters: 29.4 ms, stage: 9.2 ms, song audio: 1.8 ms, notes: 231.7 ms, ui: 9.4 ms, warmup: 0.2 ms, (textures on main thread: 41.9 ms) total: 394.4 ms
+[WARN] Skin '@SingularityNote_assets': animacao 'purple hold end' nao existe no XML (a lane pode sumir)
+LOAD [end-of-the-world] init: 0.0 ms, chart: 20.7 ms, sounds: 1.8 ms, characters: 86.8 ms, stage: 9.4 ms, song audio: 1.9 ms, notes: 223.5 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 94.3 ms) total: 344.3 ms
+LOAD [end-of-the-world] init: 0.0 ms, chart: 21.6 ms, sounds: 1.2 ms, characters: 87.3 ms, stage: 8.2 ms, song audio: 1.8 ms, notes: 223.7 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 93.7 ms) total: 344.0 ms
+[WARN] Skin '@BewildermentNote_assets': animacao 'purple hold end' nao existe no XML (a lane pode sumir)
+LOAD [end-of-the-world] init: 0.0 ms, chart: 22.3 ms, sounds: 1.8 ms, characters: 87.1 ms, stage: 7.8 ms, song audio: 1.7 ms, notes: 222.4 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 93.2 ms) total: 343.3 ms
+[WARN] Skin '@AstrayNote_assets': animacao 'purple hold end' nao existe no XML (a lane pode sumir)
+[WARN] ImagePrefetch: sem orcamento de memoria, carrega na hora (assets/mods/images/absolute-zeroBG.png)
+LOAD [absolute-zero] init: 0.7 ms, chart: 18.1 ms, sounds: 58.8 ms, characters: 422.3 ms, stage: 1339.4 ms, song audio: 1.7 ms, notes: 0.2 ms, ui: 9.6 ms, warmup: 0.2 ms, (textures on main thread: 1768.4 ms) total: 1851.0 ms

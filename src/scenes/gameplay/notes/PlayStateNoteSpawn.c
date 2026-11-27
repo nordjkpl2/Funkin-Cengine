@@ -152,10 +152,15 @@ void PlayStateNoteSpawn_Load(Song* song) {
     for (size_t i = 0; i < (size_t)song->sectionCount; i++)
         noteCount += song->sections[i].noteCount;
 
+    /* Skin de mod tem cor propria: sem ajuste HSB. */
+    const bool customSkin = Note_IsCustomSkin();
     for (int lane = 0; lane < 4; lane++)
-        laneShift[lane] = GameData_LaneShift(lane);
+        laneShift[lane] = customSkin ? (Vector3) {0.0f, 0.0f, 0.0f} : GameData_LaneShift(lane);
     {
-        const RayAnimationHandler skin = Cache_GetNoteAnimations();
+        /* Mesma skin dos receptores (os indices de Note_Animation sao dela). */
+        const RayAnimationHandler skin = *Note_GetCurrentSkin();
+        renderNote.animationSet = trail.animationSet = end.animationSet = skin;
+        memset(laneAnimState, 0, sizeof(laneAnimState));
         NoteAtlas_Build(&skin, laneShift);   /* false = sem ajuste de cor ou skin grande: cai no shader */
     }
 

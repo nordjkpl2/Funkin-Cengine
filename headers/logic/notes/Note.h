@@ -32,6 +32,8 @@ int StrumNote_ConfirmAnimation(int id);
 void Note_Load(Note* note, DataNote* dataNote);
 void Note_SetCurrentSkin(const RayAnimationHandler* skin);
 const RayAnimationHandler* Note_GetCurrentSkin(void);
+/* true = skin de mod (tem cor propria: o ajuste HSB das colunas nao se aplica). */
+bool Note_IsCustomSkin(void);
 
 void Note_SetWindow(float w);
 
