@@ -7,6 +7,9 @@
 
 #include "characters/Character.h"
 #include "logic/notes/Note.h"
+#include "GameData.h"
+#include "scenes/gameplay/notes/PlayStateNoteAtlas.h"
+#include "scenes/gameplay/notes/PlayStateNoteSpawn.h"
 #include "raymath.h"
 #include "scenes/modding/charteditor/grid/EditorGrid.h"
 #include "scenes/modding/charteditor/io/EditorDataAndIO.h"
@@ -42,42 +45,80 @@ static char barDrag = 0;
 
 // ---------- setas (sprites da skin, pre-calculados) ----------
 
-/* Frame 0 da animacao de cada cor ja medido: desenhar e so um DrawTexturePro,
-   sem copiar/restaurar objeto animado por nota. */
+/* Frame 0 de cada parte da nota ja medido: desenhar e so um DrawTexturePro.
+   Cor das colunas igual a gameplay: atlas recolorido (NoteAtlas, 1 textura pras 4 cores = 1 lote);
+   se o atlas nao couber, cai no shader de matiz, 1 troca por coluna (no maximo 4 por frame). */
+typedef struct {
+    Rectangle src;
+    float w, h;   // tamanho na tela (cabeca: lado maior = ARROW_PX; rastro e ponta na mesma escala)
+    char ok;
+} EdSprite;
+
 typedef struct {
     Texture2D tex;
-    Rectangle src;
-    float w, h;   // tamanho na tela com escala 1 (lado maior = ARROW_PX)
-    char ok;
+    EdSprite head, trail, end;
 } EdArrowSprite;
 
 #define ARROW_PX 56.0f
 
 static EdArrowSprite edArrows[4];
+static Vector3 edShift[4];      // offset HSB da coluna (GameData_LaneShift)
+static char edUseShader = 0;    // 1 = sem atlas e alguma coluna colorida: desenha por coluna com shader
 static char edArrowsReady = 0;
+
+static EdSprite EdSprite_From(const RayAnimationHandler* set, const char* name) {
+    EdSprite sp = {0};
+    const int ai = AnimationSet_FindAnimation(set, name);
+    if(ai < 0)
+        return sp;
+    const RayAnimation* an = set->animations + ai;
+    if(an->frames == NULL || an->frameCount <= 0)
+        return sp;
+    const Frame* fr = an->frames;
+    sp.src = (Rectangle){(float)fr->x, (float)fr->y, (float)fr->w, (float)fr->h};
+    sp.w = (float)fr->w;
+    sp.h = (float)fr->h;
+    sp.ok = fr->w > 0 && fr->h > 0;
+    return sp;
+}
 
 void EdArrows_Init(void) {
     if(edArrowsReady)
         return;
-    const RayAnimationHandler* nah = Note_GetCurrentSkin();
-    const char* names[4] = {"purple", "blue", "green", "red"};   // sprites claros, iguais aos do jogo
+    static const char* const heads[4] = {"purple", "blue", "green", "red"};   // mesmos nomes do jogo (Note.c)
+    static const char* const trails[4] = {"purple hold piece", "blue hold piece", "green hold piece", "red hold piece"};
+    static const char* const ends[4] = {"purple hold end", "blue hold end", "green hold end", "red hold end"};
+    const RayAnimationHandler* base = Note_GetCurrentSkin();
+
+    char anyShift = 0;
+    for(int i = 0; i < 4; i++) {
+        edShift[i] = GameData_LaneShift(i);
+        anyShift |= GameData_LaneShifted(i);
+    }
+    NoteAtlas_Free();
+    const char atlas = (base != NULL && anyShift) ? (char)NoteAtlas_Build(base, edShift) : 0;
+    edUseShader = anyShift && !atlas;
+
     for(int i = 0; i < 4; i++) {
         EdArrowSprite* a = edArrows + i;
-        a->ok = 0;
-        const int ai = (nah != NULL) ? AnimationSet_FindAnimation(nah, names[i]) : -1;
-        if(ai < 0)
+        memset(a, 0, sizeof(*a));
+        const RayAnimationHandler* set = atlas ? NoteAtlas_Lane(i) : base;
+        if(set == NULL || set->animations == NULL)
             continue;
-        const RayAnimation* an = nah->animations + ai;
-        if(an->frames == NULL || an->frameCount <= 0)
+        a->head = EdSprite_From(set, heads[i]);
+        if(!a->head.ok)
             continue;
-        const Frame* fr = an->frames;
-        const float big = (float)((fr->w > fr->h) ? fr->w : fr->h);
-        const float s = (big > 1) ? ARROW_PX / big : 1.0f;
-        a->tex = nah->texture;
-        a->src = (Rectangle){(float)fr->x, (float)fr->y, (float)fr->w, (float)fr->h};
-        a->w = fr->w * s;
-        a->h = fr->h * s;
-        a->ok = 1;
+        // escala da cabeca vale pro rastro e a ponta: mesma proporcao da gameplay
+        const float big = fmaxf(a->head.w, a->head.h);
+        const float k = (big > 1) ? ARROW_PX / big : 1.0f;
+        a->trail = EdSprite_From(set, trails[i]);
+        a->end = EdSprite_From(set, ends[i]);
+        EdSprite* parts[3] = {&a->head, &a->trail, &a->end};
+        for(int p = 0; p < 3; p++) {
+            parts[p]->w *= k;
+            parts[p]->h *= k;
+        }
+        a->tex = set->texture;
     }
     edArrowsReady = 1;
 }
@@ -87,19 +128,43 @@ void EdArrows_Reset(void) {
     EdArrows_Init();
 }
 
+void EdArrows_Free(void) {
+    NoteAtlas_Free();
+    PlayStateNoteSpawn_ReleaseTint();
+    edArrowsReady = 0;
+}
+
+static void EdSprite_Draw(const EdArrowSprite* a, const EdSprite* sp, Rectangle dst, Color tint) {
+    DrawTexturePro(a->tex, sp->src, dst, (Vector2){0, 0}, 0, tint);
+}
+
 // seta da lane (0..3) centrada em (cx, cy); k = escala sobre ARROW_PX
 static void EdArrow_Draw(int lane, float cx, float cy, float k, Color tint) {
     const EdArrowSprite* a = edArrows + (lane & 3);
-    if(!a->ok || tint.a == 0)
+    if(!a->head.ok || tint.a == 0)
         return;
-    const float w = a->w * k, h = a->h * k;
-    DrawTexturePro(a->tex, a->src, (Rectangle){cx - w * 0.5f, cy - h * 0.5f, w, h}, (Vector2){0, 0}, 0, tint);
+    const float w = a->head.w * k, h = a->head.h * k;
+    EdSprite_Draw(a, &a->head, (Rectangle){cx - w * 0.5f, cy - h * 0.5f, w, h}, tint);
+}
+
+// cor da coluna sem atlas (shader); com atlas ou sem cor nao faz nada
+static void EdLane_Begin(int lane) {
+    if(edUseShader)
+        PlayStateNoteSpawn_BeginShift(edShift[lane & 3]);
+}
+
+static void EdLane_End(void) {
+    if(edUseShader)
+        PlayStateNoteSpawn_EndShift();
 }
 
 // icone de seta nos menus (~size pixels)
 void EdArrows_DrawIcon(int lane, float cx, float cy, float size, Color tint) {
-    if(edArrowsReady)
-        EdArrow_Draw(lane, cx, cy, size / ARROW_PX, tint);
+    if(!edArrowsReady)
+        return;
+    EdLane_Begin(lane);
+    EdArrow_Draw(lane, cx, cy, size / ARROW_PX, tint);
+    EdLane_End();
 }
 
 // ---------- geometria ----------
@@ -217,72 +282,103 @@ static void Grid_DrawTimeLines(float ppm, double viewBottom) {
 // Note player ON: passado apaga, na agulha acende (so visual, sem tocar no chart)
 typedef enum { LOOK_NORMAL, LOOK_PAST, LOOK_HIT } NoteLook;
 
-static NoteLook Note_Look(const EdNote* n) {
+static NoteLook Note_Look(float time) {
     if(!playFollow)
         return LOOK_NORMAL;
-    const float dt = n->time - (float)cursorMs;
+    const float dt = time - (float)cursorMs;
     if(playing && fabsf(dt) <= 200.0f)
         return LOOK_HIT;
     return (dt < 0) ? LOOK_PAST : LOOK_NORMAL;
 }
 
-/* Trecho pode ter nota entre top e bot? (limites tmin/tmax: nao depende de a nota estar
-   dentro do tempo nominal do trecho, entao charts baguncados carregam) */
+/* Trecho pode ter nota (ou rastro: tmax inclui o len) entre top e bot? Nao depende de a nota
+   estar dentro do tempo nominal do trecho, entao charts baguncados carregam. */
 static char Sec_MayShow(const EdSec* s, double top, double bot) {
     return s->count > 0 && s->tmax >= top && s->tmin <= bot;
 }
 
-/* Passe 1: rastros (textura branca). Um rastro por casa e pixel de topo: se ja ha um igual ou mais
-   longo ali, o novo ficaria escondido atras (mesma cor; o alfa somado so escureceria).
-   Comeca lenMax antes do topo, senao a cauda some quando a cabeca sai da tela. */
-static void Grid_DrawSustains(float ppm, double top, double bot) {
-    static unsigned short susEnd[8][OCC_ROWS];
-    memset(susEnd, 0, sizeof(susEnd));
+/* ---------- notas: coleta + desenho em lote (mesma ideia da gameplay) ----------
+   1) cabeca no mesmo pixel e casa de outra ja coletada nao sai de novo; rastro igual ou mais curto
+      no mesmo topo tambem nao (ficaria escondido atras). Custo ~8 casas x altura da grade.
+   2) teto de desenho por frame: as notas vem em ordem de tempo, o corte so pega as de baixo.
+   3) teto de notas lidas por frame: spam de milhares no mesmo pixel nao trava a CPU.
+   Setas e rastros usam 1 textura (atlas ou skin): 1 lote. O brilho do Note player (textura branca)
+   sai antes, num passe so dele, pra nao alternar textura por nota. */
+#define ED_DRAW_BUDGET 2048    // cabecas + rastros (cada rastro conta 2: corpo e ponta)
+#define ED_SCAN_BUDGET 32768   // notas lidas por frame
 
-    for(int i = 0; i < chart.nsec; i++) {
-        const EdSec* s = chart.secs + i;
-        if(s->lenMax <= 0 || !Sec_MayShow(s, top, bot))
-            continue;
-        for(int k = EdSec_LowerBound(s, (float)(top - s->lenMax)); k < s->count; k++) {
-            const EdNote* n = s->notes + k;
-            if(n->time > bot)
-                break;
-            if(n->len <= 0 || n->lane < 0 || n->lane >= 8)
-                continue;
-            const float y = Grid_Y(n->time, ppm);
-            const float y0 = fmaxf(y, GRID_Y0);
-            const float y1 = fminf(y + fmaxf(n->len * ppm, 6.0f), GRID_Y1);
-            if(y1 <= y0)
-                continue;
-            const int dl = EdDispLane(s, n->lane);
-            const NoteLook look = Note_Look(n);
-            if(!playFollow) {   // com Note player o alfa muda por nota: nada se esconde
-                const int r0 = (int)(y0 - OCC_TOP);
-                const int r1 = (int)(y1 - OCC_TOP) + 1;
-                if(r0 >= 0 && r0 < OCC_ROWS && r1 <= OCC_ROWS) {
-                    if(susEnd[dl][r0] >= r1)
-                        continue;
-                    susEnd[dl][r0] = (unsigned short)r1;
-                }
-            }
-            Color c = EdLaneColor(n->lane);
-            c.a = (look == LOOK_PAST) ? 50 : (look == LOOK_HIT) ? 255 : 160;
-            DrawRectangleRec((Rectangle){Grid_LaneCX(dl) - 7, y0, 14, y1 - y0}, c);
-        }
+typedef struct {
+    float cx, y0, y1;   // cabeca: y0 = centro; rastro: de y0 ate y1
+    unsigned char lane, look;
+} EdDrawItem;
+
+static EdDrawItem edHeads[ED_DRAW_BUDGET];
+static EdDrawItem edTrails[ED_DRAW_BUDGET / 2];
+static int edHeadN, edTrailN, edBudget, edScan;
+
+// marcadas com a geracao do frame: sem memset por frame
+static unsigned short occHead[8][OCC_ROWS];
+static unsigned short occTrailGen[8][OCC_ROWS];
+static unsigned short occTrailEnd[8][OCC_ROWS];   // fim (linha + 1) do maior rastro com esse topo
+
+static unsigned short occGen = 0;
+
+static void Notes_NextGen(void) {
+    if(++occGen == 0) {   // wraparound: limpa uma vez a cada 65535 frames
+        memset(occHead, 0, sizeof(occHead));
+        memset(occTrailGen, 0, sizeof(occTrailGen));
+        occGen = 1;
     }
 }
 
-/* Passe 2: setas (textura da skin). Notas curtas empilhadas no mesmo pixel e casa saem uma vez so:
-   o custo fica em ~8 casas x altura da grade, por maior que seja a densidade do chart. */
-static void Grid_DrawHeads(float ppm, double top, double bot) {
-    static unsigned char occ[8][OCC_ROWS];
-    memset(occ, 0, sizeof(occ));
+static void Notes_AddHead(const EdNote* n, int dl, float y) {
+    const float rf = y - OCC_TOP;
+    if(!(rf >= 0 && rf < OCC_ROWS))
+        return;   // fora da faixa (ou NaN)
+    const int row = (int)rf;
+    if(occHead[dl][row] == occGen)
+        return;
+    occHead[dl][row] = occGen;
+    if(edBudget <= 0)
+        return;
+    edBudget--;
+    edHeads[edHeadN++] = (EdDrawItem){Grid_LaneCX(dl), y + 1, 0, (unsigned char)(n->lane & 3), (unsigned char)Note_Look(n->time)};
+}
 
-    for(int i = 0; i < chart.nsec; i++) {
+static void Notes_AddTrail(const EdNote* n, int dl, float y, float ppm) {
+    const float y0 = fmaxf(y, GRID_Y0);
+    const float y1 = fminf(y + fmaxf(n->len * ppm, 6.0f), GRID_Y1);
+    if(!(y1 > y0))
+        return;
+    const int r0 = (int)(y0 - OCC_TOP);
+    const int r1 = (int)(y1 - OCC_TOP) + 1;
+    if(r0 < 0 || r0 >= OCC_ROWS || r1 > OCC_ROWS)
+        return;
+    // mesmo topo = mesmo tempo = mesma cor e mesmo look: o mais curto ficaria escondido
+    if(occTrailGen[dl][r0] == occGen && occTrailEnd[dl][r0] >= r1)
+        return;
+    occTrailGen[dl][r0] = occGen;
+    occTrailEnd[dl][r0] = (unsigned short)r1;
+    if(edBudget < 2 || edTrailN >= ED_DRAW_BUDGET / 2)
+        return;
+    edBudget -= 2;
+    edTrails[edTrailN++] = (EdDrawItem){Grid_LaneCX(dl), y0, y1, (unsigned char)(n->lane & 3), (unsigned char)Note_Look(n->time)};
+}
+
+/* Le so as notas que aparecem: top..bot (cabecas e rastros que comecam na tela) e, a parte,
+   top-lenMax..top (so rastros vindos de cima, senao a cauda some quando a cabeca sai). */
+static void Notes_Collect(float ppm, double top, double bot) {
+    edHeadN = edTrailN = 0;
+    edBudget = ED_DRAW_BUDGET;
+    edScan = ED_SCAN_BUDGET;
+    Notes_NextGen();
+
+    for(int i = 0; i < chart.nsec && edScan > 0 && edBudget > 0; i++) {
         const EdSec* s = chart.secs + i;
         if(!Sec_MayShow(s, top, bot))
             continue;
-        for(int k = EdSec_LowerBound(s, (float)top); k < s->count; k++) {
+        const int kTop = EdSec_LowerBound(s, (float)top);
+        for(int k = kTop; k < s->count && edScan > 0; k++, edScan--) {
             const EdNote* n = s->notes + k;
             if(n->time > bot)
                 break;
@@ -290,23 +386,86 @@ static void Grid_DrawHeads(float ppm, double top, double bot) {
                 continue;
             const int dl = EdDispLane(s, n->lane);
             const float y = Grid_Y(n->time, ppm);
-            if(n->len <= 0) {
-                const int row = (int)(y - OCC_TOP);
-                if(row >= 0 && row < OCC_ROWS) {
-                    if(occ[dl][row])
-                        continue;
-                    occ[dl][row] = 1;
-                }
-            }
-            const NoteLook look = Note_Look(n);
-            const float cx = Grid_LaneCX(dl);
-            if(look == LOOK_HIT) {
-                DrawCircleV((Vector2){cx, y + 1}, 34.0f, (Color){255, 255, 255, 60});
-                DrawCircleV((Vector2){cx, y + 1}, 26.0f, (Color){255, 255, 200, 90});
-            }
-            EdArrow_Draw(n->lane, cx, y + 1, (look == LOOK_HIT) ? 1.25f : 1.0f,
-                (look == LOOK_PAST) ? (Color){255, 255, 255, 90} : WHITE);
+            if(n->len > 0)
+                Notes_AddTrail(n, dl, y, ppm);
+            Notes_AddHead(n, dl, y);
         }
+        if(s->lenMax <= 0)
+            continue;
+        for(int k = EdSec_LowerBound(s, (float)(top - s->lenMax)); k < kTop && edScan > 0; k++, edScan--) {
+            const EdNote* n = s->notes + k;
+            if(n->len <= 0 || n->lane < 0 || n->lane >= 8 || n->time + n->len < top)
+                continue;
+            Notes_AddTrail(n, EdDispLane(s, n->lane), Grid_Y(n->time, ppm), ppm);
+        }
+    }
+}
+
+static Color Look_Tint(unsigned char look, unsigned char normal, unsigned char past) {
+    const unsigned char a = (look == LOOK_PAST) ? past : (look == LOOK_HIT) ? 255 : normal;
+    return (Color){255, 255, 255, a};
+}
+
+// rastro: corpo esticado (hold piece) + ponta (hold end), igual a gameplay; skin sem eles = faixa da cor
+static void Notes_DrawTrail(const EdDrawItem* it) {
+    const EdArrowSprite* a = edArrows + it->lane;
+    const Color tint = Look_Tint(it->look, 200, 60);
+    const float h = it->y1 - it->y0;
+    if(!a->trail.ok) {
+        Color c = GameData_ShiftColor(EdLaneColor(it->lane), edShift[it->lane]);
+        c.a = tint.a;
+        DrawRectangleRec((Rectangle){it->cx - 7, it->y0, 14, h}, c);
+        return;
+    }
+    const float endH = a->end.ok ? fminf(a->end.h, h) : 0.0f;
+    const float bodyH = h - endH;
+    if(bodyH > 0)
+        EdSprite_Draw(a, &a->trail, (Rectangle){it->cx - a->trail.w * 0.5f, it->y0, a->trail.w, bodyH}, tint);
+    if(endH > 0)
+        EdSprite_Draw(a, &a->end, (Rectangle){it->cx - a->end.w * 0.5f, it->y0 + bodyH, a->end.w, endH}, tint);
+}
+
+static void Notes_DrawHead(const EdDrawItem* it) {
+    EdArrow_Draw(it->lane, it->cx, it->y0, (it->look == LOOK_HIT) ? 1.25f : 1.0f, Look_Tint(it->look, 255, 90));
+}
+
+// uma coluna (lane < 0 = todas): rastros embaixo, cabecas por cima
+static void Notes_DrawPass(int lane) {
+    for(int i = 0; i < edTrailN; i++)
+        if(lane < 0 || edTrails[i].lane == lane)
+            Notes_DrawTrail(edTrails + i);
+    for(int i = 0; i < edHeadN; i++)
+        if(lane < 0 || edHeads[i].lane == lane)
+            Notes_DrawHead(edHeads + i);
+}
+
+static void Grid_DrawNotes(float ppm, double top, double bot) {
+    Notes_Collect(ppm, top, bot);
+
+    /* Brilho do Note player: 1 so pra todas as notas na agulha (caixa que cobre todas),
+       nao 1 por nota. 2 retangulos da textura branca, antes das setas: o lote delas segue unico. */
+    float gx0 = 1e9f, gx1 = -1e9f, gy0 = 1e9f, gy1 = -1e9f;
+    for(int i = 0; i < edHeadN; i++) {
+        if(edHeads[i].look != LOOK_HIT)
+            continue;
+        gx0 = fminf(gx0, edHeads[i].cx);
+        gx1 = fmaxf(gx1, edHeads[i].cx);
+        gy0 = fminf(gy0, edHeads[i].y0);
+        gy1 = fmaxf(gy1, edHeads[i].y0);
+    }
+    if(gx1 >= gx0) {
+        DrawRectangleRec((Rectangle){gx0 - 34, gy0 - 34, gx1 - gx0 + 68, gy1 - gy0 + 68}, (Color){255, 255, 255, 40});
+        DrawRectangleRec((Rectangle){gx0 - 26, gy0 - 26, gx1 - gx0 + 52, gy1 - gy0 + 52}, (Color){255, 255, 200, 60});
+    }
+
+    if(!edUseShader) {
+        Notes_DrawPass(-1);   // atlas ou skin sem cor: 1 textura, 1 lote
+        return;
+    }
+    for(int l = 0; l < 4; l++) {   // sem atlas: no maximo 4 trocas de shader, nunca por nota
+        EdLane_Begin(l);
+        Notes_DrawPass(l);
+        EdLane_End();
     }
 }
 
@@ -365,7 +524,9 @@ static void Grid_NoteMouse(Vector2 m, float ppm, int lane) {
             DrawLineEx((Vector2){cx - 13, gy - 13}, (Vector2){cx + 13, gy + 13}, 3.0f, ED_C_BAD);
             DrawLineEx((Vector2){cx - 13, gy + 13}, (Vector2){cx + 13, gy - 13}, 3.0f, ED_C_BAD);
         } else {
+            EdLane_Begin(raw);
             EdArrow_Draw(raw, cx, gy, 1.0f, (Color){255, 255, 255, 150});
+            EdLane_End();
         }
     }
 
@@ -398,8 +559,7 @@ void Edit_DrawGrid(void) {
     Grid_DrawBackground(lane);
     Grid_DrawSongBar();
     Grid_DrawTimeLines(ppm, viewBottom);
-    Grid_DrawSustains(ppm, top, bot);
-    Grid_DrawHeads(ppm, top, bot);
+    Grid_DrawNotes(ppm, top, bot);
     Grid_DrawCursor(ppm);
 
     if(mouseOn) {

@@ -215,3 +215,15 @@ LOAD [moribund-3] init: 0.0 ms, chart: 114.9 ms, sounds: 65.3 ms, characters: 48
 LOAD [moribund-3] init: 0.0 ms, chart: 93.2 ms, sounds: 0.9 ms, characters: 475.7 ms, stage: 3.0 ms, song audio: 1.7 ms, notes: 0.7 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 477.4 ms) total: 575.4 ms
 LOAD [moribund-3] init: 0.0 ms, chart: 92.1 ms, sounds: 0.7 ms, characters: 463.0 ms, stage: 3.6 ms, song audio: 1.6 ms, notes: 0.7 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 465.3 ms) total: 561.8 ms
 LOAD [moribund-3] init: 0.0 ms, chart: 99.7 ms, sounds: 1.0 ms, characters: 458.3 ms, stage: 2.8 ms, song audio: 1.7 ms, notes: 0.7 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 459.9 ms) total: 564.4 ms
+[WARN] Girlfriend 'gf-grunt' nao encontrada: usando gf padrao
+[WARN] Personagem 'tricky' nao encontrado: usando dad padrao
+[WARN] Personagem 'bf-grunt' nao encontrado: usando bf padrao
+LOAD [improbable-outset] init: 20.1 ms, chart: 0.2 ms, sounds: 72.4 ms, characters: 114.6 ms, stage: 0.2 ms, song audio: 1.7 ms, notes: 0.0 ms, ui: 9.4 ms, warmup: 0.3 ms, (textures on main thread: 136.8 ms) total: 219.0 ms
+[WARN] Stage 'void' nao encontrado: usando stage vazio
+LOAD [unknownbambi] init: 0.0 ms, chart: 18.1 ms, sounds: 45.8 ms, characters: 79.2 ms, stage: 0.2 ms, song audio: 1.8 ms, notes: 0.0 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 58.5 ms) total: 145.2 ms
+LOAD [insane] init: 0.0 ms, chart: 17.9 ms, sounds: 1.8 ms, characters: 434.5 ms, stage: 6.1 ms, song audio: 1.9 ms, notes: 0.2 ms, ui: 0.0 ms, warmup: 0.4 ms, (textures on main thread: 438.1 ms) total: 462.7 ms
+LOAD [omission] init: 0.0 ms, chart: 33.9 ms, sounds: 57.2 ms, characters: 289.7 ms, stage: 10.7 ms, song audio: 1.8 ms, notes: 231.6 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 262.6 ms) total: 625.2 ms
+LOAD [moribund-3] init: 23.1 ms, chart: 98.5 ms, sounds: 61.3 ms, characters: 411.3 ms, stage: 4.0 ms, song audio: 1.8 ms, notes: 226.0 ms, ui: 8.8 ms, warmup: 0.2 ms, (textures on main thread: 443.3 ms) total: 835.0 ms
+LOAD [Astray] init: 2.1 ms, chart: 20.6 ms, sounds: 120.9 ms, characters: 659.7 ms, stage: 40.6 ms, song audio: 3.8 ms, notes: 361.5 ms, ui: 10.7 ms, warmup: 0.1 ms, (textures on main thread: 685.8 ms) total: 1220.0 ms
+[WARN] ImagePrefetch: sem orcamento de memoria, carrega na hora (assets/mods/images/absolute-zeroBG.png)
+LOAD [absolute-zero] init: 21.3 ms, chart: 7.3 ms, sounds: 79.6 ms, characters: 490.3 ms, stage: 1664.4 ms, song audio: 1.9 ms, notes: 237.4 ms, ui: 8.4 ms, warmup: 0.2 ms, (textures on main thread: 2171.4 ms) total: 2511.0 ms

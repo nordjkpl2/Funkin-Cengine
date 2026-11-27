@@ -8,7 +8,7 @@
 /* // OpenGL Version */
 #define GLSL_VERSION 330
 /* Nome e versao da engine (menu principal e codigo secreto das opcoes) */
-#define ENGINE_VERSION_TEXT "FN/FCv0060"
+#define ENGINE_VERSION_TEXT "FN/FC v0060"
 
 typedef struct RayGame RayGame;
 

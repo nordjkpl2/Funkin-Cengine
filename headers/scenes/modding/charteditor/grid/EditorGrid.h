@@ -31,6 +31,7 @@ extern char edIconOOk;
 extern char edIconPOk;
 void EdArrows_Init(void);
 void EdArrows_Reset(void);   // refaz os sprites das notas a partir da skin atual (Note_GetCurrentSkin)
+void EdArrows_Free(void);    // solta atlas/shader das cores (ao sair da cena)
 void EdArrows_DrawIcon(int lane, float cx, float cy, float size, Color tint);   // icone de seta (menus)
 float EdPxPerMs(void);
 int EdGrid_LaneAt(Vector2 m);   /* casa da tela (0..7) sob o ponto, ou -1 fora da grade */

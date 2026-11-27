@@ -365,18 +365,27 @@ static void DrawLaneObjs(int lane, RayAnimatedObject* a, RayAnimatedObject* b) {
     EndShaderMode();
 }
 
-/* Menu de opcoes (preview): mesmo desenho de nota com um offset HSB qualquer (sempre shader, sem atlas). */
-void PlayStateNoteSpawn_DrawShifted(RayAnimatedObject* obj, Vector3 shift) {
-    if (IsIdentityShift(shift)) {
-        Render_DrawAnimatedObject(obj);
-        return;
-    }
+static bool shiftActive;
+
+void PlayStateNoteSpawn_BeginShift(Vector3 shift) {
+    shiftActive = !IsIdentityShift(shift);
+    if (!shiftActive) return;
     EnsureRecolorShader();
-    rlDrawRenderBatchActive();
+    rlDrawRenderBatchActive();   /* o lote pendente usa o uniform antigo */
     SetShaderValue(recolorShader, recolorLoc, &shift, SHADER_UNIFORM_VEC3);
     BeginShaderMode(recolorShader);
+}
+
+void PlayStateNoteSpawn_EndShift(void) {
+    if (shiftActive) EndShaderMode();
+    shiftActive = false;
+}
+
+/* Menu de opcoes (preview): mesmo desenho de nota com um offset HSB qualquer (sempre shader, sem atlas). */
+void PlayStateNoteSpawn_DrawShifted(RayAnimatedObject* obj, Vector3 shift) {
+    PlayStateNoteSpawn_BeginShift(shift);
     Render_DrawAnimatedObject(obj);
-    EndShaderMode();
+    PlayStateNoteSpawn_EndShift();
 }
 
 void PlayStateNoteSpawn_ReleaseTint(void) {

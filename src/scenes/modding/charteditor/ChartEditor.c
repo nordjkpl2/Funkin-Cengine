@@ -450,6 +450,7 @@ static void ChartEditor_Destroy([[maybe_unused]] RayScene* scene) {
         edHasSplit = 0;
     }
     Editor_UnloadIcons();
+    EdArrows_Free();   // atlas das cores e shader de matiz sao recursos da GPU
     EdChart_Free(&chart);
     chartLoaded = 0;
     Undo_Clear();

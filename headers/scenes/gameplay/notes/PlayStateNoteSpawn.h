@@ -64,5 +64,8 @@ void PlayStateNoteSpawn_Draw(const PlayStateNoteView* view);
 /* Menu de opcoes: nota desenhada com a cor da coluna (tint branco = skin original). */
 void PlayStateNoteSpawn_DrawShifted(RayAnimatedObject* obj, Vector3 shift);
 void PlayStateNoteSpawn_ReleaseTint(void);
+/* Fora da gameplay (chart editor): liga o shader de matiz da coluna ate EndShift. Shift (0,0,0) = nada. */
+void PlayStateNoteSpawn_BeginShift(Vector3 shift);
+void PlayStateNoteSpawn_EndShift(void);
 
 #endif /* PLAYSTATE_NOTESPAWN_H */
