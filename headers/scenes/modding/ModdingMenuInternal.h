@@ -1,7 +1,7 @@
 /* // * Friday Night Funkin´ c engine (c) 2026 nordjkpl */
 /*
  * ModdingMenuInternal.h - estado e funcoes compartilhadas pelos modulos do menu de modding
- * (ModdingMenu.c, ModdingMenuInput.c, ModdingMenuDraw.c).
+ * (ModdingMenu.c, ModdingMenuInput.c, ModdingMenuDraw.c e hudeditor/HudEditor.c).
  */
 #pragma once
 #ifndef MODDINGMENUINTERNAL_H
@@ -14,10 +14,13 @@
 typedef enum {
     MOD_LIST = 0,
     MOD_IMPORT,
+    MOD_HUD,
     MOD_STUB
 } ModdingMode;
 
-#define TAB_COUNT 7 /* numero de entradas em tabs[] (ModdingMenu.c) */
+#define TAB_COUNT 8 /* numero de entradas em tabs[] (ModdingMenu.c) */
+#define TAB_HUD 6
+#define TAB_IMPORT 7
 
 /* Importer: origem do mod -> assets/mods/<nome>. */
 #define MODDING_PATH_CAP 512
@@ -59,5 +62,8 @@ void Modding_DrawImport(void);
 void Modding_DrawStub(void);
 void Modding_DrawList(void);
 int Modding_TabHit(int i, Vector2 m); /* 1 se o ponto m (coords do mundo) esta sobre a aba i */
+/* Formas usam o retangulo branco do atlas da fonte: texto e formas no mesmo draw call.
+   Font com texture.id 0 volta a textura padrao de formas (chamar assim no fim do Draw). */
+void Modding_BatchWith(Font font);
 
 #endif

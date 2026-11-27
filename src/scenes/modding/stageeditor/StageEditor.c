@@ -15,7 +15,7 @@
 #include "scenes/modding/stageeditor/StageEditorIO.h"
 #include "scenes/modding/ModdingCommon.h"
 #include "scenes/modding/ModdingUi.h"
-#include "scenes/menu/modding/ModdingMenu.h"
+#include "scenes/modding/ModdingMenu.h"
 #include "characters/Character.h"
 #include "characters/Girlfriend.h"
 #include "Render.h"

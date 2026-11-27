@@ -2,7 +2,7 @@
 /*
  * ModdingMenuInput.c - entrada de texto/colar/apagar do caminho de origem e execucao do import.
  */
-#include "scenes/menu/modding/ModdingMenuInternal.h"
+#include "scenes/modding/ModdingMenuInternal.h"
 #include "data/modimport/ModImport.h"
 
 #include <stdio.h>

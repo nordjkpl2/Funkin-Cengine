@@ -8,7 +8,7 @@
 #include "scenes/menu/freeplay/Freeplay.h"
 #include "scenes/menu/storymode/StoryMode.h"
 #include "scenes/menu/options/OptionsMenu.h"
-#include "scenes/menu/modding/ModdingMenu.h"
+#include "scenes/modding/ModdingMenu.h"
 #include <math.h>
 #include "Game.h"
 #include "raymath.h"

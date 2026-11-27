@@ -11,6 +11,7 @@
 #include "scenes/gameplay/audio/PlayStateAudio.h"
 #include "scenes/gameplay/HUD/PlayStateHealth.h"
 #include "GameData.h"
+#include "data/config/HudConfig.h"
 #include "Game.h"
 #include "rlgl.h"
 #include <math.h>
@@ -78,6 +79,7 @@ typedef struct {
     HudAlign align;
     float anchorX, anchorY;      // referencia no canvas (x conforme align)
     float blitX, blitY, blitW, blitH; // retangulo no canvas, calculado no raster
+    float offX, offY;            // deslocamento do HUD Editor (px inteiros: nao muda a fase do subpixel)
 } HudText;
 
 static HudText hTime, hTitle, hScore, hMisses, hAccuracy, hPsych, hBotplay, hMark;
@@ -97,6 +99,9 @@ static int lastTimeLift = -1;
 static int lastTimeText = -1;
 static float timeProgress;      // 0..1 da musica (barra do estilo bar)
 static float timeBarX, timeBarY; // canto superior esquerdo da barra (coordenadas logicas)
+// Layout do HUD Editor (HudConfig), lido no Init.
+static float timeScale = 1.0f, scoreScale = 1.0f;
+static char showTime = 1, showScoreEl = 1, showTitle = 1, showBotplay = 1;
 
 static void HudText_Style(HudText* t, float size, Color color, Color shadow,
                           float shadowX, float shadowY, HudAlign align) {
@@ -214,8 +219,8 @@ static void HudText_Flush(HudText* t) {
 static void HudText_BlitScaled(const HudText* t, float k) {
     if (t->rt.id == 0) return;
     const float w = t->blitW * k, h = t->blitH * k;
-    const float x = t->blitX - (w - t->blitW) * 0.5f;
-    const float y = t->blitY - (h - t->blitH) * 0.5f;
+    const float x = t->blitX - (w - t->blitW) * 0.5f + t->offX;
+    const float y = t->blitY - (h - t->blitH) * 0.5f + t->offY;
 
     DrawTexturePro(
         t->rt.texture,
@@ -288,33 +293,56 @@ void PlayStateText_Init(const char* songDir) {
         SetTextureFilter(vcrFont.texture, TEXTURE_FILTER_BILINEAR);
     }
 
-    HudText_StyleOutline(&hTime, 20.0f, WHITE, BLACK, OUTLINE_TIME, HUD_ALIGN_CENTER);
+    // Layout do HUD Editor: escala vai no tamanho do raster; deslocamento so no blit.
+    const HudConfig* hud = HudConfig_Get();
+    const HudElement* eTime = &hud->el[HUD_EL_TIME];
+    const HudElement* eScore = &hud->el[HUD_EL_SCORE];
+    const HudElement* eTitle = &hud->el[HUD_EL_TITLE];
+    const HudElement* eBot = &hud->el[HUD_EL_BOTPLAY];
+    timeScale = (float)eTime->scalePct / 100.0f;
+    scoreScale = (float)eScore->scalePct / 100.0f;
+    showTime = eTime->visible;
+    showScoreEl = eScore->visible;
+    showTitle = eTitle->visible;
+    showBotplay = eBot->visible;
+    lastTimePos = -1; // escala pode ter mudado: refaz o layout do tempo
+
+    HudText_StyleOutline(&hTime, 20.0f * timeScale, WHITE, BLACK, OUTLINE_TIME, HUD_ALIGN_CENTER);
     HudText_SetAnchor(&hTime, TEXT_CENTER_X, 15.0f);
     HudText_SetText(&hTime, "0:00 / 0:00");
 
     // Ancora e alinhamento reais vem de PlayStateText_Refresh (dependem de scorePosition).
-    HudText_StyleOutline(&hScore, 16.0f, WHITE, BLACK, OUTLINE_SCORE, HUD_ALIGN_RIGHT);
+    HudText_StyleOutline(&hScore, 16.0f * scoreScale, WHITE, BLACK, OUTLINE_SCORE, HUD_ALIGN_RIGHT);
     HudText_SetText(&hScore, "Score: 0");
 
-    HudText_StyleOutline(&hMisses, 16.0f, WHITE, BLACK, OUTLINE_SCORE, HUD_ALIGN_RIGHT);
+    HudText_StyleOutline(&hMisses, 16.0f * scoreScale, WHITE, BLACK, OUTLINE_SCORE, HUD_ALIGN_RIGHT);
     HudText_SetText(&hMisses, "Misses: 0");
 
-    HudText_StyleOutline(&hAccuracy, 16.0f, WHITE, BLACK, OUTLINE_SCORE, HUD_ALIGN_RIGHT);
+    HudText_StyleOutline(&hAccuracy, 16.0f * scoreScale, WHITE, BLACK, OUTLINE_SCORE, HUD_ALIGN_RIGHT);
     HudText_SetText(&hAccuracy, "Accuracy: 0.00%");
 
-    HudText_StyleOutline(&hPsych, PSYCH_SCORE_FONT, WHITE, BLACK, OUTLINE_SCORE, HUD_ALIGN_CENTER);
+    HudText_StyleOutline(&hPsych, PSYCH_SCORE_FONT * scoreScale, WHITE, BLACK, OUTLINE_SCORE, HUD_ALIGN_CENTER);
     HudText_SetAnchor(&hPsych, TEXT_CENTER_X, 0.0f); // y real vem de PlayStateText_Refresh
 
-    HudText_Style(&hTitle, 13.0f, (Color){225, 225, 225, 220}, (Color){0, 0, 0, 180}, 1.0f, 1.0f, HUD_ALIGN_LEFT);
+    HudText_Style(&hTitle, 13.0f * (float)eTitle->scalePct / 100.0f, (Color){225, 225, 225, 220}, (Color){0, 0, 0, 180}, 1.0f, 1.0f, HUD_ALIGN_LEFT);
     UpdateSongDisplayName(songDir);
 
-    HudText_Style(&hBotplay, 22.0f, (Color){255, 255, 255, 125}, (Color){0, 0, 0, 110}, 2.0f, 2.0f, HUD_ALIGN_LEFT);
+    HudText_Style(&hBotplay, 22.0f * (float)eBot->scalePct / 100.0f, (Color){255, 255, 255, 125}, (Color){0, 0, 0, 110}, 2.0f, 2.0f, HUD_ALIGN_LEFT);
     HudText_SetAnchor(&hBotplay, 22.0f, 20.0f);
     HudText_SetText(&hBotplay, "BOTPLAY");
 
     HudText_Style(&hMark, MARK_FONT, (Color){255, 255, 255, 150}, (Color){0, 0, 0, 140}, 1.0f, 1.0f, HUD_ALIGN_RIGHT);
     HudText_SetAnchor(&hMark, MARK_RIGHTUP_X, MARK_RIGHTUP_Y);
     HudText_SetText(&hMark, ENGINE_VERSION_TEXT);
+
+    hTime.offX = (float)eTime->offsetX;
+    hTime.offY = (float)eTime->offsetY;
+    hScore.offX = hMisses.offX = hAccuracy.offX = hPsych.offX = (float)eScore->offsetX;
+    hScore.offY = hMisses.offY = hAccuracy.offY = hPsych.offY = (float)eScore->offsetY;
+    hTitle.offX = (float)eTitle->offsetX;
+    hTitle.offY = (float)eTitle->offsetY;
+    hBotplay.offX = (float)eBot->offsetX;
+    hBotplay.offY = (float)eBot->offsetY;
 }
 
 void PlayStateText_Unload(void) {
@@ -362,17 +390,18 @@ static void ApplyTimePosition(int lift) {
         case TIME_POS_RIGHTDOWN: align = HUD_ALIGN_RIGHT; x = TEXT_RIGHT_X; y = TIME_RIGHTDOWN_Y - (float)lift * STACK_LINE_H; break;
         default: break;
     }
+    const float ts = timeScale;
     timeTopY = y;
-    timeBottomY = y + TIME_BAR_FONT;
+    timeBottomY = y + TIME_BAR_FONT * ts;
     if (gameOptions.timeStyle == TIME_STYLE_BAR) {
-        timeBottomY = y + TIME_BAR_H + 2.0f * TIME_BAR_BORDER;
+        timeBottomY = y + (TIME_BAR_H + 2.0f * TIME_BAR_BORDER) * ts;
         // Barra centrada em x (ou terminando em x, se alinhado a direita). O texto fica sempre
         // centrado na barra: antes, a direita, ele colava na borda e a barra parecia torta.
-        timeBarX = roundf(align == HUD_ALIGN_RIGHT ? x - TIME_BAR_BORDER - TIME_BAR_W : x - TIME_BAR_W * 0.5f);
-        timeBarY = y + TIME_BAR_BORDER;
+        timeBarX = roundf(align == HUD_ALIGN_RIGHT ? x - (TIME_BAR_BORDER + TIME_BAR_W) * ts : x - TIME_BAR_W * ts * 0.5f);
+        timeBarY = y + TIME_BAR_BORDER * ts;
         align = HUD_ALIGN_CENTER;
-        x = timeBarX + TIME_BAR_W * 0.5f;
-        y = timeBarY + (TIME_BAR_H - TIME_BAR_FONT) * 0.5f;
+        x = timeBarX + TIME_BAR_W * ts * 0.5f;
+        y = timeBarY + (TIME_BAR_H - TIME_BAR_FONT) * ts * 0.5f;
     }
     HudText_SetAlign(&hTime, align);
     HudText_SetAnchor(&hTime, x, y);
@@ -381,11 +410,14 @@ static void ApplyTimePosition(int lift) {
 // Aplica gameOptions.engineMarkPos a marca. Barato (so muda ancora), entao roda todo refresh.
 static void ApplyEngineMarkPosition(void) {
     if (gameOptions.engineMarkPos == ENGINE_MARK_POS_RIGHTUP) {
+        hMark.offX = hMark.offY = 0.0f; // so segue o tempo na posicao Default
         HudText_SetAlign(&hMark, HUD_ALIGN_RIGHT);
         HudText_SetAnchor(&hMark, MARK_RIGHTUP_X, MARK_RIGHTUP_Y);
         return;
     }
     const float y = SCROLL_IS_DOWN(gameOptions.scroll) ? timeTopY - MARK_FONT - MARK_GAP : timeBottomY + MARK_GAP;
+    hMark.offX = hTime.offX;
+    hMark.offY = hTime.offY;
     HudText_SetAlign(&hMark, HUD_ALIGN_CENTER);
     HudText_SetAnchor(&hMark, TEXT_CENTER_X, y);
 }
@@ -459,13 +491,14 @@ void PlayStateText_Refresh(int score, int misses, int accuracy, float songTime, 
         const char left = scorePosition == SCORE_POS_LEFT;
         const HudAlign align = left ? HUD_ALIGN_LEFT : HUD_ALIGN_RIGHT;
         const float x = left ? TEXT_LEFT_X : TEXT_RIGHT_X;
-        const float y = STACK_LAST_Y - (showAcc ? 2.0f : 1.0f) * STACK_LINE_H;
+        const float lineH = STACK_LINE_H * scoreScale;
+        const float y = STACK_LAST_Y + STACK_LINE_H - (showAcc ? 3.0f : 2.0f) * lineH; // ultima linha termina no mesmo lugar
         HudText_SetAlign(&hScore, align);
         HudText_SetAlign(&hMisses, align);
         HudText_SetAlign(&hAccuracy, align);
         HudText_SetAnchor(&hScore, x, y);
-        HudText_SetAnchor(&hMisses, x, y + STACK_LINE_H);
-        HudText_SetAnchor(&hAccuracy, x, y + 2.0f * STACK_LINE_H);
+        HudText_SetAnchor(&hMisses, x, y + lineH);
+        HudText_SetAnchor(&hAccuracy, x, y + 2.0f * lineH);
     }
 
     HudText_Flush(&hTime);
@@ -481,18 +514,20 @@ void PlayStateText_Refresh(int score, int misses, int accuracy, float songTime, 
 
 // Desenha so os blits (ja rasterizados em Refresh). Dentro da camera do HUD.
 void PlayStateText_Draw(char showScore, char scorePosition) {
-    if (gameOptions.timeStyle == TIME_STYLE_BAR) {
+    showScore = showScore && showScoreEl;
+    if (showTime && gameOptions.timeStyle == TIME_STYLE_BAR) {
         // Igual a Psych: moldura preta solida e preenchimento branco (o texto tem contorno e le nos dois).
-        const float b = TIME_BAR_BORDER;
-        DrawRectangleRec((Rectangle){timeBarX - b, timeBarY - b, TIME_BAR_W + 2.0f * b, TIME_BAR_H + 2.0f * b}, BLACK);
+        const float ts = timeScale, b = TIME_BAR_BORDER * ts, w = TIME_BAR_W * ts, h = TIME_BAR_H * ts;
+        const float bx = timeBarX + hTime.offX, by = timeBarY + hTime.offY;
+        DrawRectangleRec((Rectangle){bx - b, by - b, w + 2.0f * b, h + 2.0f * b}, BLACK);
         if (timeProgress > 0.0f)
-            DrawRectangleRec((Rectangle){timeBarX, timeBarY, TIME_BAR_W * timeProgress, TIME_BAR_H}, WHITE);
+            DrawRectangleRec((Rectangle){bx, by, w * timeProgress, h}, WHITE);
     }
 
     BeginBlendMode(BLEND_ALPHA_PREMULTIPLY);
 
-    HudText_Blit(&hTime);
-    HudText_Blit(&hTitle);
+    if (showTime) HudText_Blit(&hTime);
+    if (showTitle) HudText_Blit(&hTitle);
     if (gameOptions.engineMark) HudText_Blit(&hMark);
 
     if (showScore && OneLine(scorePosition)) {
@@ -508,6 +543,7 @@ void PlayStateText_Draw(char showScore, char scorePosition) {
 }
 
 void PlayStateText_DrawBotplayMark(void) {
+    if (!showBotplay) return;
     BeginBlendMode(BLEND_ALPHA_PREMULTIPLY);
     HudText_Blit(&hBotplay);
     EndBlendMode();

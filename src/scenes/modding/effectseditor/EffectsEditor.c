@@ -9,7 +9,7 @@
 
 #include "scenes/modding/effectseditor/EffectsEditor.h"
 #include "scenes/modding/ModdingUi.h"
-#include "scenes/menu/modding/ModdingMenu.h"
+#include "scenes/modding/ModdingMenu.h"
 #include "data/config/EffectsConfig.h"
 #include "data/config/NotesplashConfig.h"
 #include "Render.h"

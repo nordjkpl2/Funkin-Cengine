@@ -5,6 +5,7 @@
 
 #include "scenes/gameplay/HUD/PlayStateHealth.h"
 #include "GameData.h"
+#include "data/config/HudConfig.h"
 #include <float.h>
 #include <math.h>
 
@@ -21,6 +22,8 @@ static float minHealth;       /* -inf se mortal (morre abaixo de 0), senao 0 */
 /* Play as oponente (sem Co-Op): "health" e a vida do jogador, que fica do lado do oponente na barra. */
 static char healthOnDad;
 static bool healthHidden;     /* evento Health Bar = 0: nao desenha barra nem icones */
+static bool layoutHidden;     /* HUD Editor: barra escondida no layout */
+static float iconScale;       /* HUD Editor: escala dos icones (1 = padrao) */
 
 /* area interna da barra em pixels inteiros: calculada uma vez no Init */
 static int innerX, innerY, innerW, innerH;
@@ -29,11 +32,16 @@ void PlayStateHealth_Init(char top, char mortal) {
     minHealth = mortal ? -FLT_MAX : 0.0f;   /* mortal: limite inferior finito (morre abaixo de 0) */
     healthOnDad = gameOptions.playAsOpponent && !gameOptions.coopOn && !gameOptions.botplay;
     healthbarPadding = 4;
-    healthbar.width = 600;
+    /* layout do HUD Editor: largura, deslocamento, escala dos icones e visibilidade */
+    const HudConfig* hud = HudConfig_Get();
+    const HudElement* el = &hud->el[HUD_EL_HEALTH];
+    healthbar.width = roundf(600.0f * (float)hud->barWidthPct / 100.0f);
     healthbar.height = 17;
-    healthbar.x = 1280.0f / 2 - healthbar.width / 2;   /* centro da tela */
+    healthbar.x = 1280.0f / 2 - healthbar.width / 2 + (float)el->offsetX;   /* centro da tela */
     /* base: y 600 (103 px da borda de baixo); topo: mesma distancia de cima */
-    healthbar.y = top ? 103 : 600;
+    healthbar.y = (top ? 103.0f : 600.0f) + (float)el->offsetY;
+    iconScale = (float)el->scalePct / 100.0f;
+    layoutHidden = !el->visible;
 
     innerX = (int)healthbar.x + healthbarPadding;
     innerY = (int)healthbar.y + healthbarPadding;
@@ -112,7 +120,7 @@ void PlayStateHealth_SetVisible(bool visible) {
 }
 
 void PlayStateHealth_Draw(Texture2D dadIcon, Texture2D bfIcon) {
-    if (healthHidden) return;
+    if (healthHidden || layoutHidden) return;
     const int C = 35;
     /* vida do BF (a barra e desenhada desse ponto de vista); com Play as oponente, a do BF e o inverso */
     const float bfHealth = healthOnDad ? 1.0f - health : health;
@@ -130,21 +138,22 @@ void PlayStateHealth_Draw(Texture2D dadIcon, Texture2D bfIcon) {
     if (dadW > 0) DrawRectangle(innerX, innerY, dadW, innerH, dadColor);
     if (bfW > 0)  DrawRectangle(splitX, innerY, bfW, innerH, bfColor);
 
-    const float iconHalf = 75 * bop;
+    const float ib = bop * iconScale;
+    const float iconHalf = 75 * ib;
     const float iconCY = healthbar.y + healthbar.height / 2;
     const float iconX = innerX + middle;
 
     DrawTexturePro(dadIcon, dadLosing ? Character_IconLoseFrame(dadIcon) : Character_IconFrame(dadIcon), (Rectangle) {
-        .x = iconX + C - 75 - iconHalf - sway,
+        .x = iconX + (C - 75) * iconScale - iconHalf - sway,
         .y = iconCY - iconHalf + bobY,
-        .width = 130 * bop,
-        .height = 130 * bop
+        .width = 130 * ib,
+        .height = 130 * ib
     }, (Vector2) {0, 0}, 0, WHITE);
 
     DrawTexturePro(bfIcon, bfLosing ? Character_IconLoseFrame(bfIcon) : Character_IconFrame(bfIcon), (Rectangle) {
-        .x = iconX - C + 75 - iconHalf + sway,
+        .x = iconX + (75 - C) * iconScale - iconHalf + sway,
         .y = iconCY - iconHalf - bobY,
-        .width = 145 * bop,
-        .height = 145 * bop
+        .width = 145 * ib,
+        .height = 145 * ib
     }, (Vector2) {0, 0}, 0, WHITE);
 }

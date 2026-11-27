@@ -11,7 +11,7 @@
 #include "scenes/modding/notesplashseditor/NotesplashEditor.h"
 #include "scenes/modding/ModdingCommon.h"
 #include "scenes/modding/ModdingUi.h"
-#include "scenes/menu/modding/ModdingMenu.h"
+#include "scenes/modding/ModdingMenu.h"
 #include "data/config/NotesplashConfig.h"
 #include "data/config/EffectsConfig.h"
 #include "Render.h"

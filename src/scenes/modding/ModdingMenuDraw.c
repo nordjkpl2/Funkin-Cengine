@@ -3,13 +3,24 @@
  * ModdingMenuDraw.c - desenho do menu de modding (lista de abas, tela de import, tela em breve).
  */
 #include "scenes/api/FontLoader.h"
-#include "scenes/menu/modding/ModdingMenuInternal.h"
+#include "scenes/modding/ModdingMenuInternal.h"
 #include "data/modimport/ModImport.h"
 #include "rendering/TextMeasure.h"
 
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
+
+void Modding_BatchWith(Font font)
+{
+    /* GenImageFontAtlas (SUPPORT_FONT_ATLAS_WHITE_REC) poe um quadrado branco 3x3 no canto inferior direito;
+       o pixel do meio evita borda com filtro bilinear. Sem textura, volta ao padrao do raylib. */
+    const Texture2D t = font.texture;
+    if (t.id == 0 || t.width < 3 || t.height < 3)
+        SetShapesTexture((Texture2D){0}, (Rectangle){0});
+    else
+        SetShapesTexture(t, (Rectangle){(float)t.width - 2.0f, (float)t.height - 2.0f, 1.0f, 1.0f});
+}
 
 void Modding_DrawBackground(void)
 {
@@ -21,6 +32,7 @@ void Modding_DrawBackground(void)
 static void Modding_DrawMusicNote(float x, float y, float size, Color c);
 static void Modding_DrawPerson(float x, float y, float size, Color c);
 static void Modding_DrawDownload(float x, float y, float size, Color c);
+static void Modding_DrawHudIcon(float x, float y, float size, Color c);
 
 static void Imp_FormatSize(long long bytes, char *out, size_t cap)
 {
@@ -352,7 +364,8 @@ void Modding_DrawStub(void)
     Render_StopCamera();
 }
 
-/* Nota musical (colcheia) feita de elipse + retangulo + triangulo; (x,y) = canto superior esquerdo. */
+/* Nota musical (colcheia) feita de circulo + retangulo + triangulo; (x,y) = canto superior esquerdo.
+ * Sem DrawEllipse: ela usa RL_TRIANGLES sem textura e abre outro draw call. */
 static void Modding_DrawMusicNote(float x, float y, float size, Color c)
 {
     const float headW = size * 0.30f;
@@ -361,7 +374,7 @@ static void Modding_DrawMusicNote(float x, float y, float size, Color c)
     const float stemX = x + headW * 1.8f;
     const float headY = y + size - headH;
 
-    DrawEllipse((int)(x + headW), (int)headY, headW, headH, c);
+    DrawCircleV((Vector2){x + headW, headY}, headH * 1.2f, c);
     DrawRectangle((int)(stemX - stemW), (int)y, (int)stemW + 1, (int)(headY - y), c);
     DrawTriangle((Vector2){stemX, y},
                  (Vector2){stemX + size * 0.30f, y + size * 0.30f},
@@ -392,6 +405,17 @@ static void Modding_DrawDownload(float x, float y, float size, Color c)
     DrawRectangle((int)(x + size * 0.86f), (int)(trayY - size * 0.16f), (int)(size * 0.14f), (int)(size * 0.16f), c);
 }
 
+/* Icone do HUD Editor: moldura de tela com barra de vida, dois icones e o tempo. */
+static void Modding_DrawHudIcon(float x, float y, float size, Color c)
+{
+    const float h = size * 0.75f;
+    DrawRectangleLinesEx((Rectangle){x, y, size, h}, 2.0f, c);
+    DrawRectangle((int)(x + size * 0.18f), (int)(y + h * 0.66f), (int)(size * 0.64f), (int)(size * 0.08f) + 1, c);
+    DrawCircleV((Vector2){x + size * 0.44f, y + h * 0.69f}, size * 0.09f, c);
+    DrawCircleV((Vector2){x + size * 0.58f, y + h * 0.69f}, size * 0.09f, c);
+    DrawRectangle((int)(x + size * 0.38f), (int)(y + h * 0.18f), (int)(size * 0.24f), (int)(size * 0.06f) + 1, c);
+}
+
 /* Icone de cada aba, na ordem de `tabs`. */
 static void Modding_DrawTabIcon(int tab, float x, float y, float size, Color c)
 {
@@ -400,6 +424,7 @@ static void Modding_DrawTabIcon(int tab, float x, float y, float size, Color c)
         case 1: Modding_DrawPerson(x, y, size, c);    break;
         case 2:
         case 3: DrawRectangleLinesEx((Rectangle){x, y, size, size * 0.75f}, 2.0f, c); break;
+        case TAB_HUD: Modding_DrawHudIcon(x, y, size, c); break;
         default: Modding_DrawDownload(x, y, size, c); break;
     }
 }
@@ -430,12 +455,14 @@ int Modding_TabHit(int i, Vector2 m)
     return CheckCollisionPointRec(m, r);
 }
 
-/* Desenha as abas em passadas por textura (fonte / formas): cada troca de textura custa um flush do batch. */
+/* Formas e texto dividem a textura (Modding_BatchWith), entao as passadas so mantem a ordem
+ * sombra -> texto -> icone; tudo sai num draw call. Abas fora da tela nao sao desenhadas. */
 void Modding_DrawList(void)
 {
     Modding_DrawBackground();
 
     Vector2 pos[TAB_COUNT];
+    char shown[TAB_COUNT];
     Color textCol[TAB_COUNT], shadowCol[TAB_COUNT];
     float iconX[TAB_COUNT], iconSize[TAB_COUNT];
     for (int i = 0; i < TAB_COUNT; ++i) {
@@ -443,6 +470,7 @@ void Modding_DrawList(void)
         textCol[i] = fontColor;
         shadowCol[i] = outlineColor;
         pos[i] = Modding_TabPosition(i);
+        shown[i] = pos[i].y > -tabFontSize - 20.0f && pos[i].y < 740.0f;
         // Selecionado em verde, igual ao menu principal.
         if (selectedItem) textCol[i] = selectedColor;
         else textCol[i].a = 150;
@@ -459,18 +487,17 @@ void Modding_DrawList(void)
         DrawRectangleRounded(box, 0.3f, 8, Fade(selectedColor, 0.18f));
         DrawRectangleRoundedLinesEx(box, 0.3f, 8, 3.0f, selectedColor);
     }
-    // passada 2: textos de sombra (fonte)
-    for (int i = 0; i < TAB_COUNT; ++i)
+    // sombra (texto + icone), depois texto e icone por cima
+    for (int i = 0; i < TAB_COUNT; ++i) {
+        if (!shown[i] || shadowCol[i].a == 0) continue;
         DrawTextEx(mainFont, tabs[i], pos[i], tabFontSize, 5, shadowCol[i]);
-    // passada 3: icones de sombra (formas)
-    for (int i = 0; i < TAB_COUNT; ++i)
         Modding_DrawTabIcon(i, iconX[i] + tabShadow, pos[i].y + 6.0f, iconSize[i], shadowCol[i]);
-    // passada 4: textos (fonte), deslocados pela sombra
-    for (int i = 0; i < TAB_COUNT; ++i)
+    }
+    for (int i = 0; i < TAB_COUNT; ++i) {
+        if (!shown[i]) continue;
         DrawTextEx(mainFont, tabs[i], (Vector2){pos[i].x - tabShadow, pos[i].y - tabShadow}, tabFontSize, 5, textCol[i]);
-    // passada 5: icones (formas)
-    for (int i = 0; i < TAB_COUNT; ++i)
         Modding_DrawTabIcon(i, iconX[i], pos[i].y - tabShadow + 6.0f, iconSize[i], textCol[i]);
+    }
 
     Render_StopCamera();
 }

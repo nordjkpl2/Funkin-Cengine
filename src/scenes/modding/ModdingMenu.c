@@ -1,7 +1,7 @@
 /* // * Friday Night Funkin´ c engine (c) 2026 nordjkpl */
 /*
- * ModdingMenu.c - Modding hub e cena. Update trata entrada e estado; o desenho e o import
- * ficam em ModdingMenuDraw.c e ModdingMenuInput.c.
+ * ModdingMenu.c - Modding hub e cena. Update trata entrada e estado; o desenho, o import e o HUD Editor
+ * ficam em ModdingMenuDraw.c, ModdingMenuInput.c e hudeditor/HudEditor.c.
  */
 
 #include "scenes/modding/charactereditor/CharEditor.h"
@@ -12,9 +12,11 @@
 #include "scenes/modding/weekeditor/WeekEditor.h"
 #include "scenes/menu/MenuBackground.h"
 #include "scenes/menu/MenuState.h"
-#include "scenes/menu/modding/ModdingMenu.h"
-#include "scenes/menu/modding/ModdingMenuInternal.h"
+#include "scenes/modding/ModdingMenu.h"
+#include "scenes/modding/ModdingMenuInternal.h"
+#include "scenes/modding/hudeditor/HudEditor.h"
 #include "data/modimport/ModImport.h"
+#include "scenes/api/FontLoader.h"
 
 #include <stdio.h>
 #include "Game.h"
@@ -30,6 +32,7 @@ const char *const tabs[TAB_COUNT] = {
     "Week Editor",
     "Effects Editor",
     "Notesplash Editor",
+    "HUD Editor",
     "Import Mod"
 };
 
@@ -62,6 +65,14 @@ const Color selectedColor = {42, 209, 86, 255};
 
 static void ModdingMenu_Update([[maybe_unused]] RayScene *scene)
 {
+    if (mode == MOD_HUD) {
+        if (Hud_Update()) {
+            Hud_Leave();
+            mode = MOD_LIST;
+        }
+        return;
+    }
+
     if (mode == MOD_IMPORT) {
         Imp_PollUsage();
 
@@ -212,7 +223,12 @@ static void ModdingMenu_Update([[maybe_unused]] RayScene *scene)
                 NotesplashEditor_SetScene();
                 return;
 
-            case 6:
+            case TAB_HUD:
+                mode = MOD_HUD;
+                Hud_Enter();
+                return;
+
+            case TAB_IMPORT:
                 mode = MOD_IMPORT;
                 impConfirmDel = 0;
                 Imp_RefreshUsage();
@@ -242,10 +258,16 @@ static void ModdingMenu_Update([[maybe_unused]] RayScene *scene)
 static void ModdingMenu_Draw([[maybe_unused]] RayScene *scene)
 {
     ClearBackground(BLACK);
+    /* texto e formas no mesmo batch (retangulo branco do atlas); restaurado no fim */
+    Modding_BatchWith(mainFont);
 
     switch (mode) {
         case MOD_IMPORT:
             Modding_DrawImport();
+            break;
+
+        case MOD_HUD:
+            Hud_Draw();
             break;
 
         case MOD_STUB:
@@ -257,6 +279,8 @@ static void ModdingMenu_Draw([[maybe_unused]] RayScene *scene)
             Modding_DrawList();
             break;
     }
+
+    Modding_BatchWith((Font){0});
 }
 
 /* ------------------------------------------------------------------------- */
@@ -291,6 +315,7 @@ static void ModdingMenu_Create([[maybe_unused]] RayScene *scene)
 
 static void ModdingMenu_Destroy([[maybe_unused]] RayScene *scene)
 {
+    if (mode == MOD_HUD) Hud_Leave();
     bg.image = (Texture2D){0}; // compartilhada: nao descarrega aqui
 }
 
