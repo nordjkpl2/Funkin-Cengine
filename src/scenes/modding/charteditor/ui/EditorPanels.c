@@ -125,8 +125,11 @@ static Rectangle Menu_DrawOpen(float mx) {
 void Edit_DrawMenuBar(void) {
     DrawRectangle(0, 0, 1280, (int)MENU_H, ED_C_BAR);
     DrawRectangle(0, (int)MENU_H, 1280, 1, ED_C_EDGE);
-    DrawRectangleRounded((Rectangle){14, 7, 4, 14}, 0.5f, 4, ED_C_ACCENT);
-    DrawTextEx(mainFont, "CHART EDITOR", (Vector2){26, 5}, 18, 1, ED_C_DIM);
+    // Titulo na ponta direita da barra: a esquerda fica embaixo do contador de FPS.
+    static TextMeasure titleMeasure;
+    const float titleX = 1280.0f - 14.0f - TextMeasure_Get(&titleMeasure, mainFont, "CHART EDITOR", 18, 1).x;
+    DrawRectangleRounded((Rectangle){titleX - 12.0f, 7, 4, 14}, 0.5f, 4, ED_C_ACCENT);
+    DrawTextEx(mainFont, "CHART EDITOR", (Vector2){titleX, 5}, 18, 1, ED_C_DIM);
 
     static const char* const names[5] = {"File", "Edit", "View", "Sound", "Play"};
     const char canClick = ceDlg == DLG_NONE && !EdHelpOpen();

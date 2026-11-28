@@ -163,6 +163,7 @@ set(OLD_GLOB
   "D:/dev/funkin c/src/scenes/menu/MenuState.c"
   "D:/dev/funkin c/src/scenes/menu/freeplay/Freeplay.c"
   "D:/dev/funkin c/src/scenes/menu/freeplay/FreeplayIcon.c"
+  "D:/dev/funkin c/src/scenes/menu/freeplay/FreeplayStars.c"
   "D:/dev/funkin c/src/scenes/menu/options/OptionsMenu.c"
   "D:/dev/funkin c/src/scenes/menu/options/OptionsMenuGameplayExtra.c"
   "D:/dev/funkin c/src/scenes/menu/options/OptionsMenuIcons.c"

@@ -302,7 +302,10 @@ static void Edit_Update(void) {
         if(viewTopMs > maxTop) viewTopMs = maxTop;
     }
 
-    // roda do mouse = sobe/desce
+    // roda do mouse = sobe/desce, suave: acumula o giro e aplica aos poucos
+    static double wheelLeftMs, wheelLastTop;
+    if(wheelLeftMs != 0.0 && viewTopMs != wheelLastTop)
+        wheelLeftMs = 0.0; // outra coisa moveu a grade (salto, setas, tocar): descarta o resto
     float wheel = GetMouseWheelMove();
     if(wheel != 0 && !Edit_EventPickerWheel(wheel) && !Edit_EventListWheel(wheel)) {
         Vector2 m = EdMouseWorld();
@@ -321,9 +324,21 @@ static void Edit_Update(void) {
                 EdSec_SetLen(s, idx, s->notes[idx].len + wheel * beatMs / 4);
             }
         } else {
-            viewTopMs -= wheel * 150;
-            if(viewTopMs < -500) viewTopMs = -500;
+            wheelLeftMs -= wheel * 150;
         }
+    }
+    if(wheelLeftMs != 0.0) {
+        double d = wheelLeftMs * (1.0 - exp(-RayGame_DeltaTime() * 16.0));
+        if(fabs(wheelLeftMs - d) < 0.5)
+            d = wheelLeftMs;
+        viewTopMs += d;
+        wheelLeftMs -= d;
+        const double maxTop = SongEndMs() + 1000;
+        if(viewTopMs < -500 || viewTopMs > maxTop) {
+            viewTopMs = fmin(fmax(viewTopMs, -500.0), maxTop);
+            wheelLeftMs = 0.0;
+        }
+        wheelLastTop = viewTopMs;
     }
 }
 

@@ -5,9 +5,9 @@
  * vida e offset/fps/loop de cada animacao. Ctrl+S grava <raiz>/characters/<nome>.json.
  *
  * Canvas: esq. arrasta o offset da animacao | Ctrl+esq. arrasta a posicao | dir./meio move a vista
- *         roda = zoom
+ *         roda = zoom (suave, no ponto do mouse) | I J K L move a vista | Q/E zoom (Shift mais rapido)
  * Teclas: W/S animacao | setas offset (Shift x10) | Ctrl+setas posicao | Espaco toca do inicio
- *         P pausa | , . frame | L loop | F flip | -/= escala | G ghost | C centraliza
+ *         P pausa | , . frame | O loop | F flip | -/= escala | G ghost | C centraliza
  *         Ctrl+Z/Y desfaz/refaz | Ctrl+S salva | Esc volta a lista (pergunta se ha mudancas)
  */
 #include "scenes/modding/charactereditor/CharEditor.h"
@@ -88,7 +88,8 @@ static bool paused;
 static bool showGhost = true;
 
 static Vector2 camTarget;
-static float camZoom = 1.0f;
+static float camZoom = 1.0f, camZoomGoal = 1.0f;
+static Vector2 zoomScreen, zoomWorld; /* ponto que fica parado durante o zoom suave */
 static int dragMode;          /* 0 nada, 1 offset, 2 posicao */
 static Vector2 dragWorld0, dragStart;
 static bool panning;
@@ -228,10 +229,44 @@ static void StepFrame(int delta)
     chara.object.currentAnim.time = 0.0f;
 }
 
+static Vector2 CanvasCenter(void)
+{
+    return (Vector2){kCanvas.x + kCanvas.width * 0.5f, kCanvas.y + kCanvas.height * 0.5f};
+}
+
 static Vector2 ScreenToWorld(Vector2 p)
 {
-    return (Vector2){camTarget.x + (p.x - (kCanvas.x + kCanvas.width * 0.5f)) / camZoom,
-                     camTarget.y + (p.y - (kCanvas.y + kCanvas.height * 0.5f)) / camZoom};
+    const Vector2 c = CanvasCenter();
+    return (Vector2){camTarget.x + (p.x - c.x) / camZoom, camTarget.y + (p.y - c.y) / camZoom};
+}
+
+/* Arrasta a vista em pixels de tela (o ponto do zoom acompanha). */
+static void PanView(float dx, float dy)
+{
+    camTarget.x -= dx / camZoom;
+    camTarget.y -= dy / camZoom;
+    zoomWorld.x -= dx / camZoom;
+    zoomWorld.y -= dy / camZoom;
+}
+
+/* Pede zoom em volta de um ponto da tela; ViewTick chega la aos poucos. */
+static void ZoomView(float factor, Vector2 screen)
+{
+    camZoomGoal = fminf(fmaxf(camZoomGoal * factor, 0.1f), 6.0f);
+    zoomScreen = screen;
+    zoomWorld = ScreenToWorld(screen);
+}
+
+static void ViewTick(float dt)
+{
+    if (camZoom == camZoomGoal)
+        return;
+    const float k = 1.0f - expf(-fminf(dt, 0.1f) * 18.0f);
+    camZoom = expf(logf(camZoom) + (logf(camZoomGoal) - logf(camZoom)) * k);
+    if (fabsf(camZoom - camZoomGoal) < camZoomGoal * 0.002f)
+        camZoom = camZoomGoal;
+    const Vector2 c = CanvasCenter();
+    camTarget = (Vector2){zoomWorld.x - (zoomScreen.x - c.x) / camZoom, zoomWorld.y - (zoomScreen.y - c.y) / camZoom};
 }
 
 /* Caixa do frame atual no mundo (mesma conta do Render_DrawAnimatedObject). */
@@ -260,6 +295,7 @@ static void CenterView(void)
     } else {
         camTarget = (Vector2){0.0f, 0.0f};
     }
+    camZoomGoal = camZoom;
 }
 
 /* ------------------------------------------------------------------------- */
@@ -414,8 +450,7 @@ static void Canvas_Update(void)
     }
     if (panning) {
         if (IsMouseButtonDown(MOUSE_BUTTON_RIGHT) || IsMouseButtonDown(MOUSE_BUTTON_MIDDLE)) {
-            camTarget.x -= (m.x - panLast.x) / camZoom;
-            camTarget.y -= (m.y - panLast.y) / camZoom;
+            PanView(m.x - panLast.x, m.y - panLast.y);
             panLast = m;
         } else {
             panning = false;
@@ -423,13 +458,8 @@ static void Canvas_Update(void)
     }
 
     const float wheel = GetMouseWheelMove();
-    if (MUi_Hover(kCanvas) && wheel != 0.0f) {
-        const Vector2 before = ScreenToWorld(m);
-        camZoom = fminf(fmaxf(camZoom * (wheel > 0.0f ? 1.15f : 1.0f / 1.15f), 0.1f), 6.0f);
-        const Vector2 after = ScreenToWorld(m);
-        camTarget.x += before.x - after.x;
-        camTarget.y += before.y - after.y;
-    }
+    if (MUi_Hover(kCanvas) && wheel != 0.0f)
+        ZoomView(powf(1.15f, wheel), m);
 }
 
 static void Keys_Update(void)
@@ -462,8 +492,18 @@ static void Keys_Update(void)
         if (MUi_Rep(KEY_RIGHT)) doc.offset[animSel].x -= step;
         if (MUi_Rep(KEY_UP)) doc.offset[animSel].y += step;
         if (MUi_Rep(KEY_DOWN)) doc.offset[animSel].y -= step;
-        if (IsKeyPressed(KEY_L)) doc.loop[animSel] = !doc.loop[animSel];
+        if (IsKeyPressed(KEY_O)) doc.loop[animSel] = !doc.loop[animSel];
     }
+    /* vista: I J K L move, Q/E zoom no centro (Shift mais rapido) */
+    const float dt = RayGame_DeltaTime();
+    const float pan = (MUi_Shift() ? 1500.0f : 600.0f) * dt;
+    if (IsKeyDown(KEY_J)) PanView(pan, 0.0f);
+    if (IsKeyDown(KEY_L)) PanView(-pan, 0.0f);
+    if (IsKeyDown(KEY_I)) PanView(0.0f, pan);
+    if (IsKeyDown(KEY_K)) PanView(0.0f, -pan);
+    const float zs = (MUi_Shift() ? 6.0f : 2.5f) * dt;
+    if (IsKeyDown(KEY_E)) ZoomView(expf(zs), CanvasCenter());
+    if (IsKeyDown(KEY_Q)) ZoomView(expf(-zs), CanvasCenter());
     if (IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_ENTER)) Play();
     if (IsKeyPressed(KEY_P)) paused = !paused;
     if (MUi_Rep(KEY_COMMA)) StepFrame(-1);
@@ -492,6 +532,7 @@ static void Edit_Update(void)
     if (MUi_KeysFree())
         Keys_Update();
 
+    ViewTick(RayGame_DeltaTime());
     DocToChar();
     if (!paused)
         AnimatedObject_UpdateFrame(&chara.object);
@@ -565,6 +606,8 @@ static void DrawCanvas(void)
     char line[96];
     snprintf(line, sizeof(line), "view %d%%%s", (int)(camZoom * 100.0f + 0.5f), paused ? "   PAUSED" : "");
     MUi_TextShadow(line, kCanvas.x + 8.0f, kCanvas.y + kCanvas.height - 24.0f, 15.0f, paused ? MUI_C_HINT : MUI_C_DIM);
+    MUi_TextRight("right drag / IJKL move   wheel / Q E zoom", kCanvas.x + kCanvas.width - 8.0f,
+                  kCanvas.y + kCanvas.height - 22.0f, 14.0f, MUI_C_FAINT);
     DrawRectangleLinesEx(kCanvas, 1.0f, MUI_C_EDGE);
 }
 
@@ -623,7 +666,7 @@ static void DrawPanel(void)
         MUi_DrawNum(Half(6, 1), doc.offset[animSel].y, 1.0f);
         Label(7, "FPS");
         MUi_DrawNum(Half(7, 0), (float)doc.fps[animSel], 1.0f);
-        MUi_DrawCheck(CheckAt(7, 1), "Loop (L)", doc.loop[animSel]);
+        MUi_DrawCheck(CheckAt(7, 1), "Loop (O)", doc.loop[animSel]);
 
         const RayAnimation *a = Anim(chara.object.currentAnim.animationIndex);
         char frame[32];
@@ -676,13 +719,14 @@ static const MUiHelpRow kEditHelp[] = {
     {"Space", "play from start"},
     {"P", "pause"},
     {", / .", "previous / next frame"},
-    {"L / F / G", "loop / flip / idle ghost"},
+    {"O / F / G", "loop / flip / idle ghost"},
     {"- / =", "scale"},
     {"C", "center view"},
     {"Ctrl+Z / Y", "undo / redo"},
     {"Ctrl+S", "save"},
     {"Esc", "return to character list"},
-    {"Wheel", "zoom view"},
+    {"Right drag / IJKL", "move view (Shift faster)"},
+    {"Wheel / Q E", "zoom view"},
 };
 
 static void CharEditor_Draw([[maybe_unused]] RayScene *scene)

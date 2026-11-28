@@ -41,6 +41,8 @@ void Song_Parse(Song* song, const char* songDataPath);
 void Song_LoadSongFromDir(Song* song, const char* dirPath, char streaming);
 void Song_LoadSongFromDirDiff(Song* song, const char* dirPath, const char* diff, char streaming);
 char Song_HasChart(const char* dirPath);
+/* Notas do jogador no chart padrao (so JSON; seguro em thread de fundo). -1 = sem chart. */
+int Song_CountPlayerNotes(const char* dirPath);
 void Song_Free(Song* song);
 /* Libera so as notas crus de cada secao (ja copiadas para o array de notas da gameplay).
    Mantem sectionCount, bpm, mustHit e len, que o beat ainda usa. */

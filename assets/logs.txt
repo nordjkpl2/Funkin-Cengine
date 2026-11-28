@@ -247,3 +247,4 @@ LOAD [absolute-zero] init: 0.0 ms, chart: 17.2 ms, sounds: 1.4 ms, characters: 4
 LOAD [corrosion-v2] init: 0.0 ms, chart: 28.6 ms, sounds: 46.7 ms, characters: 416.1 ms, stage: 8.8 ms, song audio: 4.1 ms, notes: 0.3 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 421.3 ms) total: 504.8 ms
 LOAD [apostrophe] init: 0.0 ms, chart: 22.4 ms, sounds: 108.4 ms, characters: 452.8 ms, stage: 9.1 ms, song audio: 2.1 ms, notes: 221.0 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 444.2 ms) total: 816.2 ms
 LOAD [ampersand] init: 0.0 ms, chart: 5.2 ms, sounds: 8.5 ms, characters: 480.1 ms, stage: 1.5 ms, song audio: 3.2 ms, notes: 223.0 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 442.5 ms) total: 721.8 ms
+[WARN] Skin '@AstrayNote_assets': animacao 'purple hold end' nao existe no XML (a lane pode sumir)

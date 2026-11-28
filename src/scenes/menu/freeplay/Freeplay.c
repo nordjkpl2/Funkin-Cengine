@@ -15,6 +15,7 @@
 #include "scenes/menu/freeplay/Freeplay.h"
 #include "data/song/SongList.h"
 #include "scenes/menu/freeplay/FreeplayIcon.h"
+#include "scenes/menu/freeplay/FreeplayStars.h"
 #include "ui/SearchBox.h"
 #include "rendering/TextMeasure.h"
 #include <stdlib.h>
@@ -38,6 +39,8 @@
 #define SELECT_EASE 12.0f       /* velocidade do pulso ao trocar de musica */
 #define WARM_RADIUS 4           /* quantas musicas de cada lado ja ficam com icone pronto */
 #define PAGE_STEP 10            /* musicas por PgUp/PgDn */
+#define STARS_EASE 7.0f         /* velocidade com que as estrelas enchem */
+#define STAR_SIZE 18.0f
 
 /* Card */
 #define CARD_X 852.0f
@@ -70,6 +73,9 @@ static SearchBox search;
 static float listOffset;
 static float selectPulse = 1.0f;   /* 0 logo apos trocar a musica, sobe ate 1 */
 static float backFade = 1.0f;      /* 0 logo apos trocar, sobe ate 1 (fundo com o icone) */
+static float starsShown;           /* estrelas desenhadas: sobem ate a nota da musica */
+static char notesText[32];
+static int notesTextFor = -3;      /* contagem que gerou notesText */
 
 static RayGraphicObject bg;
 static Camera2D cam;
@@ -112,6 +118,8 @@ static void SelectSong(void) {
 
     selectPulse = 0.0f;
     backFade = 0.0f;
+    starsShown = 0.0f;
+    FreeplayStars_Request(CurrentSong());
     WarmAround();
 }
 
@@ -155,6 +163,7 @@ static void PlaySelected(void) {
 
 static void Freeplay_Create(RayScene* scene) {
     FreeplayIcon_Unload();
+    FreeplayStars_Unload();
     SongList_Free(songs);
     songs = NULL;
     free(shown);
@@ -189,6 +198,7 @@ static void Freeplay_Create(RayScene* scene) {
         for (int i = 0; i < songCount; ++i) shown[i] = i;
         shownCount = songCount;
         FreeplayIcon_Init(songs, songCount);
+        FreeplayStars_Init(songs, songCount);
         SelectSong();
     }
 }
@@ -260,11 +270,27 @@ static void Freeplay_Update(RayScene* scene) {
     selectPulse += (1.0f - selectPulse) * ease;
     backFade += (1.0f - backFade) * ease;
 
+    // Estrelas: enchem ate a nota quando a contagem chega; vizinhos so depois (fila de jobs curta).
+    bool starsBusy = false;
+    if (shownCount > 0) {
+        const int notes = FreeplayStars_Notes(CurrentSong());
+        starsBusy = notes == -2;
+        if (!starsBusy) {
+            const float target = FreeplayStars_Rating(notes);
+            starsShown += (target + 0.25f - starsShown) * (1.0f - expf(-STARS_EASE * dt));
+            if (starsShown >= target) starsShown = target;
+            if (selectedSong + 1 < shownCount) FreeplayStars_Request(songs + shown[selectedSong + 1]);
+            if (selectedSong > 0) FreeplayStars_Request(songs + shown[selectedSong - 1]);
+            starsBusy = starsShown < target;
+        }
+    }
+
     // Encaixa nos alvos quando chega perto; so pede redesenho enquanto ainda anima (ou cursor da busca piscando).
     if (fabsf(listOffset - (float)selectedSong) < 0.001f) listOffset = (float)selectedSong;
     if (selectPulse > 0.999f) selectPulse = 1.0f;
     if (backFade > 0.999f) backFade = 1.0f;
-    if (listOffset != (float)selectedSong || selectPulse < 1.0f || backFade < 1.0f || SearchBox_Focused(&search))
+    if (listOffset != (float)selectedSong || selectPulse < 1.0f || backFade < 1.0f || starsBusy ||
+        SearchBox_Focused(&search))
         RayScene_RequestRedraw(scene);
 }
 
@@ -398,6 +424,11 @@ static void DrawSelectedCard(void) {
     DrawRectangleRounded((Rectangle){CARD_X, barY, CARD_W, 6.0f}, 0.5f, 6, (Color){50, 44, 80, 255});
     DrawRectangleRounded((Rectangle){CARD_X, barY, CARD_W * frac, 6.0f}, 0.5f, 6, CYAN);
 
+    // Dificuldade embaixo da barra: estrelas (formas) e, nos textos, a contagem de notas.
+    const int notes = FreeplayStars_Notes(CurrentSong());
+    const float starsY = barY + 15.0f;
+    FreeplayStars_Draw((Vector2){CARD_X, starsY}, STAR_SIZE, starsShown, FreeplayStars_Rating(notes), 1.0f);
+
     // Textos.
     DrawCoverText(frame);
 
@@ -409,7 +440,24 @@ static void DrawSelectedCard(void) {
     // Oponente.
     const float oy = ty + 62.0f;
     DrawTextEx(mainFont, "OPPONENT", (Vector2){CARD_X + CARD_PAD, oy}, 17.0f, 2.0f, TEXT_DIM);
-    DrawTextEx(mainFont, FreeplayIcon_Opponent(), (Vector2){CARD_X + CARD_PAD, oy + 22.0f}, 24.0f, 2.0f, ACCENT);
+    const char* opponent = FreeplayIcon_Opponent();
+    DrawTextEx(mainFont, opponent, (Vector2){CARD_X + CARD_PAD, oy + 22.0f}, 24.0f, 2.0f, ACCENT);
+
+    // Notas do jogador, alinhadas a direita na mesma linha (some se o nome do oponente nao deixar espaco).
+    if (notes != notesTextFor) {
+        notesTextFor = notes;
+        if (notes == -2) snprintf(notesText, sizeof(notesText), "...");
+        else if (notes < 0) snprintf(notesText, sizeof(notesText), "-");
+        else snprintf(notesText, sizeof(notesText), "%d", notes);
+    }
+    static TextMeasure oppMeasure, notesMeasure, notesLabelMeasure;
+    const float right = CARD_X + CARD_W - CARD_PAD;
+    const Vector2 ns = TextMeasure_Get(&notesMeasure, mainFont, notesText, 24.0f, 2.0f);
+    if (CARD_X + CARD_PAD + TextMeasure_Get(&oppMeasure, mainFont, opponent, 24.0f, 2.0f).x + 16.0f < right - ns.x) {
+        const Vector2 ls = TextMeasure_Get(&notesLabelMeasure, mainFont, "NOTES", 17.0f, 2.0f);
+        DrawTextEx(mainFont, "NOTES", (Vector2){right - ls.x, oy}, 17.0f, 2.0f, TEXT_DIM);
+        DrawTextEx(mainFont, notesText, (Vector2){right - ns.x, oy + 22.0f}, 24.0f, 2.0f, CYAN);
+    }
 
     const Vector2 cs = MeasureTextEx(mainFont, counterText, 22.0f, 2.0f);
     DrawTextEx(mainFont, counterText, (Vector2){CARD_X + CARD_W - cs.x, barY + 12.0f}, 22.0f, 2.0f, CYAN);
@@ -483,6 +531,7 @@ static void Freeplay_Draw([[maybe_unused]] RayScene* scene) {
 
 static void Freeplay_Destroy([[maybe_unused]] RayScene* scene) {
     FreeplayIcon_Unload();
+    FreeplayStars_Unload();
     bg.image = (Texture2D) {0}; // textura compartilhada: quem libera e MenuBackground_Free
 
     SongList_Free(songs);
