@@ -12,6 +12,7 @@
 
 #include "characters/Character.h"
 #include "data/song/Song.h"
+#include "logic/notes/Note.h"
 
 /* Antes de carregar: define a pasta do mod, descobre se a GF fica escondida e pre-decodifica as texturas. */
 void PlayStateAnimations_Prefetch(const Song* song, const char* songDir, const char* opponent);
@@ -59,14 +60,16 @@ void PlayStateAnimations_GfBeat(int beat);
 void PlayStateAnimations_SetAlpha(int target, float alpha);
 void PlayStateAnimations_ResetEvents(void);
 
-/* Eventos de nota (lane = 0..3). */
-void PlayStateAnimations_OpponentHit(int lane);
-void PlayStateAnimations_OpponentHold(void);
-void PlayStateAnimations_BotHit(int lane);
-void PlayStateAnimations_BotHold(void);
-void PlayStateAnimations_PlayerHit(int lane);
-void PlayStateAnimations_PlayerHold(void);
-void PlayStateAnimations_PlayerMiss(int lane);
+/* Eventos de nota. O tipo da nota decide quem anima (Psych): sufixo -alt, GF Sing / gfSection,
+ * No Animation, Hey! e as animacoes do custom_notetypes (goodNoteHit / noteMiss). */
+void PlayStateAnimations_OpponentHit(const Note* note);
+void PlayStateAnimations_OpponentHold(const Note* note);
+void PlayStateAnimations_BotHit(const Note* note);
+void PlayStateAnimations_BotHold(const Note* note);
+void PlayStateAnimations_PlayerHit(const Note* note);
+void PlayStateAnimations_PlayerHold(const Note* note);
+/* Miss do BF na lane 0..3. note NULL = toque fantasma; nota de dano acertada toca "hurt" se existir. */
+void PlayStateAnimations_PlayerMiss(int lane, const Note* note);
 
 /* Uma vez por frame, fora da pausa: avanca os frames de GF, oponente e BF. */
 void PlayStateAnimations_Step(void);

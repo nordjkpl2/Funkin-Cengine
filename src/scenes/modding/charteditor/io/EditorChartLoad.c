@@ -15,6 +15,7 @@
 #include "scenes/modding/charteditor/model/EditorSection.h"
 #include "data/json/JsonStream.h"
 #include "data/song/Song.h"
+#include "logic/notes/NoteTypes.h"
 
 #include <math.h>
 #include <stdlib.h>
@@ -112,16 +113,34 @@ static void ResetHeader(LoadState* st) {
 
 /* ---------- notas ---------- */
 
-/* uma nota: [tempo, casa, (comprimento)]. Precisa de pelo menos 2 valores; o resto e ignorado. */
+/* note[3] da Psych: nome, numero da lista padrao (chart antigo) ou true (Week 7 = alt). */
+static int ReadNoteType(JsonStream* js) {
+    char name[NOTETYPE_NAME_MAX];
+    double num = 0;
+    int b = 0;
+    if(JsonStream_Peek(js) == '"') {
+        if(JsonStream_ReadString(js, name, sizeof(name))) return NoteTypes_Intern(name);
+        JsonStream_SkipValue(js);
+        return 0;
+    }
+    if(JsonStream_ReadNumber(js, &num)) return NoteTypes_FromNumber(num);
+    if(JsonStream_ReadBool(js, &b)) return b ? NOTETYPE_ALT : NOTETYPE_NORMAL;
+    JsonStream_SkipValue(js);
+    return 0;
+}
+
+/* uma nota: [tempo, casa, (comprimento), (tipo)]. Precisa de pelo menos 2 valores; o resto e ignorado. */
 static void ParseNote(LoadState* st) {
     JsonStream* js = st->js;
     double v[3] = {0, 0, 0};
     char isNum[3] = {0, 0, 0};
+    int type = 0;
     int n = 0;
     if(!JsonStream_Eat(js, '[')) return;
     if(!JsonStream_TryEat(js, ']')) {
         do {
-            if(n < 3 && JsonStream_ReadNumber(js, &v[n])) isNum[n] = 1;
+            if(n == 3) type = ReadNoteType(js);
+            else if(n < 3 && JsonStream_ReadNumber(js, &v[n])) isNum[n] = 1;
             else JsonStream_SkipValue(js);
             n++;
         } while(JsonStream_TryEat(js, ','));
@@ -134,7 +153,7 @@ static void ParseNote(LoadState* st) {
     float time = isNum[0] ? (float)v[0] : 0.0f;
     int lane = (isNum[1] ? ToInt(v[1]) : 0) % 8;
     float len = (isNum[2] && v[2] > 0) ? (float)v[2] : 0.0f;
-    EdSec_AddBulk(st->curSec, time, lane, len);
+    EdSec_AddBulk(st->curSec, time, lane, len, type);
 }
 
 static void ParseSectionNotes(LoadState* st) {
@@ -163,6 +182,12 @@ static void SectionMember(LoadState* st, const char* key) {
     } else if(strcmp(key, "changeBPM") == 0) {
         int v = 0;
         if(ReadBoolVal(js, &v)) m->changeBPM = (char)v;
+    } else if(strcmp(key, "gfSection") == 0) {
+        int v = 0;
+        if(ReadBoolVal(js, &v)) st->curSec->gfSection = (char)v;
+    } else if(strcmp(key, "altAnim") == 0) {
+        int v = 0;
+        if(ReadBoolVal(js, &v)) st->curSec->altAnim = (char)v;
     } else if(strcmp(key, "sectionNotes") == 0) {
         if(JsonStream_Peek(js) == '[') ParseSectionNotes(st);
         else JsonStream_SkipValue(js);
@@ -411,7 +436,9 @@ static char EdChart_LoadBinary(EdChart* c, const char* binPath, const char* dir,
                 }
                 if(lane < 0 || lane > 7)
                     continue;
-                EdSec_AddBulk(dst, dn->time, lane, dn->len);
+                if(dn->flags & DATANOTE_GF) dst->gfSection = 1;   /* .song guarda a secao por nota */
+                if(dn->flags & DATANOTE_ALT) dst->altAnim = 1;
+                EdSec_AddBulk(dst, dn->time, lane, dn->len, dn->type);
             }
             EdSec_FinishBulk(dst);
         }
@@ -428,6 +455,7 @@ static char EdChart_LoadBinary(EdChart* c, const char* binPath, const char* dir,
 char EdChart_OpenDir(EdChart* c, const char* dir) {
     char p[300];
     EdEvents_Load(dir);
+    NoteTypes_ScanScripts(dir);   // custom_notetypes/*.lua do mod entram na lista de tipos
     snprintf(p, sizeof(p), "%s/data.json", dir);
     if(EdChart_LoadJSON(c, p, dir, EdDirName(dir))) {
         EdEvents_AddFromChart(dir, p);   // eventos dentro do chart (Psych)

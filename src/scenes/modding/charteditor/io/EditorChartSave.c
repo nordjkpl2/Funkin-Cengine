@@ -7,6 +7,7 @@
 
 #include "scenes/modding/charteditor/io/EditorChartSave.h"
 #include "scenes/modding/charteditor/model/EditorEvents.h"
+#include "logic/notes/NoteTypes.h"
 
 #include <math.h>
 #include <stdio.h>
@@ -127,10 +128,15 @@ static void WriteNote(SaveOut* o, const EdNote* nt, char compressed, char* first
     Out_Char(o, ',');
     if(o->pretty) Out_Char(o, ' ');
     Out_Int(o, nt->lane);
-    if(!compressed || nt->len != 0.0f) {
+    if(!compressed || nt->len != 0.0f || nt->type != 0) {
         Out_Char(o, ',');
         if(o->pretty) Out_Char(o, ' ');
         Out_Real(o, (double)nt->len);
+    }
+    if(nt->type != 0) {   // Psych: note[3] = nome do tipo
+        Out_Char(o, ',');
+        if(o->pretty) Out_Char(o, ' ');
+        Out_Quoted(o, NoteTypes_Name(nt->type));
     }
     Out_Char(o, ']');
 }
@@ -146,6 +152,14 @@ static void WriteSection(SaveOut* o, const EdSec* s, char compressed, float* run
     if(!compressed || s->mustHit) {
         Out_Key(o, 4, &fF, "mustHitSection");
         Out_Bool(o, s->mustHit);
+    }
+    if(!compressed || s->gfSection) {
+        Out_Key(o, 4, &fF, "gfSection");
+        Out_Bool(o, s->gfSection);
+    }
+    if(!compressed || s->altAnim) {
+        Out_Key(o, 4, &fF, "altAnim");
+        Out_Bool(o, s->altAnim);
     }
     char change = (s->bpm != *runBpm);
     if(change) *runBpm = s->bpm;
@@ -329,11 +343,15 @@ char EdChart_SaveBinary(const EdChart* c) {
                 continue;
             float time = nt->time;
             int16_t id = Bin_LaneToId(nt->lane, s->mustHit);
-            int16_t pad = 0;
+            /* .song nao guarda nomes: so os tipos padrao (indice fixo da Psych); flags = gfSection/altAnim */
+            uint8_t type = (uint8_t)((nt->type > 0 && nt->type < NOTETYPE_BUILTIN) ? nt->type : 0);
+            uint8_t flags = (uint8_t)(((s->gfSection && nt->lane < 4) ? DATANOTE_GF : 0) |
+                                      ((s->altAnim && !s->gfSection && id > 0) ? DATANOTE_ALT : 0));
             float nlen = nt->len;
             fwrite(&time, sizeof(time), 1, f);
             fwrite(&id, sizeof(id), 1, f);
-            fwrite(&pad, sizeof(pad), 1, f);
+            fwrite(&type, sizeof(type), 1, f);
+            fwrite(&flags, sizeof(flags), 1, f);
             fwrite(&nlen, sizeof(nlen), 1, f);
         }
     }

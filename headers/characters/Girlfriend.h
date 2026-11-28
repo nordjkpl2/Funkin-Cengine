@@ -13,7 +13,7 @@
 /* Papel do JSON (hey, cheer, idle-alt...) -> indice no atlas. Usado pelos eventos (Play Animation, Hey!). */
 #define CHAR_NAMED_MAX 40
 typedef struct {
-    char role[16];
+    char role[24];   /* cabe "singRIGHTmiss-alt" */
     int index;
 } CharNamedAnim;
 

@@ -29,6 +29,7 @@
 #include "scenes/gameplay/characters/PlayStateAnimations.h"
 #include "scenes/gameplay/HUD/PlayStateRatingPopups.h"
 #include "scenes/gameplay/visual/PlayStateNoteSplash.h"
+#include "logic/notes/NoteTypes.h"
 #include "scenes/gameplay/events/PlayStateEventsInGameplay.h"
 #include "core/Log.h"
 #include "core/ModPath.h"
@@ -105,7 +106,7 @@ static const char* OpponentName(void) {
 static void Event_OpponentHit(Note* note) {
     if (oppDrain > 0.0f)
         PlayStateHealth_Drain(oppDrain);   // drain nunca mata: para em 0
-    PlayStateAnimations_OpponentHit(note->id);
+    PlayStateAnimations_OpponentHit(note);
     PlayStateStrums_ConfirmDad(note->id);
 }
 
@@ -119,23 +120,25 @@ static void Event_BotHit(Note* note) {
     }
     else if (oppDrain > 0.0f)
         PlayStateHealth_Drain(oppDrain);    // a IA do BF acertando desconta a vida, como o oponente
-    PlayStateAnimations_BotHit(note->id);
+    PlayStateAnimations_BotHit(note);
     PlayStateStrums_ConfirmBf(note->id);
-    PlayStateNoteSplash_Spawn(note->id, 1);
+    if (!NoteTypes_Get(note->type)->noSplash)
+        PlayStateNoteSplash_Spawn(note->id, 1);
 }
 
 static void Event_PlayerHold(const Note* note) {
     PlayStateHealth_AddForSide(0.04f * RayGame_DeltaTime(), (char)note->mustHit);
-    if (note->mustHit) PlayStateAnimations_PlayerHold();
-    else PlayStateAnimations_OpponentHold();   // jogador no lado do oponente (Co-Op ou Play as)
+    if (note->mustHit) PlayStateAnimations_PlayerHold(note);
+    else PlayStateAnimations_OpponentHold(note);   // jogador no lado do oponente (Co-Op ou Play as)
 }
 
 static void Event_PlayerHit(Note* note, PlayerRating rating) {
     PlayStateRatingPopups_Show(rating);
     PlayStateText_Bump();
-    if (note->mustHit) PlayStateAnimations_PlayerHit(note->id);
-    else PlayStateAnimations_OpponentHit(note->id);
-    PlayStateNoteSplash_Spawn(note->id, note->mustHit);   // splash no receptor do lado que acertou
+    if (note->mustHit) PlayStateAnimations_PlayerHit(note);
+    else PlayStateAnimations_OpponentHit(note);
+    if (!NoteTypes_Get(note->type)->noSplash)
+        PlayStateNoteSplash_Spawn(note->id, note->mustHit);   // splash no receptor do lado que acertou
 }
 
 static void SetupEvents(void) {
@@ -345,6 +348,7 @@ static void PlayState_Create([[maybe_unused]] RayScene* scene) {
     else if (song.arrowSkin[0] != 0)
         snprintf(skinName, sizeof(skinName), "@%s", song.arrowSkin);
     Note_SetCurrentSkin(skinName[0] != 0 ? Cache_GetNoteSkinPtr(skinName, songDir) : NULL);
+    PlayStateNoteSpawn_LoadTypes(songDir);   // custom_notetypes + textura de cada tipo (Hurt Note...)
     PlayStateStrums_Load();   // depois da skin: os receptores usam as animacoes dela
     LoadMark("chart");
     PrefetchAssets();

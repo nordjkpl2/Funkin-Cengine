@@ -93,7 +93,7 @@ size_t EdSec_Bytes(const EdSec* s) {
     return sizeof(EdSec) + sizeof(EdNote) * (size_t)s->count;
 }
 
-void EdSec_Add(EdSec* s, float time, int lane, float len) {
+void EdSec_Add(EdSec* s, float time, int lane, float len, int type) {
     // tira duplicada (mesma casa, <2ms) igual ao jogo: so os vizinhos dentro de 2 ms importam
     for(int i = EdSec_LowerBound(s, time - 2.0f); i < s->count && s->notes[i].time < time + 2.0f; i++) {
         if(s->notes[i].lane == lane && fabsf(s->notes[i].time - time) < 2.0f)
@@ -112,11 +112,12 @@ void EdSec_Add(EdSec* s, float time, int lane, float len) {
     s->notes[pos].time = time;
     s->notes[pos].lane = lane;
     s->notes[pos].len = (len < 0) ? 0 : len;
+    s->notes[pos].type = type;
     s->count++;
 }
 
 // bulk: anexa sem dedup/sort (import/paste/carga em massa). Fecha com FinishBulk.
-void EdSec_AddBulk(EdSec* s, float time, int lane, float len) {
+void EdSec_AddBulk(EdSec* s, float time, int lane, float len, int type) {
     if(s->count >= s->cap) {
         int nc = EdSec_NextCap(s->cap, 1024);
         EdNote* g = nc > 0 ? realloc(s->notes, sizeof(EdNote) * (size_t)nc) : NULL;
@@ -128,6 +129,7 @@ void EdSec_AddBulk(EdSec* s, float time, int lane, float len) {
     s->notes[s->count].time = time;
     s->notes[s->count].lane = lane;
     s->notes[s->count].len = (len < 0) ? 0 : len;
+    s->notes[s->count].type = type;
     s->count++;
 }
 

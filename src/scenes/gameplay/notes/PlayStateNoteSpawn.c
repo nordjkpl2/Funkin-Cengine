@@ -13,6 +13,8 @@
 #include <string.h>
 #include "GameData.h"
 #include "scenes/gameplay/notes/PlayStatePlayerInput.h"
+#include "logic/notes/NoteTypes.h"
+#include "core/ModPath.h"
 #include "core/Log.h"
 #include "rlgl.h"
 
@@ -37,6 +39,18 @@ static float streamLookahead = 4.0f;   /* segundos a frente do tempo que ja deve
 #define STREAM_MS_TO_S 0.001f
 
 static PlayStateNoteEvents events;
+
+/* Textura propria de um tipo de nota (Psych 'texture'): animacoes achadas na skin dele. */
+typedef struct {
+    const RayAnimationHandler* set;
+    int head[4], trail[4], end[4];
+} TypeSkin;
+#define TYPE_SKIN_MAX 8
+static TypeSkin typeSkins[TYPE_SKIN_MAX];
+static int typeSkinCount;
+static RayAnimationHandler songSkin;           /* skin da musica (trail/end voltam a ela depois de um tipo com textura) */
+static signed char typeSkinOf[NOTETYPE_MAX];   /* tipo -> typeSkins (-1 = skin da musica) */
+static unsigned char typeTint[NOTETYPE_MAX];   /* 1 = sem textura: cor de nota de dano */
 
 // sustain colors
 static const Color normalColor = {255, 255, 255, 200};
@@ -63,6 +77,8 @@ static int Note_CompareChronological(const void* a, const void* b) {
 }
 
 void PlayStateNoteSpawn_Init(void) {
+    memset(typeSkinOf, -1, sizeof(typeSkinOf));   /* sem LoadTypes: todos com a skin da musica */
+    memset(typeTint, 0, sizeof(typeTint));
     Render_DefaultAnimated(&trail);
     trail.animationSet = Cache_GetNoteAnimations();
     trail.scaleX = 0.7f;
@@ -145,6 +161,54 @@ static void StreamFeed(float untilSec, float resolveBefore) {
     }
 }
 
+static int FindTypeSkin(const RayAnimationHandler* set) {
+    for (int i = 0; i < typeSkinCount; i++)
+        if (typeSkins[i].set == set) return i;
+    if (typeSkinCount >= TYPE_SKIN_MAX) return -1;
+    static const char* const heads[4] = {"purple", "blue", "green", "red"};
+    static const char* const trails[4] = {"purple hold piece", "blue hold piece", "green hold piece", "red hold piece"};
+    static const char* const ends[4] = {"purple hold end", "blue hold end", "green hold end", "red hold end"};
+    TypeSkin* s = &typeSkins[typeSkinCount];
+    s->set = set;
+    for (int l = 0; l < 4; l++) {
+        s->head[l] = AnimationSet_FindAnimation(set, heads[l]);
+        s->trail[l] = AnimationSet_FindAnimation(set, trails[l]);
+        s->end[l] = AnimationSet_FindAnimation(set, ends[l]);
+    }
+    return typeSkinCount++;
+}
+
+/* A textura existe em images/ (mod da musica ou assets)? Evita o aviso de skin ausente para a Hurt Note. */
+static bool TypeTextureExists(const char* texture, const char* songDir) {
+    char modRoot[512] = "", rel[160], out[512];
+    if (songDir != NULL && !ModPath_Root(songDir, modRoot, sizeof(modRoot))) modRoot[0] = 0;
+    if (snprintf(rel, sizeof(rel), "images/%s.png", texture) >= (int)sizeof(rel)) return false;
+    return ModPath_Find(modRoot, rel, out, sizeof(out));
+}
+
+void PlayStateNoteSpawn_LoadTypes(const char* songDir) {
+    NoteTypes_LoadScripts(songDir);
+    typeSkinCount = 0;
+    const RayAnimationHandler* fallback = Cache_GetDefaultNoteSkinPtr();
+    const int count = NoteTypes_Count();
+    for (int i = 0; i < NOTETYPE_MAX; i++) {
+        typeSkinOf[i] = -1;
+        typeTint[i] = 0;
+        if (i >= count) continue;
+        const NoteTypeInfo* t = NoteTypes_Get(i);
+        if (t->texture[0] != 0 && (t->scripted || TypeTextureExists(t->texture, songDir))) {
+            char name[80];
+            snprintf(name, sizeof(name), "@%s", t->texture);
+            const RayAnimationHandler* set = Cache_GetNoteSkinPtr(name, songDir);
+            if (set != NULL && set != fallback && set->animationCount > 0) {
+                typeSkinOf[i] = (signed char)FindTypeSkin(set);
+                if (typeSkinOf[i] >= 0) continue;
+            }
+        }
+        typeTint[i] = t->hurtColor;
+    }
+}
+
 void PlayStateNoteSpawn_Load(Song* song) {
     firstNote = 0;
     noteCount = 0;
@@ -159,6 +223,7 @@ void PlayStateNoteSpawn_Load(Song* song) {
     {
         /* Mesma skin dos receptores (os indices de Note_Animation sao dela). */
         const RayAnimationHandler skin = *Note_GetCurrentSkin();
+        songSkin = skin;
         renderNote.animationSet = trail.animationSet = end.animationSet = skin;
         memset(laneAnimState, 0, sizeof(laneAnimState));
         NoteAtlas_Build(&skin, laneShift);   /* false = sem ajuste de cor ou skin grande: cai no shader */
@@ -216,6 +281,7 @@ void PlayStateNoteSpawn_Reset(void) {
         Note* note = notes + i;
         note->missed = 0;
         note->pressed = 0;
+        note->skipped = 0;
     }
 }
 
@@ -242,6 +308,7 @@ void PlayStateNoteSpawn_SeekTo(float time) {
         Note* note = notes + i;
         note->pressed = note->time < time;
         note->missed = 0;
+        note->skipped = 0;
 
         if (first == noteCount && note->time + note->length >= time - 0.4f)
             first = i;
@@ -251,10 +318,12 @@ void PlayStateNoteSpawn_SeekTo(float time) {
 }
 
 static void UnloadRecolorShader(void);
+static void UnloadHurtShader(void);
 
 void PlayStateNoteSpawn_Unload(void) {
     NoteAtlas_Free();
     UnloadRecolorShader();
+    UnloadHurtShader();
     free(notes);
     notes = NULL;
     noteCount = 0;
@@ -332,6 +401,33 @@ static void UnloadRecolorShader(void) {
     recolorReady = false;
 }
 
+/* Hurt Note sem textura HURTNOTE_assets: mesma ideia da paleta RGB da Psych 0.7
+   (miolo preto 0x101010, borda branca -> vermelho 0xFF0000, contorno escuro -> 0x990022). */
+static const char* const hurtFS =
+    "#version 330\n"
+    "in vec2 fragTexCoord;\n"
+    "in vec4 fragColor;\n"
+    "uniform sampler2D texture0;\n"
+    "uniform vec4 colDiffuse;\n"
+    "out vec4 finalColor;\n"
+    "void main() {\n"
+    "    vec4 t = texture(texture0, fragTexCoord) * colDiffuse * fragColor;\n"
+    "    float mx = max(t.r, max(t.g, t.b));\n"
+    "    float sat = mx > 0.0 ? (mx - min(t.r, min(t.g, t.b))) / mx : 0.0;\n"
+    "    vec3 c = mix(vec3(1.0, 0.0, 0.0), vec3(0.063), smoothstep(0.15, 0.55, sat));\n"
+    "    c = mix(vec3(0.6, 0.0, 0.133), c, smoothstep(0.15, 0.5, mx));\n"
+    "    finalColor = vec4(c, t.a);\n"
+    "}\n";
+
+static Shader hurtShader;
+static bool hurtReady;
+
+static void UnloadHurtShader(void) {
+    if (!hurtReady) return;
+    UnloadShader(hurtShader);
+    hurtReady = false;
+}
+
 /* Desenha `obj` com o conjunto de animacao `set` (a textura do atlas), sem mexer no resto do objeto. */
 static void DrawInSet(RayAnimatedObject* obj, const RayAnimationHandler* set) {
     const RayAnimationHandler saved = obj->animationSet;
@@ -395,15 +491,37 @@ void PlayStateNoteSpawn_DrawShifted(RayAnimatedObject* obj, Vector3 shift) {
 
 void PlayStateNoteSpawn_ReleaseTint(void) {
     UnloadRecolorShader();
+    UnloadHurtShader();
 }
 
-static void DrawSustainFull(int lane, char fullyAbove) {
+/* Partes de uma nota pelo tipo dela: cor de dano (shader), textura do tipo (direto) ou cor da lane. */
+static void DrawNoteObjs(const Note* note, RayAnimatedObject* a, RayAnimatedObject* b) {
+    if (typeTint[note->type]) {
+        if (!hurtReady) {
+            hurtShader = LoadShaderFromMemory(NULL, hurtFS);
+            hurtReady = true;
+        }
+        BeginShaderMode(hurtShader);
+        if (a != NULL) Render_DrawAnimatedObject(a);
+        if (b != NULL) Render_DrawAnimatedObject(b);
+        EndShaderMode();
+        return;
+    }
+    if (typeSkinOf[note->type] >= 0) {
+        if (a != NULL) Render_DrawAnimatedObject(a);
+        if (b != NULL) Render_DrawAnimatedObject(b);
+        return;
+    }
+    DrawLaneObjs(note->id, a, b);
+}
+
+static void DrawSustainFull(const Note* note, char fullyAbove) {
     if (fullyAbove) return;
-    DrawLaneObjs(lane, &trail, &end);
+    DrawNoteObjs(note, &trail, &end);
 }
 
 /* Sustain em andamento: corta a parte que ja passou do receptor. */
-static void DrawSustainClipped(int lane, const StrumNote* strum, float k) {
+static void DrawSustainClipped(const Note* note, const StrumNote* strum, float k) {
     const float receptorY = strum->object.position.y + trailOffset.y * k;
 
     if (SCROLL_IS_DOWN(gameOptions.scroll)) {
@@ -411,7 +529,7 @@ static void DrawSustainClipped(int lane, const StrumNote* strum, float k) {
         const float trailBottom = trail.position.y + trail.scaleY * TRAIL_SEGMENT_H;
         if (trailBottom > receptorY)
             trail.scaleY = fmaxf(0.0f, (receptorY - trail.position.y) / TRAIL_SEGMENT_H);
-        DrawLaneObjs(lane,
+        DrawNoteObjs(note,
                      trail.scaleY > 0.0f ? &trail : NULL,
                      end.position.y < receptorY ? &end : NULL);
         return;
@@ -423,7 +541,7 @@ static void DrawSustainClipped(int lane, const StrumNote* strum, float k) {
         trail.position.y = receptorY;
     }
 
-    DrawLaneObjs(lane,
+    DrawNoteObjs(note,
                  trail.scaleY > 0.0f ? &trail : NULL,
                  trailBottom >= receptorY ? &end : NULL);
 }
@@ -436,14 +554,14 @@ static char LaneHeld(const Note* note) {
 
 /* Logica do sustain (hold/miss). Sem desenho: roda no Update. */
 static void UpdateSustain(Note* note, const PlayStateNoteView* view) {
-    if (note->missed) return;
+    if (note->missed || note->skipped) return;
 
     const char shouldHold = Note_ShouldHold(note, view->time);
 
     if (PlayStatePlayerInput_Owner(note) < 0) {   // automatico: oponente, BF da IA ou botplay
-        if (shouldHold) {
-            if (note->mustHit) events.botHold();
-            else events.opponentHold();
+        if (shouldHold && note->pressed) {
+            if (note->mustHit) events.botHold(note);
+            else events.opponentHold(note);
         }
     }
     else if (!note->pressed) {
@@ -458,22 +576,24 @@ static void UpdateSustain(Note* note, const PlayStateNoteView* view) {
     }
 }
 
-/* Posiciona, anima e desenha o sustain da nota (so le o estado). */
-static void DrawSustain(const Note* note, const StrumNote* strum, float endHeight,
-                        float scrollSpeed, char fullyAbove) {
+/* Posiciona, anima e desenha o sustain da nota (so le o estado). sk = textura do tipo (ou NULL). */
+static void DrawSustainBody(const Note* note, const StrumNote* strum, float endHeight,
+                            float scrollSpeed, char fullyAbove, const TypeSkin* sk) {
     // Middlescroll: sustain do oponente acompanha a escala menor do receptor.
     const float k = (SCROLL_IS_MIDDLE(gameOptions.scroll) && !note->mustHit) ? (0.4f / NOTE_SCALE) : 1.0f;
 
     const float lengthPx = scrollSpeed * note->length;
     const float headY = renderNote.position.y + trailOffset.y * k;
 
-    SetAnimIfChanged(&trail, Note_TrailAnimation(note->id));
+    if (sk != NULL) AnimatedObject_SetAnimation(&trail, sk->trail[note->id]);
+    else SetAnimIfChanged(&trail, Note_TrailAnimation(note->id));
     trail.scaleX = end.scaleX = NOTE_SCALE * k;
     trail.position.x = strum->object.position.x + trailOffset.x * k;
     trail.scaleY = fmaxf(0.01f, (lengthPx - endHeight) / TRAIL_SEGMENT_H);
     trail.color = normalColor;
 
-    SetAnimIfChanged(&end, Note_EndAnimation(note->id));
+    if (sk != NULL) AnimatedObject_SetAnimation(&end, sk->end[note->id]);
+    else SetAnimIfChanged(&end, Note_EndAnimation(note->id));
     end.position.x = trail.position.x;
     end.scaleY = endHeight / END_SEGMENT_H;
     end.color = normalColor;
@@ -489,24 +609,37 @@ static void DrawSustain(const Note* note, const StrumNote* strum, float endHeigh
 
     if (note->missed) {
         trail.color = end.color = missedColor;
-        DrawSustainFull(note->id, fullyAbove);
+        DrawSustainFull(note, fullyAbove);
         return;
     }
 
-    // Jogador ainda nao acertou a cabeca: sustain inteiro, sem corte.
-    if (PlayStatePlayerInput_Owner(note) >= 0 && !note->pressed) {
-        DrawSustainFull(note->id, fullyAbove);
+    // Cabeca ainda nao acertada (ou ignorada pelo tipo): sustain inteiro, sem corte.
+    if (!note->pressed) {
+        DrawSustainFull(note, fullyAbove);
         return;
     }
 
-    DrawSustainClipped(note->id, strum, k);
+    DrawSustainClipped(note, strum, k);
+}
+
+static void DrawSustain(const Note* note, const StrumNote* strum, float endHeight,
+                        float scrollSpeed, char fullyAbove) {
+    const int ts = typeSkinOf[note->type];
+    if (ts < 0) {
+        DrawSustainBody(note, strum, endHeight, scrollSpeed, fullyAbove, NULL);
+        return;
+    }
+    trail.animationSet = end.animationSet = *typeSkins[ts].set;
+    DrawSustainBody(note, strum, endHeight, scrollSpeed, fullyAbove, &typeSkins[ts]);
+    trail.animationSet = end.animationSet = songSkin;
+    trail.currentAnim.isValid = end.currentAnim.isValid = 0;   /* a proxima nota normal reinicia a animacao */
 }
 
 /* Avanca firstNote sobre notas ja resolvidas e bem atras do receptor. */
 static void CullPassedNotes(float time, float cullTimeThreshold) {
     while (firstNote < noteCount) {
         const Note* n = notes + firstNote;
-        const char resolved = n->id < 0 || n->id > 3 || n->pressed || n->missed;
+        const char resolved = n->id < 0 || n->id > 3 || n->pressed || n->missed || n->skipped;
         if (!resolved || time - (n->time + n->length) <= cullTimeThreshold)
             break;
         firstNote++;
@@ -538,17 +671,24 @@ void PlayStateNoteSpawn_Update(const PlayStateNoteView* view) {
             break;
 
         // Automaticos (oponente, BF da IA no Play as, botplay) acertam exatamente no tempo da nota.
-        if (!note->pressed && time >= note->time && PlayStatePlayerInput_Owner(note) < 0) {
-            note->pressed = 1;
-            if (note->mustHit) events.botHit(note);
-            else events.opponentHit(note);
+        // Tipo que eles nao apertam (Hurt Note no bot, ignoreNote) segue reto e vira "skipped".
+        if (!note->pressed && !note->skipped && time >= note->time && PlayStatePlayerInput_Owner(note) < 0) {
+            if (PlayStatePlayerInput_AutoSkips(note)) {
+                note->skipped = 1;
+            } else {
+                note->pressed = 1;
+                if (note->mustHit) events.botHit(note);
+                else events.opponentHit(note);
+            }
         }
 
         if (note->length > 0)
             UpdateSustain(note, view);
 
-        if (!note->pressed && !note->missed && Note_TooLate(note, time))
-            events.miss(note);
+        if (!note->pressed && !note->missed && !note->skipped && Note_TooLate(note, time)) {
+            if (PlayStatePlayerInput_Ignorable(note)) note->skipped = 1;   // ignoreNote: passar nao e miss
+            else events.miss(note);
+        }
     }
 }
 
@@ -591,7 +731,7 @@ void PlayStateNoteSpawn_Draw(const PlayStateNoteView* view) {
         const char fullyAbove = SCROLL_IS_DOWN(gameOptions.scroll) ? (renderNote.position.y > 900.0f)
                                                            : (renderNote.position.y < -200.0f);
 
-        if (note->pressed && fullyAbove && time >= note->time + note->length)
+        if ((note->pressed || note->skipped) && fullyAbove && time >= note->time + note->length)
             continue;
 
         /* Cabeca curta fora da tela, ou empilhada no mesmo pixel de outra ja desenhada (spam gigante):
@@ -626,7 +766,15 @@ void PlayStateNoteSpawn_Draw(const PlayStateNoteView* view) {
             drawBudget--;
             renderNote.scaleX = renderNote.scaleY = HeadScale(note);
             renderNote.color = WHITE;
-            DrawLaneObjs(note->id, &renderNote, NULL);
+            const int ts = typeSkinOf[note->type];
+            if (ts >= 0) {   /* textura do tipo: copia com a animacao da skin dele (lane state intacto) */
+                RayAnimatedObject head = renderNote;
+                head.animationSet = *typeSkins[ts].set;
+                AnimatedObject_SetAnimation(&head, typeSkins[ts].head[note->id]);
+                DrawNoteObjs(note, &head, NULL);
+            } else {
+                DrawNoteObjs(note, &renderNote, NULL);
+            }
         }
         laneAnimState[note->id] = renderNote.currentAnim;
     }

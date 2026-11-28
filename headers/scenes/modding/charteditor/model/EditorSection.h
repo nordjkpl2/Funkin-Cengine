@@ -11,8 +11,8 @@ void EdSec_Free(EdSec* s);
 void EdSec_Clone(EdSec* dst, const EdSec* src); /* copia profunda (so as notas sao alocadas) */
 size_t EdSec_Bytes(const EdSec* s);
 
-void EdSec_Add(EdSec* s, float time, int lane, float len);      /* com dedup e ordem */
-void EdSec_AddBulk(EdSec* s, float time, int lane, float len);  /* anexa; fechar com FinishBulk */
+void EdSec_Add(EdSec* s, float time, int lane, float len, int type);      /* com dedup e ordem */
+void EdSec_AddBulk(EdSec* s, float time, int lane, float len, int type);  /* anexa; fechar com FinishBulk */
 void EdSec_FinishBulk(EdSec* s);                                 /* ordena + dedup */
 int EdSec_LowerBound(const EdSec* s, float time);     /* 1o indice com time >= time (busca binaria) */
 int EdSec_FindNear(EdSec* s, float time, int lane, float windowMs); /* indice da nota perto, ou -1 */

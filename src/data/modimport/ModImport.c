@@ -119,7 +119,7 @@ static char MI_ImportSingle(const char *srcMod, const char *destModPath,
     MI_TICK("images (queue)");
     /* Audio e scripts do mod (o ModPath ja procura nestas pastas). */
     {
-        static const char *const extraDirs[] = {"sounds", "music", "scripts"};
+        static const char *const extraDirs[] = {"sounds", "music", "scripts", "custom_notetypes"};
         for (size_t i = 0; i < sizeof(extraDirs) / sizeof(extraDirs[0]); ++i) {
             char extraSource[MI_PATH_MAX];
             char extraDestination[MI_PATH_MAX];

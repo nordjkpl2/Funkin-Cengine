@@ -312,6 +312,7 @@ static char Sec_MayShow(const EdSec* s, double top, double bot) {
 typedef struct {
     float cx, y0, y1;   // cabeca: y0 = centro; rastro: de y0 ate y1
     unsigned char lane, look;
+    unsigned char type; // tipo de nota (0 = normal): numero em cima da cabeca, cor de dano
 } EdDrawItem;
 
 static EdDrawItem edHeads[ED_DRAW_BUDGET];
@@ -344,7 +345,8 @@ static void Notes_AddHead(const EdNote* n, int dl, float y) {
     if(edBudget <= 0)
         return;
     edBudget--;
-    edHeads[edHeadN++] = (EdDrawItem){Grid_LaneCX(dl), y + 1, 0, (unsigned char)(n->lane & 3), (unsigned char)Note_Look(n->time)};
+    edHeads[edHeadN++] = (EdDrawItem){Grid_LaneCX(dl), y + 1, 0, (unsigned char)(n->lane & 3), (unsigned char)Note_Look(n->time),
+                                      (unsigned char)n->type};
 }
 
 static void Notes_AddTrail(const EdNote* n, int dl, float y, float ppm) {
@@ -364,7 +366,8 @@ static void Notes_AddTrail(const EdNote* n, int dl, float y, float ppm) {
     if(edBudget < 2 || edTrailN >= ED_DRAW_BUDGET / 2)
         return;
     edBudget -= 2;
-    edTrails[edTrailN++] = (EdDrawItem){Grid_LaneCX(dl), y0, y1, (unsigned char)(n->lane & 3), (unsigned char)Note_Look(n->time)};
+    edTrails[edTrailN++] = (EdDrawItem){Grid_LaneCX(dl), y0, y1, (unsigned char)(n->lane & 3), (unsigned char)Note_Look(n->time),
+                                        (unsigned char)n->type};
 }
 
 /* Le so as notas que aparecem: top..bot (cabecas e rastros que comecam na tela) e, a parte,
@@ -409,9 +412,15 @@ static Color Look_Tint(unsigned char look, unsigned char normal, unsigned char p
 }
 
 // rastro: corpo esticado (hold piece) + ponta (hold end), igual a gameplay; skin sem eles = faixa da cor
+/* Tipo com cor de dano (Hurt Note): a nota fica escura/vermelha, so multiplicando o tint (lote segue unico). */
+static Color Type_Tint(Color c, unsigned char type) {
+    if(type == 0 || !NoteTypes_Get(type)->hurtColor) return c;
+    return (Color){(unsigned char)(c.r * 0.55f), (unsigned char)(c.g * 0.12f), (unsigned char)(c.b * 0.15f), c.a};
+}
+
 static void Notes_DrawTrail(const EdDrawItem* it) {
     const EdArrowSprite* a = edArrows + it->lane;
-    const Color tint = Look_Tint(it->look, 200, 60);
+    const Color tint = Type_Tint(Look_Tint(it->look, 200, 60), it->type);
     const float h = it->y1 - it->y0;
     if(!a->trail.ok) {
         Color c = GameData_ShiftColor(EdLaneColor(it->lane), edShift[it->lane]);
@@ -428,7 +437,22 @@ static void Notes_DrawTrail(const EdDrawItem* it) {
 }
 
 static void Notes_DrawHead(const EdDrawItem* it) {
-    EdArrow_Draw(it->lane, it->cx, it->y0, (it->look == LOOK_HIT) ? 1.25f : 1.0f, Look_Tint(it->look, 255, 90));
+    EdArrow_Draw(it->lane, it->cx, it->y0, (it->look == LOOK_HIT) ? 1.25f : 1.0f,
+                 Type_Tint(Look_Tint(it->look, 255, 90), it->type));
+}
+
+/* Numero do tipo em cima da cabeca (como o chart editor da Psych). Depois das setas: nao quebra o lote delas. */
+static void Notes_DrawTypeLabels(void) {
+    for(int i = 0; i < edHeadN; i++) {
+        const EdDrawItem* it = edHeads + i;
+        if(it->type == 0)
+            continue;
+        char num[8];
+        snprintf(num, sizeof(num), "%d", (int)it->type);
+        const float w = (float)MeasureText(num, 20);
+        DrawText(num, (int)(it->cx - w * 0.5f) + 1, (int)(it->y0 - 9) + 1, 20, BLACK);
+        DrawText(num, (int)(it->cx - w * 0.5f), (int)(it->y0 - 9), 20, WHITE);
+    }
 }
 
 // uma coluna (lane < 0 = todas): rastros embaixo, cabecas por cima
@@ -462,13 +486,14 @@ static void Grid_DrawNotes(float ppm, double top, double bot) {
 
     if(!edUseShader) {
         Notes_DrawPass(-1);   // atlas ou skin sem cor: 1 textura, 1 lote
-        return;
+    } else {
+        for(int l = 0; l < 4; l++) {   // sem atlas: no maximo 4 trocas de shader, nunca por nota
+            EdLane_Begin(l);
+            Notes_DrawPass(l);
+            EdLane_End();
+        }
     }
-    for(int l = 0; l < 4; l++) {   // sem atlas: no maximo 4 trocas de shader, nunca por nota
-        EdLane_Begin(l);
-        Notes_DrawPass(l);
-        EdLane_End();
-    }
+    Notes_DrawTypeLabels();
 }
 
 // cursor: faixa com brilho + agulha a esquerda (as notas sobem ate ele, igual ao jogo)
@@ -534,9 +559,16 @@ static void Grid_NoteMouse(Vector2 m, float ppm, int lane) {
 
     if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && exist < 0) {
         EdTouchSec(si);
-        EdSec_Add(s, snapped, raw, 0);
+        EdSec_Add(s, snapped, raw, 0, EdAct_NoteType());
         secIdx = si;
         cursorMs = snapped;
+    }
+    if(IsMouseButtonPressed(MOUSE_BUTTON_MIDDLE)) {   // meio: a nota passa a ter o tipo atual
+        const int idx = EdSec_FindNear(s, (float)t, raw, (float)beatMs);
+        if(idx >= 0) {
+            EdAct_SetNoteType(si, idx);
+            secIdx = si;
+        }
     }
     if(IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) {
         const int idx = EdSec_FindNear(s, (float)t, raw, (float)beatMs);

@@ -14,5 +14,12 @@ void EdAct_GoToPart(int idx);    /* cursor e vista no comeco do trecho idx (limi
 void EdAct_ToggleTurn(void);
 void EdAct_NudgeBpm(float delta); /* bpm do trecho atual += delta (10..300) */
 void EdAct_CycleSnap(void);       /* grade: 1/16 -> 1/4 -> 1/8 -> 1/16 */
+void EdAct_ToggleGfSection(void); /* Psych gfSection: a GF canta o turno do trecho */
+void EdAct_ToggleAltAnim(void);   /* Psych altAnim: o oponente canta com -alt no trecho */
+/* Tipo das notas novas (logic/notes/NoteTypes.h). Cycle anda dir (+1/-1) na lista. */
+int EdAct_NoteType(void);
+void EdAct_CycleNoteType(int dir);
+/* Nota idx do trecho si passa a ter o tipo atual (com undo). */
+void EdAct_SetNoteType(int si, int idx);
 
 #endif

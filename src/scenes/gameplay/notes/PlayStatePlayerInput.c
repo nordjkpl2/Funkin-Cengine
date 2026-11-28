@@ -101,13 +101,14 @@ static void ApplyMiss(const Note* note) {
     if (note->mustHit) events.miss(note->id, note); // so a nota do lado do BF tem animacao de erro
 }
 
-static void HitNote(Note* note, float songTime) {
+/* 1 = acerto (receptor confirma); 0 = nota de dano (so aperta). */
+static char HitNote(Note* note, float songTime) {
     const NoteTypeInfo* t = NoteTypes_Get(note->type);
     if (t->hitCausesMiss) {   /* Hurt Note: apertar e o erro; some a cabeca e o sustain fica cinza */
         note->pressed = 1;
         note->missed = 1;
         ApplyMiss(note);
-        return;
+        return 0;
     }
 
     // Diferenca em tempo real: com Song speed a janela em segundos de musica escala junto.
@@ -136,6 +137,7 @@ static void HitNote(Note* note, float songTime) {
     if (t->hitKills) PlayStateHealth_Kill();
     note->pressed = 1;
     events.hit(note, rating);
+    return 1;
 }
 
 void PlayStatePlayerInput_MissNote(Note* note) {
@@ -207,25 +209,23 @@ static void UpdateSlot(int slot, float songTime, PlayStatePlayerKeys* keys) {
             }
         }
 
-        for (int i = 0; i < 4; i++) {
-            if (keyPressed[i] && candidate[i] && !candidate[i]->pressed && !pressed[i]) {
-                pressed[i] = 1;
-                HitNote(candidate[i], songTime);
-            }
-        }
+        for (int i = 0; i < 4; i++)
+            if (keyPressed[i] && candidate[i])
+                pressed[i] = HitNote(candidate[i], songTime);
         return;
     }
 
+    char used[4] = {0, 0, 0, 0};
     for (int i = 0; i < 4; i++) {
-        if (keyPressed[i] && candidate[i] && !pressed[i]) {
-            pressed[i] = 1;
-            HitNote(candidate[i], songTime);
+        if (keyPressed[i] && candidate[i]) {
+            used[i] = 1;
+            pressed[i] = HitNote(candidate[i], songTime);
         }
     }
 
     if (gameOptions.ghost == 2) {
         for (int i = 0; i < 4; i++) {
-            if (keyPressed[i] && !pressed[i])
+            if (keyPressed[i] && !used[i])
                 GhostMiss(slot, i);
         }
     }

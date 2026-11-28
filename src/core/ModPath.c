@@ -16,7 +16,8 @@
 static bool IsTopLevelFolder(const char* name, size_t length)
 {
     static const char* const folders[] = {
-        "songs", "weeks", "data", "stages", "images", "characters", "scripts", "sounds", "music"
+        "songs", "weeks", "data", "stages", "images", "characters", "scripts", "sounds", "music",
+        "custom_notetypes"
     };
     for (size_t i = 0; i < sizeof(folders) / sizeof(folders[0]); i++) {
         if (strlen(folders[i]) == length && memcmp(folders[i], name, length) == 0)

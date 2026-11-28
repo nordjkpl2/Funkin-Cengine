@@ -13,7 +13,7 @@
 
 /* Papel de uma animacao no jogo ("idle", "singLEFT"...) ligado ao nome dela no atlas. */
 typedef struct {
-    char role[16];
+    char role[24];   /* cabe "singRIGHTmiss-alt" */
     char sprite[64];
     int fps;
     bool looped;

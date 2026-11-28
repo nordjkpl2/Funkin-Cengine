@@ -16,8 +16,8 @@
 typedef struct {
     void (*opponentHit)(Note* note);            /* oponente acertou a nota */
     void (*botHit)(Note* note);                 /* botplay acertou a nota do BF */
-    void (*opponentHold)(void);                 /* oponente segurando sustain */
-    void (*botHold)(void);                      /* botplay segurando sustain */
+    void (*opponentHold)(const Note* note);     /* oponente segurando sustain */
+    void (*botHold)(const Note* note);          /* botplay segurando sustain */
     void (*playerHold)(const Note* note);                   /* jogador segurando sustain certo */
     void (*miss)(Note* note);                   /* nota perdida ou sustain solto */
 } PlayStateNoteEvents;
@@ -35,6 +35,10 @@ typedef struct {
 void PlayStateNoteSpawn_Init(void);
 
 void PlayStateNoteSpawn_SetEvents(const PlayStateNoteEvents* events);
+
+/* Tipos de nota da musica: le custom_notetypes e acha a textura de cada tipo. Depois da skin da musica
+   (Note_SetCurrentSkin) e antes de PlayStateNoteSpawn_Load. */
+void PlayStateNoteSpawn_LoadTypes(const char* songDir);
 
 /* Monta e ordena a lista de notas a partir da musica.
    Se song->stream existe (modo streaming), a gameplay assume o stream: as notas entram em janelas

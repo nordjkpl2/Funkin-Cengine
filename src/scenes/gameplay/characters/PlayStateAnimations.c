@@ -8,6 +8,7 @@
 #include "scenes/gameplay/HUD/PlayStateHealth.h"
 #include "scenes/gameplay/stage/PlayStateStage.h"
 #include "scenes/gameplay/characters/PlayStateBeat.h"
+#include "logic/notes/NoteTypes.h"
 #include "GameData.h"
 #include "Game.h"
 #include <stddef.h>
@@ -372,6 +373,7 @@ typedef struct {
 static SingTrigger dadSing = { -1, -1.0 };
 static SingTrigger bfSing = { -1, -1.0 };
 static SingTrigger bfMissSing = { -1, -1.0 };
+static SingTrigger gfSing = { -1, -1.0 };
 
 /* Reinicia a animacao so se for outra, ou se a mesma ja foi disparada ha mais que o cooldown. */
 static void TriggerSing(RayAnimatedObject* obj, int anim, SingTrigger* last) {
@@ -384,47 +386,103 @@ static void TriggerSing(RayAnimatedObject* obj, int anim, SingTrigger* last) {
     AnimatedObject_SetAnimation(obj, anim);
 }
 
-void PlayStateAnimations_OpponentHit(int lane) {
-    special[0].on = 0;   /* nota cantada interrompe Play Animation / Hey! */
-    dad.idleTimer = 0;
-    TriggerSing(&dad.object, dad.animations.notes[lane], &dadSing);
+static const char* const singRoles[4] = {"singLEFT", "singDOWN", "singUP", "singRIGHT"};
+#define GF_SING_SECS 0.45   /* GF segura a pose de canto e volta a dancar */
+#define HEY_SECS 0.6f       /* heyTimer da Psych */
+
+/* Animacao de canto (miss = singLEFTmiss...) com sufixo; sem a variante, cai na normal. */
+static int SingAnim(const Character* c, int lane, const char* suffix, char miss) {
+    const int base = miss ? c->missAnimations.notes[lane] : c->animations.notes[lane];
+    if (suffix == NULL || suffix[0] == 0) return base;
+    char name[48];
+    snprintf(name, sizeof(name), "%s%s%s", singRoles[lane], miss ? "miss" : "", suffix);
+    const int idx = FindNamed(&c->object, c->named, c->namedCount, name);
+    return idx >= 0 ? idx : base;
 }
 
-void PlayStateAnimations_OpponentHold(void) {
-    dad.idleTimer = 0;
+/* Sufixo do canto: altAnim da secao (so o oponente, como a Psych) ou o do tipo. */
+static const char* NoteSuffix(int side, const Note* note, const NoteTypeInfo* t) {
+    if (side == 0 && note->altSection) return "-alt";
+    return t->animSuffix;
 }
 
-void PlayStateAnimations_BotHit(int lane) {
+/* GF Sing / gfSection: a GF canta no lugar; Hey! vira cheer. */
+static void GfSingNote(const Note* note, const char* suffix, char hey) {
+    if (!gfLoaded || gfHidden) return;
+    char name[48];
+    snprintf(name, sizeof(name), "%s%s", singRoles[note->id], suffix);
+    int idx = FindNamed(&gf.object, gf.named, gf.namedCount, name);
+    if (idx < 0 && suffix[0] != 0) idx = FindNamed(&gf.object, gf.named, gf.namedCount, singRoles[note->id]);
+    if (idx >= 0) {
+        TriggerSing(&gf.object, idx, &gfSing);
+        special[2] = (SpecialAnim){1, PlayStateBeat_Time() + GF_SING_SECS};
+    }
+    if (hey) (void)PlayStateAnimations_PlaySpecial(2, "cheer", HEY_SECS);
+}
+
+/* Canto de uma nota acertada (Psych goodNoteHit / opponentNoteHit). side: 0 = oponente, 1 = BF. */
+static void SingNote(int side, const Note* note) {
+    const NoteTypeInfo* t = NoteTypes_Get(note->type);
+    if (!t->noAnimation && note->id >= 0 && note->id < 4) {
+        const char* suffix = NoteSuffix(side, note, t);
+        if (t->gfNote || note->gfSection) {
+            GfSingNote(note, suffix, (char)t->hey);
+        } else {
+            Character* c = side ? &bf : &dad;
+            special[side].on = 0;   /* nota cantada interrompe Play Animation / Hey! */
+            c->idleTimer = 0;
+            TriggerSing(&c->object, SingAnim(c, note->id, suffix, 0), side ? &bfSing : &dadSing);
+            if (t->hey) (void)PlayStateAnimations_PlaySpecial(side, "hey", HEY_SECS);
+        }
+    }
+    if (t->hitAnimTarget >= 0)
+        (void)PlayStateAnimations_PlaySpecial(t->hitAnimTarget, t->hitAnim, 0.0f);
+}
+
+/* Sustain: segura a pose de quem esta cantando. */
+static void HoldNote(int side, const Note* note) {
+    const NoteTypeInfo* t = NoteTypes_Get(note->type);
+    if (t->noAnimation) return;
+    if (t->gfNote || note->gfSection) {
+        if (special[2].on && special[2].until >= 0.0) {
+            const double until = PlayStateBeat_Time() + 0.1;
+            if (until > special[2].until) special[2].until = until;
+        }
+        return;
+    }
+    (side ? &bf : &dad)->idleTimer = 0;
+}
+
+void PlayStateAnimations_OpponentHit(const Note* note) {
+    SingNote(0, note);
+}
+
+void PlayStateAnimations_OpponentHold(const Note* note) {
+    HoldNote(0, note);
+}
+
+void PlayStateAnimations_BotHit(const Note* note) {
     if (gameOptions.hitSoundBotplay)
         PlayBotHitSound();
-
-    special[1].on = 0;
-    bf.idleTimer = 0;
-    TriggerSing(&bf.object, bf.animations.notes[lane], &bfSing);
+    SingNote(1, note);
 }
 
-void PlayStateAnimations_BotHold(void) {
-    bf.idleTimer = 0;
+void PlayStateAnimations_BotHold(const Note* note) {
+    HoldNote(1, note);
 }
 
-void PlayStateAnimations_PlayerHit(int lane) {
+void PlayStateAnimations_PlayerHit(const Note* note) {
     if (gameOptions.hitSound)
         PlayHitSound();
-
-    special[1].on = 0;
-    bf.idleTimer = 0;
-    TriggerSing(&bf.object, bf.animations.notes[lane], &bfSing);
+    SingNote(1, note);
 }
 
-void PlayStateAnimations_PlayerHold(void) {
-    bf.idleTimer = 0;
+void PlayStateAnimations_PlayerHold(const Note* note) {
+    HoldNote(1, note);
 }
 
-void PlayStateAnimations_PlayerMiss(int lane) {
+void PlayStateAnimations_PlayerMiss(int lane, const Note* note) {
     static double lastMissSound = -1.0;
-    special[1].on = 0;
-
-    bf.idleTimer = 0;
 
     /* chart com spam pode errar milhares de notas no mesmo quadro: 1 som a cada 40 ms */
     const double now = GetTime();
@@ -432,8 +490,19 @@ void PlayStateAnimations_PlayerMiss(int lane) {
         lastMissSound = now;
         PlaySound(missSFX[GetRandomValue(0, 2)]);
     }
+    if (lane < 0 || lane > 3) return;
 
-    TriggerSing(&bf.object, bf.missAnimations.notes[lane], &bfMissSing);
+    const NoteTypeInfo* t = NoteTypes_Get(note != NULL ? note->type : NOTETYPE_NORMAL);
+    if (note != NULL && t->missAnimTarget >= 0)
+        (void)PlayStateAnimations_PlaySpecial(t->missAnimTarget, t->missAnim, 0.0f);
+    if (t->noMissAnimation) return;
+    if (note != NULL && (t->gfNote || note->gfSection)) return;   /* miss da GF: ela nao tem animacao de erro */
+
+    special[1].on = 0;
+    bf.idleTimer = 0;
+    /* Hurt Note acertada: "hurt" no lugar do miss, se o BF tiver */
+    if (note != NULL && t->hurtAnim && PlayStateAnimations_PlaySpecial(1, "hurt", 0.0f)) return;
+    TriggerSing(&bf.object, SingAnim(&bf, lane, t->animSuffix, 1), &bfMissSing);
 }
 
 /* ------------------------------------------------------------------ */

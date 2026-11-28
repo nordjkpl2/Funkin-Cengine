@@ -12,10 +12,13 @@ typedef struct {
     float time; // ms
     int lane;   // 0-7 (0-3 oponente, 4-7 voce)
     float len;  // ms de nota longa, 0 = normal
+    int type;   // tipo de nota (logic/notes/NoteTypes.h), 0 = normal; salvo como note[3] (nome)
 } EdNote;
 
 typedef struct {
     char mustHit; // 1 = sua vez, 0 = vez do oponente
+    char gfSection; // Psych: a GF canta as notas do turno
+    char altAnim;   // Psych: o oponente canta com -alt
     float bpm;
     char changeBPM;
     int lenSteps;

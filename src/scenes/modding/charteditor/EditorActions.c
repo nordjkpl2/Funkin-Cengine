@@ -6,6 +6,8 @@
 #include "scenes/modding/charteditor/grid/EditorTimeline.h"
 #include "scenes/modding/charteditor/grid/EditorGrid.h"
 #include "scenes/modding/charteditor/ui/EditorPicker.h"
+#include "scenes/modding/charteditor/model/EditorSection.h"
+#include "logic/notes/NoteTypes.h"
 
 #include <math.h>
 
@@ -86,7 +88,7 @@ void EdAct_PastePart(void) {
     /* a copia ja vem ordenada e sem duplicadas: anexa direto (o deslocamento mantem a ordem) */
     for(int i = 0; i < copyBuf.count; i++) {
         const EdNote* c = copyBuf.notes + i;
-        EdSec_AddBulk(n, (float)(base + (c->time - srcStart)), c->lane, c->len);
+        EdSec_AddBulk(n, (float)(base + (c->time - srcStart)), c->lane, c->len, c->type);
     }
     EdAct_GoToPart(chart.nsec - 1);
     EdStatusMsg("PASTED AT END");
@@ -106,6 +108,40 @@ void EdAct_ToggleTurn(void) {
     EdTouchSec(secIdx);
     s->mustHit = !s->mustHit;
     EdStatusMsg(s->mustHit ? "TURN: YOU" : "TURN: OPPONENT");
+}
+
+void EdAct_ToggleGfSection(void) {
+    EdSec* s = chart.secs + secIdx;
+    EdTouchSec(secIdx);
+    s->gfSection = !s->gfSection;
+    EdStatusMsg(s->gfSection ? "GF SECTION: ON" : "GF SECTION: OFF");
+}
+
+void EdAct_ToggleAltAnim(void) {
+    EdSec* s = chart.secs + secIdx;
+    EdTouchSec(secIdx);
+    s->altAnim = !s->altAnim;
+    EdStatusMsg(s->altAnim ? "ALT ANIMATION: ON" : "ALT ANIMATION: OFF");
+}
+
+static int noteType;   /* tipo das notas novas */
+
+int EdAct_NoteType(void) {
+    if(noteType < 0 || noteType >= NoteTypes_Count()) noteType = 0;
+    return noteType;
+}
+
+void EdAct_CycleNoteType(int dir) {
+    const int n = NoteTypes_Count();
+    noteType = ((EdAct_NoteType() + dir) % n + n) % n;
+}
+
+void EdAct_SetNoteType(int si, int idx) {
+    if(si < 0 || si >= chart.nsec) return;
+    EdSec* s = chart.secs + si;
+    if(idx < 0 || idx >= s->count || s->notes[idx].type == EdAct_NoteType()) return;
+    EdTouchSec(si);
+    s->notes[idx].type = noteType;
 }
 
 void EdAct_NudgeBpm(float delta) {
