@@ -303,6 +303,8 @@ static void ModdingMenu_Create([[maybe_unused]] RayScene *scene)
         .zoom = 1.0f
     };
 
+    Modding_LoadFx();
+
     mode = MOD_LIST;
     selected = 0;
     offset = 0.0f;
@@ -319,6 +321,7 @@ static void ModdingMenu_Create([[maybe_unused]] RayScene *scene)
 static void ModdingMenu_Destroy([[maybe_unused]] RayScene *scene)
 {
     if (mode == MOD_HUD) Hud_Leave();
+    Modding_UnloadFx();
     bg.image = (Texture2D){0}; // compartilhada: nao descarrega aqui
 }
 

@@ -61,6 +61,8 @@ void Modding_DrawBackground(void);
 void Modding_DrawImport(void);
 void Modding_DrawStub(void);
 void Modding_DrawList(void);
+void Modding_LoadFx(void);   /* shader do fundo da lista (Create) */
+void Modding_UnloadFx(void); /* (Destroy) */
 int Modding_TabHit(int i, Vector2 m); /* 1 se o ponto m (coords do mundo) esta sobre a aba i */
 int Modding_OpenHit(Vector2 m); /* 1 se o ponto m esta sobre o botao OPEN do painel */
 /* Formas usam o retangulo branco do atlas da fonte: texto e formas no mesmo draw call.

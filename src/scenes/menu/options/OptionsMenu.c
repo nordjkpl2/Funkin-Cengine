@@ -120,8 +120,30 @@ static void ActivateCurrent(void) {
         NoteColorScreen_Begin();
 }
 
-/* Icone de um titulo de secao (usado na lista e na barra de abas). Cada icone tem sua propria posicao X. */
+/* X esquerdo do icone de cada titulo (medido no Create; na barra de abas todos recebem o mesmo x). */
+static float HeaderLogoX(int header) {
+    switch (header) {
+        case OPTION_HEADER_WINDOW:   return windowLogoX;
+        case OPTION_HEADER_GAMEPLAY: return gameplayLogoX;
+        case OPTION_HEADER_VISUAL:   return visualLogoX;
+        case OPTION_HEADER_OTHER:    return otherLogoX;
+        case OPTION_HEADER_MUSIC:    return musicLogoX;
+        case OPTION_HEADER_RENDER:   return renderLogoX;
+        default:                     return 0.0f;
+    }
+}
+
+/* Icone de um titulo de secao (usado na lista e na barra de abas). Escalado em HEADER_LOGO_SCALE
+ * a partir do canto superior esquerdo, para ficar na altura do texto. */
 static void DrawHeaderLogo(int header, float rowY, Color fill, Color shadow) {
+    const float ax = HeaderLogoX(header);
+    const float ay = rowY + LOGO_TOP;
+
+    rlPushMatrix();
+    rlTranslatef(ax, ay, 0.0f);
+    rlScalef(HEADER_LOGO_SCALE, HEADER_LOGO_SCALE, 1.0f);
+    rlTranslatef(-ax, -ay, 0.0f);
+
     switch (header) {
         case OPTION_HEADER_WINDOW:   DrawWindowLogo(rowY, fill, shadow); break;
         case OPTION_HEADER_GAMEPLAY: DrawGameplayLogo(rowY, fill, shadow); break;
@@ -131,6 +153,8 @@ static void DrawHeaderLogo(int header, float rowY, Color fill, Color shadow) {
         case OPTION_HEADER_RENDER:   DrawRenderLogo(rowY, fill, shadow); break;
         default: break;
     }
+
+    rlPopMatrix();
 }
 
 /* Icone do titulo (o mesmo da lista) em cima do nome, alinhado a esquerda do titulo da barra. */
@@ -143,17 +167,19 @@ static void DrawTabLogo(int header, float x, float rowY, Color fill, Color shado
     windowLogoX = saved[0]; otherLogoX = saved[1]; gameplayLogoX = saved[2]; visualLogoX = saved[3]; musicLogoX = saved[4]; renderLogoX = saved[5];
 }
 
-/* Largura do icone de cada aba (mesmas medidas de OptionsMenuIcons.c), para a hitbox cobrir o icone todo. */
+/* Largura do icone de cada aba (mesmas medidas de OptionsMenuIcons.c, ja escaladas), para a hitbox cobrir o icone todo. */
 static float TabIconWidth(int header) {
+    float raw = 0.0f;
     switch (header) {
-        case OPTION_HEADER_WINDOW:   return 2.0f * LOGO_SQUARE + LOGO_GAP;
-        case OPTION_HEADER_GAMEPLAY: return 3.0f * (2.0f * SYMBOL_HALF + SYMBOL_GAP) + 2.0f * SYMBOL_HALF;
-        case OPTION_HEADER_VISUAL:   return FRAME_WIDTH;
-        case OPTION_HEADER_OTHER:    return 2.0f * LOGO_CIRCLE_RADIUS;
-        case OPTION_HEADER_RENDER:   return 2.0f * GEAR_OUTER_R;
-        case OPTION_HEADER_MUSIC:    return 2.0f * NOTE_HEAD_RADIUS + NOTE_FLAG_W;
-        default:                     return 0.0f;
+        case OPTION_HEADER_WINDOW:   raw = 2.0f * LOGO_SQUARE + LOGO_GAP; break;
+        case OPTION_HEADER_GAMEPLAY: raw = 3.0f * (2.0f * SYMBOL_HALF + SYMBOL_GAP) + 2.0f * SYMBOL_HALF; break;
+        case OPTION_HEADER_VISUAL:   raw = FRAME_WIDTH; break;
+        case OPTION_HEADER_OTHER:    raw = 2.0f * LOGO_CIRCLE_RADIUS; break;
+        case OPTION_HEADER_RENDER:   raw = 2.0f * GEAR_OUTER_R; break;
+        case OPTION_HEADER_MUSIC:    raw = 2.0f * NOTE_HEAD_RADIUS + NOTE_FLAG_W; break;
+        default: break;
     }
+    return raw * HEADER_LOGO_SCALE;
 }
 
 enum { TAB_HIT, TAB_TEXT, TAB_UNDERLINE };   // modos de TabBarRun

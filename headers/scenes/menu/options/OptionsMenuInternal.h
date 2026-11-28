@@ -18,15 +18,15 @@
 // texto e header ta tudo aqui
 #define SCROLL_LERP_SPEED 09.0f
 #define WHEEL_ROWS_PER_NOTCH 1 // linhas puladas a cada clique da roda do mouse
-#define ROW_FONT_SIZE 59
-#define LABEL_FONT_SIZE 40 // subtitulos estaticos (ex.: Score, Zoom), menores que as opcoes
-#define ROW_PADDING 12
-#define HEADER_FONT_SIZE 77
-#define HEADER_PADDING 5
+#define ROW_FONT_SIZE 45
+#define LABEL_FONT_SIZE 27 // subtitulos estaticos (ex.: Score, Zoom), menores que as opcoes
+#define ROW_PADDING 9
+#define HEADER_FONT_SIZE 57
+#define HEADER_PADDING 2
 #define TEXT_SHADOW 6
-#define TEXT_SPACING 1.6f
+#define TEXT_SPACING 0.4f
 #define ROW_X 150.0f
-#define HEADER_X 50.0f
+#define HEADER_X 45.0f
 #define ROW_HEIGHT (ROW_FONT_SIZE + ROW_PADDING)
 #define HEADER_HEIGHT (HEADER_FONT_SIZE + HEADER_PADDING)
 #define CULL_TOP -100.0f
@@ -35,8 +35,9 @@
 // Logo de 4 quadrados ao lado de "Window Options".
 #define LOGO_SQUARE 30.0f
 #define LOGO_GAP 5.0f
-#define LOGO_MARGIN 25.0f // distancia do fim do texto
-#define LOGO_TOP 13.0f    // distancia do topo da linha
+#define LOGO_MARGIN 24.5f // distancia do fim do texto
+#define LOGO_TOP 12.0f    // distancia do topo da linha
+#define HEADER_LOGO_SCALE 0.60f // icones dos titulos ([Window], [Render]...): escala para ficar na altura do texto
 
 // Setinha de secao (aberta = para baixo, recolhida = para a direita).
 #define CHEVRON_X 22.0f
