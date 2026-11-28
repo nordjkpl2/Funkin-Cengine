@@ -23,9 +23,10 @@ char Song_ParseJSON(Song *song, const char *jsonPath, char streaming);
 void Song_ReadHeader(yyjson_val *songObject, Song *song);
 /* Meta de uma secao (tamanho, bpm, mustHit). *runningBpm acompanha as mudancas de bpm. */
 void Song_ReadSectionMeta(yyjson_val *sectionValue, float *runningBpm, Section *section);
-/* Notas de uma secao (lista de {tempo, lane, comprimento}) -> notas ordenadas, sem repeticao de lane.
+/* Notas de uma secao (sectionNotes: {tempo, lane, comprimento, tipo}) -> notas ordenadas, sem repeticao
+ * de lane. gfSection/altAnim da secao viram DataNote.flags; o tipo e registrado em NoteTypes.
  * Retorna 0 sem notas validas (outNotes = NULL, outCount = 0); senao *outNotes e liberado com free. */
-char Song_ConvertSectionNotes(yyjson_val *notesValue, char mustHit, DataNote **outNotes, int *outCount);
+char Song_ConvertSectionNotes(yyjson_val *sectionValue, char mustHit, DataNote **outNotes, int *outCount);
 
 /* SongChartFind.c */
 const char *Song_BaseName(const char *path);

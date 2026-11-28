@@ -10,6 +10,7 @@
 #include "scenes/gameplay/visual/PlayStateCamera.h"
 #include "scenes/gameplay/HUD/PlayStateHealth.h"
 #include "scenes/gameplay/flow/PlayStateIntro.h"
+#include "scenes/gameplay/stage/PlayStateStage.h"
 #include "logic/beatmanager/BeatManager.h"
 #include "GameData.h"
 
@@ -35,6 +36,7 @@ static void UpdateSection(void) {
 }
 
 static void StepHit(void) {
+    PlayStateStage_Trigger(STAGE_TRIGGER_STEP, songBeat.step >> 2, songBeat.step, currentSection, 0);
     if (currentSection >= beatSong->sectionCount)
         return;
 
@@ -45,6 +47,7 @@ static void StepHit(void) {
         currentSteps = 0;
         currentSection++;
         UpdateSection();
+        PlayStateStage_Trigger(STAGE_TRIGGER_SECTION, songBeat.step >> 2, songBeat.step, currentSection, 0);
     }
 }
 
@@ -62,6 +65,7 @@ static void BeatIdle(Character* character) {
 static void BeatHit(void) {
     const int beat = songBeat.beat;
     PlayStateAnimations_GfBeat(beat);   /* Set GF Speed e animacao especial ficam la */
+    PlayStateStage_Trigger(STAGE_TRIGGER_BEAT, beat, songBeat.step, currentSection, 0); /* onBeatHit do .lua */
 
     if (gameOptions.bopIcons)
         PlayStateHealth_Bop();

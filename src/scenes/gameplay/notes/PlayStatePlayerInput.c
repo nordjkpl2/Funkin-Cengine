@@ -9,6 +9,7 @@
 #include "scenes/gameplay/HUD/PlayStateHealth.h"
 #include "scenes/gameplay/flow/PlayStateChangers.h"
 #include "scenes/gameplay/notes/PlayStateNoteSpawn.h"
+#include "logic/notes/NoteTypes.h"
 #include <math.h>
 #include "GameData.h"
 
@@ -74,11 +75,41 @@ char PlayStatePlayerInput_SlotSideBf(int slot) {
     return gameOptions.playAsOpponent ? 1 : 0;
 }
 
+char PlayStatePlayerInput_AutoSkips(const Note* note) {
+    const NoteTypeInfo* t = NoteTypes_Get(note->type);
+    if (note->mustHit) return t->ignorePlayer || t->hitCausesMiss;   /* bot do BF nao aperta nota de dano */
+    return t->ignoreOpponent;
+}
+
+char PlayStatePlayerInput_Ignorable(const Note* note) {
+    if (PlayStatePlayerInput_Owner(note) < 0) return PlayStatePlayerInput_AutoSkips(note);
+    return NoteTypes_Get(note->type)->ignorePlayer;   /* humano usa as regras do lado do jogador */
+}
+
 /* ------------------------------------------------------------------ */
 /* Acerto e miss                                                       */
 /* ------------------------------------------------------------------ */
 
+/* Vida, misses e callback de um miss (nota perdida ou nota de dano acertada). */
+static void ApplyMiss(const Note* note) {
+    const NoteTypeInfo* t = NoteTypes_Get(note->type);
+    const float loss = isfinite(t->missHealth) ? t->missHealth : HEALTH_LOSS_MISS;
+    PlayStateHealth_AddForSide(-loss, (char)note->mustHit);
+    if (PlayStateChangers_Instakill() || t->missKills) PlayStateHealth_Kill();
+    misses++;
+    notesPlayed++;
+    if (note->mustHit) events.miss(note->id, note); // so a nota do lado do BF tem animacao de erro
+}
+
 static void HitNote(Note* note, float songTime) {
+    const NoteTypeInfo* t = NoteTypes_Get(note->type);
+    if (t->hitCausesMiss) {   /* Hurt Note: apertar e o erro; some a cabeca e o sustain fica cinza */
+        note->pressed = 1;
+        note->missed = 1;
+        ApplyMiss(note);
+        return;
+    }
+
     // Diferenca em tempo real: com Song speed a janela em segundos de musica escala junto.
     float diff = fabsf(note->time - songTime) / PlayStateAudio_Speed();
     PlayerRating rating;
@@ -101,7 +132,8 @@ static void HitNote(Note* note, float songTime) {
     }
 
     PlayStatePlayerInput_CountHit(rating);
-    PlayStateHealth_AddForSide(HEALTH_GAIN_HIT, (char)note->mustHit);
+    PlayStateHealth_AddForSide(isfinite(t->hitHealth) ? t->hitHealth : HEALTH_GAIN_HIT, (char)note->mustHit);
+    if (t->hitKills) PlayStateHealth_Kill();
     note->pressed = 1;
     events.hit(note, rating);
 }
@@ -110,11 +142,7 @@ void PlayStatePlayerInput_MissNote(Note* note) {
     if (gameOptions.botplay) return; // BOTPLAY NUNCA DISPARA MISS
 
     note->missed = 1;
-    PlayStateHealth_AddForSide(-HEALTH_LOSS_MISS, (char)note->mustHit);
-    if (PlayStateChangers_Instakill()) PlayStateHealth_Kill();
-    misses++;
-    notesPlayed++;
-    if (note->mustHit) events.miss(note->id); // so a nota do lado do BF tem animacao de erro
+    ApplyMiss(note);
 }
 
 static void GhostMiss(int slot, int lane) {
@@ -125,7 +153,7 @@ static void GhostMiss(int slot, int lane) {
     if (PlayStateChangers_Instakill()) PlayStateHealth_Kill();
     misses++;
     notesPlayed++;
-    if (PlayStatePlayerInput_SlotSideBf(slot)) events.miss(lane);
+    if (PlayStatePlayerInput_SlotSideBf(slot)) events.miss(lane, NULL);
 }
 
 /* Input de um jogador (slot): teclas dele e so as notas do lado dele. */
@@ -148,24 +176,28 @@ static void UpdateSlot(int slot, float songTime, PlayStatePlayerKeys* keys) {
             anyPressed = 1;
     }
 
-    // Ghost: uma unica varredura guarda a primeira nota acertavel de cada lane;
-    // o acerto usa esses candidatos (mesma ordem de janela/condicoes da varredura de acerto).
-    if (gameOptions.ghost == 1 && anyPressed) {
-        Note* candidate[4] = {NULL, NULL, NULL, NULL};
-        char anyHittable = 0;
-        for (size_t i = firstNote; i < noteCount; i++) {
-            Note* n = notes + i;
-            if (PlayStatePlayerInput_Owner(n) != slot || n->missed || n->pressed)
-                continue;
-            if (Note_TooEarly(n, songTime))
-                break;
-            if (n->id < 0 || n->id > 3)
-                continue;
-            if (!candidate[n->id] && Note_CanBeHit(n, songTime)) {
-                candidate[n->id] = n;
-                anyHittable = 1;
-            }
-        }
+    if (!anyPressed) return;
+
+    // Uma varredura guarda a nota acertavel de cada lane: a primeira, mas nota normal ganha de
+    // lowPriority (Hurt Note) na mesma janela, como o sortHitNotes da Psych.
+    Note* candidate[4] = {NULL, NULL, NULL, NULL};
+    char settled[4] = {0, 0, 0, 0};
+    char anyHittable = 0;
+    for (size_t i = firstNote; i < noteCount; i++) {
+        Note* n = notes + i;
+        if (PlayStatePlayerInput_Owner(n) != slot || n->missed || n->pressed || n->skipped)
+            continue;
+        if (Note_TooEarly(n, songTime))
+            break;
+        if (n->id < 0 || n->id > 3 || settled[n->id] || !Note_CanBeHit(n, songTime))
+            continue;
+        const char low = NoteTypes_Get(n->type)->lowPriority;
+        if (candidate[n->id] == NULL || !low) candidate[n->id] = n;
+        if (!low) settled[n->id] = 1;
+        anyHittable = 1;
+    }
+
+    if (gameOptions.ghost == 1) {
         if (anyHittable) {
             for (int i = 0; i < 4; i++) {
                 if (keyPressed[i] && !candidate[i]) {
@@ -184,28 +216,10 @@ static void UpdateSlot(int slot, float songTime, PlayStatePlayerKeys* keys) {
         return;
     }
 
-    if (anyPressed) {
-        int pressedNotes = 0;
-        for (size_t i = firstNote; i < noteCount; i++) {
-            Note* note = notes + i;
-
-            if (PlayStatePlayerInput_Owner(note) != slot || note->missed)
-                continue;
-
-            if (Note_TooEarly(note, songTime))
-                break;
-
-            if (note->id < 0 || note->id > 3)
-                continue;
-
-            if (keyPressed[note->id] && Note_CanBeHit(note, songTime) && !note->pressed && !pressed[note->id]) {
-                pressed[note->id] = 1;
-                HitNote(note, songTime);
-
-                pressedNotes++;
-                if (pressedNotes == 4)
-                    break;
-            }
+    for (int i = 0; i < 4; i++) {
+        if (keyPressed[i] && candidate[i] && !pressed[i]) {
+            pressed[i] = 1;
+            HitNote(candidate[i], songTime);
         }
     }
 

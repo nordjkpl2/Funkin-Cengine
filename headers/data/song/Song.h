@@ -8,10 +8,14 @@
 
 /* Tamanho (com o \0) de nomes de personagem, stage e skin. Cabe nome de mod longo. */
 #define SONG_NAME_MAX 64
+/* DataNote.flags (vem da secao da Psych) */
+#define DATANOTE_GF  0x01   /* gfSection: a GF canta esta nota */
+#define DATANOTE_ALT 0x02   /* altAnim da secao: o oponente canta com -alt */
 typedef struct {
     float time;
     int16_t id;
-    int16_t _pad;
+    uint8_t type;    /* tipo de nota (logic/notes/NoteTypes.h); 0 = normal */
+    uint8_t flags;   /* DATANOTE_* */
     float len;
 } DataNote;
 typedef struct {

@@ -16,6 +16,7 @@
 #include "data/song/SongInternal.h"
 #include "data/song/SongStream.h"
 #include "core/Log.h"
+#include "logic/notes/NoteTypes.h"
 
 #include <stdint.h>
 #include <math.h>
@@ -98,7 +99,10 @@ void Song_Parse(Song *song, const char *songDataPath)
             }
         }
         for (int32_t j = 0; j < noteCount; ++j) {
-            const DataNote *note = &section->notes[j];
+            DataNote *note = &section->notes[j];
+            /* .song nao guarda nomes: so os tipos padrao da Psych (indice fixo) valem */
+            if (note->type >= NOTETYPE_BUILTIN) note->type = NOTETYPE_NORMAL;
+            note->flags &= DATANOTE_GF | DATANOTE_ALT;
             int id = abs((int)note->id);
             if (!isfinite(note->time) || note->time < 0.0f || id < 1 || id > 4 ||
                 !isfinite(note->len) || note->len < 0.0f) {

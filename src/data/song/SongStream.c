@@ -277,7 +277,7 @@ SongStream *SongStream_Open(const char *jsonPath, Song *song)
         if (root != NULL && yyjson_is_obj(root)) {
             DataNote *notes = NULL;
             int noteCount = 0;
-            if (Song_ConvertSectionNotes(yyjson_obj_get(root, "sectionNotes"),
+            if (Song_ConvertSectionNotes(root,
                                          section->mustHit, &notes, &noteCount)) {
                 /* Streaming assume secoes em ordem de tempo: notas de uma secao nao podem
                    voltar antes do fim da anterior. Senao, cai no carregamento completo. */
@@ -392,7 +392,7 @@ int SongStream_LoadSection(const SongStream *stream, int k, DataNote **out, char
 
     root = yyjson_doc_get_root(doc);
     if (root != NULL && yyjson_is_obj(root)) {
-        (void)Song_ConvertSectionNotes(yyjson_obj_get(root, "sectionNotes"),
+        (void)Song_ConvertSectionNotes(root,
                                        sec->mustHit, out, &count);
     }
     yyjson_doc_free(doc);

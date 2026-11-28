@@ -12,6 +12,7 @@
 #include "core/Log.h"
 #include "rendering/cpu/ImagePrefetch.h"
 #include "rendering/shaders/ShaderFx.h"
+#include "logic/animations/AnimSetParseUtil.h"
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
@@ -140,6 +141,8 @@ static void FinalizeCamera(Character* c, char isDad, const float* stageOffset) {
 }
 
 static StageSprite sprites[STAGE_MAX_SPRITES]; // compartilhado por Prefetch e LoadModStage
+static StageScript script;                     // animacoes e playAnim do .lua (so no load)
+static PlayStateStage* activeStage;            // stage carregado: recebe as batidas
 
 // Inicia a decodificacao das imagens do stage em fundo. Mesma busca do Load; erros ficam para ele.
 void PlayStateStage_Prefetch(const char* name, const char* songDir) {
@@ -177,6 +180,149 @@ char PlayStateStage_HidesGirlfriend(const char* name, const char* songDir) {
     return Stage_LoadJson(jsonPath, &meta) && meta.hideGirlfriend;
 }
 
+// Psych addAnimationByPrefix: nome igual, depois nome que comeca com o prefixo
+// (o atlas junta os frames pelo nome sem os digitos e corta em 31 letras).
+static int FindAtlasPrefix(const RayAnimationHandler* atlas, const char* prefix) {
+    const int exact = AnimationSet_FindAnimation(atlas, prefix);
+    if (exact >= 0) return exact;
+    const size_t length = strlen(prefix);
+    const size_t maxName = sizeof(atlas->animations[0].name) - 1;
+    for (int i = 0; i < atlas->animationCount; i++) {
+        const char* name = atlas->animations[i].name;
+        if (strncmp(name, prefix, length) == 0) return i;
+        if (length >= maxName && strncmp(name, prefix, maxName) == 0) return i;
+    }
+    return -1;
+}
+
+// Frames de "0,1,2" (addAnimationByIndices); vazio = todos. dst NULL so conta.
+static int PickFrames(const char* indices, const RayAnimation* src, Frame* dst) {
+    if (indices[0] == '\0') {
+        if (dst) memcpy(dst, src->frames, sizeof(Frame) * (size_t)src->frameCount);
+        return src->frameCount;
+    }
+    int count = 0;
+    for (const char* p = indices; *p != '\0';) {
+        char* end = NULL;
+        const long index = strtol(p, &end, 10);
+        if (end == p) { p++; continue; }
+        p = end;
+        if (index < 0 || index >= src->frameCount) continue;
+        if (dst) dst[count] = src->frames[index];
+        count++;
+    }
+    return count;
+}
+
+// Troca as animacoes do atlas pelas do .lua (nome, fps, loop, indices, offset). 0 = sem nenhuma.
+static char BuildLuaAnimations(RayAnimationHandler* set, int sprite, const char* image) {
+    int defs = 0, total = 0;
+    for (int i = 0; i < script.animCount; i++) {
+        const StageAnimDef* def = script.anims + i;
+        if (def->sprite != sprite) continue;
+        const int src = FindAtlasPrefix(set, def->prefix);
+        if (src < 0) {
+            Log_WarnF("Stage: '%s' sem animacao '%s' no .xml", image, def->prefix);
+            continue;
+        }
+        total += PickFrames(def->indices, set->animations + src, NULL);
+        defs++;
+    }
+    if (defs == 0 || total == 0) return 0;
+
+    RayAnimation* anims = calloc((size_t)defs, sizeof(RayAnimation));
+    Frame* arena = malloc(sizeof(Frame) * (size_t)total);
+    if (anims == NULL || arena == NULL) {
+        free(anims);
+        free(arena);
+        return 0;
+    }
+
+    int count = 0;
+    Frame* cursor = arena;
+    for (int i = 0; i < script.animCount; i++) {
+        const StageAnimDef* def = script.anims + i;
+        if (def->sprite != sprite) continue;
+        const int src = FindAtlasPrefix(set, def->prefix);
+        if (src < 0) continue;
+        const int frames = PickFrames(def->indices, set->animations + src, cursor);
+        if (frames <= 0) continue;
+
+        RayAnimation* a = anims + count++;
+        const float fps = def->fps > 0.0f ? def->fps : 24.0f;
+        snprintf(a->name, sizeof(a->name), "%s", def->name);
+        a->frames = cursor;
+        a->frameCount = frames;
+        a->fps = (int)lroundf(fps);
+        a->frameTime = 1.0f / fps;
+        a->looped = (char)def->loop;
+        a->animationOffset = (Vector2) {def->offsetX, def->offsetY};
+        cursor += frames;
+    }
+
+    AnimationSet_FreeArrays(set); // textura continua no set
+    set->animations = anims;
+    set->frameArena = arena;
+    set->animationCount = count;
+    return 1;
+}
+
+// Escala final: setGraphicSize vence scaleObject (FlxSprite.setGraphicSize).
+static void LuaScale(const StageSprite* sp, Vector2 base, float* sx, float* sy) {
+    *sx = sp->scaleX;
+    *sy = sp->scaleY;
+    if ((sp->sizeW > 0.0f || sp->sizeH > 0.0f) && base.x > 0.0f && base.y > 0.0f) {
+        *sx = sp->sizeW / base.x;
+        *sy = sp->sizeH / base.y;
+        if (sp->sizeW <= 0.0f) *sx = *sy;
+        else if (sp->sizeH <= 0.0f) *sy = *sx;
+    }
+}
+
+// Posicao Psych (canto, com screenCenter) -> engine. Psych: scroll em relacao ao canto da tela;
+// o engine usa o centro (por isso o -640/-360*(1-scroll)). Sem updateHitbox a escala cresce do centro.
+static Vector2 LuaPosition(const StageSprite* sp, Vector2 base, float sx, float sy) {
+    float x = sp->x, y = sp->y;
+    if (sp->center & 1) x = (1280.0f - base.x * (sp->scaleCenter ? 1.0f : fabsf(sx))) * 0.5f;
+    if (sp->center & 2) y = (720.0f - base.y * (sp->scaleCenter ? 1.0f : fabsf(sy))) * 0.5f;
+    Vector2 pos = {x - 640.0f * (1.0f - sp->scrollX), y - 360.0f * (1.0f - sp->scrollY)};
+    if (sp->scaleCenter) {
+        pos.x -= base.x * (sx - 1.0f) * 0.5f;
+        pos.y -= base.y * (sy - 1.0f) * 0.5f;
+    }
+    return pos;
+}
+
+// playAnim do .lua: anima inicial (create) ou guarda para as batidas.
+static void LoadLuaActions(PlayStateStage* stage, const short* animOf) {
+    int total = 0;
+    for (int i = 0; i < script.actionCount; i++)
+        if (script.actions[i].trigger != STAGE_TRIGGER_CREATE && animOf[script.actions[i].sprite] >= 0) total++;
+    if (total > 0) stage->actions = malloc(sizeof(PlayStateStageAction) * (size_t)total);
+
+    for (int i = 0; i < script.actionCount; i++) {
+        const StageAnimAction* a = script.actions + i;
+        const short object = animOf[a->sprite];
+        if (object < 0) continue;
+        RayAnimatedObject* o = stage->animObjects + object;
+        const int anim = AnimationSet_FindAnimation(&o->animationSet, a->anim);
+        if (anim < 0) continue;
+
+        if (a->trigger == STAGE_TRIGGER_CREATE) {
+            AnimatedObject_SetAnimation(o, anim);
+            continue;
+        }
+        if (stage->actions == NULL) continue;
+        PlayStateStageAction* out = stage->actions + stage->actionCount++;
+        memcpy(out->cond, a->cond, sizeof(out->cond));
+        out->condCount = a->condCount;
+        out->trigger = a->trigger;
+        out->forced = a->forced;
+        out->object = object;
+        out->anim = (short)anim;
+    }
+}
+
 // Carrega o stage do mod. Retorna 0 se nao existe (usa o padrao).
 static char LoadModStage(PlayStateStage* stage, const char* name, const char* songDir,
                          Girlfriend* gf, Character* dad, Character* bf) {
@@ -198,13 +344,15 @@ static char LoadModStage(PlayStateStage* stage, const char* name, const char* so
         Log_WarnF("Stage '%s': .json invalido", name);
 
     int count = 0;
+    memset(&script, 0, sizeof(script));
     if (hasLua) {
         char* text = LoadFileText(luaPath);
         if (text != NULL) {
-            count = Stage_ParseLua(text, sprites, STAGE_MAX_SPRITES, NULL, NULL);
+            count = Stage_ParseLuaScript(text, sprites, STAGE_MAX_SPRITES, &script);
             UnloadFileText(text);
         }
     }
+    if (script.camZoom > 0.0f) meta.defaultZoom = script.camZoom;
 
     char root[256];
     ModRoot(songDir, root);
@@ -212,13 +360,17 @@ static char LoadModStage(PlayStateStage* stage, const char* name, const char* so
     if (count > 0) {
         stage->objects = malloc(sizeof(RayGraphicObject) * count);
         stage->animObjects = calloc((size_t)count, sizeof(RayAnimatedObject));
+        stage->items = malloc(sizeof(PlayStateStageItem) * count);
     }
 
-    // Passo 0 = atras dos personagens, passo 1 = na frente.
+    short animOf[STAGE_MAX_SPRITES];  // sprite do .lua -> animObjects (-1 = nao animado)
+    for (int i = 0; i < STAGE_MAX_SPRITES; i++) animOf[i] = -1;
+
+    // Passo 0 = atras dos personagens, passo 1 = na frente. Dentro do passo vale a ordem do addLuaSprite.
     for (int pass = 0; pass < 2; pass++) {
         for (int i = 0; i < count; i++) {
             const StageSprite* sp = sprites + i;
-            if (sp->front != pass) continue;
+            if (sp->front != pass || sp->hidden) continue;
 
             char png[512], xml[512];
             Texture2D tex = {0};
@@ -233,82 +385,80 @@ static char LoadModStage(PlayStateStage* stage, const char* name, const char* so
                 if (tex.id == 0) continue;
                 hasXml = sp->isAnimated && FindImage(root, sp->image, "xml", xml);
             }
+            const Color tint = {sp->colorR, sp->colorG, sp->colorB, sp->colorA};
 
             if (hasXml) {
-                RayAnimatedObject* o = stage->animObjects + stage->animCount++;
+                const short index = (short)stage->animCount++;
+                RayAnimatedObject* o = stage->animObjects + index;
                 Render_DefaultAnimated(o);
                 o->animationSet = AnimationSet_LoadAnimations(xml, tex);
                 o->scrollFactor = (Vector2) {sp->scrollX, sp->scrollY};
-                o->scaleX = 1.0f;
-                o->scaleY = 1.0f;
 
-                int idx = sp->animPrefix[0] ? AnimationSet_FindAnimation(&o->animationSet, sp->animPrefix) : -1;
-                if (idx < 0) idx = 0;
+                // Sem addAnimation no .lua: as animacoes do atlas em loop.
+                if (!BuildLuaAnimations(&o->animationSet, i, sp->image)) {
+                    for (int a = 0; a < o->animationSet.animationCount; a++)
+                        o->animationSet.animations[a].looped = 1;
+                }
 
-                // Psych: scroll em relacao ao canto da tela; o engine usa o centro
-                // (por isso o -640/-360*(1-scroll) abaixo). Escala parte do canto superior esquerdo
-                // (scaleObject do Psych usa updateHitbox).
+                // A Psych toca a primeira animacao adicionada.
                 Vector2 base = {0.0f, 0.0f};
                 if (o->animationSet.animationCount > 0) {
-                    AnimatedObject_SetAnimation(o, idx);
+                    AnimatedObject_SetAnimation(o, 0);
                     base = AnimatedObject_Sizes(o);
                 }
 
-                o->scaleX = sp->scaleX;
-                o->scaleY = sp->scaleY;
-                o->position = (Vector2) {
-                    sp->x - 640.0f * (1.0f - sp->scrollX),
-                    sp->y - 360.0f * (1.0f - sp->scrollY)
-                };
-                if (sp->scaleCenter) {
-                    o->position.x -= base.x * (sp->scaleX - 1.0f) * 0.5f;
-                    o->position.y -= base.y * (sp->scaleY - 1.0f) * 0.5f;
-                }
+                float sx, sy;
+                LuaScale(sp, base, &sx, &sy);
+                o->scaleX = sx;
+                o->scaleY = sy;
+                o->position = LuaPosition(sp, base, sx, sy);
                 if (sp->scrollX == 0.0f && sp->scrollY == 0.0f && pass == 0) {
-                    float fit = CoverScreen(base.x, base.y, sp->scaleX, meta.defaultZoom, &o->position);
+                    float fit = CoverScreen(base.x, base.y, sx, meta.defaultZoom, &o->position);
                     o->scaleX = o->scaleY = fit;
                 }
+                if (sp->flipX) o->scaleX = -o->scaleX;
+                o->color = tint;
 
+                animOf[i] = index;
+                stage->items[stage->itemCount++] = (PlayStateStageItem) {index, 1};
                 if (pass == 0) stage->animBackground++;
             } else {
-                RayGraphicObject* g = stage->objects + stage->objectCount++;
+                const short index = (short)stage->objectCount++;
+                RayGraphicObject* g = stage->objects + index;
                 Render_DefaultRGT(g);
-                const float baseW = sp->isGraphic ? sp->graphicWidth : (float)tex.width;
-                const float baseH = sp->isGraphic ? sp->graphicHeight : (float)tex.height;
-                // Psych (scaleObject + updateHitbox): a escala parte do canto superior esquerdo.
-                g->position = (Vector2) {
-                    sp->x - 640.0f * (1.0f - sp->scrollX),
-                    sp->y - 360.0f * (1.0f - sp->scrollY)
-                };
+                const Vector2 base = {sp->isGraphic ? sp->graphicWidth : (float)tex.width,
+                                      sp->isGraphic ? sp->graphicHeight : (float)tex.height};
+                float sx, sy;
+                LuaScale(sp, base, &sx, &sy);
+                g->position = LuaPosition(sp, base, sx, sy);
                 g->scrollFactor = (Vector2) {sp->scrollX, sp->scrollY};
-                g->scaleX = sp->scaleX;
-                g->scaleY = sp->scaleY;
-                if (sp->scaleCenter) {
-                    // setProperty('x.scale.x'): sem updateHitbox, cresce do centro.
-                    g->position.x -= baseW * (sp->scaleX - 1.0f) * 0.5f;
-                    g->position.y -= baseH * (sp->scaleY - 1.0f) * 0.5f;
-                }
+                g->scaleX = sx;
+                g->scaleY = sy;
                 if (!sp->isGraphic && sp->scrollX == 0.0f && sp->scrollY == 0.0f && pass == 0) {
-                    float fit = CoverScreen(baseW, baseH, sp->scaleX, meta.defaultZoom, &g->position);
+                    float fit = CoverScreen(base.x, base.y, sx, meta.defaultZoom, &g->position);
                     g->scaleX = g->scaleY = fit;
                 }
+                g->color = tint;
 
                 if (sp->isGraphic) {
                     g->objType = RGT_RECTANGLE;
                     g->rectSize = (Vector2) {sp->graphicWidth, sp->graphicHeight};
-                    g->color = (Color) {sp->colorR, sp->colorG, sp->colorB, sp->colorA};
                 } else {
                     g->objType = RGT_IMAGE;
                     g->image = tex;
                 }
 
+                stage->items[stage->itemCount++] = (PlayStateStageItem) {index, 0};
                 if (pass == 0) stage->backgroundObjects++;
             }
         }
+        if (pass == 0) stage->itemBack = stage->itemCount;
     }
+    LoadLuaActions(stage, animOf);
+    if (script.hideGirlfriend) stage->hideGirlfriend = 1;
 
     stage->defaultCameraZoom = meta.defaultZoom;
-    stage->hideGirlfriend = (char)meta.hideGirlfriend;
+    stage->hideGirlfriend |= (char)meta.hideGirlfriend;
     stage->cameraSpeed = meta.cameraSpeed;
     cameraOffsetBf = meta.cameraBoyfriend;
     cameraOffsetDad = meta.cameraOpponent;
@@ -344,6 +494,8 @@ void PlayStateStage_Load(PlayStateStage* stage, const char* stageName, const cha
     if (!LoadModStage(stage, stageName, songDir, gf, dad, bf)) {
         free(stage->objects);
         free(stage->animObjects);
+        free(stage->items);
+        free(stage->actions);
         memset(stage, 0, sizeof(*stage));
         stage->cameraSpeed = 1.0f;
         // offset de cada personagem (position do JSON + psychShift) antes do padrao sobrescrever
@@ -356,6 +508,40 @@ void PlayStateStage_Load(PlayStateStage* stage, const char* stageName, const cha
     }
     FinalizeCamera(dad, 1, cameraOffsetDad);
     FinalizeCamera(bf, 0, cameraOffsetBf);
+    activeStage = stage;
+}
+
+void PlayStateStage_Trigger(int trigger, int beat, int step, int section, int counter)
+{
+    const PlayStateStage* stage = activeStage;
+    if (stage == NULL) return;
+
+    for (int i = 0; i < stage->actionCount; i++) {
+        const PlayStateStageAction* a = stage->actions + i;
+        if (a->trigger != trigger || !Stage_CondsMatch(a->cond, a->condCount, beat, step, section, counter))
+            continue;
+        RayAnimatedObject* o = stage->animObjects + a->object;
+        // Flixel play(name, force = false): mesma animacao rodando (ou em loop) nao reinicia.
+        if (!a->forced && o->currentAnim.isValid && o->currentAnim.animationIndex == a->anim &&
+            (o->animationSet.animations[a->anim].looped || !AnimatedObject_FinishedAnimation(o)))
+            continue;
+        AnimatedObject_SetAnimation(o, a->anim);
+    }
+}
+
+// Sprites do .lua na ordem do addLuaSprite.
+static void DrawItems(PlayStateStage* stage, int from, int to, char paused)
+{
+    for (int i = from; i < to; i++) {
+        const PlayStateStageItem* item = stage->items + i;
+        if (item->animated) {
+            RayAnimatedObject* o = stage->animObjects + item->index;
+            if (!paused) AnimatedObject_UpdateFrame(o);
+            Render_DrawAnimatedObject(o);
+        } else {
+            Render_DrawGraphicObject(stage->objects + item->index);
+        }
+    }
 }
 
 void PlayStateStage_DrawBack(PlayStateStage* stage, char paused)
@@ -363,12 +549,11 @@ void PlayStateStage_DrawBack(PlayStateStage* stage, char paused)
     /* Ondulacao do fundo (evento "Shader Wave"): so esta camada, fora da pilha de shaders. */
     const int wave = ShaderFx_BeginBackgroundWave();
 
-    for (int i = 0; i < stage->backgroundObjects; i++)
-        Render_DrawGraphicObject(stage->objects + i);
-
-    for (int i = 0; i < stage->animBackground; i++) {
-        if (!paused) AnimatedObject_UpdateFrame(stage->animObjects + i);
-        Render_DrawAnimatedObject(stage->animObjects + i);
+    if (stage->items != NULL) {
+        DrawItems(stage, 0, stage->itemBack, paused);
+    } else {
+        for (int i = 0; i < stage->backgroundObjects; i++)
+            Render_DrawGraphicObject(stage->objects + i);
     }
 
     if (wave) ShaderFx_EndBackgroundWave();
@@ -376,24 +561,28 @@ void PlayStateStage_DrawBack(PlayStateStage* stage, char paused)
 
 void PlayStateStage_DrawFront(PlayStateStage* stage, char paused)
 {
+    if (stage->items != NULL) {
+        DrawItems(stage, stage->itemBack, stage->itemCount, paused);
+        return;
+    }
     for (int i = stage->backgroundObjects; i < stage->objectCount; i++)
         Render_DrawGraphicObject(stage->objects + i);
-
-    for (int i = stage->animBackground; i < stage->animCount; i++) {
-        if (!paused) AnimatedObject_UpdateFrame(stage->animObjects + i);
-        Render_DrawAnimatedObject(stage->animObjects + i);
-    }
 }
 
 void PlayStateStage_Unload(PlayStateStage* stage)
 {
+    if (activeStage == stage) activeStage = NULL;
+
+    // Retangulos nao tem textura (rectSize divide a union com image).
     for (int i = 0; i < stage->objectCount; i++)
-        UnloadTexture(stage->objects[i].image);
+        if (stage->objects[i].objType == RGT_IMAGE) UnloadTexture(stage->objects[i].image);
 
     for (int i = 0; i < stage->animCount; i++)
         AnimationSet_FreeAll(&stage->animObjects[i].animationSet);
 
     free(stage->objects);
     free(stage->animObjects);
+    free(stage->items);
+    free(stage->actions);
     memset(stage, 0, sizeof(*stage));
 }

@@ -21,6 +21,10 @@ typedef struct {
     unsigned char pressed : 1;
     unsigned char missed : 1;
     unsigned char sectionMustHit : 1;   /* quem canta na secao desta nota (mustHit da secao); usado por Hidden Notes */
+    unsigned char gfSection : 1;        /* DATANOTE_GF: a GF canta */
+    unsigned char altSection : 1;       /* DATANOTE_ALT: canta com -alt */
+    unsigned char skipped : 1;          /* tipo ignorado (ex.: Hurt Note) que passou sem apertar: resolvida, sem miss */
+    uint8_t type;                       /* tipo de nota (logic/notes/NoteTypes.h) */
 } Note;
 
 /* // * Animações */

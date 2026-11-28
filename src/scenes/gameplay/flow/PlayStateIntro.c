@@ -6,6 +6,7 @@
 
 #include "scenes/gameplay/flow/PlayStateIntro.h"
 #include "raymath.h"
+#include "scenes/gameplay/stage/PlayStateStage.h"
 
 #define SCREEN_W 1280.0f
 #define SCREEN_H 720.0f
@@ -66,6 +67,10 @@ void PlayStateIntro_Update(float dt, Girlfriend* gf) {
 
             PlaySound(introSounds[introHit]);
         }
+
+        /* onCountdownTick(counter) do .lua: 0..3 = 3, 2, 1, go; 4 = comeco da musica. */
+        if (introHit <= 4)
+            PlayStateStage_Trigger(STAGE_TRIGGER_COUNTDOWN, introHit - 4, (introHit - 4) * 4, 0, introHit);
 
         if (gf) {
             gf->f = !gf->f;

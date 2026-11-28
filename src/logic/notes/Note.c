@@ -168,8 +168,7 @@ void Note_Load(Note* note, DataNote* dataNote) {
         return;
 
     if (dataNote == NULL) {
-        note->time = note->length = 0.0f;
-        note->mustHit = note->id = note->pressed = note->missed = 0;
+        *note = (Note){0};
         note->id = -1;
         return;
     }
@@ -183,6 +182,10 @@ void Note_Load(Note* note, DataNote* dataNote) {
     note->id = (laneId >= 1 && laneId <= NOTE_LANE_COUNT) ? (int)(laneId - 1) : -1;
     note->pressed = 0;
     note->missed = 0;
+    note->skipped = 0;
+    note->type = dataNote->type;
+    note->gfSection = (dataNote->flags & DATANOTE_GF) != 0;
+    note->altSection = (dataNote->flags & DATANOTE_ALT) != 0;
 }
 
 char Note_CanBeHit(Note* note, float time) {

@@ -19,7 +19,7 @@ typedef enum {
 
 typedef struct {
     void (*hit)(Note* note, PlayerRating rating); /* nota acertada */
-    void (*miss)(int lane);                       /* nota perdida ou toque fantasma */
+    void (*miss)(int lane, const Note* note);     /* nota perdida, nota de dano acertada ou toque fantasma (note NULL) */
 } PlayStatePlayerInputEvents;
 
 /* Estado das 4 teclas neste frame (para animar os receptores). */
@@ -50,6 +50,11 @@ int PlayStatePlayerInput_Slots(void);
 int PlayStatePlayerInput_Key(int slot, int lane);
 /* 1 se o slot toca no lado do BF; 0 se toca no lado do oponente. */
 char PlayStatePlayerInput_SlotSideBf(int slot);
+
+/* Tipo da nota que o automatico (oponente, IA, botplay) nao aperta (Psych: ignoreNote / hitCausesMiss no bot). */
+char PlayStatePlayerInput_AutoSkips(const Note* note);
+/* Passar sem apertar nao e miss (ignoreNote do tipo; automatico = AutoSkips). */
+char PlayStatePlayerInput_Ignorable(const Note* note);
 
 /* Processa as teclas de cada jogador (keys[0] e keys[1]) e acerta notas. Retorna 0 no botplay (nao ha input). */
 char PlayStatePlayerInput_Update(float songTime, PlayStatePlayerKeys keys[2]);

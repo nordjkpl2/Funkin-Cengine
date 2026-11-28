@@ -9,6 +9,7 @@
 #include "data/song/Song.h"
 #include "data/song/SongInternal.h"
 #include "data/song/SongStream.h"
+#include "logic/notes/NoteTypes.h"
 #include "yyjson.h"
 
 #include <float.h>
@@ -75,7 +76,23 @@ typedef struct RawNote {
     float time;
     int rawId;
     float len;
+    int type;
 } RawNote;
+
+/* note[3]: nome (Psych 0.4+), numero da lista padrao (Psych 0.1-0.3) ou true (Week 7: alt). */
+static int Song_NoteType(yyjson_val *value)
+{
+    if (yyjson_is_str(value)) return NoteTypes_Intern(yyjson_get_str(value));
+    if (yyjson_is_bool(value)) return yyjson_get_bool(value) ? NOTETYPE_ALT : NOTETYPE_NORMAL;
+    if (yyjson_is_num(value)) return NoteTypes_FromNumber(yyjson_get_num(value));
+    return NOTETYPE_NORMAL;
+}
+
+static char Song_BoolField(yyjson_val *object, const char *key)
+{
+    yyjson_val *value = yyjson_obj_get(object, key);
+    return (char)(yyjson_is_bool(value) && yyjson_get_bool(value));
+}
 
 static int RawNote_Compare(const void *left, const void *right)
 {
@@ -154,8 +171,11 @@ void Song_ReadSectionMeta(yyjson_val *sectionValue, float *runningBpm, Section *
     section->bpm = *runningBpm;
 }
 
-char Song_ConvertSectionNotes(yyjson_val *notesValue, char mustHit, DataNote **outNotes, int *outCount)
+char Song_ConvertSectionNotes(yyjson_val *sectionValue, char mustHit, DataNote **outNotes, int *outCount)
 {
+    yyjson_val *notesValue = yyjson_obj_get(sectionValue, "sectionNotes");
+    const char gfSection = Song_BoolField(sectionValue, "gfSection");
+    const char altSection = Song_BoolField(sectionValue, "altAnim");
     size_t rawCount;
     RawNote *raw = NULL;
     DataNote *output = NULL;
@@ -210,6 +230,7 @@ char Song_ConvertSectionNotes(yyjson_val *notesValue, char mustHit, DataNote **o
         raw[valid].time = noteTime;
         raw[valid].rawId = lane;
         raw[valid].len = (float)noteLength;
+        raw[valid].type = yyjson_arr_size(noteValue) > 3 ? Song_NoteType(yyjson_arr_get(noteValue, 3)) : 0;
         ++valid;
     }
 
@@ -236,7 +257,10 @@ char Song_ConvertSectionNotes(yyjson_val *notesValue, char mustHit, DataNote **o
              (lane < 4 ? lane + 1 : -(lane - 3));
         output[kept].time = raw[j].time;
         output[kept].id = (int16_t)id;
-        output[kept]._pad = 0;
+        output[kept].type = (uint8_t)raw[j].type;
+        /* Psych: gfNote = gfSection nas casas 0-3 (lado do turno); -alt da secao so no oponente */
+        output[kept].flags = (uint8_t)(((gfSection && lane < 4) ? DATANOTE_GF : 0) |
+                                       ((altSection && !gfSection && id > 0) ? DATANOTE_ALT : 0));
         output[kept].len = raw[j].len;
         ++kept;
     }
@@ -305,7 +329,7 @@ char Song_ParseJSON(Song *song, const char *jsonPath, char streaming)
 
         Song_ReadSectionMeta(sectionValue, &runningBpm, section);
         if (!yyjson_is_obj(sectionValue)) continue;
-        (void)Song_ConvertSectionNotes(yyjson_obj_get(sectionValue, "sectionNotes"),
+        (void)Song_ConvertSectionNotes(sectionValue,
                                        section->mustHit, &section->notes, &section->noteCount);
     }
 

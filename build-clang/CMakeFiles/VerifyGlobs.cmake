@@ -126,6 +126,7 @@ set(OLD_GLOB
   "D:/dev/funkin c/src/logic/beatmanager/BeatManager.c"
   "D:/dev/funkin c/src/logic/dialogue/DialogueBox.c"
   "D:/dev/funkin c/src/logic/notes/Note.c"
+  "D:/dev/funkin c/src/logic/notes/NoteTypes.c"
   "D:/dev/funkin c/src/logic/stage/Stage.c"
   "D:/dev/funkin c/src/logic/stage/StageJson.c"
   "D:/dev/funkin c/src/logic/stage/StageLuaParse.c"
