@@ -28,6 +28,7 @@ void BeatManager_New(BeatManager* restrict manager) {
     manager->music = NULL;
     manager->time = 0.0;
     manager->btime = 0.0;
+    manager->latency = 0.0;
     manager->loop = 0;
 }
 
@@ -72,7 +73,7 @@ void BeatManager_Update(
     if(!IsMusicStreamPlaying(*music))
         return;
 
-    const double audioTime = (double)GetMusicTimePlayed(*music);
+    const double audioTime = (double)GetMusicTimePlayed(*music) - manager->latency;
     if(!isfinite(audioTime) || audioTime < 0.0)
         return;
 

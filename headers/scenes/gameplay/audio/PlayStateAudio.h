@@ -49,6 +49,16 @@ void PlayStateAudio_SetVolume(float volume);
 /* Posiciona inst e vozes no mesmo tempo (segundos), sem mudar pausa/volume. Limitado a [0, duracao). */
 void PlayStateAudio_SeekTo(double seconds);
 
+#define PSA_SPEED_MIN 0.5f
+#define PSA_SPEED_MAX 2.0f
+
+/* Velocidade da musica sem mudar o tom (AudioStretch). Vale ate o proximo SetSpeed. 1 = sem custo. */
+void PlayStateAudio_SetSpeed(float speed);
+float PlayStateAudio_Speed(void);
+
+/* Atraso do audio processado, em segundos de musica (0 em 1x). Descontar do relogio. */
+double PlayStateAudio_OutputDelay(void);
+
 /* Instrumental para o BeatManager (songBeat.music). */
 Music* PlayStateAudio_Inst(void);
 

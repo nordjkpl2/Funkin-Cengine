@@ -38,6 +38,7 @@
 #include "Game.h"
 #include "GameData.h"
 #include "data/week/Week.h"
+#include "rlgl.h"
 
 #define SCREEN_W 1280.0f
 #define SCREEN_H 720.0f
@@ -63,6 +64,11 @@ static PlayStateStage stage;
 // vida: taxas por evento, decididas uma vez por cena (ver ConfigureHealthRates)
 static float oppDrain;   // perda por nota do oponente (0 = drain desligado)
 static float botGain;    // ganho por nota do botplay (0 = desligado)
+
+// Foto da cena para a pausa: mundo + HUD desenhados uma vez (ao abrir e depois de seek).
+// Pausado, o Draw so cola a foto e desenha o menu; o loop pula o draw quando nada muda.
+static RenderTexture2D pauseShot;
+static char pauseShotOk;
 
 static float NoteVelocity(void) {
     return SCROLL_IS_DOWN(gameOptions.scroll) ? 450.0f : -450.0f;
@@ -209,18 +215,21 @@ static void Restart(void) {
     restarted = 0;
 }
 
+// Janela de acerto por dificuldade, em tempo real: vezes a Song speed (em segundos de musica).
+static void ApplyNoteWindow(void) {
+    float window = 0.200f;
+    if (strcmp(diffSuf, "easy") == 0) window = 0.240f;
+    else if (strcmp(diffSuf, "hard") == 0) window = 0.180f;
+    Note_SetWindow(window * PlayStateAudio_Speed());
+}
+
 static void LoadSong(void) {
     if (diffSuf[0] != 0)
         Song_LoadSongFromDirDiff(&song, songDir, diffSuf, gameOptions.streamingJsonParse);
     else
         Song_LoadSongFromDir(&song, songDir, gameOptions.streamingJsonParse);
 
-    if (strcmp(diffSuf, "easy") == 0)
-        Note_SetWindow(0.240f);
-    else if (strcmp(diffSuf, "hard") == 0)
-        Note_SetWindow(0.180f);
-    else
-        Note_SetWindow(0.200f);
+    ApplyNoteWindow();
 }
 
 // Logo depois do chart (que diz quais personagens/stage): decodifica os PNG em threads de fundo
@@ -287,6 +296,7 @@ static void PlayState_Create([[maybe_unused]] RayScene* scene) {
     }
 
     const double loadStart = GetTime();
+    PlayStateAudio_SetSpeed(1.0f); // musica nova comeca em 1x (o restart mantem a Song speed)
     LoadMark_Begin();
     Log_WarnClear();
     // Botplay nunca morre (com ou sem drain): a vida so cai ate 0.
@@ -298,6 +308,7 @@ static void PlayState_Create([[maybe_unused]] RayScene* scene) {
     LoadMark("init");
 
     LoadSong();
+    PlayStatePause_SetInfo(songDir, diffSuf);
     PlayStateEvents_Load(songDir);
     // Skin de notas desta musica (vazia = padrao). Sempre definida, para nao herdar a da anterior.
     // noteSkin (nosso) tem prioridade; senao o arrowSkin do Psych ("@" = imagem em images/).
@@ -440,7 +451,53 @@ static char UpdateSong(void) {
     return 0;
 }
 
-static void PlayState_Update([[maybe_unused]] RayScene* scene) {
+static void DrawScene(float dt);
+
+// Desenha a cena (sem a pausa) na foto. Roda no Update: aqui ainda nao ha render target ativo.
+static void CapturePauseShot(void) {
+    if (pauseShot.id == 0) pauseShot = LoadRenderTexture((int)SCREEN_W, (int)SCREEN_H);
+    pauseShotOk = IsRenderTextureValid(pauseShot);
+    if (!pauseShotOk) return; // sem RT: o Draw desenha a cena inteira (caminho antigo)
+
+    BeginTextureMode(pauseShot);
+    DrawScene(0.0f); // dt 0: splash e popups nao andam
+    EndTextureMode();
+}
+
+static void OpenPause(void) {
+    PlayStatePause_Open();
+    CapturePauseShot();
+}
+
+// Input da pausa. Retorna 1 se a cena mudou.
+static char UpdatePause(float dt) {
+    const PlayStatePauseAction action = PlayStatePause_Update(dt);
+    switch (action) {
+        case PLAYSTATE_PAUSE_RESTART:
+            restarted = 1;
+            PlayState_SetScene();
+            return 1;
+        case PLAYSTATE_PAUSE_EXIT:
+            if (!LeavesToEditor(1) && !returnToWeek) {
+                RayGame_ResetMusic();
+                RayGame_ToggleMusic(1);
+            }
+            LeaveGameplay(1);
+            return 1;
+        case PLAYSTATE_PAUSE_SEEK_BACK:
+        case PLAYSTATE_PAUSE_SEEK_FORWARD:
+            SeekBy(action == PLAYSTATE_PAUSE_SEEK_BACK ? -PAUSE_SEEK_SECS : PAUSE_SEEK_SECS);
+            CapturePauseShot(); // notas e camera mudaram
+            return 0;
+        case PLAYSTATE_PAUSE_SPEED:
+            ApplyNoteWindow(); // janela de acerto segue a velocidade
+            return 0;
+        default:
+            return 0;
+    }
+}
+
+static void PlayState_Update(RayScene* scene) {
     const float dt = RayGame_DeltaTime();
 
     ApplyMusicVolume();
@@ -457,22 +514,10 @@ static void PlayState_Update([[maybe_unused]] RayScene* scene) {
     }
 
     if (PlayStatePause_IsPaused()) {
-        const PlayStatePauseAction action = PlayStatePause_Update(dt);
-        if (action == PLAYSTATE_PAUSE_RESTART) {
-            restarted = 1;
-            PlayState_SetScene();
-        }
-        else if (action == PLAYSTATE_PAUSE_EXIT) {
-            if (!LeavesToEditor(1) && !returnToWeek) {
-                RayGame_ResetMusic();
-                RayGame_ToggleMusic(1);
-            }
-            LeaveGameplay(1);
-        }
-        else if (action == PLAYSTATE_PAUSE_SEEK_BACK)
-            SeekBy(-PAUSE_SEEK_SECS);
-        else if (action == PLAYSTATE_PAUSE_SEEK_FORWARD)
-            SeekBy(PAUSE_SEEK_SECS);
+        if (UpdatePause(dt)) return; // cena trocada: `scene` ja nao e desta tela
+        if (PlayStatePause_TakeRedraw()) RayScene_RequestRedraw(scene);
+        scene->staticWhenIdle = PlayStatePause_IsPaused(); // parado: so desenha quando o menu muda
+        if (!scene->staticWhenIdle) pauseShotOk = 0;        // Resume
         return;
     }
 
@@ -486,14 +531,16 @@ static void PlayState_Update([[maybe_unused]] RayScene* scene) {
             LeaveGameplay(0);
     }
     else if (PlayStateBeat_InCountdown()) {
-        PlayStateBeat_Countdown(dt);
+        PlayStateBeat_Countdown(dt * PlayStateAudio_Speed()); // contagem no ritmo da musica
     }
     else if (UpdateSong()) {
         return;
     }
 
-    if (!PlayStateHealth_IsDead() && IsKeyPressed(KEY_ENTER))
-        PlayStatePause_Open();
+    if (!PlayStateHealth_IsDead() && IsKeyPressed(KEY_ENTER)) {
+        OpenPause();
+        scene->staticWhenIdle = true;
+    }
 
     PlayStateHealth_Update(dt);
     PlayStateCamera_Update(dt, stage.defaultCameraZoom);
@@ -556,8 +603,15 @@ static void DrawHud(float dt) {
         PlayStateText_DrawBotplayMark();
 }
 
-// Menu de pausa com o tempo atual e total (Skip time).
+// Menu de pausa com o tempo atual e total (Skip time). Por cima da foto, sem camera.
 static void DrawPause(void) {
+    if (pauseShotOk) {
+        // Copia sem blend: a foto ja tem o alfa final da cena (com blend o fundo escureceria duas vezes).
+        rlSetBlendFactors(RL_ONE, RL_ZERO, RL_FUNC_ADD);
+        BeginBlendMode(BLEND_CUSTOM);
+        DrawTextureRec(pauseShot.texture, (Rectangle) {0.0f, 0.0f, SCREEN_W, -SCREEN_H}, (Vector2) {0.0f, 0.0f}, WHITE);
+        EndBlendMode();
+    }
     const double now = PlayStateBeat_Time();
     PlayStatePause_Draw(LeavesToEditor(1), now > 0.0 ? (float)now : 0.0f, PlayStateAudio_Length());
 }
@@ -569,8 +623,24 @@ static void DrawReceptorsOnly(void) {
     PlayStateStrums_Draw();
     const PlayStateNoteView view = NoteView();
     PlayStateNoteSpawn_Draw(&view);
-    if (PlayStatePause_IsPaused())
-        DrawPause();
+    Render_StopCamera();
+}
+
+// Cena sem o menu de pausa (tambem usada para a foto da pausa).
+static void DrawScene(float dt) {
+    if (testMode == PLAYSTATE_TEST_RECEPTORS) {
+        DrawReceptorsOnly();
+        return;
+    }
+
+    ClearBackground(BLACK); // Psych: cor de fundo da camera e preta
+
+    DrawWorld(dt);
+
+    PlayStateCamera_BeginHUD();
+    PlayStateEvents_DrawLetterbox(); // barras antes do HUD: notas ficam visiveis
+    DrawHud(dt);
+    PlayStateEvents_Draw(); // fades do events.json cobrem a tela (HUD incluso)
     Render_StopCamera();
 }
 
@@ -586,26 +656,15 @@ static void PlayState_Draw([[maybe_unused]] RayScene* scene) {
         return;
     }
 
-    if (testMode == PLAYSTATE_TEST_RECEPTORS) {
-        DrawReceptorsOnly();
-        return;
-    }
-
-    const float dt = RayGame_DeltaTime();
-
-    ClearBackground(BLACK); // Psych: cor de fundo da camera e preta
-
-    DrawWorld(dt);
-
-    PlayStateCamera_BeginHUD();
-    PlayStateEvents_DrawLetterbox(); // barras antes do HUD: notas ficam visiveis
-    DrawHud(dt);
-    PlayStateEvents_Draw(); // fades do events.json cobrem a tela (HUD incluso)
-
-    if (PlayStatePause_IsPaused())
+    if (PlayStatePause_IsPaused()) {
+        if (!pauseShotOk) DrawScene(0.0f); // sem foto: cena inteira parada
         DrawPause();
-    Render_StopCamera();
-    Transition_Draw();      // veu de entrada vindo da loading (no-op depois)
+    }
+    else
+        DrawScene(RayGame_DeltaTime());
+
+    if (testMode != PLAYSTATE_TEST_RECEPTORS)
+        Transition_Draw(); // veu de entrada vindo da loading (no-op depois)
 }
 
 /* ------------------------------------------------------------------ */
@@ -669,7 +728,11 @@ void PlayState_SetCharsOverride(const char* p2) {
 
 static void PlayState_Destroy([[maybe_unused]] RayScene* scene) {
     PlayStateAudio_Unload();
+    pauseShotOk = 0;
     if (restarted) return; // restart reaproveita tudo
+
+    if (pauseShot.id != 0) UnloadRenderTexture(pauseShot);
+    pauseShot = (RenderTexture2D) {0};
 
     // Sons comuns e ui continuam carregados (reuso na proxima musica); so garante que nada toca.
     PlayStateDeath_Stop();

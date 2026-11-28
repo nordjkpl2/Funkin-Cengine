@@ -7,6 +7,7 @@
  */
 
 #include "scenes/gameplay/audio/PlayStateAudio.h"
+#include "scenes/gameplay/audio/AudioStretch.h"
 #include <math.h>
 #include <stdio.h>
 #include "Game.h"
@@ -23,6 +24,7 @@ static char wasPaused;
 static float lastVoiceSync = -10.0f;
 static float appliedVolume = -1.0f;
 static PlayStateAudioMix mix = PSA_MIX_FULL;
+static float speed = 1.0f;   /* fica entre restarts (pratica); slot do stretch: 0 = inst, 1+i = vox[i] */
 
 // Mesmas extensoes aceitas pelo ModImport e pelo SongList.
 static char FindAudioPath(const char* songDir, const char* baseName, char out[512]) {
@@ -82,6 +84,29 @@ static void ApplyVolumes(void) {
         if (voxOk[i]) SetMusicVolume(vox[i], Audible(1 + i) ? volume : 0.0f);
 }
 
+/* Stretch na velocidade atual em todas as faixas (recria os buffers: serve tambem depois de seek). */
+static void ApplySpeed(void) {
+    if (instOk) AudioStretch_Set(0, &inst, speed);
+    for (int i = 0; i < VOX_COUNT; i++)
+        if (voxOk[i]) AudioStretch_Set(1 + i, &vox[i], speed);
+}
+
+void PlayStateAudio_SetSpeed(float newSpeed) {
+    if (!(newSpeed >= PSA_SPEED_MIN)) newSpeed = PSA_SPEED_MIN; // NaN cai aqui
+    if (newSpeed > PSA_SPEED_MAX) newSpeed = PSA_SPEED_MAX;
+    if (newSpeed == speed) return;
+    speed = newSpeed;
+    ApplySpeed();
+}
+
+float PlayStateAudio_Speed(void) {
+    return speed;
+}
+
+double PlayStateAudio_OutputDelay(void) {
+    return AudioStretch_Delay(0);
+}
+
 void PlayStateAudio_SetMix(PlayStateAudioMix newMix) {
     mix = newMix;
     ApplyVolumes();
@@ -96,9 +121,14 @@ void PlayStateAudio_Load(const char* songDir) {
     voxOk[VOX_OPP] = LoadStream(songDir, "Voices-Opponent", &vox[VOX_OPP], "Voices-Opponent");
 
     ApplyVolumes();
+    ApplySpeed();
 }
 
 void PlayStateAudio_Unload(void) {
+    AudioStretch_Off(0, instOk ? &inst : NULL);   // processor sai antes do stream (o raylib nao libera)
+    for (int i = 0; i < VOX_COUNT; i++)
+        AudioStretch_Off(1 + i, voxOk[i] ? &vox[i] : NULL);
+
     if (instOk) UnloadMusicStream(inst);
     instOk = 0;
     for (int i = 0; i < VOX_COUNT; i++) {
@@ -183,6 +213,7 @@ void PlayStateAudio_SeekTo(double seconds) {
         if (voxOk[i]) SeekMusicStream(vox[i], time);
 
     lastVoiceSync = time; // ja alinhadas: o SyncVoices so volta a checar depois de 0.5s
+    if (speed != 1.0f) ApplySpeed(); // descarta o audio antigo guardado na Sonic
 }
 
 void PlayStateAudio_SetVolume(float volume) {

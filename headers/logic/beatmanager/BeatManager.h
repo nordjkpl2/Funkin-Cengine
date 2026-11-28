@@ -12,6 +12,7 @@ typedef struct {
     double time;      // double = sem drift em música de 3min+
     double btime;     // tempo do último step
     double stepCrochet; // cache: (60.0 / bpm) / 4.0
+    double latency;   // atraso da saida de audio (s de musica), descontado do relogio; 0 = nenhum
     float bpm;
     int step;
     int beat;

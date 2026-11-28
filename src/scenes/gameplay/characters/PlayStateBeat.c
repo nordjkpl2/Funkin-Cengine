@@ -105,6 +105,7 @@ void PlayStateBeat_Start(const Song* song) {
 }
 
 void PlayStateBeat_Update(void) {
+    songBeat.latency = PlayStateAudio_OutputDelay(); // 0 em 1x; com stretch o som sai ~50 ms depois
     BeatManager_Update(&songBeat, StepHit, BeatHit);
 }
 

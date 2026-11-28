@@ -4,6 +4,7 @@
  * Co-Op: cada jogador (slot 0 e 1) tem o seu conjunto de teclas e so acerta as notas do seu lado.
  */
 
+#include "scenes/gameplay/audio/PlayStateAudio.h"
 #include "scenes/gameplay/notes/PlayStatePlayerInput.h"
 #include "scenes/gameplay/HUD/PlayStateHealth.h"
 #include "scenes/gameplay/notes/PlayStateNoteSpawn.h"
@@ -77,7 +78,8 @@ char PlayStatePlayerInput_SlotSideBf(int slot) {
 /* ------------------------------------------------------------------ */
 
 static void HitNote(Note* note, float songTime) {
-    float diff = fabsf(note->time - songTime);
+    // Diferenca em tempo real: com Song speed a janela em segundos de musica escala junto.
+    float diff = fabsf(note->time - songTime) / PlayStateAudio_Speed();
     PlayerRating rating;
 
     if (diff > 0.1503f) {

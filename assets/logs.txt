@@ -248,3 +248,17 @@ LOAD [corrosion-v2] init: 0.0 ms, chart: 28.6 ms, sounds: 46.7 ms, characters: 4
 LOAD [apostrophe] init: 0.0 ms, chart: 22.4 ms, sounds: 108.4 ms, characters: 452.8 ms, stage: 9.1 ms, song audio: 2.1 ms, notes: 221.0 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 444.2 ms) total: 816.2 ms
 LOAD [ampersand] init: 0.0 ms, chart: 5.2 ms, sounds: 8.5 ms, characters: 480.1 ms, stage: 1.5 ms, song audio: 3.2 ms, notes: 223.0 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 442.5 ms) total: 721.8 ms
 [WARN] Skin '@AstrayNote_assets': animacao 'purple hold end' nao existe no XML (a lane pode sumir)
+[WARN] ImagePrefetch: sem orcamento de memoria, carrega na hora (assets/mods/images/trauma.png)
+LOAD [Trauma] init: 2.0 ms, chart: 26.9 ms, sounds: 204.4 ms, characters: 305.9 ms, stage: 1222.6 ms, song audio: 1.8 ms, notes: 0.3 ms, ui: 11.3 ms, warmup: 0.2 ms, (textures on main thread: 1520.5 ms) total: 1775.3 ms
+LOAD [ampersand] init: 0.0 ms, chart: 30.8 ms, sounds: 63.3 ms, characters: 432.5 ms, stage: 22.7 ms, song audio: 9.8 ms, notes: 0.2 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 416.9 ms) total: 559.4 ms
+LOAD [amogus] init: 20.5 ms, chart: 0.3 ms, sounds: 78.3 ms, characters: 89.8 ms, stage: 7.9 ms, song audio: 12.0 ms, notes: 0.0 ms, ui: 8.5 ms, warmup: 0.3 ms, (textures on main thread: 122.5 ms) total: 217.5 ms
+LOAD [triklizo-koooled] init: 0.0 ms, chart: 27.9 ms, sounds: 102.9 ms, characters: 443.0 ms, stage: 8.1 ms, song audio: 2.1 ms, notes: 0.1 ms, ui: 0.0 ms, warmup: 0.1 ms, (textures on main thread: 432.2 ms) total: 584.4 ms
+[WARN] Skin '@AstrayNote_assets': animacao 'purple hold end' nao existe no XML (a lane pode sumir)
+[WARN] ImagePrefetch: sem orcamento de memoria, carrega na hora (assets/mods/images/absolute-zeroBG.png)
+LOAD [absolute-zero] init: 21.1 ms, chart: 14.4 ms, sounds: 148.7 ms, characters: 576.3 ms, stage: 1723.2 ms, song audio: 2.0 ms, notes: 0.3 ms, ui: 14.0 ms, warmup: 0.3 ms, (textures on main thread: 2292.6 ms) total: 2500.4 ms
+LOAD [agony] init: 28.1 ms, chart: 13.3 ms, sounds: 82.2 ms, characters: 412.0 ms, stage: 17.0 ms, song audio: 4.1 ms, notes: 0.2 ms, ui: 9.6 ms, warmup: 0.2 ms, (textures on main thread: 455.8 ms) total: 566.5 ms
+[WARN] Skin '@AstrophobiaNote_assets': animacao 'purple hold end' nao existe no XML (a lane pode sumir)
+LOAD [astrophobia] init: 0.0 ms, chart: 153.7 ms, sounds: 18.0 ms, characters: 433.4 ms, stage: 8.4 ms, song audio: 2.3 ms, notes: 1.7 ms, ui: 0.0 ms, warmup: 0.1 ms, (textures on main thread: 442.0 ms) total: 617.6 ms
+LOAD [astrophobia] init: 0.0 ms, chart: 49.9 ms, sounds: 0.7 ms, characters: 432.2 ms, stage: 9.2 ms, song audio: 1.8 ms, notes: 1.7 ms, ui: 0.0 ms, warmup: 0.1 ms, (textures on main thread: 440.0 ms) total: 495.7 ms
+LOAD [astrophobia] init: 0.0 ms, chart: 56.0 ms, sounds: 0.8 ms, characters: 432.1 ms, stage: 6.6 ms, song audio: 1.7 ms, notes: 1.8 ms, ui: 0.0 ms, warmup: 0.1 ms, (textures on main thread: 437.5 ms) total: 499.1 ms
+LOAD [disregard] init: 0.0 ms, chart: 3.5 ms, sounds: 20.2 ms, characters: 706.5 ms, stage: 2.3 ms, song audio: 23.3 ms, notes: 0.1 ms, ui: 0.0 ms, warmup: 0.4 ms, (textures on main thread: 682.3 ms) total: 756.3 ms
