@@ -420,6 +420,13 @@ static void GfSingNote(const Note* note, const char* suffix, char hey) {
     if (hey) (void)PlayStateAnimations_PlaySpecial(2, "cheer", HEY_SECS);
 }
 
+/* characterPlayAnim do script do tipo (goodNoteHit / noteMiss). */
+static void PlayTypeAnims(const NoteTypeAnim* anims) {
+    for (int i = 0; i < NOTETYPE_ANIMS; i++)
+        if (anims[i].target >= 0)
+            (void)PlayStateAnimations_PlaySpecial(anims[i].target, anims[i].name, 0.0f);
+}
+
 /* Canto de uma nota acertada (Psych goodNoteHit / opponentNoteHit). side: 0 = oponente, 1 = BF. */
 static void SingNote(int side, const Note* note) {
     const NoteTypeInfo* t = NoteTypes_Get(note->type);
@@ -432,11 +439,13 @@ static void SingNote(int side, const Note* note) {
             special[side].on = 0;   /* nota cantada interrompe Play Animation / Hey! */
             c->idleTimer = 0;
             TriggerSing(&c->object, SingAnim(c, note->id, suffix, 0), side ? &bfSing : &dadSing);
-            if (t->hey) (void)PlayStateAnimations_PlaySpecial(side, "hey", HEY_SECS);
+            if (t->hey) {   /* Psych: BF hey + GF cheer; oponente so hey */
+                (void)PlayStateAnimations_PlaySpecial(side, "hey", HEY_SECS);
+                if (side == 1) (void)PlayStateAnimations_PlaySpecial(2, "cheer", HEY_SECS);
+            }
         }
     }
-    if (t->hitAnimTarget >= 0)
-        (void)PlayStateAnimations_PlaySpecial(t->hitAnimTarget, t->hitAnim, 0.0f);
+    PlayTypeAnims(t->hitAnims);
 }
 
 /* Sustain: segura a pose de quem esta cantando. */
@@ -493,8 +502,7 @@ void PlayStateAnimations_PlayerMiss(int lane, const Note* note) {
     if (lane < 0 || lane > 3) return;
 
     const NoteTypeInfo* t = NoteTypes_Get(note != NULL ? note->type : NOTETYPE_NORMAL);
-    if (note != NULL && t->missAnimTarget >= 0)
-        (void)PlayStateAnimations_PlaySpecial(t->missAnimTarget, t->missAnim, 0.0f);
+    if (note != NULL) PlayTypeAnims(t->missAnims);
     if (t->noMissAnimation) return;
     if (note != NULL && (t->gfNote || note->gfSection)) return;   /* miss da GF: ela nao tem animacao de erro */
 

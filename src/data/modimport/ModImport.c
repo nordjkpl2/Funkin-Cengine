@@ -15,6 +15,7 @@
 #include "data/modimport/ModImportFormat.h"
 #include "data/modimport/ModImportVSlice.h"
 #include "data/modimport/ModImportAnalyze.h"
+#include "data/songpackage/SongPackage.h"
 
 #include "core/Log.h"
 #include "core/DirWalk.h"
@@ -72,6 +73,20 @@ static char MI_ImportSingle(const char *srcMod, const char *destModPath,
         if (msg != NULL && msgSize > 0)
             (void)snprintf(msg, msgSize, "import: nao foi possivel criar %s", destModPath);
         return 0;
+    }
+
+    /* Pacote do chart editor (Export song package): ja esta no layout do engine, copia como esta. */
+    if (SongPackage_IsPackage(srcMod)) {
+        int copied = 0;
+        ok = MI_CopyTree(srcMod, destModPath, &localStats.bytes, &copied, 0);
+        MI_Drain(&localStats.bytes);
+        localStats.songs = copied > 0;
+        snprintf(localStats.format, sizeof(localStats.format), "Cengine");
+        if (stats != NULL) *stats = localStats;
+        if (msg != NULL && msgSize > 0)
+            (void)snprintf(msg, msgSize, "import %s: pacote cengine, %d arquivos (%lld KB)",
+                           modNameSafe, copied, localStats.bytes / 1024LL);
+        return (char)(ok != 0 && copied > 0);
     }
 
     memset(&context, 0, sizeof(context));

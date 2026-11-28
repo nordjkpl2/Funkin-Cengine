@@ -16,6 +16,9 @@
 #include "scenes/modding/charteditor/grid/EditorTimeline.h"
 #include "scenes/modding/charteditor/audio/EditorAudio.h"
 #include "scenes/modding/charteditor/ui/EditorWidgets.h"
+#include "scenes/modding/charteditor/EditorActions.h"
+#include "scenes/api/FontLoader.h"
+#include "logic/notes/NoteTypes.h"
 
 Texture2D edIconO;
 Texture2D edIconP;
@@ -449,9 +452,10 @@ static void Notes_DrawTypeLabels(void) {
             continue;
         char num[8];
         snprintf(num, sizeof(num), "%d", (int)it->type);
-        const float w = (float)MeasureText(num, 20);
-        DrawText(num, (int)(it->cx - w * 0.5f) + 1, (int)(it->y0 - 9) + 1, 20, BLACK);
-        DrawText(num, (int)(it->cx - w * 0.5f), (int)(it->y0 - 9), 20, WHITE);
+        const float w = MeasureTextEx(mainFont, num, 22, 1).x;
+        const Vector2 pos = {floorf(it->cx - w * 0.5f), floorf(it->y0 - 11)};
+        Ed_DrawText(mainFont, num, (Vector2){pos.x + 2, pos.y + 2}, 22, 1, BLACK);
+        Ed_DrawText(mainFont, num, pos, 22, 1, WHITE);
     }
 }
 

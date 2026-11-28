@@ -17,6 +17,8 @@
 #include "scenes/modding/charteditor/ui/EditorPicker.h"
 #include "scenes/gameplay/events/PlayStateEventsInGameplay.h"
 #include "scenes/modding/charteditor/EditorActions.h"
+#include "logic/notes/NoteTypes.h"
+#include "data/songpackage/SongPackage.h"
 #include <math.h>
 
 /* Abre a janela "Save As" vazia (menu File e aba Song). */
@@ -25,6 +27,32 @@ static void Edit_OpenSaveAs(void) {
     importPath[0] = 0;
     ceDlg = DLG_SAVEAS;
     focusBox = &saveAsBox;
+}
+
+/* File > Export song package: salva e copia a musica + o que ela usa para exports/<musica>/. */
+static void Edit_ExportPackage(void) {
+    if(chart.dir[0] == 0) {
+        EdStatusMsg("SAVE THE SONG FIRST");
+        return;
+    }
+    if(chart.dirty) Editor_Save();
+    if(!EdEvents_Save(chart.dir)) {
+        EdStatusMsg("ERROR SAVING EVENTS");
+        return;
+    }
+    SongPackageReq req = {.songDir = chart.dir, .stage = chart.stage, .noteSkin = chart.noteSkin};
+    SongPackage_AddCharacter(&req, chart.p1);
+    SongPackage_AddCharacter(&req, chart.p2);
+    SongPackage_AddCharacter(&req, chart.gf);
+    for(int i = 0; i < edEventCount; i++) {
+        const EdEvent* e = &edEvents[i];
+        // Change Character: engine guarda o personagem em s1, Psych em v2
+        if(strcmp(e->name, "Change Character") == 0) SongPackage_AddCharacter(&req, e->s1[0] ? e->s1 : e->v2);
+        else if(strcmp(e->name, "Show Image") == 0) SongPackage_AddImage(&req, e->s1);
+    }
+    char msg[128];
+    (void)SongPackage_Export(&req, msg, sizeof(msg));
+    EdStatusMsg(msg);
 }
 
 /* Salva e abre o test play com o modo pedido (FULL = F5, RECEPTORS = F6). */
@@ -85,13 +113,14 @@ static Rectangle Menu_DrawOpen(float mx) {
     Rectangle box;
     switch(menuOpen) {
     case 1: // File
-        box = Menu_Box(mx, 230, 6);
+        box = Menu_Box(mx, 250, 7);
         if(EdMenuItemIcon(Menu_Item(box, 0), "Save  Ctrl+S", ED_ICON_SAVE)) { menuOpen = 0; Editor_Save(); }
         else if(EdMenuItemIcon(Menu_Item(box, 1), "Save As...", ED_ICON_SAVE)) { menuOpen = 0; Edit_OpenSaveAs(); }
         else if(EdMenuItemIcon(Menu_Item(box, 2), "Save Compressed", ED_ICON_SAVE)) { menuOpen = 0; EdChart_SaveCompressed(&chart); EdStatusMsg("SAVED COMPRESSED"); }
         else if(EdMenuItemIcon(Menu_Item(box, 3), "Save as binary", ED_ICON_SAVE)) { menuOpen = 0; EdStatusMsg(EdChart_SaveBinary(&chart) ? "SAVED BINARY .song" : "ERROR SAVING BINARY"); }
         else if(EdMenuItemIcon(Menu_Item(box, 4), "Save Events", ED_ICON_DOOR)) { menuOpen = 0; EdStatusMsg(EdEvents_Save(chart.dir) ? "EVENTS SAVED" : "ERROR SAVING EVENTS"); }
-        else if(EdMenuItemIcon(Menu_Item(box, 5), "Back to list  ESC", ED_ICON_BACK)) { menuOpen = 0; Editor_RequestLeave(); }
+        else if(EdMenuItemIcon(Menu_Item(box, 5), "Export song package", ED_ICON_SAVE)) { menuOpen = 0; Edit_ExportPackage(); }
+        else if(EdMenuItemIcon(Menu_Item(box, 6), "Back to list  ESC", ED_ICON_BACK)) { menuOpen = 0; Editor_RequestLeave(); }
         break;
     case 2: // Edit
         box = Menu_Box(mx, 230, 5);
@@ -295,6 +324,16 @@ static void Edit_DrawPanel_Section(float x, float y) {
         NumBox_Update(&nbSecBpm, r, blocked);
         NumBox_Draw(&nbSecBpm, r);
     }
+    y += 42;
+    // Psych: gfSection = a GF canta o turno; altAnim = oponente com -alt
+    Ed_DrawText(mainFont, "gf sings:", (Vector2){x, y + 4}, 22, 1, WHITE);
+    if(EdButton((Rectangle){x + 150, y, 90, 32}, chart.secs[secIdx].gfSection ? "on" : "off", 20))
+        EdAct_ToggleGfSection();
+    y += 40;
+    Ed_DrawText(mainFont, "alt anim:", (Vector2){x, y + 4}, 22, 1, WHITE);
+    if(EdButton((Rectangle){x + 150, y, 90, 32}, chart.secs[secIdx].altAnim ? "on" : "off", 20))
+        EdAct_ToggleAltAnim();
+    Ed_DrawText(mainFont, "opponent -alt", (Vector2){x + 250, y + 8}, 18, 1, ED_C_HINT);
     y += 46;
     if(EdButton((Rectangle){x, y, 120, 36}, "+ part", 20)) EdAct_NewPart();
     if(EdButton((Rectangle){x + 130, y, 120, 36}, "X part", 20)) EdAct_DeletePart();
@@ -354,6 +393,31 @@ static void Edit_DrawPanel_Charting(float x, float y) {
     Ed_DrawText(mainFont, "drag the song bar = seek", (Vector2){x, y}, 18, 1, ED_C_HINT);
     y += 24;
     Ed_DrawText(mainFont, "W/S or wheel = scroll", (Vector2){x, y}, 18, 1, ED_C_HINT);
+    y += 36;
+
+    // tipo das notas novas (note[3] da Psych); o numero aparece em cima da nota na grade
+    Ed_DrawHeader(x, y, "NOTE TYPE", ED_C_ACCENT);
+    y += 34;
+    if(EdButton((Rectangle){x, y, 36, 32}, "<", 22)) EdAct_CycleNoteType(-1);
+    if(EdButton((Rectangle){x + 324, y, 36, 32}, ">", 22)) EdAct_CycleNoteType(1);
+    {
+        const int type = EdAct_NoteType();
+        const NoteTypeInfo* t = NoteTypes_Get(type);
+        char buf[NOTETYPE_NAME_MAX + 8];
+        if(type == 0) snprintf(buf, sizeof(buf), "Normal");
+        else snprintf(buf, sizeof(buf), "%d: %s", type, t->name);
+        static TextMeasure typeM;
+        const float w = TextMeasure_Get(&typeM, mainFont, buf, 20, 1).x;
+        const float cx = x + 180;
+        Ed_DrawText(mainFont, buf, (Vector2){floorf(cx - fminf(w, 270) * 0.5f), y + 6}, 20, 1,
+                    t->hurtColor ? ED_C_BAD : WHITE);
+    }
+    y += 40;
+    Ed_DrawText(mainFont, "click adds this type", (Vector2){x, y}, 18, 1, ED_C_HINT);
+    y += 24;
+    Ed_DrawText(mainFont, "middle-click = set on note", (Vector2){x, y}, 18, 1, ED_C_HINT);
+    y += 24;
+    Ed_DrawText(mainFont, "custom: custom_notetypes/*.lua", (Vector2){x, y}, 18, 1, ED_C_HINT);
 }
 
 // ---------- eventos: picker com busca + edicao do selecionado ----------
@@ -852,6 +916,7 @@ static const HelpRow edHelp[] = {
     {"Ctrl+Z", "undo"},
     {"Click", "add note"},
     {"Right-click", "delete note"},
+    {"Middle-click", "set note type (Charting tab)"},
     {"Shift+Wheel", "long note length"},
     {"W / S, Wheel", "scroll"},
     {"G / H", "previous / next part"},

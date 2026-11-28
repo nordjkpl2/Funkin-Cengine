@@ -116,6 +116,7 @@ set(OLD_GLOB
   "D:/dev/funkin c/src/data/song/SongJson.c"
   "D:/dev/funkin c/src/data/song/SongList.c"
   "D:/dev/funkin c/src/data/song/SongStream.c"
+  "D:/dev/funkin c/src/data/songpackage/SongPackage.c"
   "D:/dev/funkin c/src/data/week/Week.c"
   "D:/dev/funkin c/src/logic/animations/AnimSetBinary.c"
   "D:/dev/funkin c/src/logic/animations/AnimSetCharacterXML.c"

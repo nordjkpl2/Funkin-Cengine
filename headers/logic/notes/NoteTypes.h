@@ -26,14 +26,19 @@ enum {
     NOTETYPE_BUILTIN
 };
 
+/* Animacao tocada por um callback do script (characterPlayAnim / playAnim). */
+#define NOTETYPE_ANIMS 2
+typedef struct {
+    char name[24];
+    signed char target;         /* 0 = oponente, 1 = BF, 2 = GF, -1 = nenhuma */
+} NoteTypeAnim;
+
 typedef struct {
     char name[NOTETYPE_NAME_MAX];
     char animSuffix[16];        /* somado a singLEFT... e singLEFTmiss... */
     char texture[64];           /* imagem relativa a images/ (Psych 'texture'); "" = skin da musica */
-    char hitAnim[24];           /* goodNoteHit: characterPlayAnim(alvo, anim) */
-    char missAnim[24];          /* noteMiss: idem */
-    signed char hitAnimTarget;  /* 0 = oponente, 1 = BF, 2 = GF, -1 = nenhum */
-    signed char missAnimTarget;
+    NoteTypeAnim hitAnims[NOTETYPE_ANIMS];   /* goodNoteHit (ex.: BF dodge + Dad shoot) */
+    NoteTypeAnim missAnims[NOTETYPE_ANIMS];  /* noteMiss */
     float hitHealth;            /* escala do engine (0..1, metade da Psych); NAN = padrao */
     float missHealth;
     unsigned hitKills : 1;      /* goodNoteHit/noteMiss: setProperty('health', <= 0) */

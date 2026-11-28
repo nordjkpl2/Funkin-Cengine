@@ -41,7 +41,7 @@ static void ResetRules(NoteTypeInfo* t) {
     memcpy(t->name, name, sizeof(name));
     t->hitHealth = NAN;
     t->missHealth = NAN;
-    t->hitAnimTarget = t->missAnimTarget = -1;
+    for (int i = 0; i < NOTETYPE_ANIMS; i++) t->hitAnims[i].target = t->missAnims[i].target = -1;
 }
 
 /* Valores da Psych 0.6 (vida em 0..1 aqui = metade da Psych). */
@@ -336,12 +336,12 @@ static const char* ParseCall(NoteTypeInfo* t, const char* id, size_t idLen, cons
         if (a2 == NULL || ReadString(a2, anim, sizeof(anim)) == NULL) return a;
         const signed char target = CharTarget(who);
         if (target < 0) return a;
-        if (fn == FN_HIT) {
-            snprintf(t->hitAnim, sizeof(t->hitAnim), "%s", anim);
-            t->hitAnimTarget = target;
-        } else {
-            snprintf(t->missAnim, sizeof(t->missAnim), "%s", anim);
-            t->missAnimTarget = target;
+        NoteTypeAnim* list = fn == FN_HIT ? t->hitAnims : t->missAnims;
+        for (int i = 0; i < NOTETYPE_ANIMS; i++) {   /* um por personagem; o ultimo do mesmo alvo vale */
+            if (list[i].target >= 0 && list[i].target != target) continue;
+            snprintf(list[i].name, sizeof(list[i].name), "%s", anim);
+            list[i].target = target;
+            break;
         }
     } else if (idLen == 11 && memcmp(id, "setProperty", 11) == 0) {
         char prop[32];

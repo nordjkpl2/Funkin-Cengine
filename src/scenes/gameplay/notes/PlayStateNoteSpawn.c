@@ -49,8 +49,8 @@ typedef struct {
 static TypeSkin typeSkins[TYPE_SKIN_MAX];
 static int typeSkinCount;
 static RayAnimationHandler songSkin;           /* skin da musica (trail/end voltam a ela depois de um tipo com textura) */
-static signed char typeSkinOf[NOTETYPE_MAX];   /* tipo -> typeSkins (-1 = skin da musica) */
-static unsigned char typeTint[NOTETYPE_MAX];   /* 1 = sem textura: cor de nota de dano */
+static signed char typeSkinOf[256];   /* tipo (uint8 da Note) -> typeSkins (-1 = skin da musica) */
+static unsigned char typeTint[256];   /* 1 = sem textura: cor de nota de dano */
 
 // sustain colors
 static const Color normalColor = {255, 255, 255, 200};
@@ -191,7 +191,7 @@ void PlayStateNoteSpawn_LoadTypes(const char* songDir) {
     typeSkinCount = 0;
     const RayAnimationHandler* fallback = Cache_GetDefaultNoteSkinPtr();
     const int count = NoteTypes_Count();
-    for (int i = 0; i < NOTETYPE_MAX; i++) {
+    for (int i = 0; i < 256; i++) {
         typeSkinOf[i] = -1;
         typeTint[i] = 0;
         if (i >= count) continue;
