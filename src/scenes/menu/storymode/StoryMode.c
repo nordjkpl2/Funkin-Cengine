@@ -105,7 +105,11 @@ static Texture2D backgroundTexture;
 static Camera2D storyCamera;
 static float discAngle;
 static int diffIndex = 1;   // 0 easy, 1 normal, 2 hard (padrao normal, como Psych/original)
-static const char* const DIFF_NAMES[3] = {"EASY", "NORMAL", "HARD"};
+static const char* const DIFF_IMAGES[3] = {"assets/images/menudifficulties/easy.png",
+                                           "assets/images/menudifficulties/normal.png",
+                                           "assets/images/menudifficulties/hard.png"};
+static Texture2D diffTex[3];
+#define DIFF_IMG_H 24.0f   // altura da imagem da dificuldade na pilula
 static const Color DIFF_COLORS[3] = {{100, 225, 155, 255}, {255, 205, 92, 255}, {255, 105, 115, 255}};
 
 /* Animacoes curtas (0 -> 1): entrada do titulo ao trocar de week e troca de dificuldade. */
@@ -399,6 +403,7 @@ static void StoryMode_Create([[maybe_unused]] RayScene* scene) {
     anchorFile[0] = '\0';
     anchorDir[0] = '\0';
     diffAnim = 1.0f;
+    for (int i = 0; i < 3; i++) diffTex[i] = Render_LoadTexture(DIFF_IMAGES[i]);
 
     HelpLayout_Build();
     RefreshWeekList();
@@ -558,15 +563,16 @@ static void DrawDisc(void) {
  * seletor de dificuldade "< NORMAL >" na cor da dificuldade. Formas primeiro, depois textos.
  */
 static void DrawHero(void) {
-    static TextMeasure countMeasure, diffMeasure;   // textos mudam so ao trocar de week/dificuldade
+    static TextMeasure countMeasure;   // texto muda so ao trocar de week
     const Color diffColor = DIFF_COLORS[diffIndex];
+    const Texture2D img = diffTex[diffIndex];
+    const float imgW = img.height > 0 ? DIFF_IMG_H * (float)img.width / (float)img.height : 0.0f;
     const float countW = TextMeasure_Get(&countMeasure, mainFont, heroCount, 16.0f, 1.5f).x;
     const float diffX = HERO_TITLE_X + 2.0f + countW + 26.0f;
-    const Rectangle pill = {diffX - 10.0f, HERO_COUNT_Y - 5.0f,
-                            TextMeasure_Get(&diffMeasure, mainFont, DIFF_NAMES[diffIndex], 16.0f, 1.5f).x + 58.0f, 26.0f};
+    const Rectangle pill = {diffX - 10.0f, HERO_COUNT_Y - 9.0f, imgW + 62.0f, DIFF_IMG_H + 10.0f};
     const float enter = EaseOut(heroAnim);
     const float titleX = HERO_TITLE_X - (1.0f - enter) * 28.0f;
-    const float diffY = HERO_COUNT_Y - (1.0f - EaseOut(diffAnim)) * 6.0f;
+    const float diffY = pill.y + 5.0f - (1.0f - EaseOut(diffAnim)) * 6.0f;
 
     DrawRectangleRounded(pill, 0.5f, 8, Fade(diffColor, 0.14f));
     DrawRectangleRoundedLinesEx(pill, 0.5f, 8, 1.0f, Fade(diffColor, 0.6f));
@@ -583,7 +589,9 @@ static void DrawHero(void) {
     DrawTextEx(mainFont, heroCount, (Vector2) {HERO_TITLE_X + 2.0f, HERO_COUNT_Y},
                16.0f, 1.5f, COLOR_ACCENT);
     DrawTextEx(mainFont, "<", (Vector2) {diffX, HERO_COUNT_Y}, 16.0f, 1.5f, diffColor);
-    DrawTextEx(mainFont, DIFF_NAMES[diffIndex], (Vector2) {diffX + 20.0f, diffY}, 16.0f, 1.5f, COLOR_TEXT);
+    DrawTexturePro(img, (Rectangle) {0.0f, 0.0f, (float)img.width, (float)img.height},
+                   (Rectangle) {diffX + 21.0f, diffY, imgW, DIFF_IMG_H}, (Vector2) {0}, 0.0f,
+                   Fade(WHITE, 0.4f + 0.6f * EaseOut(diffAnim)));
     DrawTextEx(mainFont, ">", (Vector2) {pill.x + pill.width - 18.0f, HERO_COUNT_Y}, 16.0f, 1.5f, diffColor);
 }
 
@@ -850,6 +858,10 @@ static void StoryMode_Destroy([[maybe_unused]] RayScene* scene) {
 
     backgroundTexture = (Texture2D) {0}; // compartilhada: nao descarrega aqui
     backdrop = (Texture2D) {0};
+    for (int i = 0; i < 3; i++) {
+        UnloadTexture(diffTex[i]);
+        diffTex[i] = (Texture2D) {0};
+    }
     coverFitDst = (Rectangle) {0};
 
     WeekList_Free(weeks);

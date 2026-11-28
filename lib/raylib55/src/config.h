@@ -255,7 +255,7 @@
 //------------------------------------------------------------------------------------
 #define AUDIO_DEVICE_FORMAT    ma_format_f32    // Device output format (miniaudio: float-32bit)
 #define AUDIO_DEVICE_CHANNELS              2    // Device output channels: stereo
-#define AUDIO_DEVICE_SAMPLE_RATE           0    // Device sample rate (device default)
+#define AUDIO_DEVICE_SAMPLE_RATE       48000    // FNF: fixo, AudioStretch.c (STRETCH_RATE) depende disso
 
 #define MAX_AUDIO_BUFFER_POOL_CHANNELS    16    // Maximum number of audio pool channels
 

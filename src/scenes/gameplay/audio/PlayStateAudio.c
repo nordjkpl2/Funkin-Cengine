@@ -95,8 +95,11 @@ void PlayStateAudio_SetSpeed(float newSpeed) {
     if (!(newSpeed >= PSA_SPEED_MIN)) newSpeed = PSA_SPEED_MIN; // NaN cai aqui
     if (newSpeed > PSA_SPEED_MAX) newSpeed = PSA_SPEED_MAX;
     if (newSpeed == speed) return;
+    // o stretch descarta o que guardava (~0.1-0.2 s): volta para o que estava saindo no som
+    const double heard = instOk ? (double)GetMusicTimePlayed(inst) - AudioStretch_Delay(0) : 0.0;
     speed = newSpeed;
-    ApplySpeed();
+    if (heard > 0.0) PlayStateAudio_SeekTo(heard); // tambem refaz o stretch
+    else ApplySpeed();
 }
 
 float PlayStateAudio_Speed(void) {
@@ -213,7 +216,7 @@ void PlayStateAudio_SeekTo(double seconds) {
         if (voxOk[i]) SeekMusicStream(vox[i], time);
 
     lastVoiceSync = time; // ja alinhadas: o SyncVoices so volta a checar depois de 0.5s
-    if (speed != 1.0f) ApplySpeed(); // descarta o audio antigo guardado na Sonic
+    ApplySpeed(); // descarta o audio antigo guardado no stretch (em 1x so confere o pitch)
 }
 
 void PlayStateAudio_SetVolume(float volume) {

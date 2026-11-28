@@ -1,9 +1,9 @@
 /*
  * Friday Night Funkin' C Engine (c) 2026 nordjkpl
- * AudioStretch.h - velocidade da musica sem mudar o tom (lib/sonic.c).
+ * AudioStretch.h - velocidade da musica sem mudar o tom (WSOLA + sinc).
  *
  * O stream toca com pitch = speed (o raylib reamostra, e o relogio da musica continua certo).
- * Um processor do stream devolve o tom ao original com a Sonic. Em 1.0x nada e processado.
+ * Um processor do stream devolve o tom ao original (reamostra + WSOLA). Em 1.0x nada e processado.
  * Slots fixos: um por faixa (inst + vozes). Chamar so da thread principal.
  */
 #pragma once

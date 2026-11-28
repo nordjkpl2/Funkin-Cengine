@@ -57,7 +57,6 @@ set(OLD_GLOB
   "D:/dev/funkin c/lib/raylib55/src/rtext.c"
   "D:/dev/funkin c/lib/raylib55/src/rtextures.c"
   "D:/dev/funkin c/lib/raylib55/src/utils.c"
-  "D:/dev/funkin c/lib/sonic.c"
   "D:/dev/funkin c/lib/wuffs-unsupported-snapshot.c"
   "D:/dev/funkin c/lib/yxml.c"
   "D:/dev/funkin c/lib/yyjson.c"
