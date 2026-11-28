@@ -60,19 +60,16 @@ static void BeatIdle(Character* character) {
 }
 
 static void BeatHit(void) {
-    Girlfriend* gf = PlayStateAnimations_GfLoaded();
-    if (gf) {
-        gf->f = !gf->f;
-        AnimatedObject_SetAnimation(&gf->object, gf->anims[gf->f]);
-    }
+    const int beat = songBeat.beat;
+    PlayStateAnimations_GfBeat(beat);   /* Set GF Speed e animacao especial ficam la */
 
     if (gameOptions.bopIcons)
         PlayStateHealth_Bop();
 
-    /* beat nunca e negativo: "& 3" e "& 1" equivalem a "% 4" e "% 2" sem divisao */
-    const int beat = songBeat.beat;
-    if ((beat & 3) == 0)
-        PlayStateCamera_Bump(0.03f * gameOptions.zoomFactorUI, 0.015f * gameOptions.zoomFactorGAME);
+    /* a cada 4 batidas por padrao (Camera Bopping / camZooming mudam) */
+    PlayStateCamera_BeatBump(beat, gameOptions.zoomFactorUI, gameOptions.zoomFactorGAME);
+
+    /* beat nunca e negativo: "& 1" equivale a "% 2" sem divisao */
 
     if ((beat & 1) == 0) {
         BeatIdle(PlayStateAnimations_Bf());

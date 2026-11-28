@@ -129,6 +129,8 @@ static void ParseNote(LoadState* st) {
     }
     if(JsonStream_Failed(js) || n < 2)
         return;
+    if(isNum[1] && v[1] < 0)   // casa -1 = evento legado da Psych (EdEvents_AddFromChart), nao e nota
+        return;
     float time = isNum[0] ? (float)v[0] : 0.0f;
     int lane = (isNum[1] ? ToInt(v[1]) : 0) % 8;
     float len = (isNum[2] && v[2] > 0) ? (float)v[2] : 0.0f;
@@ -427,12 +429,16 @@ char EdChart_OpenDir(EdChart* c, const char* dir) {
     char p[300];
     EdEvents_Load(dir);
     snprintf(p, sizeof(p), "%s/data.json", dir);
-    if(EdChart_LoadJSON(c, p, dir, EdDirName(dir)))
+    if(EdChart_LoadJSON(c, p, dir, EdDirName(dir))) {
+        EdEvents_AddFromChart(dir, p);   // eventos dentro do chart (Psych)
         return 1;
+    }
     // Psych: <pasta>.json (milf/milf.json)
     snprintf(p, sizeof(p), "%s/%s.json", dir, EdDirName(dir));
-    if(EdLooksLikeChart(p, dir) && EdChart_LoadJSON(c, p, dir, EdDirName(dir)))
+    if(EdLooksLikeChart(p, dir) && EdChart_LoadJSON(c, p, dir, EdDirName(dir))) {
+        EdEvents_AddFromChart(dir, p);
         return 1;
+    }
     // qualquer outro *.json que tenha notas (satin-panties-*.json, etc)
     if(DirectoryExists(dir)) {
         FilePathList list = LoadDirectoryFilesEx(dir, ".json", false);
@@ -448,6 +454,7 @@ char EdChart_OpenDir(EdChart* c, const char* dir) {
             if(strcmp(stem, "events.json") == 0 || strcmp(stem, "data.json") == 0)
                 continue;
             if(EdLooksLikeChart(jp, dir) && EdChart_LoadJSON(c, jp, dir, EdDirName(dir))) {
+                EdEvents_AddFromChart(dir, jp);
                 UnloadDirectoryFiles(list);
                 return 1;
             }

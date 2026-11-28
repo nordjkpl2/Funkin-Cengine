@@ -22,6 +22,7 @@
 #include "scenes/gameplay/visual/PlayStateCamera.h"
 #include "scenes/gameplay/notes/PlayStateStrums.h"
 #include "scenes/gameplay/flow/PlayStatePause.h"
+#include "scenes/gameplay/flow/PlayStateChangers.h"
 #include "scenes/gameplay/flow/PlayStateDeath.h"
 #include "scenes/gameplay/flow/PlayStateIntro.h"
 #include "scenes/gameplay/characters/PlayStateBeat.h"
@@ -30,6 +31,9 @@
 #include "scenes/gameplay/visual/PlayStateNoteSplash.h"
 #include "scenes/gameplay/events/PlayStateEventsInGameplay.h"
 #include "core/Log.h"
+#include "core/ModPath.h"
+#include "data/dialogue/Dialogue.h"
+#include "logic/dialogue/DialogueBox.h"
 #include "scenes/Transition.h"
 #include "rendering/cpu/ImagePrefetch.h"
 #include <stdlib.h>
@@ -58,6 +62,10 @@ static PlayStateTestMode testMode = PLAYSTATE_TEST_FULL;  // so o test play do c
 // musica (a batida e o tempo ficam em PlayStateBeat)
 static Song song;
 
+// dialogo da Psych antes da contagem (dialogue.json da musica)
+static char dialogueOn;
+static DialogueFile dialogueFile;
+
 // cenario
 static PlayStateStage stage;
 
@@ -77,7 +85,7 @@ static float NoteVelocity(void) {
 static PlayStateNoteView NoteView(void) {
     return (PlayStateNoteView) {
         .time = PlayStateBeat_Time(),
-        .songSpeed = song.speed,
+        .songSpeed = PlayStateChangers_SongSpeed(song.speed, PlayStateEvents_ScrollMult()),   // Scroll Type/Speed + Change Scroll Speed
         .scrollVelocity = NoteVelocity(),
         .paused = PlayStatePause_IsPaused(),
         .dadStrums = PlayStateStrums_Dad(),
@@ -287,6 +295,22 @@ static void LoadMark_End(double start) {
     Log_Info(loadReport);
 }
 
+// Psych (script padrao): dialogue.json so no Story Mode e so na primeira vez (o restart pula).
+static void StartDialogue(void) {
+    dialogueOn = 0;
+    if (!returnToWeek || testMode != PLAYSTATE_TEST_FULL) return;
+
+    char path[512];
+    if (!Dialogue_FindForSong(songDir, path, sizeof(path)) || !Dialogue_Load(path, &dialogueFile) ||
+        dialogueFile.count == 0)
+        return;
+
+    char root[512];
+    DialogueBox_Begin(ModPath_Root(songDir, root, sizeof(root)) ? root : NULL);
+    DialogueBox_Start(&dialogueFile);
+    dialogueOn = 1;
+}
+
 static void PlayState_Create([[maybe_unused]] RayScene* scene) {
     ResetState();
 
@@ -297,6 +321,9 @@ static void PlayState_Create([[maybe_unused]] RayScene* scene) {
 
     const double loadStart = GetTime();
     PlayStateAudio_SetSpeed(1.0f); // musica nova comeca em 1x (o restart mantem a Song speed)
+    PlayStateHealth_SetMult(HEALTH_MULT_GAIN, 1.0f);   // idem para os multiplicadores de vida
+    PlayStateHealth_SetMult(HEALTH_MULT_LOSS, 1.0f);
+    PlayStateChangers_Reset();                         // e Scroll Type/Speed, Instakill
     LoadMark_Begin();
     Log_WarnClear();
     // Botplay nunca morre (com ou sem drain): a vida so cai ate 0.
@@ -309,7 +336,7 @@ static void PlayState_Create([[maybe_unused]] RayScene* scene) {
 
     LoadSong();
     PlayStatePause_SetInfo(songDir, diffSuf);
-    PlayStateEvents_Load(songDir);
+    PlayStateEvents_Load(songDir, diffSuf);
     // Skin de notas desta musica (vazia = padrao). Sempre definida, para nao herdar a da anterior.
     // noteSkin (nosso) tem prioridade; senao o arrowSkin do Psych ("@" = imagem em images/).
     char skinName[SONG_NAME_MAX + 2] = "";
@@ -346,6 +373,7 @@ static void PlayState_Create([[maybe_unused]] RayScene* scene) {
     PlayStateCamera_SetPosition(dad.x, dad.y);
 
     PlayStateIntro_LoadUi(PlayStateRatingPopups_LoadUi());
+    StartDialogue();
     LoadMark("ui");
 
     PlayStateCamera_SetGameZoom(stage.defaultCameraZoom);
@@ -492,6 +520,9 @@ static char UpdatePause(float dt) {
         case PLAYSTATE_PAUSE_SPEED:
             ApplyNoteWindow(); // janela de acerto segue a velocidade
             return 0;
+        case PLAYSTATE_PAUSE_SCROLL:
+            CapturePauseShot(); // notas mudaram de lugar
+            return 0;
         default:
             return 0;
     }
@@ -521,6 +552,7 @@ static void PlayState_Update(RayScene* scene) {
         return;
     }
 
+    const char inDialogue = dialogueOn; // o Enter que fecha o dialogo nao abre a pausa
     if (PlayStateHealth_IsDead()) {
         const PlayStateDeathAction action = PlayStateDeath_Update(dt, PlayStateAnimations_Bf());
         if (action == PLAYSTATE_DEATH_RESTART) {
@@ -530,6 +562,14 @@ static void PlayState_Update(RayScene* scene) {
         else if (action == PLAYSTATE_DEATH_LEAVE)
             LeaveGameplay(0);
     }
+    else if (dialogueOn) {
+        const bool accept = IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE);
+        const bool back = IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_BACKSPACE);
+        if (DialogueBox_Update(dt, accept, back)) {
+            DialogueBox_End();
+            dialogueOn = 0;
+        }
+    }
     else if (PlayStateBeat_InCountdown()) {
         PlayStateBeat_Countdown(dt * PlayStateAudio_Speed()); // contagem no ritmo da musica
     }
@@ -537,7 +577,7 @@ static void PlayState_Update(RayScene* scene) {
         return;
     }
 
-    if (!PlayStateHealth_IsDead() && IsKeyPressed(KEY_ENTER)) {
+    if (!inDialogue && !PlayStateHealth_IsDead() && IsKeyPressed(KEY_ENTER)) {
         OpenPause();
         scene->staticWhenIdle = true;
     }
@@ -551,9 +591,17 @@ static void PlayState_Update(RayScene* scene) {
 /* ------------------------------------------------------------------ */
 
 static void DrawWorld(float dt) {
+    const char paused = PlayStatePause_IsPaused();
+    if (!PlayStateEvents_WorldVisible()) {   // Set Property camGame.visible = false: so anima
+        if (!paused) {
+            PlayStateBeat_UpdateIdle(dt);
+            PlayStateAnimations_Step();
+        }
+        return;
+    }
+
     PlayStateCamera_BeginGame();
 
-    const char paused = PlayStatePause_IsPaused();
     PlayStateStage_DrawBack(&stage, paused);
 
     if (!paused) {
@@ -575,6 +623,11 @@ static void CoopName(int slot, char* out, size_t size) {
 }
 
 static void DrawHud(float dt) {
+    if (dialogueOn) { // Psych: receptores so aparecem na contagem
+        PlayStateHealth_Draw(PlayStateAnimations_Dad()->icon, PlayStateAnimations_Bf()->icon);
+        PlayStateText_Draw(gameOptions.showScore, gameOptions.scorePosition);
+        return;
+    }
     PlayStateStrums_DrawBackdrop();
     PlayStateStrums_Draw();
     if (gameOptions.coopOn) {
@@ -639,8 +692,9 @@ static void DrawScene(float dt) {
 
     PlayStateCamera_BeginHUD();
     PlayStateEvents_DrawLetterbox(); // barras antes do HUD: notas ficam visiveis
-    DrawHud(dt);
+    if (PlayStateEvents_HudVisible()) DrawHud(dt);   // Set Property camHUD.visible
     PlayStateEvents_Draw(); // fades do events.json cobrem a tela (HUD incluso)
+    if (dialogueOn) DialogueBox_Draw();
     Render_StopCamera();
 }
 
@@ -729,6 +783,10 @@ void PlayState_SetCharsOverride(const char* p2) {
 static void PlayState_Destroy([[maybe_unused]] RayScene* scene) {
     PlayStateAudio_Unload();
     pauseShotOk = 0;
+    if (dialogueOn) {
+        DialogueBox_End();
+        dialogueOn = 0;
+    }
     if (restarted) return; // restart reaproveita tudo
 
     if (pauseShot.id != 0) UnloadRenderTexture(pauseShot);

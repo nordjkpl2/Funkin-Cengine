@@ -7,9 +7,11 @@
 #include "scenes/gameplay/flow/PlayStateDeath.h"
 #include "scenes/gameplay/HUD/PlayStateHealth.h"
 #include "scenes/gameplay/stage/PlayStateStage.h"
+#include "scenes/gameplay/characters/PlayStateBeat.h"
 #include "GameData.h"
 #include "Game.h"
 #include <stddef.h>
+#include <stdio.h>
 #include <string.h>
 
 static Girlfriend gf;
@@ -29,6 +31,23 @@ Character* PlayStateAnimations_Dad(void) { return &dad; }
 Character* PlayStateAnimations_Bf(void)  { return &bf; }
 Girlfriend* PlayStateAnimations_Gf(void) { return &gf; }
 Girlfriend* PlayStateAnimations_GfLoaded(void) { return gfLoaded ? &gf : NULL; }
+
+/* ---- Estado dos eventos Psych (ResetEvents) ---- */
+typedef struct {
+    char on;
+    double until;   /* tempo da musica em que acaba; < 0 = quando a animacao terminar */
+} SpecialAnim;
+static SpecialAnim special[3];   /* 0 = oponente, 1 = BF, 2 = GF */
+static int gfSpeed = 1;
+static int baseIdle[2];          /* idle original do oponente / BF (Alt Idle Animation volta a ele) */
+static int baseGfAnims[2];
+
+static void SaveBaseIdles(void) {
+    baseIdle[0] = dad.animations.idle;
+    baseIdle[1] = bf.animations.idle;
+    baseGfAnims[0] = gf.anims[0];
+    baseGfAnims[1] = gf.anims[1];
+}
 
 void PlayStateAnimations_Prefetch(const Song* song, const char* songDir, const char* opponent) {
     /* GF escondida no chart (gfVersion "empty"/"none"...) ou no stage: nao carrega nada dela. */
@@ -66,6 +85,7 @@ void PlayStateAnimations_Load(const Song* song, const char* opponent) {
     Character_Load(&bf, song->player1, CHAR_BF);
     PlayStateDeath_LoadAnimations(&bf);
     PlayStateHealth_SetCharacterColors(&dad, &bf);
+    SaveBaseIdles();
 }
 
 /* Volume base do hitsound; o volume global (+/-) multiplica por cima. */
@@ -168,6 +188,9 @@ static void SwapSide(Character* c, const char* name, CharRole role) {
     Character_Load(c, name, role);
     c->object.position = pos;
     AnimatedObject_SetAnimation(&c->object, c->animations.idle);
+    const int side = (c == &dad) ? 0 : 1;   /* personagem novo: sem sufixo nem animacao especial */
+    baseIdle[side] = c->animations.idle;
+    special[side].on = 0;
 }
 
 void PlayStateAnimations_ChangeCharacter(int target, const char* name) {
@@ -198,7 +221,140 @@ void PlayStateAnimations_ChangeCharacter(int target, const char* name) {
         gfLoaded = 1;
         gfHidden = 0;
         AnimatedObject_SetAnimation(&gf.object, gf.anims[gf.f]);
+        baseGfAnims[0] = gf.anims[0];
+        baseGfAnims[1] = gf.anims[1];
+        special[2].on = 0;
     }
+}
+
+/* ------------------------------------------------------------------ */
+/* Eventos Psych: Play Animation, Hey!, Alt Idle, GF Speed, alpha      */
+/* ------------------------------------------------------------------ */
+
+/* Nomes do atlas padrao para papeis comuns (personagem sem JSON). */
+static const char* const animAliases[][2] = {
+    {"hey", "BF HEY!!"}, {"cheer", "GF Cheer"}, {"scared", "GF FEAR "},
+};
+
+/* Papel do JSON primeiro; senao o nome direto no atlas (XML / Codename); senao o alias padrao. */
+static int FindNamed(const RayAnimatedObject* obj, const CharNamedAnim* named, int count, const char* name) {
+    if (name == NULL || name[0] == 0 || obj->animationSet.animationCount <= 0) return -1;
+    for (int i = 0; i < count; i++)
+        if (strcmp(named[i].role, name) == 0) return named[i].index;
+    int idx = AnimationSet_FindAnimation(&obj->animationSet, name);
+    for (size_t i = 0; idx < 0 && i < sizeof(animAliases) / sizeof(animAliases[0]); i++)
+        if (strcmp(animAliases[i][0], name) == 0) idx = AnimationSet_FindAnimation(&obj->animationSet, animAliases[i][1]);
+    return idx;
+}
+
+static Character* SideChar(int target) {
+    return target == 0 ? &dad : target == 1 ? &bf : NULL;
+}
+
+char PlayStateAnimations_PlaySpecial(int target, const char* anim, float holdSecs) {
+    if (target < 0 || target > 2) return 0;
+    const double until = holdSecs > 0.0f ? PlayStateBeat_Time() + (double)holdSecs : -1.0;
+    if (target == 2) {
+        if (!gfLoaded || gfHidden) return 0;
+        const int idx = FindNamed(&gf.object, gf.named, gf.namedCount, anim);
+        if (idx < 0) return 0;
+        AnimatedObject_SetAnimation(&gf.object, idx);
+        special[2] = (SpecialAnim){1, until};
+        return 1;
+    }
+    Character* c = SideChar(target);
+    const int idx = FindNamed(&c->object, c->named, c->namedCount, anim);
+    if (idx < 0) return 0;
+    AnimatedObject_SetAnimation(&c->object, idx);
+    c->idleTimer = -1.0e9f;   /* o idle automatico (PlayStateBeat) nao interrompe */
+    special[target] = (SpecialAnim){1, until};
+    return 1;
+}
+
+/* Fim da animacao especial: volta a dancar. Uma vez por frame (Step). */
+static void UpdateSpecial(int target) {
+    SpecialAnim* s = &special[target];
+    if (!s->on) return;
+    RayAnimatedObject* obj = target == 2 ? &gf.object : &SideChar(target)->object;
+    const char done = s->until >= 0.0 ? (PlayStateBeat_Time() >= s->until) : AnimatedObject_FinishedAnimation(obj);
+    if (!done) return;
+    s->on = 0;
+    if (target == 2) {
+        AnimatedObject_SetAnimation(&gf.object, gf.anims[gf.f]);
+        return;
+    }
+    Character* c = SideChar(target);
+    c->idleTimer = 0.0f;
+    AnimatedObject_SetAnimation(&c->object, c->animations.idle);
+}
+
+void PlayStateAnimations_SetIdleSuffix(int target, const char* suffix) {
+    if (suffix == NULL) suffix = "";
+    char name[48];
+    if (target == 2) {
+        if (!gfLoaded) return;
+        if (suffix[0] == 0) {
+            gf.anims[0] = baseGfAnims[0];
+            gf.anims[1] = baseGfAnims[1];
+            return;
+        }
+        snprintf(name, sizeof(name), "danceLeft%s", suffix);
+        int left = FindNamed(&gf.object, gf.named, gf.namedCount, name);
+        snprintf(name, sizeof(name), "danceRight%s", suffix);
+        int right = FindNamed(&gf.object, gf.named, gf.namedCount, name);
+        if (left < 0) {
+            snprintf(name, sizeof(name), "idle%s", suffix);
+            left = right = FindNamed(&gf.object, gf.named, gf.namedCount, name);
+        }
+        if (left < 0) return;
+        gf.anims[0] = left;
+        gf.anims[1] = right >= 0 ? right : left;
+        return;
+    }
+    Character* c = SideChar(target);
+    if (c == NULL) return;
+    if (suffix[0] == 0) {
+        c->animations.idle = baseIdle[target];
+        return;
+    }
+    snprintf(name, sizeof(name), "idle%s", suffix);
+    const int idx = FindNamed(&c->object, c->named, c->namedCount, name);
+    if (idx >= 0) c->animations.idle = idx;   /* o idle automatico troca na proxima volta ao idle */
+}
+
+void PlayStateAnimations_SetGfSpeed(int beats) {
+    gfSpeed = beats >= 1 ? beats : 1;
+}
+
+void PlayStateAnimations_GfBeat(int beat) {
+    if (!gfLoaded || special[2].on) return;
+    if (gfSpeed > 1 && beat % gfSpeed != 0) return;
+    gf.f = !gf.f;
+    AnimatedObject_SetAnimation(&gf.object, gf.anims[gf.f]);
+}
+
+void PlayStateAnimations_SetAlpha(int target, float alpha) {
+    if (alpha < 0.0f) alpha = 0.0f;
+    if (alpha > 1.0f) alpha = 1.0f;
+    RayAnimatedObject* obj = target == 2 ? &gf.object : target == 0 ? &dad.object : target == 1 ? &bf.object : NULL;
+    if (obj != NULL) obj->color.a = (unsigned char)(alpha * 255.0f + 0.5f);
+}
+
+void PlayStateAnimations_ResetEvents(void) {
+    for (int i = 0; i < 3; i++) {
+        if (special[i].on && i < 2) SideChar(i)->idleTimer = 0.0f;
+        special[i].on = 0;
+    }
+    gfSpeed = 1;
+    dad.animations.idle = baseIdle[0];
+    bf.animations.idle = baseIdle[1];
+    if (gfLoaded) {
+        gf.anims[0] = baseGfAnims[0];
+        gf.anims[1] = baseGfAnims[1];
+    }
+    dad.object.color.a = 255;
+    bf.object.color.a = 255;
+    gf.object.color.a = 255;
 }
 /* ------------------------------------------------------------------ */
 /* Eventos                                                             */
@@ -229,6 +385,7 @@ static void TriggerSing(RayAnimatedObject* obj, int anim, SingTrigger* last) {
 }
 
 void PlayStateAnimations_OpponentHit(int lane) {
+    special[0].on = 0;   /* nota cantada interrompe Play Animation / Hey! */
     dad.idleTimer = 0;
     TriggerSing(&dad.object, dad.animations.notes[lane], &dadSing);
 }
@@ -241,6 +398,7 @@ void PlayStateAnimations_BotHit(int lane) {
     if (gameOptions.hitSoundBotplay)
         PlayBotHitSound();
 
+    special[1].on = 0;
     bf.idleTimer = 0;
     TriggerSing(&bf.object, bf.animations.notes[lane], &bfSing);
 }
@@ -253,6 +411,7 @@ void PlayStateAnimations_PlayerHit(int lane) {
     if (gameOptions.hitSound)
         PlayHitSound();
 
+    special[1].on = 0;
     bf.idleTimer = 0;
     TriggerSing(&bf.object, bf.animations.notes[lane], &bfSing);
 }
@@ -263,6 +422,7 @@ void PlayStateAnimations_PlayerHold(void) {
 
 void PlayStateAnimations_PlayerMiss(int lane) {
     static double lastMissSound = -1.0;
+    special[1].on = 0;
 
     bf.idleTimer = 0;
 
@@ -281,6 +441,8 @@ void PlayStateAnimations_PlayerMiss(int lane) {
 /* ------------------------------------------------------------------ */
 
 void PlayStateAnimations_Step(void) {
+    for (int i = 0; i < 3; i++)
+        UpdateSpecial(i);
     if (!gfHidden)
         AnimatedObject_UpdateFrame(&gf.object);
     AnimatedObject_UpdateFrame(&dad.object);

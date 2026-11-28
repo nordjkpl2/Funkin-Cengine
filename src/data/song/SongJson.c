@@ -195,8 +195,9 @@ char Song_ConvertSectionNotes(yyjson_val *notesValue, char mustHit, DataNote **o
 
         noteTime = Song_JsonFloat(timeValue, -1.0f);
         laneNumber = Song_JsonNumber(laneValue, -1.0);
+        /* casa negativa = evento legado da Psych ([tempo, -1, nome, v1, v2]): lido por SongEvents */
         if (noteTime < 0.0f || !isfinite(laneNumber) ||
-            laneNumber < (double)INT_MIN || laneNumber > (double)INT_MAX) continue;
+            laneNumber < 0.0 || laneNumber > (double)INT_MAX) continue;
         lane = (int)laneNumber % 8;
         if (lane < 0) lane += 8;
 

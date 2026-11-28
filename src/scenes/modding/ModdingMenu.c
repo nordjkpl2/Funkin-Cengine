@@ -6,6 +6,7 @@
 
 #include "scenes/modding/charactereditor/CharEditor.h"
 #include "scenes/modding/charteditor/ChartEditor.h"
+#include "scenes/modding/dialogueeditor/DialogueEditor.h"
 #include "scenes/modding/effectseditor/EffectsEditor.h"
 #include "scenes/modding/notesplashseditor/NotesplashEditor.h"
 #include "scenes/modding/stageeditor/StageEditor.h"
@@ -32,6 +33,7 @@ const char *const tabs[TAB_COUNT] = {
     "Week Editor",
     "Effects Editor",
     "Notesplash Editor",
+    "Dialogue Editor",
     "HUD Editor",
     "Import Mod"
 };
@@ -224,6 +226,10 @@ static void ModdingMenu_Update([[maybe_unused]] RayScene *scene)
 
             case 5:
                 NotesplashEditor_SetScene();
+                return;
+
+            case TAB_DIALOGUE:
+                DialogueEditor_SetScene();
                 return;
 
             case TAB_HUD:

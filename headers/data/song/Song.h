@@ -3,6 +3,7 @@
 #pragma once
 #ifndef SONG_H
 #define SONG_H
+#include <stddef.h>
 #include <stdint.h>
 
 /* Tamanho (com o \0) de nomes de personagem, stage e skin. Cabe nome de mod longo. */
@@ -41,6 +42,8 @@ void Song_Parse(Song* song, const char* songDataPath);
 void Song_LoadSongFromDir(Song* song, const char* dirPath, char streaming);
 void Song_LoadSongFromDirDiff(Song* song, const char* dirPath, const char* diff, char streaming);
 char Song_HasChart(const char* dirPath);
+/* Caminho do chart JSON que Song_LoadSongFromDirDiff usaria (diff "" = padrao). 0 = nao achou. */
+char Song_ChartPath(const char* dirPath, const char* diff, char* out, size_t outSize);
 /* Notas do jogador no chart padrao (so JSON; seguro em thread de fundo). -1 = sem chart. */
 int Song_CountPlayerNotes(const char* dirPath);
 void Song_Free(Song* song);

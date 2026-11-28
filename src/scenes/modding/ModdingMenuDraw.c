@@ -468,6 +468,20 @@ static void Modding_DrawSplashIcon(float x, float y, float size, Color c)
     }
 }
 
+/* Dialogo: balao com rabicho e tres linhas de texto. */
+static void Modding_DrawDialogueIcon(float x, float y, float size, Color c)
+{
+    const Rectangle body = {x, y + size * 0.08f, size, size * 0.62f};
+    DrawRectangleRounded(body, 0.35f, 8, c);
+    DrawTriangle((Vector2){x + size * 0.22f, body.y + body.height - 1.0f},
+                 (Vector2){x + size * 0.12f, y + size * 0.92f},
+                 (Vector2){x + size * 0.46f, body.y + body.height - 1.0f}, c);
+    const Color ink = Fade(BLACK, 0.55f);
+    for (int i = 0; i < 3; ++i)
+        DrawRectangle((int)(x + size * 0.16f), (int)(body.y + size * (0.13f + 0.15f * (float)i)),
+                      (int)(size * (i == 2 ? 0.42f : 0.68f)), (int)(size * 0.07f) + 1, ink);
+}
+
 /* Icone de cada aba, na ordem de `tabs`. */
 static void Modding_DrawTabIcon(int tab, float x, float y, float size, Color c)
 {
@@ -478,6 +492,7 @@ static void Modding_DrawTabIcon(int tab, float x, float y, float size, Color c)
         case 3: Modding_DrawWeekIcon(x, y, size, c);    break;
         case 4: Modding_DrawEffectsIcon(x, y, size, c); break;
         case 5: Modding_DrawSplashIcon(x, y, size, c);  break;
+        case TAB_DIALOGUE: Modding_DrawDialogueIcon(x, y, size, c); break;
         case TAB_HUD: Modding_DrawHudIcon(x, y + size * 0.1f, size, c); break;
         default: Modding_DrawDownload(x, y, size, c);   break;
     }
@@ -490,6 +505,7 @@ static const char *const tabDesc[TAB_COUNT] = {
     "Build story mode weeks: songs, characters and title art.",
     "Create and tune visual effects used during songs.",
     "Customize the splash shown when hitting a Sick note.",
+    "Write Psych dialogues (dialogue.json) with portraits, box style and typing preview.",
     "Move and style the health bar, score text and other HUD parts.",
     "Copy mods from a folder into assets/mods."
 };
@@ -502,6 +518,7 @@ static const Color tabAccent[TAB_COUNT] = {
     {250, 200, 40, 255},  /* semana: amarelo */
     {0, 200, 230, 255},   /* efeitos: ciano */
     {70, 120, 255, 255},  /* splash: azul */
+    {255, 120, 200, 255}, /* dialogo: rosa */
     {249, 57, 63, 255},   /* hud: vermelho */
     {170, 120, 255, 255}  /* import: lilas */
 };

@@ -13,6 +13,16 @@
 #define HEALTH_DRAIN_OPP  0.006f   /* perda por nota do oponente (drain ligado) */
 #define HEALTH_LOSS_MISS  0.02f    /* miss de nota ou ghost tap */
 
+/* Multiplicadores da Psych (Health Gain/Loss Multiplier): ganho escala acertos e hold, perda escala misses.
+   O drain do oponente nao e afetado. Ficam no restart; PlayState volta a 1x em musica nova. */
+typedef enum { HEALTH_MULT_GAIN, HEALTH_MULT_LOSS, HEALTH_MULT_COUNT } HealthMult;
+#define HEALTH_MULT_STEP 0.1f
+#define HEALTH_MULT_MIN(which) ((which) == HEALTH_MULT_GAIN ? 0.0f : 0.5f)
+#define HEALTH_MULT_MAX 5.0f
+float PlayStateHealth_Mult(HealthMult which);
+/* Limita a [min, max] e arredonda ao passo. Retorna 1 se mudou. */
+char PlayStateHealth_SetMult(HealthMult which, float value);
+
 /* Posicao e cores padrao da barra. Chamar uma vez ao criar a cena. */
 /* top = 1 no downscroll: barra no topo, com o mesmo espacamento da base. */
 /* mortal = 0: a vida nunca fica abaixo de 0 (imortal, ex.: botplay sem drain ou com drain). */
@@ -35,6 +45,8 @@ void PlayStateHealth_Add(float delta);
 void PlayStateHealth_AddForSide(float delta, char bfSide);
 /* Perda do drain do oponente: nunca leva a vida abaixo de 0 (nao mata). */
 void PlayStateHealth_Drain(float delta);
+/* Instakill on Miss: morte imediata (sem efeito se imortal). */
+void PlayStateHealth_Kill(void);
 char PlayStateHealth_IsDead(void);
 
 /* Pulso dos icones: Bop() no beat, Update() uma vez por frame. */

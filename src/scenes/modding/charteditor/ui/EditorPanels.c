@@ -10,6 +10,7 @@
 #include "scenes/modding/charteditor/ui/EditorWidgets.h"
 #include "scenes/modding/charteditor/grid/EditorGrid.h"
 #include "scenes/modding/charteditor/ui/EditorPanels.h"
+#include "scenes/modding/charteditor/ui/EditorEventIcons.h"
 #include "rendering/TextMeasure.h"
 #include "scenes/modding/charteditor/lists/EditorCharactersAndLists.h"
 #include "scenes/modding/charteditor/model/EditorStagePos.h"
@@ -361,6 +362,7 @@ static char evPickShaders;  // picker abre so com os shaders de tela
 static TxtBox evSearchBox;
 static TxtBox evImgBox;     // image name do Show Image selecionado
 static TxtBox evNumBox[3];  // valores 1..3 do evento selecionado (campo de texto numerico)
+static TxtBox evTxtBox[2];  // v1/v2 em texto livre (eventos Psych e tipos desconhecidos)
 static int evSelected = -1; // indice em edEvents (-1 = nenhum)
 
 // busca sem diferenciar maiusculas (needle vazio casa tudo)
@@ -388,10 +390,12 @@ static void EvClosePicker(void) {
 }
 
 static void EvAddFromType(const PlayStateEventType* t) {
-    char v1[16], v2[16], v3[16];
-    snprintf(v1, sizeof(v1), "%d", t->defaultDurMs);
-    snprintf(v2, sizeof(v2), "%d", t->defaultAlphaPct);
-    snprintf(v3, sizeof(v3), "%d", t->defaultScalePct);
+    char v1[16] = "", v2[16] = "", v3[16] = "";
+    if(!t->textValues) {  // Psych: valores vazios = padrao do evento
+        snprintf(v1, sizeof(v1), "%d", t->defaultDurMs);
+        snprintf(v2, sizeof(v2), "%d", t->defaultAlphaPct);
+        snprintf(v3, sizeof(v3), "%d", t->defaultScalePct);
+    }
     evSelected = EdEvent_Add((float)cursorMs, t->name, v1, v2, v3, "");
     chart.dirty = 1;
     EdStatusMsg("EVENT ADDED (CTRL+S saves events.json)");
@@ -404,24 +408,9 @@ static void EvAddFromType(const PlayStateEventType* t) {
 #define EV_PICK_W 470
 #define EV_ICON_S 30
 
-// pseudo icone do evento: quadrado arredondado com a sigla (iniciais) e cor fixa pelo nome
+// icone do evento: desenho que lembra o efeito (ver EditorEventIcons.c)
 static void EvDrawIcon(Rectangle r, const char* name) {
-    unsigned h = 2166136261u;
-    for(const char* p = name; *p; p++) h = (h ^ (unsigned char)*p) * 16777619u;
-    DrawRectangleRounded(r, 0.3f, 6, ColorFromHSV((float)(h % 360u), 0.5f, 0.9f));
-
-    char ab[3] = {0, 0, 0};
-    int k = 0;
-    char word = 1;
-    for(const char* p = name; *p && k < 2; p++) {
-        const char c = *p;
-        const char isLetter = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
-        if(isLetter && word) ab[k++] = (char)((c >= 'a' && c <= 'z') ? c - 32 : c);
-        word = !isLetter;
-    }
-    const float fs = 15.0f;
-    const Vector2 s = MeasureTextEx(mainFont, ab, fs, 1);
-    DrawTextEx(mainFont, ab, (Vector2){r.x + (r.width - s.x) * 0.5f, r.y + (r.height - s.y) * 0.5f}, fs, 1, (Color){20, 20, 30, 255});
+    EdEventIcon_Draw(r, name);
 }
 static int evPickTop;                       // primeira linha visivel
 static char evPickDrag;                     // arrastando a barra
@@ -688,6 +677,39 @@ static void Edit_DrawPanel_Events(float x, float y) {
             // tipo sem valores (ex.: Hide Image): so informa
             Ed_DrawText(mainFont, "(no values)", (Vector2){x, y + 4}, 18, 1, ED_C_HINT);
             y += 40;
+            snprintf(tb, sizeof(tb), "%d event(s) in total", edEventCount);
+            Ed_DrawText(mainFont, tb, (Vector2){x, y}, 18, 1, ED_C_DIM);
+            return;
+        }
+        if(t == NULL || t->textValues) {
+            // Psych / desconhecido: v1 e v2 em texto livre (sem campo numerico, "0.015" e "dad" ficam como estao)
+            static int evTxtSel = -2;
+            static int evTxtGen = -1;
+            if(evTxtSel != evSelected || evTxtGen != edEventsGen) {
+                evTxtSel = evSelected;
+                evTxtGen = edEventsGen;
+                snprintf(evTxtBox[0].buf, sizeof(evTxtBox[0].buf), "%s", e->v1);
+                snprintf(evTxtBox[1].buf, sizeof(evTxtBox[1].buf), "%s", e->v2);
+            }
+            char* fields[2] = {e->v1, e->v2};
+            const size_t sizes[2] = {sizeof(e->v1), sizeof(e->v2)};
+            const char* labels[2] = {t != NULL ? t->label1 : "value 1:", t != NULL ? t->label2 : "value 2:"};
+            const char* hints[2] = {t != NULL ? t->hint1 : "", t != NULL ? t->hint2 : ""};
+            for(int k = 0; k < 2; k++) {
+                if(labels[k] == NULL) continue;  // evento so com v1
+                Ed_DrawText(mainFont, labels[k], (Vector2){x, y + 4}, 20, 1, WHITE);
+                const Rectangle tr = {x + 110, y, 250, 32};
+                TxtBox_Update(&evTxtBox[k], tr, EdUiBlocked());
+                TxtBox_Draw(&evTxtBox[k], tr, hints[k] != NULL ? hints[k] : "");
+                if(strcmp(evTxtBox[k].buf, fields[k]) != 0) {
+                    snprintf(fields[k], sizes[k], "%s", evTxtBox[k].buf);
+                    snprintf(evTxtBox[k].buf, sizeof(evTxtBox[k].buf), "%s", fields[k]); /* ja truncado */
+                    chart.dirty = 1;
+                }
+                y += 40;
+            }
+            Ed_DrawText(mainFont, "(empty = Psych default)", (Vector2){x, y + 2}, 16, 1, ED_C_HINT);
+            y += 30;
             snprintf(tb, sizeof(tb), "%d event(s) in total", edEventCount);
             Ed_DrawText(mainFont, tb, (Vector2){x, y}, 18, 1, ED_C_DIM);
             return;

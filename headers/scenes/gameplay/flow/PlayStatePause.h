@@ -4,7 +4,8 @@
  *
  * Input roda no Update (PlayStatePause_Update); o Draw so desenha o menu (sem camera, em
  * coordenadas do canvas 1280x720). Restart, saida e seek sao pedidos ao PlayState pelo
- * valor de retorno. O ultimo item (">") abre o painel Playback (Song speed).
+ * valor de retorno. Os ultimos itens (">") abrem os paineis Playback (Song speed),
+ * Notes (Scroll Type/Speed e Instakill, em PlayStateChangers) e Health Multiplier (Gain/Loss, em PlayStateHealth).
  * Sem trabalho por frame: PlayStatePause_TakeRedraw diz quando algo visivel mudou.
  */
 #pragma once
@@ -17,7 +18,8 @@ typedef enum {
     PLAYSTATE_PAUSE_EXIT,
     PLAYSTATE_PAUSE_SEEK_BACK,      /* seta esquerda na opcao Skip time */
     PLAYSTATE_PAUSE_SEEK_FORWARD,   /* seta direita na opcao Skip time */
-    PLAYSTATE_PAUSE_SPEED           /* Song speed mudou (audio ja aplicado): reajustar o que depende dela */
+    PLAYSTATE_PAUSE_SPEED,          /* Song speed mudou (audio ja aplicado): reajustar o que depende dela */
+    PLAYSTATE_PAUSE_SCROLL          /* Scroll Type/Speed mudou: redesenhar a foto da cena */
 } PlayStatePauseAction;
 
 /* Zera a pausa. Chamar em todo Create. */

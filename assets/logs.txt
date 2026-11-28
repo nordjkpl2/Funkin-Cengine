@@ -262,3 +262,23 @@ LOAD [astrophobia] init: 0.0 ms, chart: 153.7 ms, sounds: 18.0 ms, characters: 4
 LOAD [astrophobia] init: 0.0 ms, chart: 49.9 ms, sounds: 0.7 ms, characters: 432.2 ms, stage: 9.2 ms, song audio: 1.8 ms, notes: 1.7 ms, ui: 0.0 ms, warmup: 0.1 ms, (textures on main thread: 440.0 ms) total: 495.7 ms
 LOAD [astrophobia] init: 0.0 ms, chart: 56.0 ms, sounds: 0.8 ms, characters: 432.1 ms, stage: 6.6 ms, song audio: 1.7 ms, notes: 1.8 ms, ui: 0.0 ms, warmup: 0.1 ms, (textures on main thread: 437.5 ms) total: 499.1 ms
 LOAD [disregard] init: 0.0 ms, chart: 3.5 ms, sounds: 20.2 ms, characters: 706.5 ms, stage: 2.3 ms, song audio: 23.3 ms, notes: 0.1 ms, ui: 0.0 ms, warmup: 0.4 ms, (textures on main thread: 682.3 ms) total: 756.3 ms
+[WARN] Skin '@AstrayNote_assets': animacao 'purple hold end' nao existe no XML (a lane pode sumir)
+[WARN] ImagePrefetch: sem orcamento de memoria, carrega na hora (assets/mods/images/absolute-zeroBG.png)
+LOAD [absolute-zero] init: 25.7 ms, chart: 15.3 ms, sounds: 59.5 ms, characters: 456.2 ms, stage: 1335.1 ms, song audio: 1.7 ms, notes: 0.2 ms, ui: 10.2 ms, warmup: 0.2 ms, (textures on main thread: 1829.8 ms) total: 1904.1 ms
+[WARN] ImagePrefetch: sem orcamento de memoria, carrega na hora (assets/mods/images/absolute-zeroBG.png)
+LOAD [absolute-zero] init: 0.0 ms, chart: 9.6 ms, sounds: 1.4 ms, characters: 467.9 ms, stage: 1294.4 ms, song audio: 1.7 ms, notes: 0.2 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 1760.2 ms) total: 1775.3 ms
+[WARN] ImagePrefetch: sem orcamento de memoria, carrega na hora (assets/mods/images/absolute-zeroBG.png)
+LOAD [absolute-zero] init: 20.6 ms, chart: 7.1 ms, sounds: 58.8 ms, characters: 460.8 ms, stage: 1323.8 ms, song audio: 1.6 ms, notes: 0.2 ms, ui: 8.8 ms, warmup: 0.2 ms, (textures on main thread: 1809.3 ms) total: 1881.9 ms
+LOAD [Astray] init: 27.2 ms, chart: 4.5 ms, sounds: 95.6 ms, characters: 385.2 ms, stage: 33.2 ms, song audio: 7.6 ms, notes: 0.3 ms, ui: 11.0 ms, warmup: 0.2 ms, (textures on main thread: 407.3 ms) total: 564.8 ms
+[WARN] ImagePrefetch: nao e PNG valido (assets/mods/images/singularitybg.png)
+IMAGE: Failed to load image data
+LOAD [Singularity] init: 0.0 ms, chart: 1.8 ms, sounds: 50.0 ms, characters: 107.8 ms, stage: 7.0 ms, song audio: 1.9 ms, notes: 0.0 ms, ui: 0.0 ms, warmup: 0.1 ms, (textures on main thread: 98.0 ms) total: 168.7 ms
+[WARN] evento desconhecido ignorado: FadeScreen
+[WARN] evento desconhecido ignorado: BnW bg
+[WARN] evento desconhecido ignorado: NewBopping HUD
+[WARN] evento desconhecido ignorado: Bopping HUD
+[WARN] evento desconhecido ignorado: stage test
+[WARN] evento desconhecido ignorado: ScreenStuff
+LOAD [apostrophe] init: 0.0 ms, chart: 51.6 ms, sounds: 85.3 ms, characters: 459.0 ms, stage: 8.5 ms, song audio: 2.3 ms, notes: 0.3 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 442.1 ms) total: 607.2 ms
+LOAD [Fatigue] init: 0.0 ms, chart: 9.9 ms, sounds: 89.4 ms, characters: 434.6 ms, stage: 9.3 ms, song audio: 1.9 ms, notes: 0.1 ms, ui: 0.0 ms, warmup: 0.2 ms, (textures on main thread: 418.2 ms) total: 545.4 ms
+LOAD [black-n-white] init: 0.0 ms, chart: 24.8 ms, sounds: 66.1 ms, characters: 278.4 ms, stage: 9.1 ms, song audio: 2.1 ms, notes: 0.0 ms, ui: 0.0 ms, warmup: 0.1 ms, (textures on main thread: 247.4 ms) total: 380.6 ms

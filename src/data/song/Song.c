@@ -178,6 +178,15 @@ void Song_LoadSongFromDirDiff(Song *song, const char *dirPath, const char *diff,
               dirPath, diff != NULL ? diff : "default");
 }
 
+char Song_ChartPath(const char *dirPath, const char *diff, char *out, size_t outSize)
+{
+    char path[SONG_PATH_MAX];
+    if (out == NULL || outSize == 0) return 0;
+    out[0] = '\0';
+    if (!Song_ResolveChart(dirPath, diff != NULL ? diff : "", path)) return 0;
+    return snprintf(out, outSize, "%s", path) < (int)outSize;
+}
+
 /* Notas do jogador (id < 0) do chart JSON padrao. So le o JSON (sem data.song, que aborta se corrompido),
    entao pode rodar em thread de fundo. -1 = sem chart JSON. */
 int Song_CountPlayerNotes(const char *dirPath)

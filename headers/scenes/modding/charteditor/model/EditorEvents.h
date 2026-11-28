@@ -14,6 +14,8 @@ int EdEvent_Add(float time, const char* name, const char* v1, const char* v2, co
 void EdEvent_RemoveAt(int idx);
 void EdEvent_ClearAll(void);
 void EdEvents_Load(const char* dir);
+/* Soma os eventos de dentro do chart (Psych: "events" e notas de casa -1). Chamar depois de EdEvents_Load. */
+void EdEvents_AddFromChart(const char* dir, const char* chartPath);
 char EdEvents_Save(const char* dir);
 
 #endif

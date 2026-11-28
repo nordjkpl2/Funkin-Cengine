@@ -7,6 +7,7 @@
 #include "scenes/gameplay/audio/PlayStateAudio.h"
 #include "scenes/gameplay/notes/PlayStatePlayerInput.h"
 #include "scenes/gameplay/HUD/PlayStateHealth.h"
+#include "scenes/gameplay/flow/PlayStateChangers.h"
 #include "scenes/gameplay/notes/PlayStateNoteSpawn.h"
 #include <math.h>
 #include "GameData.h"
@@ -110,6 +111,7 @@ void PlayStatePlayerInput_MissNote(Note* note) {
 
     note->missed = 1;
     PlayStateHealth_AddForSide(-HEALTH_LOSS_MISS, (char)note->mustHit);
+    if (PlayStateChangers_Instakill()) PlayStateHealth_Kill();
     misses++;
     notesPlayed++;
     if (note->mustHit) events.miss(note->id); // so a nota do lado do BF tem animacao de erro
@@ -120,6 +122,7 @@ static void GhostMiss(int slot, int lane) {
     if (lane < 0 || lane > 3) return;
 
     PlayStateHealth_AddForSide(-HEALTH_LOSS_MISS, PlayStatePlayerInput_SlotSideBf(slot));
+    if (PlayStateChangers_Instakill()) PlayStateHealth_Kill();
     misses++;
     notesPlayed++;
     if (PlayStatePlayerInput_SlotSideBf(slot)) events.miss(lane);

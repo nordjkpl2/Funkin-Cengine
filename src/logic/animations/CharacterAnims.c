@@ -54,6 +54,7 @@ static int Char_ConfigureAnimation(RayAnimationHandler *set, const char *name,
 
 void Char_InitAnimationSlots(Character *character)
 {
+    character->namedCount = 0;
     character->animations.idle = -1;
     for (int i = 0; i < 4; ++i) {
         character->animations.notes[i] = -1;
@@ -109,6 +110,31 @@ int Char_BindRole(RayAnimationHandler *set, const CharJson *json, const char *ro
     return -1;
 }
 
+/* Guarda papel -> indice de todos os papeis do JSON. Sprite ainda nao configurado (hey, cheer...)
+   ganha fps/loop/offset do JSON; os ja ligados (bound: idle, sing) ficam como estao. */
+int Char_BindNamedRoles(RayAnimationHandler *set, const CharJson *json, CharNamedAnim *out, int max,
+                        const int *bound, int boundCount)
+{
+    int n = 0;
+    for (int i = 0; i < json->defCount && n < max; ++i) {
+        const CharAnimDef *def = &json->defs[i];
+        const int index = AnimationSet_FindAnimation(set, def->sprite);
+        if (index < 0)
+            continue;
+        char known = 0;
+        for (int k = 0; k < boundCount && !known; ++k)
+            known = (bound[k] == index);
+        for (int k = 0; k < n && !known; ++k)
+            known = (out[k].index == index);
+        if (!known)
+            (void)Char_ConfigureAnimation(set, def->sprite, (float)def->fps, def->looped, def->offsetX, def->offsetY);
+        Char_CopyString(out[n].role, sizeof(out[n].role), def->role);
+        out[n].index = index;
+        ++n;
+    }
+    return n;
+}
+
 bool Char_LoadLegacyCustom(const CharCtx *ctx, Character *character,
                                   const char *name, CharRole role)
 {
@@ -143,6 +169,9 @@ bool Char_LoadLegacyCustom(const CharCtx *ctx, Character *character,
         character->animations.notes[i] = Char_BindRole(&set, &json, singRoles[i]);
         character->missAnimations.notes[i] = character->animations.notes[i];
     }
+    const int bound[5] = { character->animations.idle, character->animations.notes[0], character->animations.notes[1],
+                           character->animations.notes[2], character->animations.notes[3] };
+    character->namedCount = Char_BindNamedRoles(&set, &json, character->named, CHAR_NAMED_MAX, bound, 5);
     if (character->animations.idle < 0 && set.animationCount > 0)
         character->animations.idle = 0;
 

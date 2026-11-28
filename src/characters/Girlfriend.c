@@ -32,6 +32,7 @@ void Girlfriend_Load(Girlfriend *restrict gf, const char *restrict name)
 
     Render_DefaultAnimated(&gf->object);
     gf->f = 0;
+    gf->namedCount = 0;
 
     /* XML: mesma descoberta dos outros personagens, sem carregar icone. */
     Character temporary = {0};
@@ -101,6 +102,8 @@ void Girlfriend_Load(Girlfriend *restrict gf, const char *restrict name)
         right = set.animationCount > 1 ? 1 : 0;
     }
 
+    const int bound[3] = { left, right, idle };
+    gf->namedCount = Char_BindNamedRoles(&set, &json, gf->named, CHAR_NAMED_MAX, bound, 3);
     gf->object.animationSet = set;
     gf->anims[0] = left;
     gf->anims[1] = right;

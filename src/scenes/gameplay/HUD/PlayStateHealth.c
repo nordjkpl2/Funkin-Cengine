@@ -65,14 +65,37 @@ void PlayStateHealth_SetCharacterColors(const Character* dad, const Character* b
     if (bf->hasHealthColor) bfColor = bf->healthColor;
 }
 
-/* PlayStateHealth_Add ja deixa health em [minHealth, 1]; nada mais precisa limitar depois. */
-void PlayStateHealth_Add(float delta) {
+static float mult[HEALTH_MULT_COUNT] = {1.0f, 1.0f};
+
+float PlayStateHealth_Mult(HealthMult which) {
+    return mult[which];
+}
+
+char PlayStateHealth_SetMult(HealthMult which, float value) {
+    const float v = fminf(fmaxf(roundf(value / HEALTH_MULT_STEP) * HEALTH_MULT_STEP, HEALTH_MULT_MIN(which)), HEALTH_MULT_MAX);
+    const char changed = v != mult[which];
+    mult[which] = v;
+    return changed;
+}
+
+/* Soma ja escalada; deixa health em [minHealth, 1], nada mais precisa limitar depois. */
+static void AddRaw(float delta) {
     const float h = health + delta;
     health = h > 1.0f ? 1.0f : (h < minHealth ? minHealth : h);
 }
 
+static float Scaled(float delta) {
+    return delta * mult[delta > 0.0f ? HEALTH_MULT_GAIN : HEALTH_MULT_LOSS];
+}
+
+void PlayStateHealth_Add(float delta) {
+    AddRaw(Scaled(delta));
+}
+
+/* Escala antes de inverter: acerto do oponente no Co-Op usa o ganho (do oponente), nao a perda. */
 void PlayStateHealth_AddForSide(float delta, char bfSide) {
-    PlayStateHealth_Add(gameOptions.coopOn && !bfSide ? -delta : delta);
+    const float d = Scaled(delta);
+    AddRaw(gameOptions.coopOn && !bfSide ? -d : d);
 }
 
 /* Drain do oponente: desce no maximo ate 0, sem matar o player (misses ainda podem matar). */
@@ -80,6 +103,10 @@ void PlayStateHealth_Drain(float delta) {
     const float h = health - delta;
     if (h >= 0.0f) health = h;
     else if (health > 0.0f) health = 0.0f;
+}
+
+void PlayStateHealth_Kill(void) {
+    if (minHealth < 0.0f) health = -1.0f; // imortal (botplay, Co-Op): nada
 }
 
 char PlayStateHealth_IsDead(void) {

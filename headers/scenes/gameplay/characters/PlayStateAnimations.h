@@ -45,6 +45,20 @@ Girlfriend* PlayStateAnimations_GfLoaded(void);
  * nome da pasta/xml em name. Mantem a posicao do slot. Vazio ou nome desconhecido cai no padrao. */
 void PlayStateAnimations_ChangeCharacter(int target, const char* name);
 
+/* ---- Eventos Psych. target: 0 = oponente, 1 = BF, 2 = GF. ResetEvents desfaz tudo (restart/seek). ---- */
+/* Play Animation / Hey!: toca a animacao (papel do JSON, ex.: "hey", ou nome do atlas) e segura holdSecs
+ * (0 = ate acabar). Nota cantada interrompe. Retorna 0 se o personagem nao tem a animacao. */
+char PlayStateAnimations_PlaySpecial(int target, const char* anim, float holdSecs);
+/* Alt Idle Animation: idle vira "idle"+suffix (GF: danceLeft/danceRight+suffix). "" volta ao normal. */
+void PlayStateAnimations_SetIdleSuffix(int target, const char* suffix);
+/* Set GF Speed: GF danca a cada 'beats' batidas (1 = toda batida). */
+void PlayStateAnimations_SetGfSpeed(int beats);
+/* Batida: GF danca (respeita GF Speed e animacao especial). Chamado por PlayStateBeat. */
+void PlayStateAnimations_GfBeat(int beat);
+/* Set Property <personagem>.alpha / .visible (0..1). */
+void PlayStateAnimations_SetAlpha(int target, float alpha);
+void PlayStateAnimations_ResetEvents(void);
+
 /* Eventos de nota (lane = 0..3). */
 void PlayStateAnimations_OpponentHit(int lane);
 void PlayStateAnimations_OpponentHold(void);

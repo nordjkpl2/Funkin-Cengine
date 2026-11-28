@@ -2,14 +2,17 @@
  * Friday Night Funkin' C Engine (c) 2026 nordjkpl
  * PlayStatePause.c - menu de pausa do PlayState.
  *
- * Lista a esquerda (Resume, Skip time, Restart, Exit, ">"), cabecalho com musica e
- * dificuldade a direita e o painel Playback (Song speed) que entra pela direita.
+ * Lista a esquerda (Resume, Skip time, Restart, Exit, "> Playback", "> Notes", "> Health Multiplier"),
+ * cabecalho com musica e dificuldade a direita e os paineis Playback (Song speed), Notes
+ * (Scroll Type/Speed e Instakill on Miss da Psych) e Health Multiplier (Gain/Loss) que entram pela direita.
  * Animacoes param sozinhas quando chegam no alvo; enquanto andam, pedem redesenho.
  */
 
 #include "scenes/api/FontLoader.h"
 #include "scenes/gameplay/flow/PlayStatePause.h"
 #include "scenes/gameplay/audio/PlayStateAudio.h"
+#include "scenes/gameplay/HUD/PlayStateHealth.h"
+#include "scenes/gameplay/flow/PlayStateChangers.h"
 #include "rendering/TextMeasure.h"
 #include "GameData.h"
 #include <ctype.h>
@@ -21,9 +24,17 @@
 #define SCREEN_H 720.0f
 
 /* Menu principal */
-enum { OPT_RESUME, OPT_SKIP, OPT_RESTART, OPT_EXIT, OPT_MORE, OPTION_COUNT };
+enum { OPT_RESUME, OPT_SKIP, OPT_RESTART, OPT_EXIT, OPT_MORE, OPT_NOTES, OPT_HEALTH, OPTION_COUNT };
+/* Paineis ">" (na ordem dos itens a partir de OPT_MORE) */
+enum { PANEL_PLAYBACK, PANEL_NOTES, PANEL_HEALTH };
 /* Painel Playback */
 enum { SUB_SPEED, SUB_RESET, SUB_BACK, SUB_COUNT };
+/* Painel Notes */
+enum { NSUB_TYPE, NSUB_SPEED, NSUB_INSTAKILL, NSUB_RESET, NSUB_BACK, NSUB_COUNT };
+/* Painel Health Multiplier: GAIN/LOSS = indices de HealthMult */
+enum { HSUB_GAIN, HSUB_LOSS, HSUB_RESET, HSUB_BACK, HSUB_COUNT };
+/* Todos os paineis terminam em Reset, Back */
+static const int panelRows[] = {SUB_COUNT, NSUB_COUNT, HSUB_COUNT};
 
 #define SPEED_STEP 0.05f
 
@@ -38,11 +49,12 @@ typedef struct {
 
 static char isPaused;
 static char panelOpen;
+static char panelKind;            /* PANEL_*; fica durante a animacao de fechar */
 static char redraw;
 static int current, subCurrent;
 static float cursor, subCursor;   /* posicao animada do marcador, em linhas */
 static float fadeIn;              /* 0..1 ao abrir */
-static float panel;               /* 0..1 painel Playback */
+static float panel;               /* 0..1 painel aberto */
 static float pauseTimer;
 static float wheelAcc;
 static KeyHold holdLeft, holdRight;
@@ -138,6 +150,7 @@ static int WheelSteps(void) {
 typedef struct {
     int move;      /* +1 desce, -1 sobe */
     char left, right, accept, back;
+    char tap;      /* LEFT/RIGHT apertado agora (sem repeticao): escolhas nao piscam ao segurar */
 } PauseInput;
 
 static int Wrap(int v, int count) {
@@ -162,8 +175,9 @@ static PlayStatePauseAction UpdateMain(const PauseInput* in) {
         isPaused = 0;
         return PLAYSTATE_PAUSE_NONE;
     }
-    if (current == OPT_MORE && (in->accept || in->right)) {
+    if (current >= OPT_MORE && (in->accept || in->right)) {
         panelOpen = 1;
+        panelKind = (char)(current - OPT_MORE);
         subCurrent = 0;
         subCursor = 0.0f;
         return PLAYSTATE_PAUSE_NONE;
@@ -179,18 +193,54 @@ static PlayStatePauseAction UpdateMain(const PauseInput* in) {
     return PLAYSTATE_PAUSE_NONE;
 }
 
-static PlayStatePauseAction UpdatePanel(const PauseInput* in) {
-    if (in->move != 0) {
-        subCurrent = Wrap(subCurrent + in->move, SUB_COUNT);
+static PlayStatePauseAction ScrollChanged(char changed) {
+    return changed ? PLAYSTATE_PAUSE_SCROLL : PLAYSTATE_PAUSE_NONE;
+}
+
+/* LEFT/RIGHT (ou ENTER) numa linha de valor do painel aberto. */
+static PlayStatePauseAction ChangeValue(const PauseInput* in) {
+    const float dir = in->right ? 1.0f : (in->left ? -1.0f : 0.0f);
+    if (panelKind == PANEL_PLAYBACK)
+        return dir != 0.0f ? SetSpeed(PlayStateAudio_Speed() + dir * SPEED_STEP) : PLAYSTATE_PAUSE_NONE;
+    if (panelKind == PANEL_HEALTH) {
+        const HealthMult m = (HealthMult)subCurrent;
+        redraw |= PlayStateHealth_SetMult(m, PlayStateHealth_Mult(m) + dir * HEALTH_MULT_STEP);
         return PLAYSTATE_PAUSE_NONE;
     }
-    if (subCurrent == SUB_SPEED && (in->left || in->right))
-        return SetSpeed(PlayStateAudio_Speed() + (in->right ? SPEED_STEP : -SPEED_STEP));
-    if (in->back || in->left || (in->accept && subCurrent == SUB_BACK)) {
+    if (subCurrent == NSUB_SPEED)
+        return ScrollChanged(PlayStateChangers_SetScrollValue(PlayStateChangers_ScrollValue() + dir * CHANGERS_SCROLL_STEP));
+    if (!in->tap && !in->accept) return PLAYSTATE_PAUSE_NONE;
+    if (subCurrent == NSUB_TYPE)
+        return ScrollChanged(PlayStateChangers_SetScrollType(PlayStateChangers_ScrollType() == SCROLL_TYPE_MULT ? SCROLL_TYPE_CONST : SCROLL_TYPE_MULT));
+    redraw |= PlayStateChangers_SetInstakill(!PlayStateChangers_Instakill());
+    return PLAYSTATE_PAUSE_NONE;
+}
+
+static PlayStatePauseAction ResetPanel(void) {
+    if (panelKind == PANEL_PLAYBACK) return SetSpeed(1.0f);
+    if (panelKind == PANEL_HEALTH) {
+        redraw |= PlayStateHealth_SetMult(HEALTH_MULT_GAIN, 1.0f) | PlayStateHealth_SetMult(HEALTH_MULT_LOSS, 1.0f);
+        return PLAYSTATE_PAUSE_NONE;
+    }
+    const char scroll = PlayStateChangers_ScrollType() != SCROLL_TYPE_MULT || PlayStateChangers_ScrollValue() != 1.0f;
+    redraw |= PlayStateChangers_IsModified();
+    PlayStateChangers_Reset();
+    return ScrollChanged(scroll);
+}
+
+static PlayStatePauseAction UpdatePanel(const PauseInput* in) {
+    const int count = panelRows[(int)panelKind];
+    if (in->move != 0) {
+        subCurrent = Wrap(subCurrent + in->move, count);
+        return PLAYSTATE_PAUSE_NONE;
+    }
+    if (subCurrent < count - 2 && (in->left || in->right || in->accept))   // linhas de valor
+        return ChangeValue(in);
+    if (in->back || in->left || (in->accept && subCurrent == count - 1)) {
         panelOpen = 0;
         return PLAYSTATE_PAUSE_NONE;
     }
-    if (in->accept && subCurrent == SUB_RESET) return SetSpeed(1.0f);
+    if (in->accept && subCurrent == count - 2) return ResetPanel();
     return PLAYSTATE_PAUSE_NONE;
 }
 
@@ -210,6 +260,7 @@ PlayStatePauseAction PlayStatePause_Update(float dt) {
     // Avalia os dois lados sempre, para o estado de segurar acompanhar a tecla.
     in.left = KeyFires(&holdLeft, KEY_LEFT, dt);
     in.right = KeyFires(&holdRight, KEY_RIGHT, dt);
+    in.tap = IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_RIGHT);
     in.move = (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S)) - (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W)) - WheelSteps();
     in.accept = pauseTimer > 0.0f && (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE));
     in.back = IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_BACKSPACE);
@@ -334,7 +385,7 @@ static void DrawHeader(float a) {
 
 static void DrawMainList(char exitToEditor, float currentSecs, float totalSecs, float a) {
     static TextMeasure mRow[OPTION_COUNT];
-    const char* const labels[OPTION_COUNT] = {"Resume", "Skip time", "Restart", exitToEditor ? "Exit to Chart Editor" : "Exit to Menu", "Playback"};
+    const char* const labels[OPTION_COUNT] = {"Resume", "Skip time", "Restart", exitToEditor ? "Exit to Chart Editor" : "Exit to Menu", "Playback", "Notes", "Health Multiplier"};
     const float y0 = (SCREEN_H - OPTION_COUNT * ROW_H) * 0.5f + 24.0f;
     const float dim = 1.0f - 0.55f * panel; // painel aberto apaga a lista
     const float slide = (1.0f - a) * -40.0f;
@@ -349,11 +400,26 @@ static void DrawMainList(char exitToEditor, float currentSecs, float totalSecs, 
         const float cy = y + FONT_ROW * 0.5f;
         const Color c = Alpha(WHITE, (0.42f + 0.58f * sel) * a * dim);
 
-        if (i == OPT_MORE) { // ">" no fim: abre o painel escondido
+        if (i >= OPT_MORE) { // ">" no fim: abrem os paineis escondidos; valor so quando fora de 1x
             DrawChevron(x, cy, 16.0f, c);
-            char more[32] = "Playback";
-            if (PlayStateAudio_Speed() != 1.0f) snprintf(more, sizeof(more), "Playback  %.2fx", PlayStateAudio_Speed());
-            Text(more, x + 34.0f, cy - FONT_SMALL * 0.5f, FONT_SMALL, c);
+            const float g = PlayStateHealth_Mult(HEALTH_MULT_GAIN), l = PlayStateHealth_Mult(HEALTH_MULT_LOSS);
+            const char* text = labels[i];
+            char more[48];
+            if (i == OPT_MORE && PlayStateAudio_Speed() != 1.0f) {
+                snprintf(more, sizeof(more), "%s  %.2fx", text, PlayStateAudio_Speed());
+                text = more;
+            }
+            else if (i == OPT_NOTES && PlayStateChangers_IsModified()) {
+                const char cst = PlayStateChangers_ScrollType() == SCROLL_TYPE_CONST;
+                snprintf(more, sizeof(more), "%s  %.2f%s%s", text, PlayStateChangers_ScrollValue(), cst ? " const" : "x",
+                         PlayStateChangers_Instakill() ? "  Instakill" : "");
+                text = more;
+            }
+            else if (i == OPT_HEALTH && (g != 1.0f || l != 1.0f)) {
+                snprintf(more, sizeof(more), "%s  %.1fx / %.1fx", text, g, l);
+                text = more;
+            }
+            Text(text, x + 34.0f, cy - FONT_SMALL * 0.5f, FONT_SMALL, c);
             continue;
         }
 
@@ -377,46 +443,83 @@ static void DrawMainList(char exitToEditor, float currentSecs, float totalSecs, 
     Text("ENTER select    ESC resume    LEFT/RIGHT skip", LIST_X, SCREEN_H - 56.0f, FONT_HINT, Alpha(WHITE, 0.35f * a * dim));
 }
 
+/* Linha de escolha: rotulo e "<  v  >" a direita. */
+static void DrawChoice(TextMeasure* m, const char* label, const char* val, float x, float right, float y, float sel, Color c) {
+    Text(label, x + sel * 12.0f, y, 44.0f, c);
+    Text(val, right - Measure(m, val, 34.0f), y + 6.0f, 34.0f, c);
+}
+
+/* Linha de valor: escolha + barra min..max com marca em `one` (< 0 = sem marca). */
+static void DrawSlider(TextMeasure* m, const char* label, const char* val, float x, float right, float y,
+                       float k, float one, float sel, float pa, Color c) {
+    const float bw = right - x;
+    DrawChoice(m, label, val, x, right, y, sel, c);
+    DrawBar(x, y + 56.0f, bw, k, (0.4f + 0.6f * sel) * pa);
+    if (one >= 0.0f) DrawRectangleRec((Rectangle) {x + bw * one - 1.0f, y + 51.0f, 2.0f, 14.0f}, Alpha(WHITE, 0.5f * pa));
+    DrawCircleV((Vector2) {x + bw * k, y + 58.0f}, 7.0f, c);
+}
+
+/* Linhas de valor do painel Notes. */
+static void DrawNotesRow(int i, float x, float right, float y, float sel, float pa, Color c) {
+    static TextMeasure mVal[NSUB_RESET];
+    const ScrollType type = PlayStateChangers_ScrollType();
+    char val[24];
+    if (i == NSUB_TYPE)
+        DrawChoice(&mVal[i], "Type", type == SCROLL_TYPE_CONST ? "<  Constant  >" : "<  Multiply  >", x, right, y, sel, c);
+    else if (i == NSUB_INSTAKILL)
+        DrawChoice(&mVal[i], "Instakill", PlayStateChangers_Instakill() ? "<  On  >" : "<  Off  >", x, right, y, sel, c);
+    else { // 0.35..3x (Multiply) ou 0.35..6 (Constant)
+        const float v = PlayStateChangers_ScrollValue(), span = CHANGERS_SCROLL_MAX(type) - CHANGERS_SCROLL_MIN;
+        snprintf(val, sizeof(val), type == SCROLL_TYPE_CONST ? "<  %.2f  >" : "<  %.2fx  >", v);
+        DrawSlider(&mVal[i], "Speed", val, x, right, y, (v - CHANGERS_SCROLL_MIN) / span,
+                   type == SCROLL_TYPE_CONST ? -1.0f : (1.0f - CHANGERS_SCROLL_MIN) / span, sel, pa, c);
+    }
+}
+
 static void DrawPanel(float a) {
+    static const char* const titles[] = {"PLAYBACK", "NOTES", "HEALTH MULTIPLIER"};
+    static const char* const resets[] = {"Reset to 1.00x", "Reset to default", "Reset to 1.0x"};
     const float t = 1.0f - (1.0f - panel) * (1.0f - panel); // ease-out
     const float px = SCREEN_W - PANEL_W * t;
     const float pa = panel * a;
     const float x = px + 64.0f;
-    const float y0 = 236.0f;
-    const float speed = PlayStateAudio_Speed();
+    const int count = panelRows[(int)panelKind];
+    const float y0 = count > 4 ? 200.0f : 236.0f; // Notes tem mais linhas: sobe para a dica caber
+    const float right = SCREEN_W - 48.0f;
 
     DrawRectangleRec((Rectangle) {px, 0.0f, PANEL_W, SCREEN_H}, (Color) {12, 12, 20, (unsigned char)(235.0f * pa)});
     DrawRectangleRec((Rectangle) {px, 0.0f, 2.0f, SCREEN_H}, Alpha(WHITE, 0.25f * pa));
-    Text("PLAYBACK", x, y0 - 70.0f, FONT_SMALL, Alpha(WHITE, 0.45f * pa));
+    Text(titles[(int)panelKind], x, y0 - 70.0f, FONT_SMALL, Alpha(WHITE, 0.45f * pa));
     DrawCursor(x - 34.0f, y0, subCursor, pa);
 
-    static TextMeasure mVal;
-    char val[24];
-    snprintf(val, sizeof(val), "<  %.2fx  >", speed);
-    const float right = SCREEN_W - 48.0f;
-
-    for (int i = 0; i < SUB_COUNT; i++) {
+    static TextMeasure mVal[HEALTH_MULT_COUNT];
+    for (int i = 0; i < count; i++) {
         const float sel = Selection(i, subCursor);
         const float y = y0 + (float)i * ROW_H;
         const Color c = Alpha(WHITE, (0.42f + 0.58f * sel) * pa);
-        switch (i) {
-            case SUB_SPEED: {
-                Text("Speed", x + sel * 12.0f, y, 44.0f, c);
-                Text(val, right - Measure(&mVal, val, 34.0f), y + 6.0f, 34.0f, c);
-                // 0.5x..2.0x com marca em 1x
-                const float bx = x, bw = right - x;
-                const float k = (speed - PSA_SPEED_MIN) / (PSA_SPEED_MAX - PSA_SPEED_MIN);
-                const float one = (1.0f - PSA_SPEED_MIN) / (PSA_SPEED_MAX - PSA_SPEED_MIN);
-                DrawBar(bx, y + 56.0f, bw, k, (0.4f + 0.6f * sel) * pa);
-                DrawRectangleRec((Rectangle) {bx + bw * one - 1.0f, y + 51.0f, 2.0f, 14.0f}, Alpha(WHITE, 0.5f * pa));
-                DrawCircleV((Vector2) {bx + bw * k, y + 58.0f}, 7.0f, c);
-            } break;
-            case SUB_RESET: Text("Reset to 1.00x", x + sel * 12.0f, y + 14.0f, 38.0f, c); break;
-            default: Text("Back", x + sel * 12.0f, y + 14.0f, 38.0f, c); break;
+        char val[24];
+        if (i == count - 1) Text("Back", x + sel * 12.0f, y + 14.0f, 38.0f, c);
+        else if (i == count - 2) Text(resets[(int)panelKind], x + sel * 12.0f, y + 14.0f, 38.0f, c);
+        else if (panelKind == PANEL_NOTES) DrawNotesRow(i, x, right, y, sel, pa, c);
+        else if (panelKind == PANEL_PLAYBACK) { // 0.5x..2.0x
+            const float speed = PlayStateAudio_Speed();
+            snprintf(val, sizeof(val), "<  %.2fx  >", speed);
+            DrawSlider(&mVal[0], "Speed", val, x, right, y, (speed - PSA_SPEED_MIN) / (PSA_SPEED_MAX - PSA_SPEED_MIN),
+                       (1.0f - PSA_SPEED_MIN) / (PSA_SPEED_MAX - PSA_SPEED_MIN), sel, pa, c);
+        }
+        else { // Gain 0x..5x, Loss 0.5x..5x
+            const HealthMult m = (HealthMult)i;
+            const float v = PlayStateHealth_Mult(m), lo = HEALTH_MULT_MIN(m), span = HEALTH_MULT_MAX - lo;
+            snprintf(val, sizeof(val), "<  %.1fx  >", v);
+            DrawSlider(&mVal[i], m == HEALTH_MULT_GAIN ? "Gain" : "Loss", val, x, right, y, (v - lo) / span, (1.0f - lo) / span, sel, pa, c);
         }
     }
 
-    Text("Pitch preserved", x, y0 + SUB_COUNT * ROW_H + 18.0f, FONT_HINT, Alpha(WHITE, 0.4f * pa));
+    const char* hint = "Pitch preserved";
+    if (panelKind == PANEL_HEALTH) hint = "Gain: hits    Loss: misses";
+    else if (panelKind == PANEL_NOTES)
+        hint = PlayStateChangers_ScrollType() == SCROLL_TYPE_CONST ? "Fixed speed, no events" : "Chart speed x value";
+    Text(hint, x, y0 + (float)count * ROW_H + 18.0f, FONT_HINT, Alpha(WHITE, 0.4f * pa));
     Text("LEFT/RIGHT change    ESC back", x, SCREEN_H - 56.0f, FONT_HINT, Alpha(WHITE, 0.35f * pa));
 }
 
